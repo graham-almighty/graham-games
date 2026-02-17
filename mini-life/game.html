@@ -2933,7 +2933,8 @@ const MANSION_COLLISIONS = [
   // Mansion exterior walls
   { xMin: 264.5, xMax: 305.5, zMin: -10.5, zMax: -10 },   // South wall
   { xMin: 264.5, xMax: 305.5, zMin: 10, zMax: 10.5 },      // North wall
-  { xMin: 264.5, xMax: 265, zMin: -10.5, zMax: 10.5 },     // West wall
+  { xMin: 264.5, xMax: 265, zMin: -10.5, zMax: -3 },        // West wall south
+  { xMin: 264.5, xMax: 265, zMin: 3, zMax: 10.5 },          // West wall north
   { xMin: 305, xMax: 305.5, zMin: -10.5, zMax: 10.5 },     // East wall
   // Outdoor fountain
   { xMin: 258, xMax: 262, zMin: -2, zMax: 2 },
@@ -3036,13 +3037,13 @@ function buildMansion() {
   eWall.castShadow = true;
   g.add(eWall);
 
-  // Front double doors (decorative)
-  const doorL = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.8, 0.15), darkWoodMat);
-  doorL.position.set(265, 1.5, -0.8);
-  g.add(doorL);
-  const doorR = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.8, 0.15), darkWoodMat);
-  doorR.position.set(265, 1.5, 0.8);
-  g.add(doorR);
+  // Door frames (thin posts flanking entrance, no blocking mesh)
+  const doorFrameL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.8, 0.15), darkWoodMat);
+  doorFrameL.position.set(265, 1.5, -2.9);
+  g.add(doorFrameL);
+  const doorFrameR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.8, 0.15), darkWoodMat);
+  doorFrameR.position.set(265, 1.5, 2.9);
+  g.add(doorFrameR);
 
   // Columns flanking entrance
   [-2.5, 2.5].forEach(dz => {
