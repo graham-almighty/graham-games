@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRAHAM GAMES</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #ddd;
+    font-family: 'Cinzel', serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Subtle dark texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 20%, #1a0f2a22 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, #0f1a1a22 0%, transparent 50%),
+      repeating-conic-gradient(#ffffff02 0deg, transparent 1deg, transparent 3deg);
+    pointer-events: none;
+  }
+
+  /* Vignette */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, #000000aa 100%);
+    pointer-events: none;
+  }
+
+  .launcher {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ═══ SERPENT LOGO ═══ */
+  .logo {
+    width: 300px;
+    height: 260px;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 30px #2a8a4a44) drop-shadow(0 0 60px #2a8a4a22);
+  }
+
+  /* Serpent scales shimmer */
+  @keyframes scaleShimmer {
+    0% { filter: drop-shadow(0 0 20px #2a8a4a44) drop-shadow(0 0 50px #2a8a4a22); }
+    50% { filter: drop-shadow(0 0 35px #3aaa6a66) drop-shadow(0 0 70px #2a8a4a33); }
+    100% { filter: drop-shadow(0 0 20px #2a8a4a44) drop-shadow(0 0 50px #2a8a4a22); }
+  }
+  .logo { animation: scaleShimmer 3s ease-in-out infinite; }
+
+  /* ═══ TITLE ═══ */
+  .title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3.2rem;
+    font-weight: 900;
+    color: #c9a84c;
+    text-shadow:
+      0 0 20px #c9a84c44,
+      0 0 40px #c9a84c22,
+      2px 2px 0 #1a1200;
+    letter-spacing: 0.12em;
+    margin-bottom: 0.1em;
+    text-align: center;
+  }
+
+  .divider {
+    width: 300px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #c9a84c66, #c9a84c, #c9a84c66, transparent);
+    margin: 10px 0 30px;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+    color: #888;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 15px;
+  }
+
+  /* ═══ G BUX BAR ═══ */
+  .gbux-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #00000088;
+    padding: 6px 18px;
+    border-radius: 20px;
+    border: 1px solid #c9a84c44;
+    backdrop-filter: blur(4px);
+    margin-bottom: 8px;
+  }
+  .gbux-icon { font-size: 1.2rem; }
+  .gbux-amount {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.3rem;
+    color: #c9a84c;
+    font-weight: 700;
+  }
+  .gbux-label {
+    font-size: 0.65rem;
+    color: #888;
+    letter-spacing: 0.1em;
+  }
+
+  /* ═══ NAV BUTTONS ═══ */
+  .launcher-nav {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 25px;
+  }
+  .nav-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    background: transparent;
+    color: #c9a84c;
+    border: 1px solid #c9a84c44;
+    padding: 7px 16px;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover {
+    background: #c9a84c15;
+    border-color: #c9a84c;
+    box-shadow: 0 0 20px #c9a84c22;
+  }
+
+  /* ═══ OVERLAYS ═══ */
+  .gg-overlay {
+    position: fixed;
+    inset: 0;
+    background: #000000dd;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(6px);
+  }
+  .gg-overlay.visible { opacity: 1; pointer-events: all; }
+  .gg-panel {
+    background: linear-gradient(135deg, #141418, #1a1a22);
+    border: 1px solid #c9a84c44;
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 0 60px #c9a84c15;
+  }
+  .gg-panel::-webkit-scrollbar { width: 6px; }
+  .gg-panel::-webkit-scrollbar-thumb { background: #c9a84c44; border-radius: 3px; }
+  .gg-panel h2 {
+    font-family: 'Cinzel Decorative', serif;
+    color: #c9a84c;
+    font-size: 1.3rem;
+    margin-bottom: 4px;
+    text-shadow: 0 0 20px #c9a84c33;
+  }
+  .gg-panel-sub { color: #888; font-size: 0.75rem; margin-bottom: 18px; letter-spacing: 0.08em; }
+  .gg-close {
+    font-family: 'Cinzel', serif;
+    display: block;
+    margin: 18px auto 0;
+    padding: 7px 28px;
+    background: transparent;
+    border: 1px solid #555;
+    color: #888;
+    cursor: pointer;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .gg-close:hover { color: #c9a84c; border-color: #c9a84c; }
+
+  /* Achievement items */
+  .ach-group { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; margin: 14px 0 6px; border-bottom: 1px solid #333; padding-bottom: 3px; }
+  .ach-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 5px; margin-bottom: 3px;
+  }
+  .ach-item.locked { opacity: 0.35; }
+  .ach-item.earned { background: #c9a84c08; }
+  .ach-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid #444; display: flex; align-items: center;
+    justify-content: center; font-size: 1rem; flex-shrink: 0;
+  }
+  .ach-item.earned .ach-icon { border-color: #c9a84c; background: #c9a84c22; }
+  .ach-info { flex: 1; }
+  .ach-name { font-family: 'Cinzel', serif; font-size: 0.8rem; color: #ddd; }
+  .ach-desc { font-size: 0.65rem; color: #777; }
+  .ach-reward { font-family: 'Cinzel', serif; font-size: 0.75rem; color: #c9a84c; white-space: nowrap; }
+
+  /* Shop items */
+  .shop-bal { color: #c9a84c; font-size: 0.85rem; margin-bottom: 14px; }
+  .shop-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; border-radius: 7px; border: 1px solid #333;
+    margin-bottom: 6px; transition: border-color 0.15s;
+  }
+  .shop-item:hover { border-color: #c9a84c44; }
+  .shop-item-icon { font-size: 1.8rem; width: 44px; text-align: center; }
+  .shop-item-info { flex: 1; }
+  .shop-item-name { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; }
+  .shop-item-desc { font-size: 0.65rem; color: #777; margin-top: 1px; }
+  .shop-item-game { font-size: 0.55rem; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
+  .shop-buy {
+    font-family: 'Cinzel', serif; padding: 5px 14px;
+    border: 1px solid #c9a84c; background: #c9a84c22;
+    color: #c9a84c; cursor: pointer; font-size: 0.75rem;
+    border-radius: 4px; transition: all 0.15s; white-space: nowrap;
+  }
+  .shop-buy:hover { background: #c9a84c33; box-shadow: 0 0 15px #c9a84c22; }
+  .shop-buy.owned { border-color: #555; color: #555; background: transparent; cursor: default; }
+  .shop-buy.locked { border-color: #444; color: #444; background: transparent; cursor: default; }
+
+  /* ═══ GAME LIST ═══ */
+  .game-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .game-card {
+    width: 100%;
+    padding: 20px 30px;
+    background: linear-gradient(135deg, #141418 0%, #1a1a22 50%, #141418 100%);
+    border: 1px solid #333;
+    border-left: 4px solid #c9a84c;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+  }
+  .game-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, #c9a84c08 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .game-card:hover {
+    border-color: #c9a84c;
+    transform: translateX(5px);
+    box-shadow: 0 0 30px #c9a84c15, -5px 0 20px #c9a84c10;
+  }
+  .game-card:hover::before {
+    opacity: 1;
+  }
+  .game-card:active {
+    transform: translateX(2px) scale(0.99);
+  }
+
+  .game-icon {
+    width: 60px;
+    height: 60px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 1.8rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  .game-info {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+  }
+  .game-info .game-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #eee;
+    margin-bottom: 4px;
+  }
+  .game-info .game-desc {
+    font-size: 0.8rem;
+    color: #777;
+    letter-spacing: 0.05em;
+  }
+
+  .game-arrow {
+    font-size: 1.5rem;
+    color: #555;
+    transition: color 0.2s, transform 0.2s;
+    position: relative;
+    z-index: 1;
+  }
+  .game-card:hover .game-arrow {
+    color: #c9a84c;
+    transform: translateX(4px);
+  }
+
+  /* Hurgvibbit card special styling */
+  .game-card.hurgvibbit {
+    border-left-color: #ff1744;
+  }
+  .game-card.hurgvibbit:hover {
+    border-color: #ff1744;
+    box-shadow: 0 0 30px #ff174415, -5px 0 20px #ff174410;
+  }
+  .game-card.hurgvibbit::before {
+    background: linear-gradient(90deg, #ff174408 0%, transparent 50%);
+  }
+  .game-card.hurgvibbit .game-icon {
+    background: linear-gradient(135deg, #1a0808, #2a0a0a);
+    border: 1px solid #ff174444;
+  }
+
+  /* Flying Ace card */
+  .game-card.flying-ace {
+    border-left-color: #4a9eff;
+  }
+  .game-card.flying-ace:hover {
+    border-color: #4a9eff;
+    box-shadow: 0 0 30px #4a9eff15, -5px 0 20px #4a9eff10;
+  }
+  .game-card.flying-ace::before {
+    background: linear-gradient(90deg, #4a9eff08 0%, transparent 50%);
+  }
+  .game-card.flying-ace .game-icon {
+    background: linear-gradient(135deg, #0a1020, #0a1830);
+    border: 1px solid #4a9eff44;
+    border-radius: 8px;
+  }
+
+  /* Combat card */
+  .game-card.combat {
+    border-left-color: #ff6d00;
+  }
+  .game-card.combat:hover {
+    border-color: #ff6d00;
+    box-shadow: 0 0 30px #ff6d0015, -5px 0 20px #ff6d0010;
+  }
+  .game-card.combat::before {
+    background: linear-gradient(90deg, #ff6d0008 0%, transparent 50%);
+  }
+  .game-card.combat .game-icon {
+    background: linear-gradient(135deg, #1a1008, #2a1808);
+    border: 1px solid #ff6d0044;
+    border-radius: 8px;
+  }
+
+  /* Mini Life card */
+  .game-card.mini-life {
+    border-left-color: #4caf50;
+  }
+  .game-card.mini-life:hover {
+    border-color: #4caf50;
+    box-shadow: 0 0 30px #4caf5015, -5px 0 20px #4caf5010;
+  }
+  .game-card.mini-life::before {
+    background: linear-gradient(90deg, #4caf5008 0%, transparent 50%);
+  }
+  .game-card.mini-life .game-icon {
+    background: linear-gradient(135deg, #081a08, #0a2a0a);
+    border: 1px solid #4caf5044;
+    border-radius: 8px;
+  }
+
+  /* Coming soon cards */
+  .game-card.coming-soon {
+    opacity: 0.4;
+    cursor: default;
+    border-left-color: #444;
+  }
+  .game-card.coming-soon:hover {
+    transform: none;
+    border-color: #444;
+    box-shadow: none;
+  }
+  .game-card.coming-soon .game-arrow {
+    display: none;
+  }
+  .coming-soon-tag {
+    font-size: 0.6rem;
+    color: #666;
+    background: #222;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .footer {
+    position: fixed;
+    bottom: 20px;
+    font-size: 0.75rem;
+    color: #444;
+    letter-spacing: 0.1em;
+    z-index: 1;
+  }
+
+  /* Floating particles */
+  .particle {
+    position: fixed;
+    width: 2px;
+    height: 2px;
+    background: #c9a84c;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    0% { opacity: 0; transform: translateY(0); }
+    10% { opacity: 0.4; }
+    90% { opacity: 0.1; }
+    100% { opacity: 0; transform: translateY(-100vh); }
+  }
+</style>
+</head>
+<body>
+
+<!-- Floating particles -->
+<script>
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.left = Math.random() * 100 + '%';
+  p.style.bottom = '-10px';
+  p.style.animationDuration = (6 + Math.random() * 8) + 's';
+  p.style.animationDelay = (Math.random() * 10) + 's';
+  p.style.width = p.style.height = (1 + Math.random() * 2) + 'px';
+  document.body.appendChild(p);
+}
+</script>
+
+<div class="launcher">
+
+  <!-- SERPENT DOUBLE-G LOGO -->
+  <svg class="logo" viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Serpent body gradient -->
+      <linearGradient id="serpent1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1a5c2a"/>
+        <stop offset="30%" stop-color="#2a8a4a"/>
+        <stop offset="50%" stop-color="#3aaa5a"/>
+        <stop offset="70%" stop-color="#2a8a4a"/>
+        <stop offset="100%" stop-color="#1a5c2a"/>
+      </linearGradient>
+      <linearGradient id="serpent2" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#1a5c2a"/>
+        <stop offset="30%" stop-color="#2a8a4a"/>
+        <stop offset="50%" stop-color="#3aaa5a"/>
+        <stop offset="70%" stop-color="#2a8a4a"/>
+        <stop offset="100%" stop-color="#1a5c2a"/>
+      </linearGradient>
+      <!-- Scale pattern -->
+      <pattern id="scales" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+        <path d="M0,4 Q2,0 4,4 Q6,8 8,4" fill="none" stroke="#ffffff15" stroke-width="0.5"/>
+      </pattern>
+      <!-- Belly gradient -->
+      <linearGradient id="belly" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="#4aba6a"/>
+        <stop offset="100%" stop-color="#2a7a3a"/>
+      </linearGradient>
+      <!-- Eye glow -->
+      <radialGradient id="eyeGlow">
+        <stop offset="0%" stop-color="#ffdd00"/>
+        <stop offset="60%" stop-color="#ff8800"/>
+        <stop offset="100%" stop-color="#cc4400"/>
+      </radialGradient>
+    </defs>
+
+    <!-- ═══ LEFT SERPENT forming "G" ═══ -->
+    <g>
+      <!-- Main body - G shape: curves from top-right, around left, bottom, and back in with the G bar -->
+      <path d="M130,40 C120,25 90,15 65,20 C35,28 18,55 15,85 C12,115 18,150 35,175 C50,195 75,205 100,200 C115,196 125,185 128,170 L128,145 L95,145"
+        fill="none" stroke="url(#serpent1)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Scale overlay -->
+      <path d="M130,40 C120,25 90,15 65,20 C35,28 18,55 15,85 C12,115 18,150 35,175 C50,195 75,205 100,200 C115,196 125,185 128,170 L128,145 L95,145"
+        fill="none" stroke="url(#scales)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Belly line -->
+      <path d="M130,40 C120,28 92,19 67,24 C40,31 23,56 20,85 C17,113 23,148 38,172 C52,190 74,200 98,196 C112,192 121,183 124,170 L124,145 L95,145"
+        fill="none" stroke="#4aba6a22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Serpent head (at start of G curve, top-right) -->
+      <g transform="translate(130, 36) rotate(25)">
+        <!-- Head shape -->
+        <ellipse cx="0" cy="0" rx="14" ry="10" fill="#2a8a4a"/>
+        <ellipse cx="0" cy="0" rx="14" ry="10" fill="url(#scales)"/>
+        <!-- Snout -->
+        <ellipse cx="12" cy="0" rx="7" ry="5" fill="#2a8a4a"/>
+        <!-- Eye -->
+        <circle cx="3" cy="-4" r="3.5" fill="url(#eyeGlow)"/>
+        <ellipse cx="3" cy="-4" rx="1.5" ry="3" fill="#111"/>
+        <!-- Nostril -->
+        <circle cx="16" cy="-1.5" r="1" fill="#1a4a2a"/>
+        <!-- Tongue -->
+        <path d="M19,0 L28,-4 M19,0 L28,4" stroke="#cc3333" stroke-width="1.2" stroke-linecap="round" fill="none">
+          <animate attributeName="d" values="M19,0 L28,-4 M19,0 L28,4;M19,0 L26,-6 M19,0 L26,6;M19,0 L28,-4 M19,0 L28,4" dur="1.5s" repeatCount="indefinite"/>
+        </path>
+        <!-- Jaw line -->
+        <path d="M-8,5 Q0,10 12,4" fill="none" stroke="#1a5c2a" stroke-width="1"/>
+      </g>
+
+      <!-- Tail (at end of G bar) -->
+      <path d="M95,145 Q85,145 80,140 Q74,133 72,125 Q71,118 74,113" fill="none" stroke="url(#serpent1)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M74,113 Q76,108 74,104 Q71,100 68,102" fill="none" stroke="#2a8a4a" stroke-width="6" stroke-linecap="round"/>
+      <path d="M68,102 L65,106" fill="none" stroke="#1a5c2a" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- ═══ RIGHT SERPENT forming "G" ═══ -->
+    <g>
+      <!-- Main body - G shape mirrored -->
+      <path d="M275,60 C268,42 245,30 220,32 C190,37 170,60 168,90 C165,120 172,158 190,182 C205,200 228,210 252,206 C268,202 278,190 280,176 L280,150 L248,150"
+        fill="none" stroke="url(#serpent2)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Scale overlay -->
+      <path d="M275,60 C268,42 245,30 220,32 C190,37 170,60 168,90 C165,120 172,158 190,182 C205,200 228,210 252,206 C268,202 278,190 280,176 L280,150 L248,150"
+        fill="none" stroke="url(#scales)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <!-- Belly line -->
+      <path d="M275,60 C268,45 247,34 222,36 C194,40 175,62 173,90 C170,118 177,155 193,178 C207,195 227,205 250,202 C264,198 274,188 276,176 L276,150 L248,150"
+        fill="none" stroke="#4aba6a22" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <!-- Serpent head (top of right G) -->
+      <g transform="translate(277, 56) rotate(35)">
+        <ellipse cx="0" cy="0" rx="14" ry="10" fill="#2a8a4a"/>
+        <ellipse cx="0" cy="0" rx="14" ry="10" fill="url(#scales)"/>
+        <ellipse cx="12" cy="0" rx="7" ry="5" fill="#2a8a4a"/>
+        <circle cx="3" cy="-4" r="3.5" fill="url(#eyeGlow)"/>
+        <ellipse cx="3" cy="-4" rx="1.5" ry="3" fill="#111"/>
+        <circle cx="16" cy="-1.5" r="1" fill="#1a4a2a"/>
+        <path d="M19,0 L28,-4 M19,0 L28,4" stroke="#cc3333" stroke-width="1.2" stroke-linecap="round" fill="none">
+          <animate attributeName="d" values="M19,0 L28,-4 M19,0 L28,4;M19,0 L26,-6 M19,0 L26,6;M19,0 L28,-4 M19,0 L28,4" dur="1.8s" repeatCount="indefinite"/>
+        </path>
+        <path d="M-8,5 Q0,10 12,4" fill="none" stroke="#1a5c2a" stroke-width="1"/>
+      </g>
+
+      <!-- Tail -->
+      <path d="M248,150 Q238,150 233,145 Q227,138 225,130 Q224,123 227,118" fill="none" stroke="url(#serpent2)" stroke-width="10" stroke-linecap="round"/>
+      <path d="M227,118 Q229,113 227,109 Q224,105 221,107" fill="none" stroke="#2a8a4a" stroke-width="6" stroke-linecap="round"/>
+      <path d="M221,107 L218,111" fill="none" stroke="#1a5c2a" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Center intertwine - serpents crossing in the middle -->
+    <path d="M128,110 Q140,95 155,100 Q168,105 168,90" fill="none" stroke="url(#serpent1)" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+    <path d="M168,115 Q158,100 148,105 Q138,110 130,95" fill="none" stroke="url(#serpent2)" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
+  </svg>
+
+  <div class="title">GRAHAM GAMES</div>
+  <div class="gbux-bar">
+    <span class="gbux-icon">&#129689;</span>
+    <span class="gbux-amount" id="gbux-amount">0</span>
+    <span class="gbux-label">G BUX</span>
+  </div>
+  <div class="divider"></div>
+  <div class="launcher-nav">
+    <button class="nav-btn" onclick="openAchievements()">&#127942; ACHIEVEMENTS</button>
+    <button class="nav-btn" onclick="openShop()">&#128176; G BUX SHOP</button>
+  </div>
+
+  <div class="game-list">
+    <!-- HURGVIBBIT -->
+    <a href="../hurgvibbit/index.html" class="game-card hurgvibbit">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0808" stroke="#ff1744" stroke-width="2"/>
+          <text x="25" y="20" text-anchor="middle" font-size="7" fill="#ff1744" font-family="monospace" font-weight="bold">HURG</text>
+          <text x="25" y="30" text-anchor="middle" font-size="7" fill="#ffd600" font-family="monospace" font-weight="bold">VIBBIT</text>
+          <!-- tiny mohawk -->
+          <polygon points="25,34 22,42 20,36 18,43 24,38 26,43 28,36 30,43 28,38" fill="#ff1744"/>
+          <circle cx="25" cy="44" r="4" fill="#e8b89d"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">HURGVIBBIT</div>
+        <div class="game-desc">Punk metal patty cake showdown</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- FLYING ACE -->
+    <a href="../flying-ace/index.html" class="game-card flying-ace">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1628" stroke="#4a9eff" stroke-width="2"/>
+          <!-- biplane silhouette -->
+          <path d="M12,28 L38,28" stroke="#4a9eff" stroke-width="1.5"/>
+          <path d="M12,22 L38,22" stroke="#4a9eff" stroke-width="1.5"/>
+          <path d="M22,22 L22,28" stroke="#4a9eff" stroke-width="1"/>
+          <path d="M28,22 L28,28" stroke="#4a9eff" stroke-width="1"/>
+          <!-- fuselage -->
+          <ellipse cx="25" cy="25" rx="10" ry="3" fill="#4a9eff" opacity="0.3"/>
+          <path d="M35,25 L40,22 L40,28 Z" fill="#4a9eff" opacity="0.4"/>
+          <!-- propeller -->
+          <line x1="15" y1="21" x2="15" y2="29" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+          <!-- stars -->
+          <circle cx="12" cy="14" r="1" fill="#fff" opacity="0.4"/>
+          <circle cx="35" cy="12" r="0.8" fill="#fff" opacity="0.3"/>
+          <circle cx="20" cy="38" r="0.8" fill="#fff" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">FLYING ACE</div>
+        <div class="game-desc">Aviation board game</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- COMBAT -->
+    <a href="../combat/index.html" class="game-card combat">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0f08" stroke="#ff6d00" stroke-width="2"/>
+          <!-- tank silhouette -->
+          <rect x="14" y="28" width="22" height="8" rx="2" fill="#ff6d00" opacity="0.4"/>
+          <rect x="18" y="23" width="14" height="7" rx="2" fill="#ff6d00" opacity="0.5"/>
+          <!-- cannon -->
+          <rect x="32" y="25" width="10" height="3" rx="1" fill="#ff6d00" opacity="0.6"/>
+          <!-- treads -->
+          <ellipse cx="17" cy="36" rx="4" ry="3" fill="none" stroke="#ff6d00" stroke-width="1" opacity="0.5"/>
+          <ellipse cx="25" cy="36" rx="4" ry="3" fill="none" stroke="#ff6d00" stroke-width="1" opacity="0.5"/>
+          <ellipse cx="33" cy="36" rx="4" ry="3" fill="none" stroke="#ff6d00" stroke-width="1" opacity="0.5"/>
+          <!-- explosion -->
+          <circle cx="15" cy="15" r="4" fill="#ff6d00" opacity="0.2"/>
+          <circle cx="15" cy="15" r="2" fill="#ffab00" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">COMBAT</div>
+        <div class="game-desc">Retro tank battle</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- MINI LIFE -->
+    <a href="../mini-life/game.html" class="game-card mini-life">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#082a08" stroke="#4caf50" stroke-width="2"/>
+          <!-- house -->
+          <polygon points="25,10 12,22 38,22" fill="#4caf50" opacity="0.5"/>
+          <rect x="16" y="22" width="18" height="14" fill="#4caf50" opacity="0.3"/>
+          <!-- door -->
+          <rect x="22" y="28" width="6" height="8" rx="1" fill="#4caf50" opacity="0.5"/>
+          <!-- windows -->
+          <rect x="17" y="24" width="4" height="4" rx="0.5" fill="#81c784" opacity="0.6"/>
+          <rect x="29" y="24" width="4" height="4" rx="0.5" fill="#81c784" opacity="0.6"/>
+          <!-- person -->
+          <circle cx="25" cy="42" r="2" fill="#4caf50" opacity="0.6"/>
+          <rect x="24" y="39" width="2" height="3" rx="0.5" fill="#4caf50" opacity="0.5"/>
+          <circle cx="25" cy="38" r="1.5" fill="#4caf50" opacity="0.6"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">MINI LIFE</div>
+        <div class="game-desc">3D life simulator</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+  </div>
+</div>
+
+<div class="footer">GRAHAM GAMES &copy; 2026</div>
+
+<!-- Achievements Overlay -->
+<div class="gg-overlay" id="ach-overlay">
+  <div class="gg-panel">
+    <h2>&#127942; ACHIEVEMENTS</h2>
+    <div class="gg-panel-sub" id="ach-progress">0 / 20 earned</div>
+    <div id="ach-list"></div>
+    <button class="gg-close" onclick="closeAchievements()">CLOSE</button>
+  </div>
+</div>
+
+<!-- Shop Overlay -->
+<div class="gg-overlay" id="shop-overlay">
+  <div class="gg-panel">
+    <h2>&#128176; G BUX SHOP</h2>
+    <div class="shop-bal">Balance: <span id="shop-balance">0</span> G Bux</div>
+    <div id="shop-list"></div>
+    <button class="gg-close" onclick="closeShop()">CLOSE</button>
+  </div>
+</div>
+
+<script>
+// ═══ G BUX SYSTEM ═══
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+// ═══ ACHIEVEMENT DATA ═══
+const ALL_ACHIEVEMENTS = [
+  { group: 'HURGVIBBIT', items: [
+    { id: 'hurv_first_timer',   name: 'First Timer',     desc: 'Complete a round',             reward: 5 },
+    { id: 'hurv_combo_10',      name: 'Combo Starter',   desc: 'Get a 10x combo',              reward: 10 },
+    { id: 'hurv_grade_a',       name: 'Grade A Student',  desc: 'Get an A grade',               reward: 15 },
+    { id: 'hurv_grade_s',       name: 'Perfectionist',   desc: 'Get an S grade',               reward: 25 },
+    { id: 'hurv_combo_25',      name: 'Combo King',      desc: 'Get a 25x combo',              reward: 20 },
+    { id: 'hurv_hard_complete', name: 'Hard Rocker',     desc: 'Complete all rounds on Hard',   reward: 30 },
+    { id: 'hurv_score_5000',    name: 'Score Hunter',    desc: 'Reach 5,000 points',           reward: 15 },
+    { id: 'hurv_score_15000',   name: 'Score Legend',    desc: 'Reach 15,000 points',          reward: 25 },
+    { id: 'hurv_flawless',      name: 'Flawless',        desc: '100% hit rate on any round',   reward: 30 },
+    { id: 'hurv_rhythm_master', name: 'Rhythm Master',   desc: 'Get S grade on Hard',          reward: 50 },
+  ]},
+  { group: 'MINI LIFE', items: [
+    { id: 'ml_new_home',          name: 'New Home',          desc: 'Start your first game',             reward: 5 },
+    { id: 'ml_survivor',          name: 'Survivor',          desc: 'Survive 3 days',                    reward: 10 },
+    { id: 'ml_week_warrior',      name: 'Week Warrior',      desc: 'Survive 7 days',                    reward: 20 },
+    { id: 'ml_shopaholic',        name: 'Shopaholic',        desc: 'Buy any furniture',                 reward: 10 },
+    { id: 'ml_interior_designer', name: 'Interior Designer', desc: 'Buy all 4 furniture items',         reward: 25 },
+    { id: 'ml_fashion_icon',      name: 'Fashion Icon',      desc: 'Buy any outfit',                    reward: 10 },
+    { id: 'ml_moving_up',         name: 'Moving Up',         desc: 'Buy the second floor',              reward: 20 },
+    { id: 'ml_arcade_pro',        name: 'Arcade Pro',        desc: 'Score 25+ in computer minigame',    reward: 15 },
+    { id: 'ml_high_roller',       name: 'High Roller',       desc: 'Have $500 at once',                 reward: 20 },
+    { id: 'ml_living_large',      name: 'Living Large',      desc: 'Own everything',                    reward: 50 },
+    { id: 'ml_bookworm',          name: 'Knowledge is Power', desc: 'Read 3 books',                     reward: 50 },
+    { id: 'ml_gym_rat',           name: 'Gym Rat',            desc: 'Use the treadmill 3 times',        reward: 50 },
+    { id: 'ml_helpful_neighbor',  name: 'Helpful Neighbor',   desc: 'Complete a town quest',             reward: 25 },
+    { id: 'ml_town_hero',         name: 'Town Hero',          desc: 'Complete all 4 town quests',        reward: 50 },
+    { id: 'ml_mansion_mogul',     name: 'Mansion Mogul',      desc: 'Purchase the mansion',              reward: 75 },
+  ]},
+];
+
+const SHOP_ITEMS = [
+  { id: 'hurv_neon_theme', name: 'Neon Theme',     desc: 'Neon color scheme for Hurgvibbit',        cost: 50,  icon: '&#127752;', game: 'Hurgvibbit' },
+  { id: 'hurv_turbo_mode', name: 'Turbo Mode',     desc: 'Insanely fast difficulty for Hurgvibbit',  cost: 75,  icon: '&#9889;',   game: 'Hurgvibbit' },
+  { id: 'ml_pet_dog',      name: 'Pet Dog',         desc: 'A loyal dog that follows you around',     cost: 50,  icon: '&#128054;', game: 'Mini Life' },
+  { id: 'ml_pool',         name: 'Swimming Pool',   desc: 'Outdoor pool — restores fun & hygiene',   cost: 100, icon: '&#127946;', game: 'Mini Life' },
+  { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
+];
+
+// ═══ ACHIEVEMENTS PANEL ═══
+function openAchievements() {
+  const data = ggLoad();
+  const container = document.getElementById('ach-list');
+  container.innerHTML = '';
+  let earned = 0, total = 0;
+  for (const group of ALL_ACHIEVEMENTS) {
+    const title = document.createElement('div');
+    title.className = 'ach-group';
+    title.textContent = group.group;
+    container.appendChild(title);
+    for (const ach of group.items) {
+      total++;
+      const has = !!data.achievements[ach.id];
+      if (has) earned++;
+      const div = document.createElement('div');
+      div.className = 'ach-item ' + (has ? 'earned' : 'locked');
+      div.innerHTML = '<div class="ach-icon">' + (has ? '&#9733;' : '&#9744;') + '</div>' +
+        '<div class="ach-info"><div class="ach-name">' + ach.name + '</div>' +
+        '<div class="ach-desc">' + ach.desc + '</div></div>' +
+        '<div class="ach-reward">' + (has ? '&#9989;' : ach.reward + ' G') + '</div>';
+      container.appendChild(div);
+    }
+  }
+  document.getElementById('ach-progress').textContent = earned + ' / ' + total + ' earned';
+  document.getElementById('ach-overlay').classList.add('visible');
+}
+function closeAchievements() { document.getElementById('ach-overlay').classList.remove('visible'); }
+
+// ═══ SHOP PANEL ═══
+function openShop() {
+  const data = ggLoad();
+  document.getElementById('shop-balance').textContent = data.gBux;
+  const container = document.getElementById('shop-list');
+  container.innerHTML = '';
+  for (const item of SHOP_ITEMS) {
+    const owned = !!data.shopPurchases[item.id];
+    const canAfford = data.gBux >= item.cost;
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = '<div class="shop-item-icon">' + item.icon + '</div>' +
+      '<div class="shop-item-info"><div class="shop-item-name">' + item.name + '</div>' +
+      '<div class="shop-item-desc">' + item.desc + '</div>' +
+      '<div class="shop-item-game">For: ' + item.game + '</div></div>';
+    const btn = document.createElement('button');
+    if (owned) { btn.className = 'shop-buy owned'; btn.textContent = 'OWNED'; }
+    else if (!canAfford) { btn.className = 'shop-buy locked'; btn.textContent = item.cost + ' G'; }
+    else {
+      btn.className = 'shop-buy';
+      btn.textContent = item.cost + ' G';
+      btn.onclick = () => { purchaseItem(item.id, item.cost); openShop(); };
+    }
+    div.appendChild(btn);
+    container.appendChild(div);
+  }
+  document.getElementById('shop-overlay').classList.add('visible');
+}
+function closeShop() { document.getElementById('shop-overlay').classList.remove('visible'); }
+function purchaseItem(id, cost) {
+  const data = ggLoad();
+  if (data.shopPurchases[id] || data.gBux < cost) return;
+  data.gBux -= cost;
+  data.shopPurchases[id] = true;
+  ggSave(data);
+  document.getElementById('gbux-amount').textContent = data.gBux;
+}
+
+// ═══ REFRESH ON FOCUS ═══
+function refreshGBux() {
+  document.getElementById('gbux-amount').textContent = ggLoad().gBux;
+}
+window.addEventListener('focus', refreshGBux);
+window.addEventListener('pageshow', refreshGBux);
+refreshGBux();
+
+// Close overlays on escape
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    closeAchievements();
+    closeShop();
+  }
+});
+</script>
+
+</body>
+</html>

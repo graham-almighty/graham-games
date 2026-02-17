@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HURGVIBBIT - Patty Cake Showdown</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rubik+Mono+One&family=Permanent+Marker&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --punk-red: #ff1744;
+    --punk-yellow: #ffd600;
+    --punk-pink: #ff4081;
+    --punk-black: #0a0a0a;
+    --punk-dark: #141414;
+    --punk-green: #76ff03;
+    --punk-cyan: #00e5ff;
+    --punk-purple: #d500f9;
+    --plaid-1: #1a1a1a;
+    --plaid-2: #222;
+  }
+
+  body {
+    background: var(--punk-black);
+    color: #eee;
+    font-family: 'Permanent Marker', 'Impact', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+  }
+
+  /* Plaid background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 28px, #ff174408 28px, #ff174408 30px),
+      repeating-linear-gradient(90deg, transparent, transparent 28px, #ff174408 28px, #ff174408 30px),
+      repeating-linear-gradient(0deg, transparent, transparent 58px, #ffd60006 58px, #ffd60006 60px),
+      repeating-linear-gradient(90deg, transparent, transparent 58px, #ffd60006 58px, #ffd60006 60px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Spray paint splatter overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at 15% 85%, #ff174410 0%, transparent 40%),
+                radial-gradient(ellipse at 85% 15%, #ffd60010 0%, transparent 35%),
+                radial-gradient(ellipse at 50% 50%, #d500f908 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  #title-screen, #game-screen, #result-screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.4s;
+    z-index: 1;
+  }
+  .hidden { opacity: 0; pointer-events: none; }
+
+  /* ═══ TITLE ═══ */
+  #title-screen h1 {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 4.5rem;
+    color: var(--punk-red);
+    text-shadow:
+      4px 4px 0 #000,
+      -2px -2px 0 var(--punk-yellow),
+      0 0 40px #ff174466,
+      0 0 80px #ff174422;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.1em;
+    transform: rotate(-2deg) skewX(-3deg);
+    position: relative;
+  }
+  /* Spikes above title */
+  #title-screen h1::before {
+    content: '';
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 30px;
+    background:
+      conic-gradient(from 0deg at 10% 100%, var(--punk-red) 0deg, transparent 30deg, transparent 330deg, var(--punk-red) 360deg),
+      conic-gradient(from 0deg at 25% 100%, var(--punk-yellow) 0deg, transparent 25deg, transparent 335deg, var(--punk-yellow) 360deg),
+      conic-gradient(from 0deg at 40% 100%, var(--punk-red) 0deg, transparent 28deg, transparent 332deg, var(--punk-red) 360deg),
+      conic-gradient(from 0deg at 55% 100%, var(--punk-pink) 0deg, transparent 22deg, transparent 338deg, var(--punk-pink) 360deg),
+      conic-gradient(from 0deg at 70% 100%, var(--punk-red) 0deg, transparent 30deg, transparent 330deg, var(--punk-red) 360deg),
+      conic-gradient(from 0deg at 85% 100%, var(--punk-yellow) 0deg, transparent 26deg, transparent 334deg, var(--punk-yellow) 360deg);
+  }
+
+  .anarchy-symbol {
+    font-size: 2.5rem;
+    color: var(--punk-red);
+    opacity: 0.6;
+    position: absolute;
+    animation: drift 4s ease-in-out infinite alternate;
+  }
+  .anarchy-symbol:nth-child(1) { top: 8%; left: 10%; animation-delay: 0s; }
+  .anarchy-symbol:nth-child(2) { top: 12%; right: 12%; animation-delay: 1s; transform: rotate(15deg); }
+  .anarchy-symbol:nth-child(3) { bottom: 15%; left: 8%; animation-delay: 2s; transform: rotate(-20deg); }
+  .anarchy-symbol:nth-child(4) { bottom: 10%; right: 10%; animation-delay: 0.5s; }
+  @keyframes drift {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(-10px) rotate(8deg); }
+  }
+
+  #title-screen .subtitle {
+    font-size: 1.5rem;
+    color: var(--punk-yellow);
+    margin-bottom: 1.5em;
+    text-shadow: 2px 2px 0 #000;
+    transform: rotate(1deg);
+    letter-spacing: 0.05em;
+  }
+
+  /* Punk buttons */
+  .punk-btn {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 1.3rem;
+    padding: 0.7em 2.2em;
+    background: var(--punk-red);
+    color: #fff;
+    border: 3px solid var(--punk-yellow);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    box-shadow: 4px 4px 0 #000, 0 0 20px #ff174444;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    position: relative;
+    clip-path: polygon(
+      0% 10%, 5% 0%, 15% 8%, 25% 0%, 35% 5%, 45% 0%, 55% 3%, 65% 0%, 75% 6%, 85% 0%, 95% 8%, 100% 0%,
+      100% 90%, 95% 100%, 85% 92%, 75% 100%, 65% 95%, 55% 100%, 45% 97%, 35% 100%, 25% 94%, 15% 100%, 5% 92%, 0% 100%
+    );
+    padding: 1em 2.5em;
+  }
+  .punk-btn:hover {
+    transform: scale(1.08) rotate(-1deg);
+    box-shadow: 6px 6px 0 #000, 0 0 35px #ff174466;
+  }
+  .punk-btn:active {
+    transform: scale(0.95);
+    box-shadow: 2px 2px 0 #000;
+  }
+
+  .exit-btn {
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 1rem;
+    color: #888;
+    text-decoration: none;
+    margin-top: 1em;
+    padding: 0.4em 1.2em;
+    border: 2px solid #444;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .exit-btn:hover {
+    color: var(--punk-yellow);
+    border-color: var(--punk-yellow);
+    text-shadow: 0 0 10px #ffd60044;
+  }
+
+  .controls-hint {
+    margin-top: 2em;
+    text-align: center;
+    color: #888;
+    line-height: 2.2;
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 0.95rem;
+  }
+  .controls-hint kbd {
+    background: var(--punk-dark);
+    border: 2px solid var(--punk-red);
+    border-bottom: 4px solid #aa0000;
+    padding: 3px 12px;
+    font-size: 1rem;
+    color: var(--punk-yellow);
+    font-family: 'Rubik Mono One', monospace;
+    display: inline-block;
+    transform: rotate(-1deg);
+  }
+
+  .difficulty-select {
+    margin-bottom: 1.5em;
+    display: flex; gap: 12px;
+  }
+  .difficulty-select button {
+    font-family: 'Permanent Marker', sans-serif;
+    padding: 0.5em 1.5em;
+    border: 2px solid #444;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.15s;
+    clip-path: polygon(5% 0%, 95% 0%, 100% 50%, 95% 100%, 5% 100%, 0% 50%);
+    padding: 0.6em 1.8em;
+  }
+  .difficulty-select button.active {
+    border-color: var(--punk-red);
+    color: var(--punk-red);
+    background: #ff174422;
+    text-shadow: 0 0 10px #ff174466;
+  }
+  .difficulty-select button:hover {
+    color: var(--punk-yellow);
+    border-color: var(--punk-yellow);
+  }
+
+  /* ═══ GAME ═══ */
+  #game-screen { justify-content: flex-start; }
+
+  .hud {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    z-index: 10;
+    border-bottom: 2px solid #ff174433;
+    background: linear-gradient(180deg, #1a0a0a 0%, transparent 100%);
+  }
+  .hud .score {
+    color: var(--punk-red);
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 1.2rem;
+  }
+  .hud .combo {
+    color: var(--punk-yellow);
+    font-size: 1rem;
+  }
+  .hud .streak-bar {
+    width: 200px; height: 10px;
+    background: #222;
+    overflow: hidden;
+    border: 1px solid #444;
+    /* Spiky bar shape */
+    clip-path: polygon(
+      0% 50%, 3% 0%, 6% 50%, 9% 0%, 12% 50%, 15% 0%, 18% 50%, 21% 0%, 24% 50%, 27% 0%, 30% 50%,
+      33% 0%, 36% 50%, 39% 0%, 42% 50%, 45% 0%, 48% 50%, 51% 0%, 54% 50%, 57% 0%, 60% 50%,
+      63% 0%, 66% 50%, 69% 0%, 72% 50%, 75% 0%, 78% 50%, 81% 0%, 84% 50%, 87% 0%, 90% 50%,
+      93% 0%, 96% 50%, 100% 0%, 100% 100%, 0% 100%
+    );
+  }
+  .hud .streak-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--punk-yellow), var(--punk-red));
+    transition: width 0.2s;
+  }
+
+  .rhyme-line {
+    font-size: 1.1rem;
+    color: var(--punk-yellow);
+    min-height: 1.6em;
+    text-align: center;
+    margin-top: 5px;
+    text-shadow: 1px 1px 0 #000;
+    opacity: 0.8;
+  }
+
+  .stage {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    position: relative;
+    padding-bottom: 10px;
+  }
+
+  /* ═══ PUNK CHARACTERS (SVG) ═══ */
+  .character {
+    width: 130px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+  .character .body {
+    line-height: 1;
+    transition: transform 0.1s;
+  }
+  .character .name-tag {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 0.7rem;
+    color: var(--punk-yellow);
+    margin-top: 2px;
+    text-shadow: 1px 1px 0 #000;
+    letter-spacing: 0.1em;
+  }
+  .character.hit .body { transform: scale(1.12); }
+  .character .hand-l, .character .hand-r {
+    position: absolute;
+    font-size: 28px;
+    transition: all 0.15s;
+    filter: drop-shadow(0 0 4px #ff174466);
+  }
+  #player-char .hand-l { left: -5px; top: 50px; }
+  #player-char .hand-r { right: -5px; top: 50px; }
+  #cpu-char .hand-l { left: -5px; top: 50px; }
+  #cpu-char .hand-r { right: -5px; top: 50px; }
+
+  /* ═══ LANES ═══ */
+  .lanes {
+    position: absolute;
+    top: 90px;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    display: flex;
+    overflow: hidden;
+    border-left: 2px solid #ff174422;
+    border-right: 2px solid #ff174422;
+  }
+  .lane {
+    flex: 1;
+    position: relative;
+    border-left: 1px solid #ff174415;
+    background: linear-gradient(180deg, transparent 0%, #ff174406 100%);
+  }
+  .lane:first-child { border-left: none; }
+
+  /* Hit zone — spiky line */
+  .hit-zone {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    height: 6px;
+    z-index: 5;
+    background: var(--punk-red);
+    box-shadow: 0 0 20px #ff1744aa, 0 0 40px #ff174444;
+    /* Spiky edges */
+    clip-path: polygon(
+      0% 100%, 2% 0%, 4% 100%, 6% 0%, 8% 100%, 10% 0%, 12% 100%, 14% 0%, 16% 100%, 18% 0%,
+      20% 100%, 22% 0%, 24% 100%, 26% 0%, 28% 100%, 30% 0%, 32% 100%, 34% 0%, 36% 100%, 38% 0%,
+      40% 100%, 42% 0%, 44% 100%, 46% 0%, 48% 100%, 50% 0%, 52% 100%, 54% 0%, 56% 100%, 58% 0%,
+      60% 100%, 62% 0%, 64% 100%, 66% 0%, 68% 100%, 70% 0%, 72% 100%, 74% 0%, 76% 100%, 78% 0%,
+      80% 100%, 82% 0%, 84% 100%, 86% 0%, 88% 100%, 90% 0%, 92% 100%, 94% 0%, 96% 100%, 98% 0%, 100% 100%
+    );
+  }
+  .hit-zone::before {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 0; right: 0;
+    height: 40px;
+    background: #ff174411;
+  }
+
+  /* ═══ NOTES — spiky shapes ═══ */
+  .note {
+    position: absolute;
+    width: 74px;
+    height: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-family: 'Rubik Mono One', monospace;
+    font-weight: normal;
+    transition: opacity 0.1s;
+    /* Spiky shape for all notes */
+    clip-path: polygon(
+      50% 0%, 65% 15%, 100% 5%, 85% 30%, 100% 50%, 85% 70%, 100% 95%, 65% 85%, 50% 100%, 35% 85%, 0% 95%, 15% 70%, 0% 50%, 15% 30%, 0% 5%, 35% 15%
+    );
+    text-shadow: 1px 1px 0 #000;
+  }
+  .note.clap  { background: var(--punk-red); color: #fff; }
+  .note.left  { background: var(--punk-cyan); color: #000; }
+  .note.right { background: var(--punk-yellow); color: #000; }
+  .note.both  { background: var(--punk-purple); color: #fff; }
+
+  /* Lane labels */
+  .lane-labels {
+    position: absolute;
+    bottom: 155px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 420px;
+    display: flex;
+    z-index: 6;
+  }
+  .lane-label {
+    flex: 1;
+    text-align: center;
+    font-size: 0.7rem;
+    color: #666;
+    padding: 4px 0;
+    font-family: 'Permanent Marker', sans-serif;
+  }
+  .lane-label kbd {
+    background: #1a1a1a;
+    border: 2px solid #ff174444;
+    border-bottom: 3px solid #aa0000;
+    padding: 1px 8px;
+    font-size: 0.85rem;
+    color: var(--punk-yellow);
+    font-family: 'Rubik Mono One', monospace;
+  }
+
+  /* ═══ FEEDBACK ═══ */
+  .feedback {
+    position: absolute;
+    bottom: 220px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2rem;
+    font-family: 'Rubik Mono One', monospace;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 20;
+    text-shadow: 3px 3px 0 #000, 0 0 15px currentColor;
+  }
+  .feedback.show {
+    animation: feedbackPop 0.6s ease-out forwards;
+  }
+  @keyframes feedbackPop {
+    0% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1.4) rotate(-3deg); }
+    50% { transform: translateX(-50%) translateY(-30px) scale(1.1) rotate(2deg); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8) rotate(-1deg); }
+  }
+
+  .feedback.perfect { color: var(--punk-green); }
+  .feedback.great   { color: var(--punk-yellow); }
+  .feedback.ok      { color: #888; }
+  .feedback.miss    { color: var(--punk-red); }
+
+  /* ═══ RESULTS ═══ */
+  #result-screen {
+    background: radial-gradient(ellipse at center, #1a0808 0%, var(--punk-black) 70%);
+  }
+  #result-screen h2 {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 2.2rem;
+    margin-bottom: 0.2em;
+    color: var(--punk-yellow);
+    text-shadow: 3px 3px 0 #000;
+    transform: rotate(-1deg);
+  }
+  .final-score {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 3rem;
+    color: var(--punk-red);
+    margin: 0.3em 0;
+    text-shadow: 3px 3px 0 #000, 0 0 20px #ff174444;
+  }
+  .stats {
+    color: #aaa;
+    margin-bottom: 1.5em;
+    line-height: 1.8;
+    font-size: 0.95rem;
+  }
+  .grade {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 6rem;
+    font-weight: bold;
+    margin-bottom: 0.2em;
+    text-shadow: 4px 4px 0 #000, 0 0 40px currentColor;
+    transform: rotate(-3deg);
+  }
+  .grade.s { color: var(--punk-yellow); }
+  .grade.a { color: var(--punk-green); }
+  .grade.b { color: var(--punk-cyan); }
+  .grade.c { color: var(--punk-purple); }
+  .grade.d { color: var(--punk-red); }
+
+  .credits {
+    margin-top: 2em;
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 1.1rem;
+    color: var(--punk-yellow);
+    text-shadow: 2px 2px 0 #000;
+    transform: rotate(-2deg);
+    opacity: 0.8;
+    letter-spacing: 0.03em;
+  }
+
+  /* ═══ PARTICLES ═══ */
+  .burst {
+    position: absolute;
+    pointer-events: none;
+    z-index: 15;
+  }
+  .burst span {
+    position: absolute;
+    width: 6px; height: 6px;
+    animation: burstOut 0.5s ease-out forwards;
+  }
+  /* Spiky particles — rotated squares */
+  .burst span {
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  }
+  @keyframes burstOut {
+    0% { opacity: 1; transform: translate(0,0) scale(1.5) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--bx), var(--by)) scale(0) rotate(180deg); }
+  }
+
+  /* Decorative spikes on sides of game screen */
+  .spike-border-left, .spike-border-right {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 20px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .spike-border-left {
+    left: 0;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--punk-red) 0px, transparent 10px, transparent 20px
+    );
+    clip-path: polygon(0% 0%, 100% 2%, 0% 4%, 100% 6%, 0% 8%, 100% 10%, 0% 12%, 100% 14%, 0% 16%, 100% 18%, 0% 20%, 100% 22%, 0% 24%, 100% 26%, 0% 28%, 100% 30%, 0% 32%, 100% 34%, 0% 36%, 100% 38%, 0% 40%, 100% 42%, 0% 44%, 100% 46%, 0% 48%, 100% 50%, 0% 52%, 100% 54%, 0% 56%, 100% 58%, 0% 60%, 100% 62%, 0% 64%, 100% 66%, 0% 68%, 100% 70%, 0% 72%, 100% 74%, 0% 76%, 100% 78%, 0% 80%, 100% 82%, 0% 84%, 100% 86%, 0% 88%, 100% 90%, 0% 92%, 100% 94%, 0% 96%, 100% 98%, 0% 100%);
+    opacity: 0.3;
+  }
+  .spike-border-right {
+    right: 0;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--punk-yellow) 0px, transparent 10px, transparent 20px
+    );
+    clip-path: polygon(100% 0%, 0% 2%, 100% 4%, 0% 6%, 100% 8%, 0% 10%, 100% 12%, 0% 14%, 100% 16%, 0% 18%, 100% 20%, 0% 22%, 100% 24%, 0% 26%, 100% 28%, 0% 30%, 100% 32%, 0% 34%, 100% 36%, 0% 38%, 100% 40%, 0% 42%, 100% 44%, 0% 46%, 100% 48%, 0% 50%, 100% 52%, 0% 54%, 100% 56%, 0% 58%, 100% 60%, 0% 62%, 100% 64%, 0% 66%, 100% 68%, 0% 70%, 100% 72%, 0% 74%, 100% 76%, 0% 78%, 100% 80%, 0% 82%, 100% 84%, 0% 86%, 100% 88%, 0% 90%, 100% 92%, 0% 94%, 100% 96%, 0% 98%, 100% 100%);
+    opacity: 0.3;
+  }
+
+  /* Safety pin deco */
+  .safety-pin {
+    position: absolute;
+    font-size: 2rem;
+    color: #888;
+    opacity: 0.4;
+    transform: rotate(-30deg);
+    pointer-events: none;
+  }
+
+  /* Screen shake on miss */
+  @keyframes screenShake {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(-5px) rotate(-0.5deg); }
+    40% { transform: translateX(5px) rotate(0.5deg); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+    100% { transform: translateX(0); }
+  }
+  .shaking {
+    animation: screenShake 0.3s ease-out;
+  }
+
+  /* ═══ ANNOUNCER INTRO OVERLAY ═══ */
+  .announce-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(ellipse at center, #2a0000 0%, #000 70%);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .announce-overlay.visible {
+    opacity: 1;
+  }
+  .announce-overlay.fade-out {
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .announce-text {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 0;
+    color: var(--punk-red);
+    text-shadow:
+      5px 5px 0 #000,
+      -3px -3px 0 var(--punk-yellow),
+      0 0 60px #ff174488,
+      0 0 120px #ff174444;
+    letter-spacing: 0.08em;
+    transform: scale(0.3) rotate(-5deg);
+    opacity: 0;
+  }
+  .announce-text.scream {
+    animation: announceScream 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes announceScream {
+    0% {
+      font-size: 0rem;
+      opacity: 0;
+      transform: scale(0.3) rotate(-5deg);
+      text-shadow: 5px 5px 0 #000, 0 0 0px #ff1744;
+    }
+    15% {
+      opacity: 1;
+    }
+    50% {
+      font-size: 6rem;
+      transform: scale(1.15) rotate(2deg);
+      text-shadow: 5px 5px 0 #000, -3px -3px 0 var(--punk-yellow), 0 0 80px #ff1744cc, 0 0 160px #ff174466;
+    }
+    70% {
+      font-size: 5.5rem;
+      transform: scale(1) rotate(-1deg);
+    }
+    100% {
+      font-size: 5.5rem;
+      opacity: 1;
+      transform: scale(1) rotate(-1deg);
+      text-shadow: 5px 5px 0 #000, -3px -3px 0 var(--punk-yellow), 0 0 60px #ff174488, 0 0 120px #ff174444;
+    }
+  }
+  .announce-bell {
+    position: absolute;
+    bottom: 25%;
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 2.5rem;
+    color: var(--punk-yellow);
+    text-shadow: 3px 3px 0 #000;
+    opacity: 0;
+  }
+  .announce-bell.ding {
+    animation: bellDing 0.8s ease-out forwards;
+  }
+  @keyframes bellDing {
+    0% { opacity: 0; transform: scale(2) rotate(-10deg); }
+    30% { opacity: 1; transform: scale(1.1) rotate(3deg); }
+    50% { transform: scale(1) rotate(-1deg); }
+    100% { opacity: 0.8; transform: scale(1) rotate(0deg); }
+  }
+
+  /* G Bux Achievement Toast */
+  .gg-toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px);
+    z-index: 200; background: linear-gradient(135deg, #1a1a22 0%, #2a2220 100%);
+    border: 2px solid #c9a84c; border-radius: 8px; padding: 12px 24px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 0 30px #c9a84c44, 0 4px 20px #00000088;
+    opacity: 0; transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none; font-family: 'Segoe UI', Tahoma, sans-serif;
+  }
+  .gg-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .gg-toast-icon { font-size: 1.8rem; }
+  .gg-toast-title { font-size: 0.65rem; color: #c9a84c; text-transform: uppercase; letter-spacing: 0.1em; }
+  .gg-toast-name { font-size: 0.95rem; color: #eee; font-weight: bold; }
+  .gg-toast-reward { font-size: 0.85rem; color: #c9a84c; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="gg-toast" id="gg-toast">
+  <div class="gg-toast-icon">&#127942;</div>
+  <div style="display:flex;flex-direction:column">
+    <div class="gg-toast-title">Achievement Unlocked!</div>
+    <div class="gg-toast-name" id="gg-toast-name"></div>
+  </div>
+  <div class="gg-toast-reward" id="gg-toast-reward"></div>
+</div>
+
+<div class="spike-border-left"></div>
+<div class="spike-border-right"></div>
+
+<!-- ═══ ANNOUNCER OVERLAY ═══ -->
+<div class="announce-overlay" id="announce-overlay">
+  <div class="announce-text" id="announce-text">HURGVIBBIT!</div>
+  <div class="announce-bell" id="announce-bell">DING!</div>
+</div>
+
+<!-- ═══ TITLE SCREEN ═══ -->
+<div id="title-screen">
+  <span class="anarchy-symbol">&#9398;</span>
+  <span class="anarchy-symbol">&#9398;</span>
+  <span class="anarchy-symbol">&#9398;</span>
+  <span class="anarchy-symbol">&#9398;</span>
+
+  <h1>HURGVIBBIT</h1>
+  <div class="subtitle">// PATTY CAKE SHOWDOWN //</div>
+  <div class="difficulty-select">
+    <button data-diff="easy">EASY</button>
+    <button data-diff="normal" class="active">NORMAL</button>
+    <button data-diff="hard">HARD</button>
+  </div>
+  <button class="punk-btn" id="start-btn">SMASH IT</button>
+  <a href="../graham-games/index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+  <div class="controls-hint">
+    <kbd>SPACE</kbd> / <kbd>D</kbd> CLAP &nbsp;&nbsp; <kbd>F</kbd> / LEFT CLICK &nbsp; LEFT &nbsp;&nbsp; <kbd>J</kbd> / RIGHT CLICK &nbsp; RIGHT &nbsp;&nbsp; <kbd>K</kbd> / BOTH CLICKS &nbsp; BOTH
+  </div>
+  <div class="credits">by graham f who is a numbskull</div>
+</div>
+
+<!-- ═══ GAME SCREEN ═══ -->
+<div id="game-screen" class="hidden">
+  <div class="hud">
+    <div>
+      <div class="score">SCORE: <span id="score-val">0</span></div>
+      <div class="combo">COMBO: <span id="combo-val">0</span>x</div>
+    </div>
+    <div style="text-align:right">
+      <div>ROUND <span id="round-val">1</span> / <span id="round-total">3</span></div>
+      <div class="streak-bar"><div class="streak-fill" id="streak-fill"></div></div>
+    </div>
+  </div>
+  <div class="rhyme-line" id="rhyme-line"></div>
+
+  <div class="stage" id="stage">
+    <div class="lanes" id="lanes">
+      <div class="lane" id="lane-0"></div>
+      <div class="lane" id="lane-1"></div>
+      <div class="lane" id="lane-2"></div>
+      <div class="lane" id="lane-3"></div>
+    </div>
+    <div class="hit-zone"></div>
+    <div class="lane-labels">
+      <div class="lane-label"><kbd>D</kbd><br>CLAP</div>
+      <div class="lane-label"><kbd>F</kbd><br>LEFT</div>
+      <div class="lane-label"><kbd>J</kbd><br>RIGHT</div>
+      <div class="lane-label"><kbd>K</kbd><br>BOTH</div>
+    </div>
+
+    <!-- MOHAWK PUNK (you) -->
+    <div id="player-char" class="character" style="position:absolute; bottom:5px; left:calc(50% - 140px);">
+      <div class="hand-l">&#9994;</div>
+      <div class="body">
+        <svg width="100" height="130" viewBox="0 0 100 130">
+          <!-- Mohawk -->
+          <polygon points="50,0 42,25 35,5 38,28 28,10 35,30 22,18 33,33 50,28 67,33 78,18 65,30 72,10 62,28 65,5 58,25" fill="#ff1744"/>
+          <!-- Head -->
+          <circle cx="50" cy="42" r="18" fill="#e8b89d"/>
+          <!-- Sunglasses -->
+          <rect x="33" y="37" width="14" height="8" rx="2" fill="#111"/>
+          <rect x="53" y="37" width="14" height="8" rx="2" fill="#111"/>
+          <line x1="47" y1="41" x2="53" y2="41" stroke="#444" stroke-width="1.5"/>
+          <!-- Snarl mouth -->
+          <path d="M42,52 L46,50 L50,53 L54,50 L58,52" stroke="#111" stroke-width="1.5" fill="none"/>
+          <!-- Spike collar -->
+          <rect x="35" y="60" width="30" height="8" rx="2" fill="#333"/>
+          <polygon points="38,60 40,53 42,60" fill="#ccc"/>
+          <polygon points="46,60 48,53 50,60" fill="#ccc"/>
+          <polygon points="54,60 56,53 58,60" fill="#ccc"/>
+          <polygon points="62,60 64,53 66,60" fill="#ccc"/>
+          <!-- Jacket -->
+          <path d="M30,68 L35,60 L65,60 L70,68 L75,110 L60,110 L55,80 L50,85 L45,80 L40,110 L25,110 Z" fill="#222"/>
+          <!-- Jacket lapels -->
+          <path d="M35,60 L45,75 L50,68" fill="#333"/>
+          <path d="M65,60 L55,75 L50,68" fill="#333"/>
+          <!-- Safety pin on jacket -->
+          <ellipse cx="38" cy="85" rx="4" ry="6" fill="none" stroke="#aaa" stroke-width="1"/>
+          <line x1="38" y1="79" x2="38" y2="84" stroke="#aaa" stroke-width="1"/>
+          <!-- Patch -->
+          <rect x="55" y="82" width="12" height="12" fill="#ff1744" rx="1"/>
+          <text x="61" y="92" text-anchor="middle" font-size="8" fill="#fff" font-family="monospace">A</text>
+          <!-- Studded belt -->
+          <rect x="30" y="105" width="40" height="5" rx="1" fill="#444"/>
+          <circle cx="35" cy="107.5" r="1.5" fill="#ccc"/>
+          <circle cx="42" cy="107.5" r="1.5" fill="#ccc"/>
+          <circle cx="49" cy="107.5" r="1.5" fill="#ccc"/>
+          <circle cx="56" cy="107.5" r="1.5" fill="#ccc"/>
+          <circle cx="63" cy="107.5" r="1.5" fill="#ccc"/>
+          <!-- Boots -->
+          <rect x="30" y="112" width="14" height="18" rx="2" fill="#111"/>
+          <rect x="56" y="112" width="14" height="18" rx="2" fill="#111"/>
+          <rect x="28" y="126" width="18" height="4" rx="1" fill="#222"/>
+          <rect x="54" y="126" width="18" height="4" rx="1" fill="#222"/>
+        </svg>
+      </div>
+      <div class="hand-r">&#9994;</div>
+      <div class="name-tag">YOU</div>
+    </div>
+
+    <!-- MULLET PUNK (pal) -->
+    <div id="cpu-char" class="character" style="position:absolute; bottom:5px; right:calc(50% - 140px);">
+      <div class="hand-l">&#9994;</div>
+      <div class="body">
+        <svg width="100" height="130" viewBox="0 0 100 130">
+          <!-- Mullet hair - short on top, long in back -->
+          <ellipse cx="50" cy="32" rx="22" ry="10" fill="#ffd600"/>
+          <!-- Long mullet flowing down back -->
+          <path d="M68,32 Q75,45 72,70 Q70,85 65,95 Q62,85 64,70 Q66,50 63,38" fill="#ffd600"/>
+          <path d="M72,35 Q80,50 76,75 Q74,90 68,98 Q66,88 68,73 Q70,55 67,42" fill="#ccaa00"/>
+          <!-- Spiked fringe -->
+          <polygon points="30,30 33,18 36,28 39,15 42,26 45,12 48,24 50,10 52,24 55,12 58,26 61,15 64,28 67,18 70,30" fill="#ffd600"/>
+          <!-- Head -->
+          <circle cx="50" cy="42" r="18" fill="#d4a07a"/>
+          <!-- Aviators -->
+          <path d="M32,38 Q37,34 42,38 Q42,46 37,46 Q32,46 32,38Z" fill="#553300" opacity="0.8"/>
+          <path d="M58,38 Q63,34 68,38 Q68,46 63,46 Q58,46 58,38Z" fill="#553300" opacity="0.8"/>
+          <line x1="42" y1="40" x2="58" y2="40" stroke="#886600" stroke-width="1"/>
+          <!-- Grin -->
+          <path d="M42,52 Q50,58 58,52" stroke="#111" stroke-width="1.5" fill="none"/>
+          <!-- Denim vest -->
+          <path d="M28,65 L35,58 L65,58 L72,65 L78,112 L58,112 L55,78 L50,82 L45,78 L42,112 L22,112 Z" fill="#2a4a7a"/>
+          <!-- Vest patches -->
+          <rect x="24" y="75" width="14" height="10" rx="1" fill="#ff1744"/>
+          <rect x="62" y="75" width="14" height="10" rx="1" fill="#ffd600"/>
+          <!-- Skull patch -->
+          <circle cx="31" cy="80" r="3" fill="#fff"/>
+          <circle cx="29.5" cy="79" r="0.8" fill="#222"/>
+          <circle cx="32.5" cy="79" r="0.8" fill="#222"/>
+          <path d="M29,82 L30,81 L31,82 L32,81 L33,82" stroke="#222" stroke-width="0.5" fill="none"/>
+          <!-- Band tee underneath -->
+          <path d="M38,58 L62,58 L58,75 L42,75 Z" fill="#111"/>
+          <text x="50" y="70" text-anchor="middle" font-size="6" fill="#ff1744" font-family="monospace">PUNK</text>
+          <!-- Spike bracelet -->
+          <rect x="25" y="95" width="12" height="4" fill="#333"/>
+          <polygon points="27,95 28,91 29,95" fill="#ccc"/>
+          <polygon points="31,95 32,91 33,95" fill="#ccc"/>
+          <polygon points="35,95 36,91 37,95" fill="#ccc"/>
+          <!-- Ripped jeans -->
+          <rect x="30" y="108" width="14" height="18" rx="1" fill="#334"/>
+          <rect x="56" y="108" width="14" height="18" rx="1" fill="#334"/>
+          <!-- Rip marks -->
+          <line x1="33" y1="115" x2="40" y2="117" stroke="#556" stroke-width="1"/>
+          <line x1="59" y1="113" x2="66" y2="115" stroke="#556" stroke-width="1"/>
+          <!-- Boots with chains -->
+          <rect x="28" y="124" width="18" height="6" rx="1" fill="#111"/>
+          <rect x="54" y="124" width="18" height="6" rx="1" fill="#111"/>
+          <path d="M30,127 Q33,130 36,127 Q39,130 42,127" stroke="#888" stroke-width="0.8" fill="none"/>
+        </svg>
+      </div>
+      <div class="hand-r">&#9994;</div>
+      <div class="name-tag">PAL</div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+  </div>
+</div>
+
+<!-- ═══ RESULT SCREEN ═══ -->
+<div id="result-screen" class="hidden">
+  <h2>// ROUND OVER //</h2>
+  <div class="grade" id="grade">A</div>
+  <div class="final-score" id="final-score">0</div>
+  <div class="stats" id="stats"></div>
+  <button class="punk-btn" id="retry-btn">AGAIN!!</button>
+  <a href="../graham-games/index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+  <div class="credits">by graham f who is a numbskull</div>
+</div>
+
+<script>
+// ═══ G BUX SYSTEM ═══
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  showAchievementToast(name, reward);
+  return true;
+}
+let ggToastQueue = [], ggToastShowing = false;
+function showAchievementToast(name, reward) {
+  ggToastQueue.push({ name, reward });
+  if (!ggToastShowing) processToastQueue();
+}
+function processToastQueue() {
+  if (!ggToastQueue.length) { ggToastShowing = false; return; }
+  ggToastShowing = true;
+  const { name, reward } = ggToastQueue.shift();
+  document.getElementById('gg-toast-name').textContent = name;
+  document.getElementById('gg-toast-reward').textContent = '+' + reward + ' G Bux';
+  document.getElementById('gg-toast').classList.add('visible');
+  setTimeout(() => {
+    document.getElementById('gg-toast').classList.remove('visible');
+    setTimeout(processToastQueue, 400);
+  }, 3000);
+}
+
+const HURV_ACH = {
+  hurv_first_timer:    { name: 'First Timer',     reward: 5 },
+  hurv_combo_10:       { name: 'Combo Starter',   reward: 10 },
+  hurv_grade_a:        { name: 'Grade A Student',  reward: 15 },
+  hurv_grade_s:        { name: 'Perfectionist',   reward: 25 },
+  hurv_combo_25:       { name: 'Combo King',      reward: 20 },
+  hurv_hard_complete:  { name: 'Hard Rocker',     reward: 30 },
+  hurv_score_5000:     { name: 'Score Hunter',    reward: 15 },
+  hurv_score_15000:    { name: 'Score Legend',     reward: 25 },
+  hurv_flawless:       { name: 'Flawless',        reward: 30 },
+  hurv_rhythm_master:  { name: 'Rhythm Master',   reward: 50 },
+};
+function ggTry(id) { const a = HURV_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+// ═══ Audio via Web Audio API ═══
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+// Pre-load speech synthesis voices (they load async in Chrome)
+if (window.speechSynthesis) {
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+}
+
+function playClap() {
+  // Punkier, snappier clap
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.07, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) {
+    d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.5);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  const g = audioCtx.createGain();
+  g.gain.value = 0.5;
+  // Add distortion feel
+  const dist = audioCtx.createWaveShaper();
+  const curve = new Float32Array(256);
+  for (let i = 0; i < 256; i++) {
+    const x = (i * 2) / 256 - 1;
+    curve[i] = (Math.PI + 4) * x / (Math.PI + 4 * Math.abs(x));
+  }
+  dist.curve = curve;
+  src.connect(dist).connect(g).connect(audioCtx.destination);
+  src.start();
+}
+
+function playTone(freq, dur) {
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sawtooth'; // Punky sawtooth
+  o.frequency.value = freq;
+  g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + dur);
+}
+
+function playHit(quality) {
+  playClap();
+  if (quality === 'perfect') { playTone(880, 0.12); setTimeout(() => playTone(1108, 0.1), 30); }
+  else if (quality === 'great') playTone(660, 0.1);
+  else if (quality === 'miss') { playTone(110, 0.25); playTone(90, 0.3); }
+}
+
+function playBeat() {
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'square';
+  o.frequency.value = 80;
+  g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
+  o.connect(g).connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.08);
+}
+
+// ═══ ANNOUNCER SCREAM — uses browser Speech Synthesis to actually yell it ═══
+let announcerVoice = null;
+
+function getAnnouncerVoice() {
+  if (announcerVoice) return announcerVoice;
+  const voices = speechSynthesis.getVoices();
+  announcerVoice = voices.find(v =>
+    /male|david|daniel|james|google us english/i.test(v.name) && v.lang.startsWith('en')
+  ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
+  return announcerVoice;
+}
+
+function playAnnouncerScream() {
+  metalScream('HURGVIBBIT!!!', 0.65, 0.01);
+}
+
+function metalScream(text, rate, pitch) {
+  const synth = window.speechSynthesis;
+
+  // Layer 1: ultra-deep main growl
+  const utter1 = new SpeechSynthesisUtterance(text);
+  utter1.rate = rate || 0.7;
+  utter1.pitch = pitch || 0.01; // absolute floor — deepest possible
+  utter1.volume = 1.0;
+  const voice = getAnnouncerVoice();
+  if (voice) utter1.voice = voice;
+  synth.speak(utter1);
+
+  // Layer 2: slightly offset demon double-track
+  setTimeout(() => {
+    const utter2 = new SpeechSynthesisUtterance(text);
+    utter2.rate = (rate || 0.7) * 0.85;
+    utter2.pitch = 0.01;
+    utter2.volume = 0.6;
+    if (voice) utter2.voice = voice;
+    synth.speak(utter2);
+  }, 80);
+}
+
+function screamRhymeLine(text) {
+  // Guttural death-metal growl for the rhyme lines
+  metalScream(text, 0.9, 0.01);
+}
+
+// ═══ BELL DING ═══
+function playBellDing() {
+  const now = audioCtx.currentTime;
+
+  // Main bell tone
+  const o1 = audioCtx.createOscillator();
+  const g1 = audioCtx.createGain();
+  o1.type = 'sine';
+  o1.frequency.value = 1200;
+  g1.gain.setValueAtTime(0.4, now);
+  g1.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+  o1.connect(g1).connect(audioCtx.destination);
+  o1.start(now); o1.stop(now + 1.5);
+
+  // Overtone
+  const o2 = audioCtx.createOscillator();
+  const g2 = audioCtx.createGain();
+  o2.type = 'sine';
+  o2.frequency.value = 2400;
+  g2.gain.setValueAtTime(0.15, now);
+  g2.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+  o2.connect(g2).connect(audioCtx.destination);
+  o2.start(now); o2.stop(now + 0.8);
+
+  // High shimmer
+  const o3 = audioCtx.createOscillator();
+  const g3 = audioCtx.createGain();
+  o3.type = 'sine';
+  o3.frequency.value = 3600;
+  g3.gain.setValueAtTime(0.08, now);
+  g3.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+  o3.connect(g3).connect(audioCtx.destination);
+  o3.start(now); o3.stop(now + 0.4);
+
+  // Metallic click at the start
+  const clickBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.02, audioCtx.sampleRate);
+  const cd = clickBuf.getChannelData(0);
+  for (let i = 0; i < cd.length; i++) cd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / cd.length, 5);
+  const clickSrc = audioCtx.createBufferSource();
+  clickSrc.buffer = clickBuf;
+  const cg = audioCtx.createGain();
+  cg.gain.value = 0.3;
+  clickSrc.connect(cg).connect(audioCtx.destination);
+  clickSrc.start(now);
+}
+
+// ═══ ELECTRIC GUITAR RIFF LOOP ═══
+let guitarInterval = null;
+let guitarGain = null;
+
+function makeDistortion(amount) {
+  const dist = audioCtx.createWaveShaper();
+  const curve = new Float32Array(512);
+  for (let i = 0; i < 512; i++) {
+    const x = (i * 2) / 512 - 1;
+    curve[i] = Math.tanh(x * amount);
+  }
+  dist.curve = curve;
+  dist.oversample = '4x';
+  return dist;
+}
+
+function playPowerChord(root, dur) {
+  const now = audioCtx.currentTime;
+  const dist = makeDistortion(20);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.35, now);
+  g.gain.setValueAtTime(0.35, now + dur * 0.7);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  dist.connect(g);
+  if (!guitarGain) {
+    guitarGain = audioCtx.createGain();
+    guitarGain.gain.value = 1.0;
+    guitarGain.connect(audioCtx.destination);
+  }
+  g.connect(guitarGain);
+
+  // Root + fifth + octave = power chord
+  [root, root * 1.5, root * 2].forEach(freq => {
+    const o = audioCtx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(freq, now);
+    // Slight vibrato
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 5;
+    lfoGain.gain.value = freq * 0.01;
+    lfo.connect(lfoGain).connect(o.frequency);
+    lfo.start(now); lfo.stop(now + dur);
+    o.connect(dist);
+    o.start(now); o.stop(now + dur);
+  });
+
+  // Palm mute noise on attack
+  const nBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.03, audioCtx.sampleRate);
+  const nd = nBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / nd.length, 4);
+  const nSrc = audioCtx.createBufferSource();
+  nSrc.buffer = nBuf;
+  const ng = audioCtx.createGain();
+  ng.gain.value = 0.5;
+  nSrc.connect(ng).connect(guitarGain);
+  nSrc.start(now);
+}
+
+// Punk riff pattern — loops power chords in a progression
+const RIFF_PATTERNS = [
+  // Drop-tuned metal riff [root freq, duration in ms]
+  [55, 200], [55, 100], [55, 100], [58.3, 300], [55, 200], [51.9, 300],
+  [55, 100], [55, 100], [73.4, 200], [65.4, 300], [55, 100], [55, 100],
+  [49, 400], [55, 200], [58.3, 100], [55, 100], [51.9, 300], [55, 200],
+  [41.2, 400], [55, 100], [55, 100], [65.4, 200], [55, 300], [49, 200],
+];
+let riffIdx = 0;
+
+function startGuitarLoop() {
+  riffIdx = 0;
+  function playNext() {
+    if (!gameActive) return;
+    const [root, durMs] = RIFF_PATTERNS[riffIdx % RIFF_PATTERNS.length];
+    playPowerChord(root, durMs / 1000 * 1.2);
+    riffIdx++;
+    guitarInterval = setTimeout(playNext, durMs);
+  }
+  playNext();
+}
+
+function stopGuitarLoop() {
+  clearTimeout(guitarInterval);
+  guitarInterval = null;
+}
+
+// ═══ "OH YEAH" LOOP ═══
+let ohYeahInterval = null;
+
+function startOhYeahLoop() {
+  function sayIt() {
+    if (!gameActive) return;
+    // Vary it up a little
+    const phrases = [
+      'oh yeah!', 'OH YEAH!', 'YEAAAH!', 'BRUTAL!',
+      'COME ON!', 'DESTROY!', 'CARNAGE!', 'oh YEAH!',
+      'ANNIHILATE!', 'SLAUGHTER!', 'RAAAAGH!', 'UNLEASH!',
+    ];
+    const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+    const utter = new SpeechSynthesisUtterance(phrase);
+    utter.rate = 0.6 + Math.random() * 0.4;   // 0.6 - 1.0 slow guttural
+    utter.pitch = 0.01;                         // absolute basement
+    utter.volume = 0.8;
+    const voice = getAnnouncerVoice();
+    if (voice) utter.voice = voice;
+    speechSynthesis.speak(utter);
+
+    // Schedule next one 3-6 seconds later
+    ohYeahInterval = setTimeout(sayIt, 600 + Math.random() * 800);
+  }
+  // First one almost immediately
+  ohYeahInterval = setTimeout(sayIt, 500);
+}
+
+function stopOhYeahLoop() {
+  clearTimeout(ohYeahInterval);
+  ohYeahInterval = null;
+}
+
+// ═══ Punk rhyme ═══
+const RHYME = [
+  "Patty cake, patty cake,",
+  "baker's man!!",
+  "Bake me a cake",
+  "as FAST as you can!",
+  "Pat it!",
+  "and ROLL it!",
+  "and mark it with a B!",
+  "And put it in the oven",
+  "for baby and me!!",
+  "Patty cake, patty cake,",
+  "BAKER'S MAN!!",
+  "Bake me a cake",
+  "as fast as you CAN!",
+  "Roll it up! Roll it up!",
+  "and THROW it in a pan!!",
+  "Patty cake, PATTY CAKE,",
+  "BAKER'S MAN!!!",
+];
+
+// ═══ Game State ═══
+const MOVE_LABEL = ['CLAP', 'LEFT', 'RIGHT', 'BOTH'];
+const MOVE_CLASS = ['clap', 'left', 'right', 'both'];
+const KEY_MAP = { d: 0, f: 1, j: 2, k: 3, ' ': 0 };
+
+const DIFFICULTIES = {
+  easy:   { speed: 50,  noteInterval: 1100, rounds: 2, tolerance: 200 },
+  normal: { speed: 70,  noteInterval: 900,  rounds: 3, tolerance: 180 },
+  hard:   { speed: 100, noteInterval: 700,  rounds: 4, tolerance: 150 },
+};
+
+let difficulty = 'normal';
+let gameActive = false;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let perfects = 0;
+let greats = 0;
+let oks = 0;
+let misses = 0;
+let totalNotes = 0;
+let round = 1;
+let notes = [];
+let noteId = 0;
+let spawnTimer = null;
+let rafId = null;
+let rhymeIdx = 0;
+let beatCount = 0;
+
+const titleScreen = document.getElementById('title-screen');
+const gameScreen = document.getElementById('game-screen');
+const resultScreen = document.getElementById('result-screen');
+const scoreEl = document.getElementById('score-val');
+const comboEl = document.getElementById('combo-val');
+const roundEl = document.getElementById('round-val');
+const roundTotalEl = document.getElementById('round-total');
+const streakFill = document.getElementById('streak-fill');
+const feedbackEl = document.getElementById('feedback');
+const rhymeLineEl = document.getElementById('rhyme-line');
+const lanes = [0,1,2,3].map(i => document.getElementById('lane-' + i));
+const lanesContainer = document.getElementById('lanes');
+const playerChar = document.getElementById('player-char');
+const cpuChar = document.getElementById('cpu-char');
+const stageEl = document.getElementById('stage');
+
+// Difficulty buttons
+document.querySelectorAll('.difficulty-select button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelector('.difficulty-select .active').classList.remove('active');
+    btn.classList.add('active');
+    difficulty = btn.dataset.diff;
+  });
+});
+
+// ═══ G BUX UNLOCKABLE CONTENT ═══
+(function loadGBuxContent() {
+  const ggData = ggLoad();
+  // Neon Theme
+  if (ggData.shopPurchases.hurv_neon_theme) {
+    const r = document.documentElement;
+    r.style.setProperty('--punk-red', '#ff00ff');
+    r.style.setProperty('--punk-yellow', '#00ffff');
+    r.style.setProperty('--punk-pink', '#ff44ff');
+    r.style.setProperty('--punk-green', '#44ff88');
+    r.style.setProperty('--punk-cyan', '#00ffaa');
+    r.style.setProperty('--punk-purple', '#8844ff');
+    r.style.setProperty('--plaid-1', '#0a0518');
+    r.style.setProperty('--plaid-2', '#120a22');
+  }
+  // Turbo Mode
+  if (ggData.shopPurchases.hurv_turbo_mode) {
+    DIFFICULTIES.turbo = { speed: 140, noteInterval: 500, rounds: 4, tolerance: 120 };
+    const turboBtn = document.createElement('button');
+    turboBtn.dataset.diff = 'turbo';
+    turboBtn.textContent = 'TURBO';
+    turboBtn.style.cssText = 'color:#ff00ff;border-color:#ff00ff;text-shadow:0 0 10px #ff00ff66;';
+    document.querySelector('.difficulty-select').appendChild(turboBtn);
+    turboBtn.addEventListener('click', () => {
+      document.querySelector('.difficulty-select .active').classList.remove('active');
+      turboBtn.classList.add('active');
+      difficulty = 'turbo';
+    });
+  }
+})();
+
+function generatePattern(round, diff) {
+  const len = 8 + round * 3;
+  const pat = [];
+  for (let i = 0; i < len; i++) {
+    const r = Math.random();
+    if (round === 1 && diff === 'easy') {
+      pat.push(r < 0.4 ? 0 : r < 0.6 ? 1 : r < 0.8 ? 2 : 3);
+    } else {
+      pat.push(r < 0.25 ? 0 : r < 0.5 ? 1 : r < 0.75 ? 2 : 3);
+    }
+  }
+  return pat;
+}
+
+// ═══ ANNOUNCER INTRO SEQUENCE ═══
+const announceOverlay = document.getElementById('announce-overlay');
+const announceText = document.getElementById('announce-text');
+const announceBell = document.getElementById('announce-bell');
+
+function playAnnouncer(callback) {
+  // Reset
+  announceText.classList.remove('scream');
+  announceBell.classList.remove('ding');
+  announceOverlay.classList.remove('fade-out');
+  void announceOverlay.offsetWidth;
+
+  // Show overlay
+  announceOverlay.classList.add('visible');
+
+  // Scream "HURGVIBBIT!" after a beat
+  setTimeout(() => {
+    announceText.classList.add('scream');
+    playAnnouncerScream();
+  }, 300);
+
+  // Bell ding after the scream
+  setTimeout(() => {
+    announceBell.classList.add('ding');
+    playBellDing();
+  }, 1600);
+
+  // Fade out and start game
+  setTimeout(() => {
+    announceOverlay.classList.add('fade-out');
+  }, 2400);
+
+  setTimeout(() => {
+    announceOverlay.classList.remove('visible', 'fade-out');
+    announceText.classList.remove('scream');
+    announceBell.classList.remove('ding');
+    callback();
+  }, 2900);
+}
+
+function startGame() {
+  audioCtx.resume();
+  score = 0; combo = 0; maxCombo = 0;
+  perfects = 0; greats = 0; oks = 0; misses = 0; totalNotes = 0;
+  round = 1; rhymeIdx = 0; beatCount = 0;
+  titleScreen.classList.add('hidden');
+  resultScreen.classList.add('hidden');
+  gameScreen.classList.remove('hidden');
+  roundTotalEl.textContent = DIFFICULTIES[difficulty].rounds;
+  updateHUD();
+
+  // Play announcer intro, then activate and start the round
+  gameActive = false;
+  playAnnouncer(() => {
+    gameActive = true;
+    startRound();
+  });
+}
+
+function startRound() {
+  roundEl.textContent = round;
+  // Start the background audio loops
+  if (!guitarInterval) startGuitarLoop();
+  if (!ohYeahInterval) startOhYeahLoop();
+  const pattern = generatePattern(round, difficulty);
+  let idx = 0;
+  totalNotes += pattern.length;
+
+  notes.forEach(n => n.el && n.el.remove());
+  notes = [];
+
+  const diff = DIFFICULTIES[difficulty];
+
+  spawnTimer = setInterval(() => {
+    if (idx >= pattern.length) {
+      clearInterval(spawnTimer);
+      setTimeout(() => endRound(), 3000);
+      return;
+    }
+    spawnNote(pattern[idx]);
+    beatCount++;
+    if (beatCount % 4 === 0) {
+      const line = RHYME[rhymeIdx % RHYME.length];
+      rhymeLineEl.textContent = line;
+      screamRhymeLine(line);
+      rhymeIdx++;
+    }
+    playBeat();
+    idx++;
+  }, diff.noteInterval);
+
+  if (!rafId) gameLoop();
+}
+
+function spawnNote(moveType) {
+  const el = document.createElement('div');
+  el.className = 'note ' + MOVE_CLASS[moveType];
+  el.textContent = MOVE_LABEL[moveType];
+  lanes[moveType].appendChild(el);
+
+  const note = { id: noteId++, type: moveType, el, y: 0, hit: false, missed: false };
+  notes.push(note);
+}
+
+let lastTime = 0;
+function gameLoop(ts) {
+  if (!gameActive && notes.length === 0 && !spawnTimer) { rafId = null; return; }
+  rafId = requestAnimationFrame(gameLoop);
+
+  if (!lastTime) { lastTime = ts; return; }
+  const dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+
+  const diff = DIFFICULTIES[difficulty];
+  const laneH = lanesContainer.clientHeight;
+
+  for (let i = notes.length - 1; i >= 0; i--) {
+    const n = notes[i];
+    if (n.hit) continue;
+    n.y += diff.speed * dt / (laneH / 100);
+
+    const pxY = (n.y / 100) * laneH;
+    n.el.style.top = pxY + 'px';
+
+    if (n.y > 105 && !n.missed) {
+      n.missed = true;
+      n.el.style.opacity = '0.2';
+      onMiss();
+      setTimeout(() => { n.el.remove(); }, 300);
+      notes.splice(i, 1);
+    }
+  }
+}
+
+function getClosestNote(lane) {
+  let best = null;
+  let bestDist = Infinity;
+  for (const n of notes) {
+    if (n.type !== lane || n.hit || n.missed) continue;
+    const dist = Math.abs(n.y - 100);
+    if (dist < bestDist) { bestDist = dist; best = n; }
+  }
+  return best ? { note: best, dist: bestDist } : null;
+}
+
+function hitNote(lane) {
+  const result = getClosestNote(lane);
+  const diff = DIFFICULTIES[difficulty];
+  const tol = diff.tolerance;
+
+  if (!result || result.dist > tol) {
+    onMiss();
+    return;
+  }
+
+  const { note, dist } = result;
+  note.hit = true;
+
+  let quality, pts;
+  if (dist < tol * 0.3) { quality = 'perfect'; pts = 300; perfects++; }
+  else if (dist < tol * 0.6) { quality = 'great'; pts = 200; greats++; }
+  else { quality = 'ok'; pts = 100; oks++; }
+
+  combo++;
+  if (combo > maxCombo) maxCombo = combo;
+  const multiplier = 1 + Math.floor(combo / 10) * 0.5;
+  score += Math.round(pts * multiplier);
+
+  // G Bux achievement checks
+  if (combo >= 10) ggTry('hurv_combo_10');
+  if (combo >= 25) ggTry('hurv_combo_25');
+  if (score >= 5000) ggTry('hurv_score_5000');
+  if (score >= 15000) ggTry('hurv_score_15000');
+
+  showFeedback(quality);
+  playHit(quality);
+  animateChars(lane);
+  spawnBurst(quality);
+
+  note.el.style.opacity = '0';
+  setTimeout(() => {
+    note.el.remove();
+    const idx = notes.indexOf(note);
+    if (idx !== -1) notes.splice(idx, 1);
+  }, 150);
+
+  updateHUD();
+}
+
+function onMiss() {
+  misses++;
+  combo = 0;
+  showFeedback('miss');
+  playHit('miss');
+  updateHUD();
+  // Screen shake!
+  stageEl.classList.remove('shaking');
+  void stageEl.offsetWidth;
+  stageEl.classList.add('shaking');
+  setTimeout(() => stageEl.classList.remove('shaking'), 300);
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!gameActive) return;
+  const lane = KEY_MAP[e.key.toLowerCase()];
+  if (lane !== undefined) {
+    e.preventDefault();
+    hitNote(lane);
+  }
+});
+
+// ═══ MOUSE CONTROLS ═══
+// Left click = Left hand (lane 1), Right click = Right hand (lane 2)
+// Both within 80ms = Both hands (lane 3)
+// Prevent context menu globally during game
+document.addEventListener('contextmenu', (e) => {
+  if (gameActive) e.preventDefault();
+});
+
+let mouseLeftDown = 0;   // timestamp of last left press
+let mouseRightDown = 0;  // timestamp of last right press
+let mouseBothWindow = 80; // ms window to detect simultaneous clicks
+let pendingMouseTimer = null;
+
+function handleMouseButton(button, timestamp) {
+  if (!gameActive) return;
+
+  if (button === 0) mouseLeftDown = timestamp;
+  if (button === 2) mouseRightDown = timestamp;
+
+  const gap = Math.abs(mouseLeftDown - mouseRightDown);
+
+  // If both buttons pressed within the window, fire "both" immediately
+  if (mouseLeftDown > 0 && mouseRightDown > 0 && gap < mouseBothWindow) {
+    clearTimeout(pendingMouseTimer);
+    pendingMouseTimer = null;
+    mouseLeftDown = 0;
+    mouseRightDown = 0;
+    hitNote(3); // both
+    return;
+  }
+
+  // Otherwise wait briefly to see if the other button follows
+  clearTimeout(pendingMouseTimer);
+  const whichLane = button === 0 ? 1 : 2; // left click -> left hand, right click -> right hand
+  pendingMouseTimer = setTimeout(() => {
+    pendingMouseTimer = null;
+    if (button === 0) mouseLeftDown = 0;
+    if (button === 2) mouseRightDown = 0;
+    hitNote(whichLane);
+  }, mouseBothWindow);
+}
+
+document.addEventListener('mousedown', (e) => {
+  if (!gameActive) return;
+  // Ignore clicks on buttons/UI
+  if (e.target.closest('.punk-btn, .difficulty-select, #title-screen, #result-screen')) return;
+  if (e.button === 0 || e.button === 2) {
+    e.preventDefault();
+    handleMouseButton(e.button, performance.now());
+  }
+});
+
+function showFeedback(quality) {
+  const labels = { perfect: 'RADICAL!!', great: 'SICK!', ok: 'MEH', miss: 'LAME!!' };
+  feedbackEl.className = 'feedback ' + quality + ' show';
+  feedbackEl.textContent = labels[quality];
+  void feedbackEl.offsetWidth;
+  feedbackEl.className = 'feedback ' + quality + ' show';
+}
+
+function animateChars(lane) {
+  playerChar.classList.add('hit');
+  cpuChar.classList.add('hit');
+  setTimeout(() => {
+    playerChar.classList.remove('hit');
+    cpuChar.classList.remove('hit');
+  }, 150);
+
+  const pl = playerChar.querySelector('.hand-l');
+  const pr = playerChar.querySelector('.hand-r');
+  const cl = cpuChar.querySelector('.hand-l');
+  const cr = cpuChar.querySelector('.hand-r');
+
+  [pl, pr, cl, cr].forEach(h => { h.style.transform = ''; });
+
+  if (lane === 0) {
+    pl.style.transform = 'translateX(20px)';
+    pr.style.transform = 'translateX(-20px)';
+    cl.style.transform = 'translateX(20px)';
+    cr.style.transform = 'translateX(-20px)';
+  } else if (lane === 1) {
+    pl.style.transform = 'translateX(50px)';
+    cr.style.transform = 'translateX(-50px)';
+  } else if (lane === 2) {
+    pr.style.transform = 'translateX(-50px)';
+    cl.style.transform = 'translateX(50px)';
+  } else {
+    pl.style.transform = 'translateX(50px)';
+    pr.style.transform = 'translateX(-50px)';
+    cl.style.transform = 'translateX(50px)';
+    cr.style.transform = 'translateX(-50px)';
+  }
+
+  setTimeout(() => {
+    [pl, pr, cl, cr].forEach(h => { h.style.transform = ''; });
+  }, 200);
+}
+
+function spawnBurst(quality) {
+  const colors = {
+    perfect: ['#76ff03', '#69f0ae', '#b2ff59'],
+    great: ['#ffd600', '#ffab00', '#ffe57f'],
+    ok: ['#888', '#666', '#aaa'],
+  };
+  if (!colors[quality]) return;
+  const burst = document.createElement('div');
+  burst.className = 'burst';
+  burst.style.left = '50%';
+  burst.style.bottom = '200px';
+  for (let i = 0; i < 10; i++) {
+    const s = document.createElement('span');
+    const angle = (Math.PI * 2 * i) / 10;
+    const dist = 35 + Math.random() * 40;
+    s.style.setProperty('--bx', Math.cos(angle) * dist + 'px');
+    s.style.setProperty('--by', Math.sin(angle) * dist + 'px');
+    s.style.background = colors[quality][i % colors[quality].length];
+    s.style.width = (4 + Math.random() * 6) + 'px';
+    s.style.height = s.style.width;
+    burst.appendChild(s);
+  }
+  document.querySelector('.stage').appendChild(burst);
+  setTimeout(() => burst.remove(), 600);
+}
+
+function updateHUD() {
+  scoreEl.textContent = score;
+  comboEl.textContent = combo;
+  const pct = Math.min(combo / 30, 1) * 100;
+  streakFill.style.width = pct + '%';
+}
+
+function endRound() {
+  ggTry('hurv_first_timer');
+  const diff = DIFFICULTIES[difficulty];
+  if (round < diff.rounds) {
+    round++;
+    rhymeLineEl.textContent = '// ROUND ' + round + ' -- GET READY //';
+    setTimeout(() => startRound(), 2000);
+  } else {
+    showResults();
+  }
+}
+
+function showResults() {
+  gameActive = false;
+  if (spawnTimer) clearInterval(spawnTimer);
+  stopGuitarLoop();
+  stopOhYeahLoop();
+  speechSynthesis.cancel(); // stop screaming
+  gameScreen.classList.add('hidden');
+  resultScreen.classList.remove('hidden');
+
+  document.getElementById('final-score').textContent = score.toLocaleString();
+
+  const total = perfects + greats + oks + misses;
+  const hitRate = total > 0 ? ((perfects + greats + oks) / total * 100).toFixed(1) : 0;
+
+  let grade, gradeClass;
+  if (oks === 0 && misses === 0 && total > 0) { grade = 'S'; gradeClass = 's'; }
+  else if (hitRate >= 85) { grade = 'A'; gradeClass = 'a'; }
+  else if (hitRate >= 70) { grade = 'B'; gradeClass = 'b'; }
+  else if (hitRate >= 50) { grade = 'C'; gradeClass = 'c'; }
+  else { grade = 'D'; gradeClass = 'd'; }
+
+  // G Bux achievement checks
+  if (grade === 'A' || grade === 'S') ggTry('hurv_grade_a');
+  if (grade === 'S') ggTry('hurv_grade_s');
+  if (difficulty === 'hard') ggTry('hurv_hard_complete');
+  if (parseFloat(hitRate) >= 100) ggTry('hurv_flawless');
+  if (grade === 'S' && difficulty === 'hard') ggTry('hurv_rhythm_master');
+
+  const gradeEl = document.getElementById('grade');
+  gradeEl.textContent = grade;
+  gradeEl.className = 'grade ' + gradeClass;
+
+  document.getElementById('stats').innerHTML =
+    `RADICAL: ${perfects} | SICK: ${greats} | MEH: ${oks} | LAME: ${misses}<br>` +
+    `Hit Rate: ${hitRate}% | Max Combo: ${maxCombo}x`;
+}
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  startGame();
+});
+document.getElementById('retry-btn').addEventListener('click', () => {
+  startGame();
+});
+</script>
+</body>
+</html>
