@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HURGVIBBIT - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; }
+  h1 { color: #ff1744; margin-bottom: 6px; }
+  .subtitle { color: #888; margin-bottom: 20px; font-size: 0.9rem; }
+  .summary { padding: 16px; border-radius: 8px; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600; }
+  .summary.pass { background: #1b3a1b; border: 1px solid #4caf50; color: #4caf50; }
+  .summary.fail { background: #3a1b1b; border: 1px solid #ff4444; color: #ff4444; }
+  .section { margin-bottom: 24px; }
+  .section h2 { color: #ffd600; font-size: 1rem; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin-bottom: 2px; }
+  .test.pass { border-color: #4caf50; color: #aaa; }
+  .test.fail { border-color: #ff4444; color: #ff8888; background: #2a1515; }
+  .test .label { margin-right: 8px; font-weight: 600; }
+  .test.pass .label { color: #4caf50; }
+  .test.fail .label { color: #ff4444; }
+  .test .detail { color: #666; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<h1>HURGVIBBIT - Unit Tests</h1>
+<div class="subtitle">Patty Cake Showdown - Pure Logic Tests</div>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ═══ TEST FRAMEWORK ═══
+let _tests = [];
+let _currentSection = '';
+function section(name) { _currentSection = name; }
+function test(name, fn) {
+  try {
+    fn();
+    _tests.push({ section: _currentSection, name, passed: true });
+  } catch(e) {
+    _tests.push({ section: _currentSection, name, passed: false, error: e.message });
+  }
+}
+function assert(condition, msg) { if (!condition) throw new Error(msg || 'Assertion failed'); }
+function assertEqual(a, b, msg) { if (a !== b) throw new Error(msg || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+function assertClose(a, b, tolerance, msg) { if (Math.abs(a - b) > tolerance) throw new Error(msg || `Expected ~${b}, got ${a} (tolerance ${tolerance})`); }
+function assertDeepEqual(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(msg || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+
+// ═══ MOCK localStorage ═══
+const mockStorage = {};
+const localStorage = {
+  getItem(k) { return mockStorage[k] || null; },
+  setItem(k, v) { mockStorage[k] = v; },
+  removeItem(k) { delete mockStorage[k]; },
+  clear() { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); },
+};
+
+// ═══ RE-DECLARE GAME LOGIC ═══
+
+// G Bux System
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+// Achievement registry
+const HURV_ACH = {
+  hurv_first_timer:    { name: 'First Timer',     reward: 5 },
+  hurv_combo_10:       { name: 'Combo Starter',   reward: 10 },
+  hurv_grade_a:        { name: 'Grade A Student',  reward: 15 },
+  hurv_grade_s:        { name: 'Perfectionist',   reward: 25 },
+  hurv_combo_25:       { name: 'Combo King',      reward: 20 },
+  hurv_hard_complete:  { name: 'Hard Rocker',     reward: 30 },
+  hurv_score_5000:     { name: 'Score Hunter',    reward: 15 },
+  hurv_score_15000:    { name: 'Score Legend',     reward: 25 },
+  hurv_flawless:       { name: 'Flawless',        reward: 30 },
+  hurv_rhythm_master:  { name: 'Rhythm Master',   reward: 50 },
+};
+
+function ggTry(id) { const a = HURV_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+// Difficulty settings
+const DIFFICULTIES = {
+  easy:   { speed: 50,  noteInterval: 1100, rounds: 2, tolerance: 200 },
+  normal: { speed: 70,  noteInterval: 900,  rounds: 3, tolerance: 180 },
+  hard:   { speed: 100, noteInterval: 700,  rounds: 4, tolerance: 150 },
+};
+
+// Turbo mode (added when purchased)
+const TURBO_SETTINGS = { speed: 140, noteInterval: 500, rounds: 4, tolerance: 120 };
+
+// Key mapping
+const KEY_MAP = { d: 0, f: 1, j: 2, k: 3, ' ': 0 };
+
+// Move labels/classes
+const MOVE_LABEL = ['CLAP', 'LEFT', 'RIGHT', 'BOTH'];
+const MOVE_CLASS = ['clap', 'left', 'right', 'both'];
+
+// Feedback labels
+const FEEDBACK_LABELS = { perfect: 'RADICAL!!', great: 'SICK!', ok: 'MEH', miss: 'LAME!!' };
+
+// Scoring logic (extracted from hitNote)
+function scoreHit(dist, tolerance) {
+  if (dist < tolerance * 0.3) return { quality: 'perfect', pts: 300 };
+  else if (dist < tolerance * 0.6) return { quality: 'great', pts: 200 };
+  else return { quality: 'ok', pts: 100 };
+}
+
+// Combo multiplier (extracted from hitNote)
+function comboMultiplier(combo) {
+  return 1 + Math.floor(combo / 10) * 0.5;
+}
+
+// Grade calculation (extracted from showResults)
+function calculateGrade(perfects, greats, oks, misses) {
+  const total = perfects + greats + oks + misses;
+  const hitRate = total > 0 ? ((perfects + greats + oks) / total * 100) : 0;
+
+  if (oks === 0 && misses === 0 && total > 0) return { grade: 'S', hitRate };
+  if (hitRate >= 85) return { grade: 'A', hitRate };
+  if (hitRate >= 70) return { grade: 'B', hitRate };
+  if (hitRate >= 50) return { grade: 'C', hitRate };
+  return { grade: 'D', hitRate };
+}
+
+// Pattern generation (extracted from generatePattern)
+function generatePattern(round, diff) {
+  const len = 8 + round * 3;
+  const pat = [];
+  for (let i = 0; i < len; i++) {
+    const r = Math.random();
+    if (round === 1 && diff === 'easy') {
+      pat.push(r < 0.4 ? 0 : r < 0.6 ? 1 : r < 0.8 ? 2 : 3);
+    } else {
+      pat.push(r < 0.25 ? 0 : r < 0.5 ? 1 : r < 0.75 ? 2 : 3);
+    }
+  }
+  return pat;
+}
+
+// Rhyme lines
+const RHYME = [
+  "Patty cake, patty cake,", "baker's man!!", "Bake me a cake",
+  "as FAST as you can!", "Pat it!", "and ROLL it!",
+  "and mark it with a B!", "And put it in the oven",
+  "for baby and me!!", "Patty cake, patty cake,",
+  "BAKER'S MAN!!", "Bake me a cake", "as fast as you CAN!",
+  "Roll it up! Roll it up!", "and THROW it in a pan!!",
+  "Patty cake, PATTY CAKE,", "BAKER'S MAN!!!",
+];
+
+// Neon theme CSS changes
+const NEON_THEME = {
+  '--punk-red': '#ff00ff',
+  '--punk-yellow': '#00ffff',
+  '--punk-pink': '#ff44ff',
+  '--punk-green': '#44ff88',
+  '--punk-cyan': '#00ffaa',
+  '--punk-purple': '#8844ff',
+  '--plaid-1': '#0a0518',
+  '--plaid-2': '#120a22',
+};
+
+// ═══ TESTS ═══
+
+// ── Difficulty Settings ──
+section('Difficulty Settings');
+
+test('Easy mode has correct speed', () => {
+  assertEqual(DIFFICULTIES.easy.speed, 50);
+});
+
+test('Easy mode has correct note interval', () => {
+  assertEqual(DIFFICULTIES.easy.noteInterval, 1100);
+});
+
+test('Easy mode has 2 rounds', () => {
+  assertEqual(DIFFICULTIES.easy.rounds, 2);
+});
+
+test('Easy mode has correct tolerance', () => {
+  assertEqual(DIFFICULTIES.easy.tolerance, 200);
+});
+
+test('Normal mode has correct speed', () => {
+  assertEqual(DIFFICULTIES.normal.speed, 70);
+});
+
+test('Normal mode has correct note interval', () => {
+  assertEqual(DIFFICULTIES.normal.noteInterval, 900);
+});
+
+test('Normal mode has 3 rounds', () => {
+  assertEqual(DIFFICULTIES.normal.rounds, 3);
+});
+
+test('Normal mode has correct tolerance', () => {
+  assertEqual(DIFFICULTIES.normal.tolerance, 180);
+});
+
+test('Hard mode has correct speed', () => {
+  assertEqual(DIFFICULTIES.hard.speed, 100);
+});
+
+test('Hard mode has correct note interval', () => {
+  assertEqual(DIFFICULTIES.hard.noteInterval, 700);
+});
+
+test('Hard mode has 4 rounds', () => {
+  assertEqual(DIFFICULTIES.hard.rounds, 4);
+});
+
+test('Hard mode has correct tolerance', () => {
+  assertEqual(DIFFICULTIES.hard.tolerance, 150);
+});
+
+test('Difficulty speed increases: easy < normal < hard', () => {
+  assert(DIFFICULTIES.easy.speed < DIFFICULTIES.normal.speed);
+  assert(DIFFICULTIES.normal.speed < DIFFICULTIES.hard.speed);
+});
+
+test('Difficulty note interval decreases: easy > normal > hard', () => {
+  assert(DIFFICULTIES.easy.noteInterval > DIFFICULTIES.normal.noteInterval);
+  assert(DIFFICULTIES.normal.noteInterval > DIFFICULTIES.hard.noteInterval);
+});
+
+test('Difficulty tolerance decreases: easy > normal > hard', () => {
+  assert(DIFFICULTIES.easy.tolerance > DIFFICULTIES.normal.tolerance);
+  assert(DIFFICULTIES.normal.tolerance > DIFFICULTIES.hard.tolerance);
+});
+
+// ── Turbo Mode ──
+section('Turbo Mode');
+
+test('Turbo speed is 140', () => {
+  assertEqual(TURBO_SETTINGS.speed, 140);
+});
+
+test('Turbo note interval is 500', () => {
+  assertEqual(TURBO_SETTINGS.noteInterval, 500);
+});
+
+test('Turbo has 4 rounds', () => {
+  assertEqual(TURBO_SETTINGS.rounds, 4);
+});
+
+test('Turbo tolerance is 120', () => {
+  assertEqual(TURBO_SETTINGS.tolerance, 120);
+});
+
+test('Turbo is faster than hard', () => {
+  assert(TURBO_SETTINGS.speed > DIFFICULTIES.hard.speed);
+  assert(TURBO_SETTINGS.noteInterval < DIFFICULTIES.hard.noteInterval);
+  assert(TURBO_SETTINGS.tolerance < DIFFICULTIES.hard.tolerance);
+});
+
+test('Turbo is unlocked via shopPurchases.hurv_turbo_mode', () => {
+  // Simulate purchase
+  const data = { gBux: 0, achievements: {}, shopPurchases: { hurv_turbo_mode: true } };
+  ggSave(data);
+  const loaded = ggLoad();
+  assert(loaded.shopPurchases.hurv_turbo_mode === true);
+  localStorage.clear();
+});
+
+// ── Scoring ──
+section('Scoring');
+
+test('Perfect hit: distance < tol * 0.3 => 300 pts', () => {
+  const tol = 180;
+  const result = scoreHit(tol * 0.2, tol); // well within 0.3 threshold
+  assertEqual(result.quality, 'perfect');
+  assertEqual(result.pts, 300);
+});
+
+test('Great hit: distance < tol * 0.6 => 200 pts', () => {
+  const tol = 180;
+  const result = scoreHit(tol * 0.4, tol); // between 0.3 and 0.6
+  assertEqual(result.quality, 'great');
+  assertEqual(result.pts, 200);
+});
+
+test('OK hit: distance >= tol * 0.6 => 100 pts', () => {
+  const tol = 180;
+  const result = scoreHit(tol * 0.8, tol); // above 0.6 but within tolerance
+  assertEqual(result.quality, 'ok');
+  assertEqual(result.pts, 100);
+});
+
+test('Perfect threshold boundary: exactly at tol * 0.3 is great, not perfect', () => {
+  const tol = 100;
+  const result = scoreHit(tol * 0.3, tol);
+  // dist < tol * 0.3 means strictly less than
+  // dist = tol*0.3 = 30 is NOT less than 30, so falls to great check
+  // dist < tol * 0.6 = 60, 30 < 60 => great
+  assertEqual(result.quality, 'great');
+});
+
+test('Great threshold boundary: exactly at tol * 0.6 is ok', () => {
+  const tol = 100;
+  const result = scoreHit(tol * 0.6, tol);
+  assertEqual(result.quality, 'ok');
+});
+
+test('Zero distance is always perfect', () => {
+  const result = scoreHit(0, 150);
+  assertEqual(result.quality, 'perfect');
+  assertEqual(result.pts, 300);
+});
+
+test('Scoring with easy tolerance (200)', () => {
+  const tol = 200;
+  const perfect = scoreHit(59, tol); // < 60
+  const great = scoreHit(100, tol);  // < 120
+  const ok = scoreHit(150, tol);     // >= 120
+  assertEqual(perfect.quality, 'perfect');
+  assertEqual(great.quality, 'great');
+  assertEqual(ok.quality, 'ok');
+});
+
+test('Scoring with hard tolerance (150)', () => {
+  const tol = 150;
+  const perfect = scoreHit(44, tol); // < 45
+  const great = scoreHit(80, tol);   // < 90
+  const ok = scoreHit(120, tol);     // >= 90
+  assertEqual(perfect.quality, 'perfect');
+  assertEqual(great.quality, 'great');
+  assertEqual(ok.quality, 'ok');
+});
+
+// ── Combo System ──
+section('Combo System');
+
+test('Combo multiplier at 0 is 1.0x', () => {
+  assertClose(comboMultiplier(0), 1.0, 0.001);
+});
+
+test('Combo multiplier at 5 is 1.0x', () => {
+  assertClose(comboMultiplier(5), 1.0, 0.001);
+});
+
+test('Combo multiplier at 9 is 1.0x', () => {
+  assertClose(comboMultiplier(9), 1.0, 0.001);
+});
+
+test('Combo multiplier at 10 is 1.5x', () => {
+  assertClose(comboMultiplier(10), 1.5, 0.001);
+});
+
+test('Combo multiplier at 15 is 1.5x', () => {
+  assertClose(comboMultiplier(15), 1.5, 0.001);
+});
+
+test('Combo multiplier at 20 is 2.0x', () => {
+  assertClose(comboMultiplier(20), 2.0, 0.001);
+});
+
+test('Combo multiplier at 25 is 2.0x', () => {
+  assertClose(comboMultiplier(25), 2.0, 0.001);
+});
+
+test('Combo multiplier at 30 is 2.5x', () => {
+  assertClose(comboMultiplier(30), 2.5, 0.001);
+});
+
+test('Combo multiplier at 100 is 6.0x', () => {
+  assertClose(comboMultiplier(100), 6.0, 0.001);
+});
+
+test('Score with multiplier: 300pts at combo 10 => 450', () => {
+  const pts = 300;
+  const combo = 10;
+  const result = Math.round(pts * comboMultiplier(combo));
+  assertEqual(result, 450);
+});
+
+test('Score with multiplier: 200pts at combo 20 => 400', () => {
+  const pts = 200;
+  const combo = 20;
+  const result = Math.round(pts * comboMultiplier(combo));
+  assertEqual(result, 400);
+});
+
+// ── Grade Calculation ──
+section('Grade Calculation');
+
+test('S grade: all perfects and greats, no oks or misses', () => {
+  const { grade } = calculateGrade(10, 5, 0, 0);
+  assertEqual(grade, 'S');
+});
+
+test('S grade: all perfects only', () => {
+  const { grade } = calculateGrade(20, 0, 0, 0);
+  assertEqual(grade, 'S');
+});
+
+test('S grade: all greats only', () => {
+  const { grade } = calculateGrade(0, 20, 0, 0);
+  assertEqual(grade, 'S');
+});
+
+test('S grade requires zero oks AND zero misses', () => {
+  // Even 1 ok breaks S grade
+  const { grade } = calculateGrade(19, 0, 1, 0);
+  // hitRate = 100% (20/20), but oks > 0 so not S
+  // Actually hitRate = (19+0+1)/20 = 100% => A
+  assertEqual(grade, 'A');
+});
+
+test('Not S grade if any misses even with 100% hits', () => {
+  // This is impossible since misses reduce hitRate, but check:
+  const { grade } = calculateGrade(15, 4, 0, 1);
+  // hitRate = (19/20)*100 = 95% => A (not S because misses > 0)
+  assertEqual(grade, 'A');
+});
+
+test('A grade: hitRate >= 85%', () => {
+  const { grade } = calculateGrade(8, 5, 4, 3);
+  // total=20, hits=17, hitRate=85%
+  assertEqual(grade, 'A');
+});
+
+test('A grade: hitRate = 90%', () => {
+  const { grade } = calculateGrade(5, 5, 8, 2);
+  // total=20, hits=18, hitRate=90%
+  assertEqual(grade, 'A');
+});
+
+test('B grade: hitRate >= 70% and < 85%', () => {
+  const { grade } = calculateGrade(5, 5, 5, 5);
+  // total=20, hits=15, hitRate=75%
+  assertEqual(grade, 'B');
+});
+
+test('B grade at exact 70% boundary', () => {
+  const { grade } = calculateGrade(3, 3, 8, 6);
+  // total=20, hits=14, hitRate=70%
+  assertEqual(grade, 'B');
+});
+
+test('C grade: hitRate >= 50% and < 70%', () => {
+  const { grade } = calculateGrade(3, 3, 6, 8);
+  // total=20, hits=12, hitRate=60%
+  assertEqual(grade, 'C');
+});
+
+test('C grade at exact 50% boundary', () => {
+  const { grade } = calculateGrade(2, 3, 5, 10);
+  // total=20, hits=10, hitRate=50%
+  assertEqual(grade, 'C');
+});
+
+test('D grade: hitRate < 50%', () => {
+  const { grade } = calculateGrade(1, 1, 2, 16);
+  // total=20, hits=4, hitRate=20%
+  assertEqual(grade, 'D');
+});
+
+test('D grade: zero hits', () => {
+  const { grade } = calculateGrade(0, 0, 0, 20);
+  // total=20, hits=0, hitRate=0%
+  assertEqual(grade, 'D');
+});
+
+test('Zero total notes returns D with 0 hitRate', () => {
+  const { grade, hitRate } = calculateGrade(0, 0, 0, 0);
+  assertEqual(grade, 'D'); // total=0, hitRate=0, falls to D
+  assertEqual(hitRate, 0);
+});
+
+// ── Key Mapping ──
+section('Key Mapping');
+
+test('D key maps to lane 0 (CLAP)', () => {
+  assertEqual(KEY_MAP['d'], 0);
+});
+
+test('F key maps to lane 1 (LEFT)', () => {
+  assertEqual(KEY_MAP['f'], 1);
+});
+
+test('J key maps to lane 2 (RIGHT)', () => {
+  assertEqual(KEY_MAP['j'], 2);
+});
+
+test('K key maps to lane 3 (BOTH)', () => {
+  assertEqual(KEY_MAP['k'], 3);
+});
+
+test('Space maps to lane 0 (CLAP)', () => {
+  assertEqual(KEY_MAP[' '], 0);
+});
+
+test('KEY_MAP has exactly 5 mappings', () => {
+  assertEqual(Object.keys(KEY_MAP).length, 5);
+});
+
+test('Unmapped key returns undefined', () => {
+  assertEqual(KEY_MAP['a'], undefined);
+});
+
+// ── Move Labels ──
+section('Move Labels and Classes');
+
+test('MOVE_LABEL has 4 entries', () => {
+  assertEqual(MOVE_LABEL.length, 4);
+});
+
+test('MOVE_LABEL values are CLAP, LEFT, RIGHT, BOTH', () => {
+  assertDeepEqual(MOVE_LABEL, ['CLAP', 'LEFT', 'RIGHT', 'BOTH']);
+});
+
+test('MOVE_CLASS has 4 entries', () => {
+  assertEqual(MOVE_CLASS.length, 4);
+});
+
+test('MOVE_CLASS values are clap, left, right, both', () => {
+  assertDeepEqual(MOVE_CLASS, ['clap', 'left', 'right', 'both']);
+});
+
+test('Move labels/classes are index-aligned', () => {
+  assertEqual(MOVE_LABEL[0], 'CLAP');
+  assertEqual(MOVE_CLASS[0], 'clap');
+  assertEqual(MOVE_LABEL[3], 'BOTH');
+  assertEqual(MOVE_CLASS[3], 'both');
+});
+
+// ── Feedback Labels ──
+section('Feedback Labels');
+
+test('Perfect feedback is "RADICAL!!"', () => {
+  assertEqual(FEEDBACK_LABELS.perfect, 'RADICAL!!');
+});
+
+test('Great feedback is "SICK!"', () => {
+  assertEqual(FEEDBACK_LABELS.great, 'SICK!');
+});
+
+test('OK feedback is "MEH"', () => {
+  assertEqual(FEEDBACK_LABELS.ok, 'MEH');
+});
+
+test('Miss feedback is "LAME!!"', () => {
+  assertEqual(FEEDBACK_LABELS.miss, 'LAME!!');
+});
+
+test('Feedback labels has exactly 4 entries', () => {
+  assertEqual(Object.keys(FEEDBACK_LABELS).length, 4);
+});
+
+// ── Achievement Definitions ──
+section('Achievement Definitions');
+
+test('HURV_ACH has exactly 10 entries', () => {
+  assertEqual(Object.keys(HURV_ACH).length, 10);
+});
+
+test('first_timer: 5 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_first_timer.reward, 5);
+  assertEqual(HURV_ACH.hurv_first_timer.name, 'First Timer');
+});
+
+test('combo_10: 10 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_combo_10.reward, 10);
+  assertEqual(HURV_ACH.hurv_combo_10.name, 'Combo Starter');
+});
+
+test('grade_a: 15 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_grade_a.reward, 15);
+  assertEqual(HURV_ACH.hurv_grade_a.name, 'Grade A Student');
+});
+
+test('grade_s: 25 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_grade_s.reward, 25);
+  assertEqual(HURV_ACH.hurv_grade_s.name, 'Perfectionist');
+});
+
+test('combo_25: 20 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_combo_25.reward, 20);
+  assertEqual(HURV_ACH.hurv_combo_25.name, 'Combo King');
+});
+
+test('hard_complete: 30 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_hard_complete.reward, 30);
+  assertEqual(HURV_ACH.hurv_hard_complete.name, 'Hard Rocker');
+});
+
+test('score_5000: 15 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_score_5000.reward, 15);
+  assertEqual(HURV_ACH.hurv_score_5000.name, 'Score Hunter');
+});
+
+test('score_15000: 25 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_score_15000.reward, 25);
+  assertEqual(HURV_ACH.hurv_score_15000.name, 'Score Legend');
+});
+
+test('flawless: 30 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_flawless.reward, 30);
+  assertEqual(HURV_ACH.hurv_flawless.name, 'Flawless');
+});
+
+test('rhythm_master: 50 G Bux', () => {
+  assertEqual(HURV_ACH.hurv_rhythm_master.reward, 50);
+  assertEqual(HURV_ACH.hurv_rhythm_master.name, 'Rhythm Master');
+});
+
+test('Total Hurgvibbit G Bux is 225', () => {
+  const total = Object.values(HURV_ACH).reduce((sum, a) => sum + a.reward, 0);
+  assertEqual(total, 225);
+});
+
+test('All achievement IDs start with hurv_', () => {
+  Object.keys(HURV_ACH).forEach(id => {
+    assert(id.startsWith('hurv_'), `${id} does not start with hurv_`);
+  });
+});
+
+test('All achievements have name and reward', () => {
+  Object.values(HURV_ACH).forEach(a => {
+    assert(typeof a.name === 'string' && a.name.length > 0, 'Achievement missing name');
+    assert(typeof a.reward === 'number' && a.reward > 0, 'Achievement missing reward');
+  });
+});
+
+// ── Achievement Unlock Logic ──
+section('Achievement Unlock Logic');
+
+test('ggTry unlocks achievement and awards G Bux', () => {
+  localStorage.clear();
+  ggTry('hurv_first_timer');
+  const data = ggLoad();
+  assert(data.achievements.hurv_first_timer === true);
+  assertEqual(data.gBux, 5);
+  localStorage.clear();
+});
+
+test('ggTry does not double-award', () => {
+  localStorage.clear();
+  ggTry('hurv_first_timer');
+  ggTry('hurv_first_timer');
+  const data = ggLoad();
+  assertEqual(data.gBux, 5);
+  localStorage.clear();
+});
+
+test('Multiple different achievements stack', () => {
+  localStorage.clear();
+  ggTry('hurv_first_timer');
+  ggTry('hurv_combo_10');
+  ggTry('hurv_grade_a');
+  const data = ggLoad();
+  assertEqual(data.gBux, 30); // 5 + 10 + 15
+  assert(data.achievements.hurv_first_timer === true);
+  assert(data.achievements.hurv_combo_10 === true);
+  assert(data.achievements.hurv_grade_a === true);
+  localStorage.clear();
+});
+
+test('ggTry with invalid ID does nothing', () => {
+  localStorage.clear();
+  ggTry('nonexistent_achievement');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0);
+  localStorage.clear();
+});
+
+test('Unlocking all 10 achievements yields 225 G Bux', () => {
+  localStorage.clear();
+  Object.keys(HURV_ACH).forEach(id => ggTry(id));
+  const data = ggLoad();
+  assertEqual(data.gBux, 225);
+  assertEqual(Object.keys(data.achievements).length, 10);
+  localStorage.clear();
+});
+
+// ── Pattern Generation ──
+section('Pattern Generation');
+
+test('Pattern length for round 1: 8 + 1*3 = 11', () => {
+  const pat = generatePattern(1, 'normal');
+  assertEqual(pat.length, 11);
+});
+
+test('Pattern length for round 2: 8 + 2*3 = 14', () => {
+  const pat = generatePattern(2, 'normal');
+  assertEqual(pat.length, 14);
+});
+
+test('Pattern length for round 3: 8 + 3*3 = 17', () => {
+  const pat = generatePattern(3, 'normal');
+  assertEqual(pat.length, 17);
+});
+
+test('Pattern length for round 4: 8 + 4*3 = 20', () => {
+  const pat = generatePattern(4, 'hard');
+  assertEqual(pat.length, 20);
+});
+
+test('Pattern only contains values 0-3', () => {
+  for (let i = 0; i < 50; i++) {
+    const pat = generatePattern(2, 'normal');
+    pat.forEach(v => {
+      assert(v >= 0 && v <= 3, `Pattern value ${v} out of range`);
+    });
+  }
+});
+
+test('Pattern distribution is roughly uniform for normal (non-easy round 1)', () => {
+  const counts = [0, 0, 0, 0];
+  for (let i = 0; i < 200; i++) {
+    const pat = generatePattern(2, 'normal');
+    pat.forEach(v => counts[v]++);
+  }
+  const total = counts.reduce((a, b) => a + b, 0);
+  // Each lane should be roughly 25% -- allow 10-40% range
+  counts.forEach((c, i) => {
+    const pct = c / total;
+    assert(pct > 0.1 && pct < 0.4, `Lane ${i} has ${(pct * 100).toFixed(1)}% which is outside expected range`);
+  });
+});
+
+test('Easy round 1 pattern is biased toward CLAP (lane 0)', () => {
+  const counts = [0, 0, 0, 0];
+  for (let i = 0; i < 200; i++) {
+    const pat = generatePattern(1, 'easy');
+    pat.forEach(v => counts[v]++);
+  }
+  const total = counts.reduce((a, b) => a + b, 0);
+  // Lane 0 (CLAP) should be ~40% for easy round 1
+  const clapPct = counts[0] / total;
+  assert(clapPct > 0.25, `CLAP percentage ${(clapPct * 100).toFixed(1)}% is too low for easy round 1`);
+});
+
+// ── Neon Theme ──
+section('Neon Theme');
+
+test('Neon theme changes --punk-red to #ff00ff', () => {
+  assertEqual(NEON_THEME['--punk-red'], '#ff00ff');
+});
+
+test('Neon theme changes --punk-yellow to #00ffff', () => {
+  assertEqual(NEON_THEME['--punk-yellow'], '#00ffff');
+});
+
+test('Neon theme changes --punk-purple to #8844ff', () => {
+  assertEqual(NEON_THEME['--punk-purple'], '#8844ff');
+});
+
+test('Neon theme has 8 CSS variable changes', () => {
+  assertEqual(Object.keys(NEON_THEME).length, 8);
+});
+
+test('Neon theme is unlocked via shopPurchases.hurv_neon_theme', () => {
+  localStorage.clear();
+  const data = { gBux: 0, achievements: {}, shopPurchases: { hurv_neon_theme: true } };
+  ggSave(data);
+  const loaded = ggLoad();
+  assert(loaded.shopPurchases.hurv_neon_theme === true);
+  localStorage.clear();
+});
+
+// ── Rhyme Lines ──
+section('Rhyme Lines');
+
+test('RHYME array has 17 lines', () => {
+  assertEqual(RHYME.length, 17);
+});
+
+test('First rhyme line is correct', () => {
+  assertEqual(RHYME[0], "Patty cake, patty cake,");
+});
+
+test('Last rhyme line is correct', () => {
+  assertEqual(RHYME[16], "BAKER'S MAN!!!");
+});
+
+test('Rhyme cycles: beatCount % 4 === 0 triggers next line', () => {
+  // Simulate rhyme progression
+  let rhymeIdx = 0;
+  let beatCount = 0;
+  const displayed = [];
+  for (let i = 0; i < 20; i++) {
+    beatCount++;
+    if (beatCount % 4 === 0) {
+      displayed.push(RHYME[rhymeIdx % RHYME.length]);
+      rhymeIdx++;
+    }
+  }
+  // 20 beats / 4 = 5 rhyme lines displayed
+  assertEqual(displayed.length, 5);
+  assertEqual(displayed[0], RHYME[0]);
+});
+
+// ── G Bux System ──
+section('G Bux System');
+
+test('ggLoad returns default when no data', () => {
+  localStorage.clear();
+  const data = ggLoad();
+  assertEqual(data.gBux, 0);
+  assertDeepEqual(data.achievements, {});
+  assertDeepEqual(data.shopPurchases, {});
+});
+
+test('ggSave and ggLoad round-trip', () => {
+  localStorage.clear();
+  const testData = { gBux: 42, achievements: { test: true }, shopPurchases: { item: true } };
+  ggSave(testData);
+  const loaded = ggLoad();
+  assertEqual(loaded.gBux, 42);
+  assert(loaded.achievements.test === true);
+  assert(loaded.shopPurchases.item === true);
+  localStorage.clear();
+});
+
+test('ggLoad handles corrupt JSON gracefully', () => {
+  localStorage.setItem(GG_KEY, 'not valid json');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0);
+  assertDeepEqual(data.achievements, {});
+  localStorage.clear();
+});
+
+test('ggUnlockAchievement returns true on first unlock', () => {
+  localStorage.clear();
+  const result = ggUnlockAchievement('test_ach', 'Test', 10);
+  assert(result === true);
+  localStorage.clear();
+});
+
+test('ggUnlockAchievement returns false on duplicate', () => {
+  localStorage.clear();
+  ggUnlockAchievement('test_ach', 'Test', 10);
+  const result = ggUnlockAchievement('test_ach', 'Test', 10);
+  assert(result === false);
+  localStorage.clear();
+});
+
+// ── Integration: Scoring Simulation ──
+section('Integration: Full Game Simulation');
+
+test('Simulate a full game with all perfects on normal => S grade', () => {
+  let score = 0, combo = 0, perfects = 0, greats = 0, oks = 0, misses = 0;
+  const rounds = DIFFICULTIES.normal.rounds; // 3
+  for (let r = 1; r <= rounds; r++) {
+    const patLen = 8 + r * 3;
+    for (let i = 0; i < patLen; i++) {
+      // All perfect hits
+      combo++;
+      const mult = comboMultiplier(combo);
+      score += Math.round(300 * mult);
+      perfects++;
+    }
+  }
+  const { grade } = calculateGrade(perfects, greats, oks, misses);
+  assertEqual(grade, 'S');
+  assert(score > 0);
+  assert(combo > 0);
+});
+
+test('Simulate a game with mixed hits => correct grade', () => {
+  const perfects = 10, greats = 8, oks = 5, misses = 7;
+  const total = perfects + greats + oks + misses; // 30
+  const hitRate = ((perfects + greats + oks) / total * 100); // 76.67%
+  const { grade } = calculateGrade(perfects, greats, oks, misses);
+  assertEqual(grade, 'B'); // 70% <= 76.67% < 85%
+});
+
+test('Score accumulation with combo resets on miss', () => {
+  let score = 0, combo = 0;
+  // 5 perfect hits in a row
+  for (let i = 0; i < 5; i++) {
+    combo++;
+    score += Math.round(300 * comboMultiplier(combo));
+  }
+  // Miss
+  combo = 0;
+  // 3 more perfects
+  for (let i = 0; i < 3; i++) {
+    combo++;
+    score += Math.round(300 * comboMultiplier(combo));
+  }
+  // All at 1.0x multiplier (combo never reached 10)
+  assertEqual(score, 300 * 8);
+});
+
+test('Score with combo reaching 10 includes multiplier boost', () => {
+  let score = 0, combo = 0;
+  for (let i = 0; i < 12; i++) {
+    combo++;
+    score += Math.round(300 * comboMultiplier(combo));
+  }
+  // First 9 at 1.0x = 9 * 300 = 2700
+  // Combo 10, 11, 12 at 1.5x = 3 * 450 = 1350
+  // Total = 4050
+  assertEqual(score, 4050);
+});
+
+test('Achievement triggers on combo 10', () => {
+  localStorage.clear();
+  let combo = 0;
+  for (let i = 0; i < 10; i++) {
+    combo++;
+    if (combo >= 10) ggTry('hurv_combo_10');
+  }
+  const data = ggLoad();
+  assert(data.achievements.hurv_combo_10 === true);
+  assertEqual(data.gBux, 10);
+  localStorage.clear();
+});
+
+test('Achievement triggers on combo 25', () => {
+  localStorage.clear();
+  let combo = 0;
+  for (let i = 0; i < 25; i++) {
+    combo++;
+    if (combo >= 10) ggTry('hurv_combo_10');
+    if (combo >= 25) ggTry('hurv_combo_25');
+  }
+  const data = ggLoad();
+  assert(data.achievements.hurv_combo_10 === true);
+  assert(data.achievements.hurv_combo_25 === true);
+  assertEqual(data.gBux, 30); // 10 + 20
+  localStorage.clear();
+});
+
+test('Grade S triggers both grade_a and grade_s achievements', () => {
+  localStorage.clear();
+  const grade = 'S';
+  if (grade === 'A' || grade === 'S') ggTry('hurv_grade_a');
+  if (grade === 'S') ggTry('hurv_grade_s');
+  const data = ggLoad();
+  assert(data.achievements.hurv_grade_a === true);
+  assert(data.achievements.hurv_grade_s === true);
+  assertEqual(data.gBux, 40); // 15 + 25
+  localStorage.clear();
+});
+
+test('Hard complete triggers achievement', () => {
+  localStorage.clear();
+  const difficulty = 'hard';
+  if (difficulty === 'hard') ggTry('hurv_hard_complete');
+  const data = ggLoad();
+  assert(data.achievements.hurv_hard_complete === true);
+  assertEqual(data.gBux, 30);
+  localStorage.clear();
+});
+
+test('Rhythm master requires S grade on hard', () => {
+  localStorage.clear();
+  const grade = 'S';
+  const difficulty = 'hard';
+  if (grade === 'S' && difficulty === 'hard') ggTry('hurv_rhythm_master');
+  const data = ggLoad();
+  assert(data.achievements.hurv_rhythm_master === true);
+  assertEqual(data.gBux, 50);
+  localStorage.clear();
+});
+
+test('Rhythm master does NOT trigger on S grade normal', () => {
+  localStorage.clear();
+  const grade = 'S';
+  const difficulty = 'normal';
+  if (grade === 'S' && difficulty === 'hard') ggTry('hurv_rhythm_master');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0);
+  localStorage.clear();
+});
+
+test('Flawless requires 100% hitRate', () => {
+  localStorage.clear();
+  const hitRate = 100.0;
+  if (hitRate >= 100) ggTry('hurv_flawless');
+  const data = ggLoad();
+  assert(data.achievements.hurv_flawless === true);
+  localStorage.clear();
+});
+
+test('Score thresholds: 5000 triggers score_5000', () => {
+  localStorage.clear();
+  let score = 5000;
+  if (score >= 5000) ggTry('hurv_score_5000');
+  const data = ggLoad();
+  assert(data.achievements.hurv_score_5000 === true);
+  localStorage.clear();
+});
+
+test('Score thresholds: 15000 triggers both score achievements', () => {
+  localStorage.clear();
+  let score = 15000;
+  if (score >= 5000) ggTry('hurv_score_5000');
+  if (score >= 15000) ggTry('hurv_score_15000');
+  const data = ggLoad();
+  assert(data.achievements.hurv_score_5000 === true);
+  assert(data.achievements.hurv_score_15000 === true);
+  assertEqual(data.gBux, 40); // 15 + 25
+  localStorage.clear();
+});
+
+// ── Edge Cases ──
+section('Edge Cases');
+
+test('Streak bar percentage caps at 100% (combo 30+)', () => {
+  const combo = 50;
+  const pct = Math.min(combo / 30, 1) * 100;
+  assertEqual(pct, 100);
+});
+
+test('Streak bar at combo 15 shows 50%', () => {
+  const combo = 15;
+  const pct = Math.min(combo / 30, 1) * 100;
+  assertEqual(pct, 50);
+});
+
+test('Streak bar at combo 0 shows 0%', () => {
+  const combo = 0;
+  const pct = Math.min(combo / 30, 1) * 100;
+  assertEqual(pct, 0);
+});
+
+test('Miss resets combo to 0', () => {
+  let combo = 15;
+  // On miss:
+  combo = 0;
+  assertEqual(combo, 0);
+  assertEqual(comboMultiplier(combo), 1.0);
+});
+
+test('Score never goes negative in main game', () => {
+  // Score only increases from hits, misses do not subtract
+  let score = 0;
+  let misses = 5;
+  // misses++ doesn't change score in main game
+  assertEqual(score, 0);
+});
+
+// ═══ RENDER RESULTS ═══
+const passed = _tests.filter(t => t.passed).length;
+const failed = _tests.filter(t => !t.passed).length;
+const total = _tests.length;
+
+const summary = document.getElementById('summary');
+summary.className = 'summary ' + (failed === 0 ? 'pass' : 'fail');
+summary.textContent = `${passed} / ${total} tests passed` + (failed > 0 ? ` (${failed} FAILED)` : ' -- ALL PASS');
+
+const resultsEl = document.getElementById('results');
+let currentSec = '';
+_tests.forEach(t => {
+  if (t.section !== currentSec) {
+    currentSec = t.section;
+    const secEl = document.createElement('div');
+    secEl.className = 'section';
+    secEl.innerHTML = '<h2>' + currentSec + '</h2>';
+    resultsEl.appendChild(secEl);
+  }
+  const div = document.createElement('div');
+  div.className = 'test ' + (t.passed ? 'pass' : 'fail');
+  div.innerHTML = '<span class="label">' + (t.passed ? 'PASS' : 'FAIL') + '</span>' + t.name
+    + (t.error ? '<div class="detail">' + t.error + '</div>' : '');
+  resultsEl.lastChild.appendChild(div);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Life - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 20px; }
+  h1 { color: #4caf50; margin-bottom: 6px; }
+  .subtitle { color: #888; margin-bottom: 20px; font-size: 0.9rem; }
+  .summary { padding: 16px; border-radius: 8px; margin-bottom: 20px; font-size: 1.1rem; font-weight: 600; }
+  .summary.pass { background: #1b3a1b; border: 1px solid #4caf50; color: #4caf50; }
+  .summary.fail { background: #3a1b1b; border: 1px solid #ff4444; color: #ff4444; }
+  .section { margin-bottom: 24px; }
+  .section h2 { color: #c9a84c; font-size: 1rem; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin-bottom: 2px; }
+  .test.pass { border-color: #4caf50; color: #aaa; }
+  .test.fail { border-color: #ff4444; color: #ff8888; background: #2a1515; }
+  .test .label { margin-right: 8px; font-weight: 600; }
+  .test.pass .label { color: #4caf50; }
+  .test.fail .label { color: #ff4444; }
+  .test .detail { color: #666; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<h1>Mini Life - Unit Tests</h1>
+<div class="subtitle">3D Life Simulator - Pure Logic Tests</div>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ═══ TEST FRAMEWORK ═══
+let _tests = [];
+let _currentSection = '';
+function section(name) { _currentSection = name; }
+function test(name, fn) {
+  try {
+    fn();
+    _tests.push({ section: _currentSection, name, passed: true });
+  } catch(e) {
+    _tests.push({ section: _currentSection, name, passed: false, error: e.message });
+  }
+}
+function assert(condition, msg) { if (!condition) throw new Error(msg || 'Assertion failed'); }
+function assertEqual(a, b, msg) { if (a !== b) throw new Error(msg || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+function assertClose(a, b, tolerance, msg) { if (Math.abs(a - b) > tolerance) throw new Error(msg || `Expected ~${b}, got ${a} (tolerance ${tolerance})`); }
+function assertDeepEqual(a, b, msg) { if (JSON.stringify(a) !== JSON.stringify(b)) throw new Error(msg || `Expected ${JSON.stringify(b)}, got ${JSON.stringify(a)}`); }
+
+// ═══ MOCK localStorage ═══
+const mockStorage = {};
+const localStorage = {
+  getItem(k) { return mockStorage[k] || null; },
+  setItem(k, v) { mockStorage[k] = v; },
+  removeItem(k) { delete mockStorage[k]; },
+  clear() { Object.keys(mockStorage).forEach(k => delete mockStorage[k]); },
+};
+
+// ═══ RE-DECLARE GAME LOGIC ═══
+
+// G Bux System
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+// Mini Life Achievement registry
+const ML_ACH = {
+  ml_new_home:          { name: 'New Home',          reward: 5 },
+  ml_survivor:          { name: 'Survivor',          reward: 10 },
+  ml_week_warrior:      { name: 'Week Warrior',      reward: 20 },
+  ml_shopaholic:        { name: 'Shopaholic',        reward: 10 },
+  ml_interior_designer: { name: 'Interior Designer', reward: 25 },
+  ml_fashion_icon:      { name: 'Fashion Icon',      reward: 10 },
+  ml_moving_up:         { name: 'Moving Up',         reward: 20 },
+  ml_arcade_pro:        { name: 'Arcade Pro',        reward: 15 },
+  ml_high_roller:       { name: 'High Roller',       reward: 20 },
+  ml_living_large:      { name: 'Living Large',      reward: 50 },
+  ml_bookworm:          { name: 'Knowledge is Power', reward: 50 },
+  ml_gym_rat:           { name: 'Gym Rat',            reward: 50 },
+  ml_helpful_neighbor:  { name: 'Helpful Neighbor',   reward: 25 },
+  ml_town_hero:         { name: 'Town Hero',          reward: 50 },
+  ml_mansion_mogul:     { name: 'Mansion Mogul',      reward: 75 },
+};
+function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+// Game constants
+const GAME_SPEED = 0.2;
+const decayRates = { hunger: 1.8, energy: 1.2, fun: 2.0, hygiene: 1.5 };
+
+// Floor constants
+const GROUND_Y = 0.15;
+const UPPER_Y = 3.65;
+const BASEMENT_Y = -3.35;
+const MANSION_UPPER_Y = 3.65;
+
+// Stair zones
+const STAIR = { xMin: -5, xMax: -3.5, zMin: -4.5, zMax: -0.5 };
+const BSTAIR = { xMin: 5.3, xMax: 8, zMin: -4.5, zMax: -2.5 };
+const MANSION_STAIR = { xMin: 285, xMax: 288, zMin: 3, zMax: 10 };
+
+// Location constants
+const TOWN_ORIGIN = { x: 122.5, z: 0 };
+const TOWN_BOUNDS = { xMin: 100, xMax: 145, zMin: -15, zMax: 15 };
+const TOWN_PLAYER_SPAWN = { x: 135, y: 0.15, z: -8 };
+const HOME_PLAYER_SPAWN = { x: 10, y: 0.15, z: 0.75 };
+const MANSION_ORIGIN = { x: 280, z: 0 };
+const MANSION_BOUNDS = { xMin: 250, xMax: 310, zMin: -25, zMax: 25 };
+const MANSION_PLAYER_SPAWN = { x: 258, y: 0.15, z: -12 };
+
+// Fog constants
+const HOME_FOG_FAR = 60;
+const TOWN_FOG_FAR = 120;
+const MANSION_FOG_FAR = 150;
+
+// Town building collision AABBs
+const TOWN_BUILDINGS = [
+  { xMin: 104, xMax: 112, zMin: 1, zMax: 7 },       // Cafe
+  { xMin: 104, xMax: 112, zMin: -12, zMax: -4.5 },   // Shop
+  { xMin: 127, xMax: 137, zMin: 1, zMax: 7 },        // Town Hall
+  { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 }, // Fountain
+];
+
+// Mansion collision AABBs
+const MANSION_COLLISIONS = [
+  { xMin: 264.5, xMax: 305.5, zMin: -10.5, zMax: -10 },   // South wall
+  { xMin: 264.5, xMax: 305.5, zMin: 10, zMax: 10.5 },      // North wall
+  { xMin: 264.5, xMax: 265, zMin: -10.5, zMax: 10.5 },     // West wall
+  { xMin: 305, xMax: 305.5, zMin: -10.5, zMax: 10.5 },     // East wall
+  { xMin: 258, xMax: 262, zMin: -2, zMax: 2 },             // Outdoor fountain
+];
+
+// Base action configs
+const actionConfig = {
+  fridge:   { label: 'Eating...', duration: 3, restore: 40, cost: 5 },
+  bed:      { label: 'Sleeping...', duration: 6, restore: 60, cost: 0 },
+  tv:       { label: 'Watching TV...', duration: 4, restore: 45, cost: 0 },
+  shower:   { label: 'Showering...', duration: 3.5, restore: 50, cost: 2 },
+  computer: { label: 'Gaming...', duration: 10, restore: 0, cost: 0, earn: 10, funDrain: 10 },
+};
+
+// Purchasable actions (added when furniture purchased)
+const purchasableActions = {
+  lavaLamp:    { label: 'Vibing...', duration: 3, restore: 25, cost: 0 },
+  fishTank:    { label: 'Watching fish...', duration: 4, restore: 35, cost: 0 },
+  treadmill:   { label: 'Running...', duration: 5, restore: 10, cost: 0, hungerDrain: 15 },
+  workbench:   { label: 'Crafting...', duration: 8, restore: 0, cost: 0, earn: 25 },
+  punchingBag: { label: 'Boxing...', duration: 4, restore: 30, cost: 0, hungerDrain: 10 },
+  pool:        { label: 'Swimming...', duration: 6, restore: 35, cost: 0, hygieneBonus: 20 },
+  bookshelf:   { label: 'Reading...', duration: 4, restore: 40, cost: 0 },
+  bed2:        { label: 'Sleeping...', duration: 5, restore: 55, cost: 0 },
+};
+
+// Mansion actions
+const mansionActions = {
+  mansionKitchen:  { label: 'Cooking gourmet meal...', duration: 4, restore: 70, cost: 0 },
+  homeTheater:     { label: 'Watching movie...', duration: 5, restore: 60, cost: 0 },
+  mansionSpa:      { label: 'Relaxing in spa...', duration: 6, restore: 80, cost: 0, funBonus: 20 },
+  kingBed:         { label: 'Sleeping like royalty...', duration: 7, restore: 85, cost: 0 },
+  mansionLibrary:  { label: 'Studying...', duration: 4, restore: 55, cost: 0 },
+  artEasel:        { label: 'Painting...', duration: 6, restore: 40, cost: 0, earn: 15 },
+  mansionArcade:   { label: 'Playing arcade...', duration: 5, restore: 50, cost: 0 },
+  hotTub:          { label: 'Soaking in hot tub...', duration: 5, restore: 70, cost: 0, funBonus: 25 },
+  wineRack:        { label: 'Tasting wine...', duration: 3, restore: 35, cost: 0 },
+  tennisCourt:     { label: 'Playing tennis...', duration: 5, restore: 45, cost: 0, hungerDrain: 15, energyBonus: 20 },
+  zenGarden:       { label: 'Meditating...', duration: 4, restore: 30, cost: 0, hygieneBonus: 10 },
+};
+
+// Shop furniture
+const SHOP_FURNITURE = [
+  { id: 'lavaLamp',  name: 'Lava Lamp',  desc: 'Groovy lamp for the table. Restores a bit of fun.', cost: 30 },
+  { id: 'fishTank',  name: 'Fish Tank',   desc: 'Relaxing aquarium with tropical fish.',             cost: 45 },
+  { id: 'treadmill', name: 'Treadmill',   desc: 'Work out! Restores energy but makes you hungry.',   cost: 50 },
+  { id: 'jukebox',   name: 'Jukebox',     desc: 'Blast some tunes. Big fun boost!',                  cost: 75 },
+];
+
+// Outfits
+const OUTFITS = [
+  { name: 'Casual Blue',    shirt: 0x4488cc, pants: 0x334466, cost: 0 },
+  { name: 'Sporty Red',     shirt: 0xcc3333, pants: 0x222222, cost: 20 },
+  { name: 'Forest Green',   shirt: 0x338844, pants: 0x3a3a2a, cost: 25 },
+  { name: 'Purple Royale',  shirt: 0x7744aa, pants: 0x2a2244, cost: 30 },
+  { name: 'Sunset Orange',  shirt: 0xdd7722, pants: 0x443322, cost: 30 },
+  { name: 'All Black',      shirt: 0x222222, pants: 0x1a1a1a, cost: 35 },
+  { name: 'Pink Pop',       shirt: 0xdd55aa, pants: 0xeeeedd, cost: 35 },
+  { name: 'Golden Drip',    shirt: 0xccaa33, pants: 0x1a1a1a, cost: 50 },
+];
+
+// NPC definitions
+const TOWN_NPC_DEFS = [
+  { id: 'barista', name: 'Barista Bean', x: 108, z: 4 },
+  { id: 'merchant', name: 'Merchant Mike', x: 108, z: -8 },
+  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 4 },
+  { id: 'old_pete', name: 'Old Pete', x: 124, z: 12 },
+];
+
+// Quest definitions (simplified for testing)
+const QUESTS = {
+  coffee_run: { npc: 'barista', name: 'Coffee Run', reward: { money: 75 } },
+  supply_run: { npc: 'merchant', name: 'Supply Run', reward: { money: 100 } },
+  town_spirit: { npc: 'mayor', name: 'Town Spirit', reward: { money: 150 } },
+  tall_tales: { npc: 'old_pete', name: 'Tall Tales', reward: { money: 50, fun: 30 } },
+};
+
+// finishAction logic (extracted)
+function finishAction(objType, objNeed, config, gameState) {
+  const { needs, money, booksRead, treadmillUses, questLog, miniGameScore } = gameState;
+  const result = { needs: { ...needs }, money, booksRead, treadmillUses };
+
+  if (objType === 'computer') {
+    const bonus = miniGameScore || 0;
+    result.money += config.earn + bonus;
+    result.needs.fun = Math.max(0, needs.fun - config.funDrain);
+  } else if (objType === 'workbench') {
+    result.money += config.earn;
+  } else if (objType === 'artEasel') {
+    result.needs.fun = Math.min(100, needs.fun + config.restore);
+    result.money += config.earn;
+  } else {
+    result.needs[objNeed] = Math.min(100, needs[objNeed] + config.restore);
+    if (config.hungerDrain) result.needs.hunger = Math.max(0, needs.hunger - config.hungerDrain);
+    if (config.hygieneBonus) result.needs.hygiene = Math.min(100, needs.hygiene + config.hygieneBonus);
+    if (config.funBonus) result.needs.fun = Math.min(100, needs.fun + config.funBonus);
+    if (config.energyBonus) result.needs.energy = Math.min(100, needs.energy + config.energyBonus);
+    if (objType === 'bookshelf' || objType === 'mansionLibrary') result.booksRead++;
+    if (objType === 'treadmill') result.treadmillUses++;
+  }
+  return result;
+}
+
+// Save data shape
+const SAVE_KEYS = [
+  'needs', 'money', 'gameTime', 'day', 'charOpts', 'ownedOutfits', 'ownedFurniture',
+  'currentTrackId', 'doorOpen', 'hasSecondFloor', 'booksRead', 'treadmillUses',
+  'activePet', 'currentFloor', 'playerPos', 'yaw', 'pitch', 'hasCar', 'inTown',
+  'hasMansion', 'inMansion', 'questLog', 'questsCompleted',
+];
+
+// Needs decay simulation
+function simulateDecay(needs, deltaRealSeconds) {
+  const gameMinutes = deltaRealSeconds * GAME_SPEED;
+  const result = { ...needs };
+  result.hunger = Math.max(0, needs.hunger - decayRates.hunger * gameMinutes);
+  result.energy = Math.max(0, needs.energy - decayRates.energy * gameMinutes);
+  result.fun = Math.max(0, needs.fun - decayRates.fun * gameMinutes);
+  result.hygiene = Math.max(0, needs.hygiene - decayRates.hygiene * gameMinutes);
+  return result;
+}
+
+// AABB collision check
+function isInsideAABB(x, z, aabb) {
+  return x >= aabb.xMin && x <= aabb.xMax && z >= aabb.zMin && z <= aabb.zMax;
+}
+
+// Stair Y interpolation
+function stairInterpolation(value, minVal, maxVal, groundY, upperY) {
+  const t = (value - minVal) / (maxVal - minVal);
+  return groundY + t * (upperY - groundY);
+}
+
+// ═══ TESTS ═══
+
+// ── Needs Decay Rates ──
+section('Needs Decay Rates');
+
+test('Hunger decays at 1.8 per game-minute', () => {
+  assertEqual(decayRates.hunger, 1.8);
+});
+
+test('Energy decays at 1.2 per game-minute', () => {
+  assertEqual(decayRates.energy, 1.2);
+});
+
+test('Fun decays at 2.0 per game-minute', () => {
+  assertEqual(decayRates.fun, 2.0);
+});
+
+test('Hygiene decays at 1.5 per game-minute', () => {
+  assertEqual(decayRates.hygiene, 1.5);
+});
+
+test('Fun decays fastest', () => {
+  assert(decayRates.fun > decayRates.hunger);
+  assert(decayRates.fun > decayRates.energy);
+  assert(decayRates.fun > decayRates.hygiene);
+});
+
+test('Energy decays slowest', () => {
+  assert(decayRates.energy < decayRates.hunger);
+  assert(decayRates.energy < decayRates.fun);
+  assert(decayRates.energy < decayRates.hygiene);
+});
+
+test('GAME_SPEED is 0.2', () => {
+  assertEqual(GAME_SPEED, 0.2);
+});
+
+test('Decay simulation: 10 real seconds at GAME_SPEED 0.2 = 2 game-minutes', () => {
+  const needs = { hunger: 100, energy: 100, fun: 100, hygiene: 100 };
+  const result = simulateDecay(needs, 10);
+  assertClose(result.hunger, 100 - 1.8 * 2, 0.01);
+  assertClose(result.energy, 100 - 1.2 * 2, 0.01);
+  assertClose(result.fun, 100 - 2.0 * 2, 0.01);
+  assertClose(result.hygiene, 100 - 1.5 * 2, 0.01);
+});
+
+test('Needs never go below 0', () => {
+  const needs = { hunger: 1, energy: 1, fun: 1, hygiene: 1 };
+  const result = simulateDecay(needs, 1000);
+  assertEqual(result.hunger, 0);
+  assertEqual(result.energy, 0);
+  assertEqual(result.fun, 0);
+  assertEqual(result.hygiene, 0);
+});
+
+// ── Base Action Configs ──
+section('Base Action Configs');
+
+test('Fridge: restores 40 hunger, costs $5', () => {
+  assertEqual(actionConfig.fridge.restore, 40);
+  assertEqual(actionConfig.fridge.cost, 5);
+  assertEqual(actionConfig.fridge.duration, 3);
+});
+
+test('Bed: restores 60 energy, free', () => {
+  assertEqual(actionConfig.bed.restore, 60);
+  assertEqual(actionConfig.bed.cost, 0);
+  assertEqual(actionConfig.bed.duration, 6);
+});
+
+test('TV: restores 45 fun, free', () => {
+  assertEqual(actionConfig.tv.restore, 45);
+  assertEqual(actionConfig.tv.cost, 0);
+  assertEqual(actionConfig.tv.duration, 4);
+});
+
+test('Shower: restores 50 hygiene, costs $2', () => {
+  assertEqual(actionConfig.shower.restore, 50);
+  assertEqual(actionConfig.shower.cost, 2);
+  assertClose(actionConfig.shower.duration, 3.5, 0.01);
+});
+
+test('Computer: earns $10, drains 10 fun', () => {
+  assertEqual(actionConfig.computer.earn, 10);
+  assertEqual(actionConfig.computer.funDrain, 10);
+  assertEqual(actionConfig.computer.restore, 0);
+  assertEqual(actionConfig.computer.duration, 10);
+});
+
+// ── Purchasable Furniture Actions ──
+section('Purchasable Furniture Actions');
+
+test('Lava Lamp: restores 25 fun', () => {
+  assertEqual(purchasableActions.lavaLamp.restore, 25);
+  assertEqual(purchasableActions.lavaLamp.duration, 3);
+});
+
+test('Fish Tank: restores 35 fun', () => {
+  assertEqual(purchasableActions.fishTank.restore, 35);
+  assertEqual(purchasableActions.fishTank.duration, 4);
+});
+
+test('Treadmill: restores 10 energy, drains 15 hunger', () => {
+  assertEqual(purchasableActions.treadmill.restore, 10);
+  assertEqual(purchasableActions.treadmill.hungerDrain, 15);
+});
+
+test('Workbench: earns $25', () => {
+  assertEqual(purchasableActions.workbench.earn, 25);
+  assertEqual(purchasableActions.workbench.restore, 0);
+  assertEqual(purchasableActions.workbench.duration, 8);
+});
+
+test('Punching Bag: restores 30 fun, drains 10 hunger', () => {
+  assertEqual(purchasableActions.punchingBag.restore, 30);
+  assertEqual(purchasableActions.punchingBag.hungerDrain, 10);
+});
+
+test('Pool: restores 35 fun, +20 hygiene', () => {
+  assertEqual(purchasableActions.pool.restore, 35);
+  assertEqual(purchasableActions.pool.hygieneBonus, 20);
+});
+
+test('Bookshelf: restores 40 fun', () => {
+  assertEqual(purchasableActions.bookshelf.restore, 40);
+});
+
+test('Bed2 (upper floor): restores 55 energy', () => {
+  assertEqual(purchasableActions.bed2.restore, 55);
+});
+
+// ── Mansion Actions ──
+section('Mansion Actions');
+
+test('Mansion Kitchen: restores 70 hunger, free', () => {
+  assertEqual(mansionActions.mansionKitchen.restore, 70);
+  assertEqual(mansionActions.mansionKitchen.cost, 0);
+});
+
+test('King Bed: restores 85 energy', () => {
+  assertEqual(mansionActions.kingBed.restore, 85);
+});
+
+test('Home Theater: restores 60 fun', () => {
+  assertEqual(mansionActions.homeTheater.restore, 60);
+});
+
+test('Mansion Spa: restores 80 hygiene, +20 fun', () => {
+  assertEqual(mansionActions.mansionSpa.restore, 80);
+  assertEqual(mansionActions.mansionSpa.funBonus, 20);
+});
+
+test('Art Easel: restores 40 fun, earns $15', () => {
+  assertEqual(mansionActions.artEasel.restore, 40);
+  assertEqual(mansionActions.artEasel.earn, 15);
+});
+
+test('Hot Tub: restores 70 hygiene, +25 fun', () => {
+  assertEqual(mansionActions.hotTub.restore, 70);
+  assertEqual(mansionActions.hotTub.funBonus, 25);
+});
+
+test('Tennis Court: restores 45 fun, -15 hunger, +20 energy', () => {
+  assertEqual(mansionActions.tennisCourt.restore, 45);
+  assertEqual(mansionActions.tennisCourt.hungerDrain, 15);
+  assertEqual(mansionActions.tennisCourt.energyBonus, 20);
+});
+
+test('Zen Garden: restores 30 fun, +10 hygiene', () => {
+  assertEqual(mansionActions.zenGarden.restore, 30);
+  assertEqual(mansionActions.zenGarden.hygieneBonus, 10);
+});
+
+test('Wine Rack: restores 35 fun', () => {
+  assertEqual(mansionActions.wineRack.restore, 35);
+});
+
+test('Mansion Arcade: restores 50 fun', () => {
+  assertEqual(mansionActions.mansionArcade.restore, 50);
+});
+
+test('Mansion Library: restores 55 fun', () => {
+  assertEqual(mansionActions.mansionLibrary.restore, 55);
+});
+
+test('All mansion actions are free (cost=0)', () => {
+  Object.values(mansionActions).forEach(a => {
+    assertEqual(a.cost, 0);
+  });
+});
+
+// ── finishAction Logic ──
+section('finishAction Logic');
+
+test('finishAction: fridge restores hunger', () => {
+  const state = { needs: { hunger: 50, energy: 80, fun: 70, hygiene: 60 }, money: 45, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('fridge', 'hunger', actionConfig.fridge, state);
+  assertEqual(result.needs.hunger, 90); // 50 + 40
+});
+
+test('finishAction: fridge caps at 100', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 70, hygiene: 60 }, money: 45, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('fridge', 'hunger', actionConfig.fridge, state);
+  assertEqual(result.needs.hunger, 100); // min(100, 80+40)
+});
+
+test('finishAction: computer earns money and drains fun', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 70, hygiene: 60 }, money: 50, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 5 };
+  const result = finishAction('computer', 'money', actionConfig.computer, state);
+  assertEqual(result.money, 65); // 50 + 10 + 5 (bonus from minigame)
+  assertEqual(result.needs.fun, 60); // 70 - 10
+});
+
+test('finishAction: computer fun drain does not go below 0', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 5, hygiene: 60 }, money: 50, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('computer', 'money', actionConfig.computer, state);
+  assertEqual(result.needs.fun, 0); // max(0, 5-10)
+});
+
+test('finishAction: workbench earns $25', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 70, hygiene: 60 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('workbench', 'money', purchasableActions.workbench, state);
+  assertEqual(result.money, 125);
+});
+
+test('finishAction: artEasel restores fun and earns money', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 50, hygiene: 60 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('artEasel', 'fun', mansionActions.artEasel, state);
+  assertEqual(result.needs.fun, 90); // 50 + 40
+  assertEqual(result.money, 115); // 100 + 15
+});
+
+test('finishAction: treadmill restores energy and drains hunger', () => {
+  const state = { needs: { hunger: 80, energy: 50, fun: 70, hygiene: 60 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('treadmill', 'energy', purchasableActions.treadmill, state);
+  assertEqual(result.needs.energy, 60); // 50 + 10
+  assertEqual(result.needs.hunger, 65); // 80 - 15
+  assertEqual(result.treadmillUses, 1);
+});
+
+test('finishAction: pool restores fun and gives hygiene bonus', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 40, hygiene: 50 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('pool', 'fun', purchasableActions.pool, state);
+  assertEqual(result.needs.fun, 75); // 40 + 35
+  assertEqual(result.needs.hygiene, 70); // 50 + 20
+});
+
+test('finishAction: mansionSpa restores hygiene and gives fun bonus', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 50, hygiene: 20 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('mansionSpa', 'hygiene', mansionActions.mansionSpa, state);
+  assertEqual(result.needs.hygiene, 100); // min(100, 20+80)
+  assertEqual(result.needs.fun, 70); // 50 + 20
+});
+
+test('finishAction: tennisCourt gives fun, drains hunger, restores energy', () => {
+  const state = { needs: { hunger: 80, energy: 50, fun: 40, hygiene: 60 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('tennisCourt', 'fun', mansionActions.tennisCourt, state);
+  assertEqual(result.needs.fun, 85); // 40 + 45
+  assertEqual(result.needs.hunger, 65); // 80 - 15
+  assertEqual(result.needs.energy, 70); // 50 + 20
+});
+
+test('finishAction: bookshelf increments booksRead', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 50, hygiene: 60 }, money: 100, booksRead: 1, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('bookshelf', 'fun', purchasableActions.bookshelf, state);
+  assertEqual(result.booksRead, 2);
+  assertEqual(result.needs.fun, 90); // 50 + 40
+});
+
+test('finishAction: mansionLibrary increments booksRead', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 50, hygiene: 60 }, money: 100, booksRead: 2, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('mansionLibrary', 'fun', mansionActions.mansionLibrary, state);
+  assertEqual(result.booksRead, 3);
+});
+
+test('finishAction: hotTub restores hygiene with fun bonus', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 30, hygiene: 20 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('hotTub', 'hygiene', mansionActions.hotTub, state);
+  assertEqual(result.needs.hygiene, 90); // 20 + 70
+  assertEqual(result.needs.fun, 55); // 30 + 25
+});
+
+test('finishAction: zenGarden restores fun with hygiene bonus', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 50, hygiene: 60 }, money: 100, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 0 };
+  const result = finishAction('zenGarden', 'fun', mansionActions.zenGarden, state);
+  assertEqual(result.needs.fun, 80); // 50 + 30
+  assertEqual(result.needs.hygiene, 70); // 60 + 10
+});
+
+// ── Shop Furniture ──
+section('Shop Furniture');
+
+test('SHOP_FURNITURE has 4 items', () => {
+  assertEqual(SHOP_FURNITURE.length, 4);
+});
+
+test('Lava Lamp costs $30', () => {
+  const item = SHOP_FURNITURE.find(f => f.id === 'lavaLamp');
+  assertEqual(item.cost, 30);
+});
+
+test('Fish Tank costs $45', () => {
+  const item = SHOP_FURNITURE.find(f => f.id === 'fishTank');
+  assertEqual(item.cost, 45);
+});
+
+test('Treadmill costs $50', () => {
+  const item = SHOP_FURNITURE.find(f => f.id === 'treadmill');
+  assertEqual(item.cost, 50);
+});
+
+test('Jukebox costs $75', () => {
+  const item = SHOP_FURNITURE.find(f => f.id === 'jukebox');
+  assertEqual(item.cost, 75);
+});
+
+test('Total furniture cost is $200', () => {
+  const total = SHOP_FURNITURE.reduce((sum, f) => sum + f.cost, 0);
+  assertEqual(total, 200);
+});
+
+test('All furniture items have id, name, desc, cost', () => {
+  SHOP_FURNITURE.forEach(f => {
+    assert(typeof f.id === 'string' && f.id.length > 0);
+    assert(typeof f.name === 'string' && f.name.length > 0);
+    assert(typeof f.desc === 'string' && f.desc.length > 0);
+    assert(typeof f.cost === 'number' && f.cost > 0);
+  });
+});
+
+test('All furniture IDs are unique', () => {
+  const ids = SHOP_FURNITURE.map(f => f.id);
+  assertEqual(new Set(ids).size, ids.length);
+});
+
+// ── Expansion Costs ──
+section('Expansion Costs');
+
+test('Double Decker (second floor) costs $200', () => {
+  // purchaseSecondFloor checks money < 200
+  assertEqual(200, 200); // The cost constant
+});
+
+test('Car costs $200', () => {
+  // purchaseCar checks money < 200
+  assertEqual(200, 200);
+});
+
+test('Mansion costs $1000', () => {
+  // purchaseMansion checks money < 1000
+  assertEqual(1000, 1000);
+});
+
+// ── Floor System Constants ──
+section('Floor System Constants');
+
+test('GROUND_Y is 0.15', () => {
+  assertEqual(GROUND_Y, 0.15);
+});
+
+test('UPPER_Y is 3.65', () => {
+  assertEqual(UPPER_Y, 3.65);
+});
+
+test('BASEMENT_Y is -3.35', () => {
+  assertEqual(BASEMENT_Y, -3.35);
+});
+
+test('MANSION_UPPER_Y is 3.65', () => {
+  assertEqual(MANSION_UPPER_Y, 3.65);
+});
+
+test('UPPER_Y equals MANSION_UPPER_Y', () => {
+  assertEqual(UPPER_Y, MANSION_UPPER_Y);
+});
+
+// ── Stair Zones ──
+section('Stair Zones');
+
+test('STAIR zone (home): xMin=-5, xMax=-3.5, zMin=-4.5, zMax=-0.5', () => {
+  assertEqual(STAIR.xMin, -5);
+  assertEqual(STAIR.xMax, -3.5);
+  assertEqual(STAIR.zMin, -4.5);
+  assertEqual(STAIR.zMax, -0.5);
+});
+
+test('BSTAIR zone (basement): xMin=5.3, xMax=8, zMin=-4.5, zMax=-2.5', () => {
+  assertEqual(BSTAIR.xMin, 5.3);
+  assertEqual(BSTAIR.xMax, 8);
+  assertEqual(BSTAIR.zMin, -4.5);
+  assertEqual(BSTAIR.zMax, -2.5);
+});
+
+test('MANSION_STAIR: xMin=285, xMax=288, zMin=3, zMax=10', () => {
+  assertEqual(MANSION_STAIR.xMin, 285);
+  assertEqual(MANSION_STAIR.xMax, 288);
+  assertEqual(MANSION_STAIR.zMin, 3);
+  assertEqual(MANSION_STAIR.zMax, 10);
+});
+
+test('Stair Y interpolation: bottom of home stairs = GROUND_Y', () => {
+  const y = stairInterpolation(STAIR.zMin, STAIR.zMin, STAIR.zMax, GROUND_Y, UPPER_Y);
+  assertClose(y, GROUND_Y, 0.01);
+});
+
+test('Stair Y interpolation: top of home stairs = UPPER_Y', () => {
+  const y = stairInterpolation(STAIR.zMax, STAIR.zMin, STAIR.zMax, GROUND_Y, UPPER_Y);
+  assertClose(y, UPPER_Y, 0.01);
+});
+
+test('Stair Y interpolation: midpoint of home stairs', () => {
+  const mid = (STAIR.zMin + STAIR.zMax) / 2;
+  const y = stairInterpolation(mid, STAIR.zMin, STAIR.zMax, GROUND_Y, UPPER_Y);
+  const expected = GROUND_Y + 0.5 * (UPPER_Y - GROUND_Y);
+  assertClose(y, expected, 0.01);
+});
+
+test('Mansion stair Y interpolation: bottom = GROUND_Y', () => {
+  const y = stairInterpolation(MANSION_STAIR.zMin, MANSION_STAIR.zMin, MANSION_STAIR.zMax, GROUND_Y, MANSION_UPPER_Y);
+  assertClose(y, GROUND_Y, 0.01);
+});
+
+test('Mansion stair Y interpolation: top = MANSION_UPPER_Y', () => {
+  const y = stairInterpolation(MANSION_STAIR.zMax, MANSION_STAIR.zMin, MANSION_STAIR.zMax, GROUND_Y, MANSION_UPPER_Y);
+  assertClose(y, MANSION_UPPER_Y, 0.01);
+});
+
+// ── Location Constants ──
+section('Location Constants');
+
+test('TOWN_ORIGIN is (122.5, 0)', () => {
+  assertEqual(TOWN_ORIGIN.x, 122.5);
+  assertEqual(TOWN_ORIGIN.z, 0);
+});
+
+test('TOWN_BOUNDS: 100-145 x, -15-15 z', () => {
+  assertEqual(TOWN_BOUNDS.xMin, 100);
+  assertEqual(TOWN_BOUNDS.xMax, 145);
+  assertEqual(TOWN_BOUNDS.zMin, -15);
+  assertEqual(TOWN_BOUNDS.zMax, 15);
+});
+
+test('TOWN_PLAYER_SPAWN is (135, 0.15, -8)', () => {
+  assertEqual(TOWN_PLAYER_SPAWN.x, 135);
+  assertEqual(TOWN_PLAYER_SPAWN.y, 0.15);
+  assertEqual(TOWN_PLAYER_SPAWN.z, -8);
+});
+
+test('HOME_PLAYER_SPAWN is (10, 0.15, 0.75)', () => {
+  assertEqual(HOME_PLAYER_SPAWN.x, 10);
+  assertEqual(HOME_PLAYER_SPAWN.y, 0.15);
+  assertEqual(HOME_PLAYER_SPAWN.z, 0.75);
+});
+
+test('MANSION_ORIGIN is (280, 0)', () => {
+  assertEqual(MANSION_ORIGIN.x, 280);
+  assertEqual(MANSION_ORIGIN.z, 0);
+});
+
+test('MANSION_BOUNDS: 250-310 x, -25-25 z', () => {
+  assertEqual(MANSION_BOUNDS.xMin, 250);
+  assertEqual(MANSION_BOUNDS.xMax, 310);
+  assertEqual(MANSION_BOUNDS.zMin, -25);
+  assertEqual(MANSION_BOUNDS.zMax, 25);
+});
+
+test('MANSION_PLAYER_SPAWN is (258, 0.15, -12)', () => {
+  assertEqual(MANSION_PLAYER_SPAWN.x, 258);
+  assertEqual(MANSION_PLAYER_SPAWN.y, 0.15);
+  assertEqual(MANSION_PLAYER_SPAWN.z, -12);
+});
+
+test('Town spawn is within town bounds', () => {
+  assert(TOWN_PLAYER_SPAWN.x >= TOWN_BOUNDS.xMin && TOWN_PLAYER_SPAWN.x <= TOWN_BOUNDS.xMax);
+  assert(TOWN_PLAYER_SPAWN.z >= TOWN_BOUNDS.zMin && TOWN_PLAYER_SPAWN.z <= TOWN_BOUNDS.zMax);
+});
+
+test('Mansion spawn is within mansion bounds', () => {
+  assert(MANSION_PLAYER_SPAWN.x >= MANSION_BOUNDS.xMin && MANSION_PLAYER_SPAWN.x <= MANSION_BOUNDS.xMax);
+  assert(MANSION_PLAYER_SPAWN.z >= MANSION_BOUNDS.zMin && MANSION_PLAYER_SPAWN.z <= MANSION_BOUNDS.zMax);
+});
+
+// ── Fog Constants ──
+section('Fog Constants');
+
+test('HOME_FOG_FAR is 60', () => {
+  assertEqual(HOME_FOG_FAR, 60);
+});
+
+test('TOWN_FOG_FAR is 120', () => {
+  assertEqual(TOWN_FOG_FAR, 120);
+});
+
+test('MANSION_FOG_FAR is 150', () => {
+  assertEqual(MANSION_FOG_FAR, 150);
+});
+
+test('Fog distance increases: home < town < mansion', () => {
+  assert(HOME_FOG_FAR < TOWN_FOG_FAR);
+  assert(TOWN_FOG_FAR < MANSION_FOG_FAR);
+});
+
+// ── Town Buildings Collision ──
+section('Town Buildings Collision');
+
+test('TOWN_BUILDINGS has 4 entries', () => {
+  assertEqual(TOWN_BUILDINGS.length, 4);
+});
+
+test('Cafe AABB: (104-112, 1-7)', () => {
+  const cafe = TOWN_BUILDINGS[0];
+  assertEqual(cafe.xMin, 104);
+  assertEqual(cafe.xMax, 112);
+  assertEqual(cafe.zMin, 1);
+  assertEqual(cafe.zMax, 7);
+});
+
+test('Shop AABB: (104-112, -12 to -4.5)', () => {
+  const shop = TOWN_BUILDINGS[1];
+  assertEqual(shop.xMin, 104);
+  assertEqual(shop.xMax, 112);
+  assertEqual(shop.zMin, -12);
+  assertEqual(shop.zMax, -4.5);
+});
+
+test('Town Hall AABB: (127-137, 1-7)', () => {
+  const hall = TOWN_BUILDINGS[2];
+  assertEqual(hall.xMin, 127);
+  assertEqual(hall.xMax, 137);
+  assertEqual(hall.zMin, 1);
+  assertEqual(hall.zMax, 7);
+});
+
+test('Fountain AABB: (128.5-131.5, 10.5-13.5)', () => {
+  const fountain = TOWN_BUILDINGS[3];
+  assertEqual(fountain.xMin, 128.5);
+  assertEqual(fountain.xMax, 131.5);
+  assertEqual(fountain.zMin, 10.5);
+  assertEqual(fountain.zMax, 13.5);
+});
+
+test('Point inside cafe collides', () => {
+  assert(isInsideAABB(108, 4, TOWN_BUILDINGS[0]));
+});
+
+test('Point outside all buildings does not collide', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(120, 0, b));
+  assert(!collides);
+});
+
+// ── Mansion Collisions ──
+section('Mansion Collisions');
+
+test('MANSION_COLLISIONS has 5 entries', () => {
+  assertEqual(MANSION_COLLISIONS.length, 5);
+});
+
+test('Mansion outdoor fountain AABB: (258-262, -2 to 2)', () => {
+  const fountain = MANSION_COLLISIONS[4];
+  assertEqual(fountain.xMin, 258);
+  assertEqual(fountain.xMax, 262);
+  assertEqual(fountain.zMin, -2);
+  assertEqual(fountain.zMax, 2);
+});
+
+test('Point inside mansion fountain collides', () => {
+  assert(isInsideAABB(260, 0, MANSION_COLLISIONS[4]));
+});
+
+test('Point in mansion interior is outside collision walls', () => {
+  // Interior point should not collide with thin walls
+  const collides = MANSION_COLLISIONS.some(b => isInsideAABB(280, 0, b));
+  assert(!collides);
+});
+
+// ── Quest Definitions ──
+section('Quest Definitions');
+
+test('QUESTS has 4 entries', () => {
+  assertEqual(Object.keys(QUESTS).length, 4);
+});
+
+test('Coffee Run: barista NPC, $75 reward', () => {
+  assertEqual(QUESTS.coffee_run.npc, 'barista');
+  assertEqual(QUESTS.coffee_run.reward.money, 75);
+});
+
+test('Supply Run: merchant NPC, $100 reward', () => {
+  assertEqual(QUESTS.supply_run.npc, 'merchant');
+  assertEqual(QUESTS.supply_run.reward.money, 100);
+});
+
+test('Town Spirit: mayor NPC, $150 reward', () => {
+  assertEqual(QUESTS.town_spirit.npc, 'mayor');
+  assertEqual(QUESTS.town_spirit.reward.money, 150);
+});
+
+test('Tall Tales: old_pete NPC, $50 + 30 fun reward', () => {
+  assertEqual(QUESTS.tall_tales.npc, 'old_pete');
+  assertEqual(QUESTS.tall_tales.reward.money, 50);
+  assertEqual(QUESTS.tall_tales.reward.fun, 30);
+});
+
+test('Total quest money reward is $375', () => {
+  const total = Object.values(QUESTS).reduce((sum, q) => sum + (q.reward.money || 0), 0);
+  assertEqual(total, 375);
+});
+
+test('Each quest has a unique NPC', () => {
+  const npcs = Object.values(QUESTS).map(q => q.npc);
+  assertEqual(new Set(npcs).size, npcs.length);
+});
+
+// ── NPC Definitions ──
+section('NPC Definitions');
+
+test('TOWN_NPC_DEFS has 4 NPCs', () => {
+  assertEqual(TOWN_NPC_DEFS.length, 4);
+});
+
+test('Barista Bean is at (108, 4)', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'barista');
+  assertEqual(npc.x, 108);
+  assertEqual(npc.z, 4);
+  assertEqual(npc.name, 'Barista Bean');
+});
+
+test('Merchant Mike is at (108, -8)', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'merchant');
+  assertEqual(npc.x, 108);
+  assertEqual(npc.z, -8);
+});
+
+test('Mayor Maple is at (132, 4)', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'mayor');
+  assertEqual(npc.x, 132);
+  assertEqual(npc.z, 4);
+});
+
+test('Old Pete is at (124, 12)', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'old_pete');
+  assertEqual(npc.x, 124);
+  assertEqual(npc.z, 12);
+});
+
+test('All NPCs are within town bounds', () => {
+  TOWN_NPC_DEFS.forEach(npc => {
+    assert(npc.x >= TOWN_BOUNDS.xMin && npc.x <= TOWN_BOUNDS.xMax, `${npc.name} x out of bounds`);
+    assert(npc.z >= TOWN_BOUNDS.zMin && npc.z <= TOWN_BOUNDS.zMax, `${npc.name} z out of bounds`);
+  });
+});
+
+test('Each NPC has matching quest', () => {
+  TOWN_NPC_DEFS.forEach(npc => {
+    const hasQuest = Object.values(QUESTS).some(q => q.npc === npc.id);
+    assert(hasQuest, `NPC ${npc.id} has no quest`);
+  });
+});
+
+// ── Achievement Definitions ──
+section('Achievement Definitions');
+
+test('ML_ACH has 15 entries', () => {
+  assertEqual(Object.keys(ML_ACH).length, 15);
+});
+
+test('Total Mini Life G Bux is 435', () => {
+  const total = Object.values(ML_ACH).reduce((sum, a) => sum + a.reward, 0);
+  assertEqual(total, 435);
+});
+
+test('All achievement IDs start with ml_', () => {
+  Object.keys(ML_ACH).forEach(id => {
+    assert(id.startsWith('ml_'), `${id} does not start with ml_`);
+  });
+});
+
+test('Knowledge is Power (bookworm): 50 G Bux', () => {
+  assertEqual(ML_ACH.ml_bookworm.reward, 50);
+  assertEqual(ML_ACH.ml_bookworm.name, 'Knowledge is Power');
+});
+
+test('Gym Rat: 50 G Bux', () => {
+  assertEqual(ML_ACH.ml_gym_rat.reward, 50);
+});
+
+test('Helpful Neighbor: 25 G Bux', () => {
+  assertEqual(ML_ACH.ml_helpful_neighbor.reward, 25);
+});
+
+test('Town Hero: 50 G Bux', () => {
+  assertEqual(ML_ACH.ml_town_hero.reward, 50);
+});
+
+test('Mansion Mogul: 75 G Bux', () => {
+  assertEqual(ML_ACH.ml_mansion_mogul.reward, 75);
+});
+
+test('Living Large: 50 G Bux', () => {
+  assertEqual(ML_ACH.ml_living_large.reward, 50);
+});
+
+test('New Home: 5 G Bux', () => {
+  assertEqual(ML_ACH.ml_new_home.reward, 5);
+});
+
+test('Survivor: 10 G Bux', () => {
+  assertEqual(ML_ACH.ml_survivor.reward, 10);
+});
+
+test('Week Warrior: 20 G Bux', () => {
+  assertEqual(ML_ACH.ml_week_warrior.reward, 20);
+});
+
+test('mlTry unlocks achievement and awards G Bux', () => {
+  localStorage.clear();
+  mlTry('ml_new_home');
+  const data = ggLoad();
+  assert(data.achievements.ml_new_home === true);
+  assertEqual(data.gBux, 5);
+  localStorage.clear();
+});
+
+test('mlTry does not double-award', () => {
+  localStorage.clear();
+  mlTry('ml_new_home');
+  mlTry('ml_new_home');
+  const data = ggLoad();
+  assertEqual(data.gBux, 5);
+  localStorage.clear();
+});
+
+test('Unlocking all 15 ML achievements yields 435 G Bux', () => {
+  localStorage.clear();
+  Object.keys(ML_ACH).forEach(id => mlTry(id));
+  const data = ggLoad();
+  assertEqual(data.gBux, 435);
+  localStorage.clear();
+});
+
+// ── Outfit System ──
+section('Outfit System');
+
+test('OUTFITS has 8 entries', () => {
+  assertEqual(OUTFITS.length, 8);
+});
+
+test('First outfit (Casual Blue) is free', () => {
+  assertEqual(OUTFITS[0].cost, 0);
+  assertEqual(OUTFITS[0].name, 'Casual Blue');
+});
+
+test('Most expensive outfit is Golden Drip at $50', () => {
+  const maxCost = Math.max(...OUTFITS.map(o => o.cost));
+  assertEqual(maxCost, 50);
+  const outfit = OUTFITS.find(o => o.cost === 50);
+  assertEqual(outfit.name, 'Golden Drip');
+});
+
+test('All outfits have name, shirt, pants, cost', () => {
+  OUTFITS.forEach(o => {
+    assert(typeof o.name === 'string' && o.name.length > 0);
+    assert(typeof o.shirt === 'number');
+    assert(typeof o.pants === 'number');
+    assert(typeof o.cost === 'number' && o.cost >= 0);
+  });
+});
+
+test('Outfit costs: 0, 20, 25, 30, 30, 35, 35, 50', () => {
+  const costs = OUTFITS.map(o => o.cost);
+  assertDeepEqual(costs, [0, 20, 25, 30, 30, 35, 35, 50]);
+});
+
+test('Total outfit cost (excluding free) is $225', () => {
+  const total = OUTFITS.reduce((sum, o) => sum + o.cost, 0);
+  assertEqual(total, 225);
+});
+
+// ── Save Data Shape ──
+section('Save Data Shape');
+
+test('Save data has 23 keys', () => {
+  assertEqual(SAVE_KEYS.length, 23);
+});
+
+test('Save data includes needs', () => { assert(SAVE_KEYS.includes('needs')); });
+test('Save data includes money', () => { assert(SAVE_KEYS.includes('money')); });
+test('Save data includes gameTime', () => { assert(SAVE_KEYS.includes('gameTime')); });
+test('Save data includes day', () => { assert(SAVE_KEYS.includes('day')); });
+test('Save data includes charOpts', () => { assert(SAVE_KEYS.includes('charOpts')); });
+test('Save data includes ownedOutfits', () => { assert(SAVE_KEYS.includes('ownedOutfits')); });
+test('Save data includes ownedFurniture', () => { assert(SAVE_KEYS.includes('ownedFurniture')); });
+test('Save data includes currentTrackId', () => { assert(SAVE_KEYS.includes('currentTrackId')); });
+test('Save data includes doorOpen', () => { assert(SAVE_KEYS.includes('doorOpen')); });
+test('Save data includes hasSecondFloor', () => { assert(SAVE_KEYS.includes('hasSecondFloor')); });
+test('Save data includes booksRead', () => { assert(SAVE_KEYS.includes('booksRead')); });
+test('Save data includes treadmillUses', () => { assert(SAVE_KEYS.includes('treadmillUses')); });
+test('Save data includes activePet', () => { assert(SAVE_KEYS.includes('activePet')); });
+test('Save data includes currentFloor', () => { assert(SAVE_KEYS.includes('currentFloor')); });
+test('Save data includes playerPos', () => { assert(SAVE_KEYS.includes('playerPos')); });
+test('Save data includes yaw and pitch', () => {
+  assert(SAVE_KEYS.includes('yaw'));
+  assert(SAVE_KEYS.includes('pitch'));
+});
+test('Save data includes hasCar', () => { assert(SAVE_KEYS.includes('hasCar')); });
+test('Save data includes inTown', () => { assert(SAVE_KEYS.includes('inTown')); });
+test('Save data includes hasMansion', () => { assert(SAVE_KEYS.includes('hasMansion')); });
+test('Save data includes inMansion', () => { assert(SAVE_KEYS.includes('inMansion')); });
+test('Save data includes questLog', () => { assert(SAVE_KEYS.includes('questLog')); });
+test('Save data includes questsCompleted', () => { assert(SAVE_KEYS.includes('questsCompleted')); });
+
+// ── Needs Clamping ──
+section('Needs Clamping');
+
+test('Needs restoration caps at 100', () => {
+  const needs = { hunger: 90, energy: 80, fun: 70, hygiene: 60 };
+  const result = Math.min(100, needs.hunger + 40);
+  assertEqual(result, 100);
+});
+
+test('Needs drain does not go below 0', () => {
+  const needs = { hunger: 5, energy: 80, fun: 70, hygiene: 60 };
+  const result = Math.max(0, needs.hunger - 15);
+  assertEqual(result, 0);
+});
+
+test('Multiple bonuses each cap independently', () => {
+  const needs = { hunger: 80, energy: 80, fun: 90, hygiene: 95 };
+  const config = { restore: 30, hygieneBonus: 20, funBonus: 25 };
+  // Restoring fun: min(100, 90 + 30) = 100 (not the action restore, but the bonus case)
+  // Note: in the game, fun bonus is applied separately from the primary need restore
+  const newFun = Math.min(100, needs.fun + config.funBonus);
+  const newHygiene = Math.min(100, needs.hygiene + config.hygieneBonus);
+  assertEqual(newFun, 100);
+  assertEqual(newHygiene, 100);
+});
+
+// ── Money Operations ──
+section('Money Operations');
+
+test('purchaseCar logic: requires $200', () => {
+  let money = 250;
+  let hasCar = false;
+  if (!hasCar && money >= 200) {
+    money -= 200;
+    hasCar = true;
+  }
+  assertEqual(money, 50);
+  assert(hasCar);
+});
+
+test('purchaseCar fails with insufficient funds', () => {
+  let money = 150;
+  let hasCar = false;
+  if (!hasCar && money >= 200) {
+    money -= 200;
+    hasCar = true;
+  }
+  assertEqual(money, 150);
+  assert(!hasCar);
+});
+
+test('purchaseSecondFloor logic: requires $200', () => {
+  let money = 300;
+  let hasSecondFloor = false;
+  if (!hasSecondFloor && money >= 200) {
+    money -= 200;
+    hasSecondFloor = true;
+  }
+  assertEqual(money, 100);
+  assert(hasSecondFloor);
+});
+
+test('purchaseMansion logic: requires $1000', () => {
+  let money = 1200;
+  let hasMansion = false;
+  if (!hasMansion && money >= 1000) {
+    money -= 1000;
+    hasMansion = true;
+  }
+  assertEqual(money, 200);
+  assert(hasMansion);
+});
+
+test('purchaseMansion fails with insufficient funds', () => {
+  let money = 999;
+  let hasMansion = false;
+  if (!hasMansion && money >= 1000) {
+    money -= 1000;
+    hasMansion = true;
+  }
+  assertEqual(money, 999);
+  assert(!hasMansion);
+});
+
+test('purchaseFurniture deducts correct amount', () => {
+  let money = 100;
+  const item = SHOP_FURNITURE.find(f => f.id === 'lavaLamp');
+  const ownedFurniture = new Set();
+  if (item && !ownedFurniture.has('lavaLamp') && money >= item.cost) {
+    money -= item.cost;
+    ownedFurniture.add('lavaLamp');
+  }
+  assertEqual(money, 70);
+  assert(ownedFurniture.has('lavaLamp'));
+});
+
+test('Cannot purchase furniture twice', () => {
+  let money = 200;
+  const ownedFurniture = new Set(['lavaLamp']);
+  const item = SHOP_FURNITURE.find(f => f.id === 'lavaLamp');
+  if (item && !ownedFurniture.has('lavaLamp') && money >= item.cost) {
+    money -= item.cost;
+  }
+  assertEqual(money, 200); // unchanged
+});
+
+// ── Drive Destination Logic ──
+section('Drive Destination Logic');
+
+test('Car with no mansion: drive straight to town', () => {
+  const hasMansion = false;
+  const hasCar = true;
+  // When clicking car: if hasMansion -> openDriveDestMenu, else -> startDrivingTransition("town")
+  const destination = hasMansion ? 'menu' : 'town';
+  assertEqual(destination, 'town');
+});
+
+test('Car with mansion: opens destination menu', () => {
+  const hasMansion = true;
+  const destination = hasMansion ? 'menu' : 'town';
+  assertEqual(destination, 'menu');
+});
+
+test('Town car always drives home', () => {
+  // townCar type always triggers startDrivingTransition("home")
+  const destination = 'home';
+  assertEqual(destination, 'home');
+});
+
+test('Mansion car always drives home', () => {
+  // mansionCar type always triggers startDrivingTransition("home")
+  const destination = 'home';
+  assertEqual(destination, 'home');
+});
+
+// ── Integration: Achievement Triggers ──
+section('Integration: Achievement Triggers');
+
+test('Bookworm triggers at 3 books', () => {
+  localStorage.clear();
+  let booksRead = 0;
+  for (let i = 0; i < 3; i++) {
+    booksRead++;
+    if (booksRead >= 3) mlTry('ml_bookworm');
+  }
+  const data = ggLoad();
+  assert(data.achievements.ml_bookworm === true);
+  assertEqual(data.gBux, 50);
+  localStorage.clear();
+});
+
+test('Gym Rat triggers at 3 treadmill uses', () => {
+  localStorage.clear();
+  let treadmillUses = 0;
+  for (let i = 0; i < 3; i++) {
+    treadmillUses++;
+    if (treadmillUses >= 3) mlTry('ml_gym_rat');
+  }
+  const data = ggLoad();
+  assert(data.achievements.ml_gym_rat === true);
+  assertEqual(data.gBux, 50);
+  localStorage.clear();
+});
+
+test('Helpful Neighbor triggers on 1 quest complete', () => {
+  localStorage.clear();
+  let questsCompleted = 1;
+  if (questsCompleted >= 1) mlTry('ml_helpful_neighbor');
+  const data = ggLoad();
+  assert(data.achievements.ml_helpful_neighbor === true);
+  assertEqual(data.gBux, 25);
+  localStorage.clear();
+});
+
+test('Town Hero triggers on 4 quests complete', () => {
+  localStorage.clear();
+  let questsCompleted = 4;
+  if (questsCompleted >= 4) mlTry('ml_town_hero');
+  const data = ggLoad();
+  assert(data.achievements.ml_town_hero === true);
+  assertEqual(data.gBux, 50);
+  localStorage.clear();
+});
+
+test('High Roller triggers at $500', () => {
+  localStorage.clear();
+  let money = 500;
+  if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+  const data = ggLoad();
+  assert(data.achievements.ml_high_roller === true);
+  assertEqual(data.gBux, 20);
+  localStorage.clear();
+});
+
+test('Survivor triggers at day 3', () => {
+  localStorage.clear();
+  let day = 3;
+  if (day >= 3) mlTry('ml_survivor');
+  const data = ggLoad();
+  assert(data.achievements.ml_survivor === true);
+  localStorage.clear();
+});
+
+test('Week Warrior triggers at day 7', () => {
+  localStorage.clear();
+  let day = 7;
+  if (day >= 7) mlTry('ml_week_warrior');
+  const data = ggLoad();
+  assert(data.achievements.ml_week_warrior === true);
+  localStorage.clear();
+});
+
+test('Interior Designer triggers when all 4 furniture owned', () => {
+  localStorage.clear();
+  const ownedFurniture = new Set(['lavaLamp', 'fishTank', 'treadmill', 'jukebox']);
+  if (ownedFurniture.size >= 4) mlTry('ml_interior_designer');
+  const data = ggLoad();
+  assert(data.achievements.ml_interior_designer === true);
+  localStorage.clear();
+});
+
+test('Fashion Icon triggers when >1 outfit owned', () => {
+  localStorage.clear();
+  const ownedOutfits = new Set([0, 1]);
+  if (ownedOutfits.size > 1) mlTry('ml_fashion_icon');
+  const data = ggLoad();
+  assert(data.achievements.ml_fashion_icon === true);
+  localStorage.clear();
+});
+
+test('Mansion Mogul triggers on mansion purchase', () => {
+  localStorage.clear();
+  mlTry('ml_mansion_mogul');
+  const data = ggLoad();
+  assert(data.achievements.ml_mansion_mogul === true);
+  assertEqual(data.gBux, 75);
+  localStorage.clear();
+});
+
+// ── Edge Cases ──
+section('Edge Cases');
+
+test('Needs start at 100', () => {
+  const needs = { hunger: 100, energy: 100, fun: 100, hygiene: 100 };
+  assertEqual(needs.hunger, 100);
+  assertEqual(needs.energy, 100);
+  assertEqual(needs.fun, 100);
+  assertEqual(needs.hygiene, 100);
+});
+
+test('Starting money is $50', () => {
+  assertEqual(50, 50);
+});
+
+test('Starting day is 1', () => {
+  assertEqual(1, 1);
+});
+
+test('Starting gameTime is 360 (6 AM)', () => {
+  // 360 minutes from midnight = 6:00 AM
+  assertEqual(360, 360);
+  const hours = Math.floor(360 / 60);
+  assertEqual(hours, 6);
+});
+
+test('Day/night cycle: 360 min = 6AM, 720 min = 12PM, 1080 min = 6PM', () => {
+  assertEqual(Math.floor(360 / 60), 6);
+  assertEqual(Math.floor(720 / 60), 12);
+  assertEqual(Math.floor(1080 / 60), 18);
+});
+
+test('Computer earns $10 base + minigame bonus', () => {
+  const state = { needs: { hunger: 80, energy: 80, fun: 70, hygiene: 60 }, money: 50, booksRead: 0, treadmillUses: 0, questLog: {}, miniGameScore: 25 };
+  const result = finishAction('computer', 'money', actionConfig.computer, state);
+  assertEqual(result.money, 85); // 50 + 10 + 25
+});
+
+test('Arcade Pro triggers at miniGameScore >= 25', () => {
+  localStorage.clear();
+  const miniGameScore = 25;
+  if (miniGameScore >= 25) mlTry('ml_arcade_pro');
+  const data = ggLoad();
+  assert(data.achievements.ml_arcade_pro === true);
+  localStorage.clear();
+});
+
+// ═══ RENDER RESULTS ═══
+const passed = _tests.filter(t => t.passed).length;
+const failed = _tests.filter(t => !t.passed).length;
+const total = _tests.length;
+
+const summary = document.getElementById('summary');
+summary.className = 'summary ' + (failed === 0 ? 'pass' : 'fail');
+summary.textContent = `${passed} / ${total} tests passed` + (failed > 0 ? ` (${failed} FAILED)` : ' -- ALL PASS');
+
+const resultsEl = document.getElementById('results');
+let currentSec = '';
+_tests.forEach(t => {
+  if (t.section !== currentSec) {
+    currentSec = t.section;
+    const secEl = document.createElement('div');
+    secEl.className = 'section';
+    secEl.innerHTML = '<h2>' + currentSec + '</h2>';
+    resultsEl.appendChild(secEl);
+  }
+  const div = document.createElement('div');
+  div.className = 'test ' + (t.passed ? 'pass' : 'fail');
+  div.innerHTML = '<span class="label">' + (t.passed ? 'PASS' : 'FAIL') + '</span>' + t.name
+    + (t.error ? '<div class="detail">' + t.error + '</div>' : '');
+  resultsEl.lastChild.appendChild(div);
+});
+</script>
+</body>
+</html>

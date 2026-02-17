@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Graham Games Launcher - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #c9a84c; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #c9a84c; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Graham Games Launcher - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0, _currentGroup = '';
+const _results = document.getElementById('results');
+
+function group(name) {
+  _currentGroup = name;
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertDeepEqual(actual, expected, name) {
+  const pass = JSON.stringify(actual) === JSON.stringify(expected);
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ', got ' + actual);
+}
+
+function showSummary() {
+  const total = _passed + _failed;
+  document.getElementById('summary').innerHTML =
+    '<span class="pass">' + _passed + ' passed</span> / ' +
+    '<span class="fail">' + _failed + ' failed</span> / ' +
+    total + ' total';
+  document.title = (_failed === 0 ? 'ALL PASS' : _failed + ' FAIL') + ' - Launcher Tests';
+}
+
+// ============================================================
+// MOCK BROWSER APIs
+// ============================================================
+const mockStorage = {};
+const localStorage = {
+  getItem(key) { return mockStorage[key] || null; },
+  setItem(key, val) { mockStorage[key] = val; },
+  removeItem(key) { delete mockStorage[key]; },
+  clear() { for (const k in mockStorage) delete mockStorage[k]; },
+};
+
+// ============================================================
+// EXTRACT SOURCE CODE UNDER TEST
+// (Re-declare the functions and data from graham-games/index.html)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+const ALL_ACHIEVEMENTS = [
+  { group: 'HURGVIBBIT', items: [
+    { id: 'hurv_first_timer',   name: 'First Timer',     desc: 'Complete a round',             reward: 5 },
+    { id: 'hurv_combo_10',      name: 'Combo Starter',   desc: 'Get a 10x combo',              reward: 10 },
+    { id: 'hurv_grade_a',       name: 'Grade A Student',  desc: 'Get an A grade',               reward: 15 },
+    { id: 'hurv_grade_s',       name: 'Perfectionist',   desc: 'Get an S grade',               reward: 25 },
+    { id: 'hurv_combo_25',      name: 'Combo King',      desc: 'Get a 25x combo',              reward: 20 },
+    { id: 'hurv_hard_complete', name: 'Hard Rocker',     desc: 'Complete all rounds on Hard',   reward: 30 },
+    { id: 'hurv_score_5000',    name: 'Score Hunter',    desc: 'Reach 5,000 points',           reward: 15 },
+    { id: 'hurv_score_15000',   name: 'Score Legend',     desc: 'Reach 15,000 points',          reward: 25 },
+    { id: 'hurv_flawless',      name: 'Flawless',        desc: '100% hit rate on any round',   reward: 30 },
+    { id: 'hurv_rhythm_master', name: 'Rhythm Master',   desc: 'Get S grade on Hard',          reward: 50 },
+  ]},
+  { group: 'MINI LIFE', items: [
+    { id: 'ml_new_home',          name: 'New Home',          desc: 'Start your first game',             reward: 5 },
+    { id: 'ml_survivor',          name: 'Survivor',          desc: 'Survive 3 days',                    reward: 10 },
+    { id: 'ml_week_warrior',      name: 'Week Warrior',      desc: 'Survive 7 days',                    reward: 20 },
+    { id: 'ml_shopaholic',        name: 'Shopaholic',        desc: 'Buy any furniture',                 reward: 10 },
+    { id: 'ml_interior_designer', name: 'Interior Designer', desc: 'Buy all 4 furniture items',         reward: 25 },
+    { id: 'ml_fashion_icon',      name: 'Fashion Icon',      desc: 'Buy any outfit',                    reward: 10 },
+    { id: 'ml_moving_up',         name: 'Moving Up',         desc: 'Buy the second floor',              reward: 20 },
+    { id: 'ml_arcade_pro',        name: 'Arcade Pro',        desc: 'Score 25+ in computer minigame',    reward: 15 },
+    { id: 'ml_high_roller',       name: 'High Roller',       desc: 'Have $500 at once',                 reward: 20 },
+    { id: 'ml_living_large',      name: 'Living Large',      desc: 'Own everything',                    reward: 50 },
+    { id: 'ml_bookworm',          name: 'Knowledge is Power', desc: 'Read 3 books',                     reward: 50 },
+    { id: 'ml_gym_rat',           name: 'Gym Rat',            desc: 'Use the treadmill 3 times',        reward: 50 },
+    { id: 'ml_helpful_neighbor',  name: 'Helpful Neighbor',   desc: 'Complete a town quest',             reward: 25 },
+    { id: 'ml_town_hero',         name: 'Town Hero',          desc: 'Complete all 4 town quests',        reward: 50 },
+    { id: 'ml_mansion_mogul',     name: 'Mansion Mogul',      desc: 'Purchase the mansion',              reward: 75 },
+  ]},
+];
+
+const SHOP_ITEMS = [
+  { id: 'hurv_neon_theme', name: 'Neon Theme',     desc: 'Neon color scheme for Hurgvibbit',        cost: 50,  icon: '&#127752;', game: 'Hurgvibbit' },
+  { id: 'hurv_turbo_mode', name: 'Turbo Mode',     desc: 'Insanely fast difficulty for Hurgvibbit',  cost: 75,  icon: '&#9889;',   game: 'Hurgvibbit' },
+  { id: 'ml_pet_dog',      name: 'Pet Dog',         desc: 'A loyal dog that follows you around',     cost: 50,  icon: '&#128054;', game: 'Mini Life' },
+  { id: 'ml_pool',         name: 'Swimming Pool',   desc: 'Outdoor pool — restores fun & hygiene',   cost: 100, icon: '&#127946;', game: 'Mini Life' },
+  { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
+];
+
+function purchaseItem(id, cost) {
+  const data = ggLoad();
+  if (data.shopPurchases[id] || data.gBux < cost) return false;
+  data.gBux -= cost;
+  data.shopPurchases[id] = true;
+  ggSave(data);
+  return true;
+}
+
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// --- ggLoad / ggSave ---
+group('G Bux Data Functions: ggLoad / ggSave');
+
+localStorage.clear();
+{
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad returns gBux=0 on empty storage');
+  assertDeepEqual(data.achievements, {}, 'ggLoad returns empty achievements on empty storage');
+  assertDeepEqual(data.shopPurchases, {}, 'ggLoad returns empty shopPurchases on empty storage');
+}
+
+{
+  const data = { gBux: 42, achievements: { 'test': true }, shopPurchases: { 'shop_item': true } };
+  ggSave(data);
+  const loaded = ggLoad();
+  assertEqual(loaded.gBux, 42, 'ggSave persists and ggLoad reads gBux');
+  assertEqual(loaded.achievements.test, true, 'ggSave persists achievements');
+  assertEqual(loaded.shopPurchases.shop_item, true, 'ggSave persists shopPurchases');
+}
+
+localStorage.clear();
+{
+  localStorage.setItem(GG_KEY, 'NOT VALID JSON {{{');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad handles corrupted JSON gracefully (returns default gBux)');
+  assertDeepEqual(data.achievements, {}, 'ggLoad handles corrupted JSON (returns default achievements)');
+  assertDeepEqual(data.shopPurchases, {}, 'ggLoad handles corrupted JSON (returns default shopPurchases)');
+}
+
+localStorage.clear();
+{
+  localStorage.setItem(GG_KEY, 'null');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad handles null in storage gracefully');
+}
+
+localStorage.clear();
+{
+  localStorage.setItem(GG_KEY, '0');
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad handles falsy non-object in storage');
+}
+
+// --- Default shape ---
+group('G Bux Data Shape');
+
+localStorage.clear();
+{
+  const data = ggLoad();
+  assert(typeof data === 'object' && data !== null, 'ggLoad returns an object');
+  assert('gBux' in data, 'Default data has gBux property');
+  assert('achievements' in data, 'Default data has achievements property');
+  assert('shopPurchases' in data, 'Default data has shopPurchases property');
+  assertEqual(typeof data.gBux, 'number', 'gBux is a number');
+  assertEqual(typeof data.achievements, 'object', 'achievements is an object');
+  assertEqual(typeof data.shopPurchases, 'object', 'shopPurchases is an object');
+}
+
+// --- Achievement Registry ---
+group('Achievement Registry');
+
+{
+  const allItems = [];
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => allItems.push(i)));
+  assertEqual(allItems.length, 25, 'Total achievements count is 25');
+}
+
+{
+  assertEqual(ALL_ACHIEVEMENTS.length, 2, 'Two achievement groups exist');
+  assertEqual(ALL_ACHIEVEMENTS[0].group, 'HURGVIBBIT', 'First group is HURGVIBBIT');
+  assertEqual(ALL_ACHIEVEMENTS[1].group, 'MINI LIFE', 'Second group is MINI LIFE');
+}
+
+{
+  assertEqual(ALL_ACHIEVEMENTS[0].items.length, 10, 'Hurgvibbit has 10 achievements');
+  assertEqual(ALL_ACHIEVEMENTS[1].items.length, 15, 'Mini Life has 15 achievements');
+}
+
+{
+  const allIds = [];
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => allIds.push(i.id)));
+  const uniqueIds = new Set(allIds);
+  assertEqual(uniqueIds.size, allIds.length, 'All achievement IDs are unique');
+}
+
+{
+  let totalReward = 0;
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalReward += i.reward));
+  assertEqual(totalReward, 665, 'Total earnable G Bux across all achievements is 665');
+}
+
+{
+  let hurvTotal = 0;
+  ALL_ACHIEVEMENTS[0].items.forEach(i => hurvTotal += i.reward);
+  assertEqual(hurvTotal, 225, 'Hurgvibbit total rewards = 225');
+}
+
+{
+  let mlTotal = 0;
+  ALL_ACHIEVEMENTS[1].items.forEach(i => mlTotal += i.reward);
+  assertEqual(mlTotal, 440, 'Mini Life total rewards = 440');
+}
+
+{
+  // Check specific achievements exist with correct rewards
+  const find = (id) => { let r = null; ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => { if (i.id === id) r = i; })); return r; };
+  assertEqual(find('hurv_first_timer').reward, 5, 'hurv_first_timer reward = 5');
+  assertEqual(find('hurv_rhythm_master').reward, 50, 'hurv_rhythm_master reward = 50');
+  assertEqual(find('ml_new_home').reward, 5, 'ml_new_home reward = 5');
+  assertEqual(find('ml_living_large').reward, 50, 'ml_living_large reward = 50');
+  assertEqual(find('ml_mansion_mogul').reward, 75, 'ml_mansion_mogul reward = 75');
+  assertEqual(find('ml_bookworm').reward, 50, 'ml_bookworm reward = 50');
+  assertEqual(find('ml_gym_rat').reward, 50, 'ml_gym_rat reward = 50');
+  assertEqual(find('ml_town_hero').reward, 50, 'ml_town_hero reward = 50');
+  assertEqual(find('ml_helpful_neighbor').reward, 25, 'ml_helpful_neighbor reward = 25');
+}
+
+{
+  // All achievements have required fields
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(item => {
+    assert(typeof item.id === 'string' && item.id.length > 0, 'Achievement "' + item.name + '" has non-empty id');
+    assert(typeof item.name === 'string' && item.name.length > 0, 'Achievement "' + item.id + '" has non-empty name');
+    assert(typeof item.desc === 'string' && item.desc.length > 0, 'Achievement "' + item.id + '" has non-empty desc');
+    assert(typeof item.reward === 'number' && item.reward > 0, 'Achievement "' + item.id + '" has positive reward');
+  }));
+}
+
+// --- Shop Items ---
+group('Shop Items');
+
+{
+  assertEqual(SHOP_ITEMS.length, 5, 'Shop has 5 items');
+}
+
+{
+  let totalCost = 0;
+  SHOP_ITEMS.forEach(i => totalCost += i.cost);
+  assertEqual(totalCost, 425, 'Total shop cost is 425 G Bux');
+}
+
+{
+  assertEqual(SHOP_ITEMS[0].id, 'hurv_neon_theme', 'Shop item 0 is hurv_neon_theme');
+  assertEqual(SHOP_ITEMS[0].cost, 50, 'Neon Theme costs 50');
+  assertEqual(SHOP_ITEMS[1].id, 'hurv_turbo_mode', 'Shop item 1 is hurv_turbo_mode');
+  assertEqual(SHOP_ITEMS[1].cost, 75, 'Turbo Mode costs 75');
+  assertEqual(SHOP_ITEMS[2].id, 'ml_pet_dog', 'Shop item 2 is ml_pet_dog');
+  assertEqual(SHOP_ITEMS[2].cost, 50, 'Pet Dog costs 50');
+  assertEqual(SHOP_ITEMS[3].id, 'ml_pool', 'Shop item 3 is ml_pool');
+  assertEqual(SHOP_ITEMS[3].cost, 100, 'Swimming Pool costs 100');
+  assertEqual(SHOP_ITEMS[4].id, 'ml_basement', 'Shop item 4 is ml_basement');
+  assertEqual(SHOP_ITEMS[4].cost, 150, 'Basement costs 150');
+}
+
+{
+  const ids = SHOP_ITEMS.map(i => i.id);
+  const unique = new Set(ids);
+  assertEqual(unique.size, ids.length, 'All shop item IDs are unique');
+}
+
+{
+  SHOP_ITEMS.forEach(item => {
+    assert(typeof item.name === 'string' && item.name.length > 0, 'Shop item "' + item.id + '" has a name');
+    assert(typeof item.desc === 'string' && item.desc.length > 0, 'Shop item "' + item.id + '" has a description');
+    assert(typeof item.cost === 'number' && item.cost > 0, 'Shop item "' + item.id + '" has positive cost');
+    assert(typeof item.game === 'string', 'Shop item "' + item.id + '" has game association');
+  });
+}
+
+{
+  const hurvItems = SHOP_ITEMS.filter(i => i.game === 'Hurgvibbit');
+  const mlItems = SHOP_ITEMS.filter(i => i.game === 'Mini Life');
+  assertEqual(hurvItems.length, 2, '2 shop items for Hurgvibbit');
+  assertEqual(mlItems.length, 3, '3 shop items for Mini Life');
+}
+
+// --- Achievement Unlock Logic ---
+group('Achievement Unlock Logic');
+
+localStorage.clear();
+{
+  const result = ggUnlockAchievement('test_ach', 'Test', 10);
+  assertEqual(result, true, 'First unlock returns true');
+  const data = ggLoad();
+  assertEqual(data.gBux, 10, 'G Bux increased by reward amount');
+  assertEqual(data.achievements.test_ach, true, 'Achievement marked as earned');
+}
+
+{
+  const result = ggUnlockAchievement('test_ach', 'Test', 10);
+  assertEqual(result, false, 'Duplicate unlock returns false');
+  const data = ggLoad();
+  assertEqual(data.gBux, 10, 'G Bux not double-awarded on duplicate');
+}
+
+localStorage.clear();
+{
+  ggUnlockAchievement('a1', 'A1', 5);
+  ggUnlockAchievement('a2', 'A2', 15);
+  ggUnlockAchievement('a3', 'A3', 30);
+  const data = ggLoad();
+  assertEqual(data.gBux, 50, 'Multiple achievement rewards accumulate correctly (5+15+30=50)');
+  assertEqual(Object.keys(data.achievements).length, 3, 'Three achievements tracked');
+}
+
+// --- Shop Purchase Logic ---
+group('Shop Purchase Logic');
+
+localStorage.clear();
+{
+  // Set up with 100 G Bux
+  ggSave({ gBux: 100, achievements: {}, shopPurchases: {} });
+  const result = purchaseItem('hurv_neon_theme', 50);
+  assertEqual(result, true, 'Purchase succeeds with sufficient balance');
+  const data = ggLoad();
+  assertEqual(data.gBux, 50, 'Balance reduced by cost after purchase');
+  assertEqual(data.shopPurchases.hurv_neon_theme, true, 'Item marked as purchased');
+}
+
+{
+  const result = purchaseItem('hurv_neon_theme', 50);
+  assertEqual(result, false, 'Cannot purchase already-owned item');
+  const data = ggLoad();
+  assertEqual(data.gBux, 50, 'Balance unchanged on double-purchase attempt');
+}
+
+localStorage.clear();
+{
+  ggSave({ gBux: 10, achievements: {}, shopPurchases: {} });
+  const result = purchaseItem('ml_basement', 150);
+  assertEqual(result, false, 'Purchase fails with insufficient balance');
+  const data = ggLoad();
+  assertEqual(data.gBux, 10, 'Balance unchanged on failed purchase');
+  assertEqual(data.shopPurchases.ml_basement, undefined, 'Item not marked as purchased on fail');
+}
+
+localStorage.clear();
+{
+  ggSave({ gBux: 50, achievements: {}, shopPurchases: {} });
+  purchaseItem('ml_pet_dog', 50);
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'Purchase can bring balance to exactly 0');
+  assertEqual(data.shopPurchases.ml_pet_dog, true, 'Item purchased at exact balance');
+}
+
+localStorage.clear();
+{
+  ggSave({ gBux: 425, achievements: {}, shopPurchases: {} });
+  SHOP_ITEMS.forEach(item => {
+    purchaseItem(item.id, item.cost);
+  });
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'Buying all 5 items from 425 G Bux leaves 0');
+  assertEqual(Object.keys(data.shopPurchases).length, 5, 'All 5 items purchased');
+}
+
+// --- Economy Totals ---
+group('Economy Balance');
+
+{
+  let totalEarnable = 0;
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalEarnable += i.reward));
+  let totalShopCost = 0;
+  SHOP_ITEMS.forEach(i => totalShopCost += i.cost);
+  assertEqual(totalEarnable, 665, 'Total earnable G Bux = 665');
+  assertEqual(totalShopCost, 425, 'Total shop cost = 425');
+  assert(totalEarnable > totalShopCost, 'Earnable exceeds shop cost (player can buy everything)');
+  assertEqual(totalEarnable - totalShopCost, 240, 'Surplus after buying everything = 240');
+}
+
+// --- Cross-references ---
+group('Cross-references: Achievement IDs vs Shop IDs');
+
+{
+  const achIds = new Set();
+  ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => achIds.add(i.id)));
+  const shopIds = new Set(SHOP_ITEMS.map(i => i.id));
+  // Shop IDs should NOT overlap with achievement IDs (different namespaces)
+  let overlap = 0;
+  shopIds.forEach(id => { if (achIds.has(id)) overlap++; });
+  assertEqual(overlap, 0, 'No overlap between achievement IDs and shop item IDs');
+}
+
+// --- GG_KEY constant ---
+group('Constants');
+
+{
+  assertEqual(GG_KEY, 'graham-games-data', 'GG_KEY is graham-games-data');
+}
+
+// --- Edge cases ---
+group('Edge Cases');
+
+localStorage.clear();
+{
+  // ggLoad with undefined
+  localStorage.removeItem(GG_KEY);
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad returns default when key is missing');
+}
+
+{
+  // Save then load preserves exact data
+  const original = { gBux: 999, achievements: { a: true, b: true }, shopPurchases: { x: true } };
+  ggSave(original);
+  const loaded = ggLoad();
+  assertEqual(loaded.gBux, 999, 'Exact gBux preserved through save/load cycle');
+  assertEqual(Object.keys(loaded.achievements).length, 2, 'Exact achievements count preserved');
+  assertEqual(Object.keys(loaded.shopPurchases).length, 1, 'Exact shopPurchases count preserved');
+}
+
+localStorage.clear();
+{
+  // Unlock achievement with 0 starting balance
+  const result = ggUnlockAchievement('zero_start', 'Zero', 25);
+  const data = ggLoad();
+  assertEqual(data.gBux, 25, 'Achievement unlock from 0 balance works correctly');
+}
+
+localStorage.clear();
+{
+  // Multiple rapid save/load cycles
+  for (let i = 0; i < 100; i++) {
+    ggSave({ gBux: i, achievements: {}, shopPurchases: {} });
+  }
+  const data = ggLoad();
+  assertEqual(data.gBux, 99, 'Last save wins after 100 rapid save cycles');
+}
+
+// --- Achievement Name Verification ---
+group('Achievement Names and Descriptions');
+
+{
+  const find = (id) => { let r = null; ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => { if (i.id === id) r = i; })); return r; };
+  assertEqual(find('ml_bookworm').name, 'Knowledge is Power', 'ml_bookworm name is Knowledge is Power');
+  assertEqual(find('ml_gym_rat').name, 'Gym Rat', 'ml_gym_rat name is Gym Rat');
+  assertEqual(find('ml_helpful_neighbor').name, 'Helpful Neighbor', 'ml_helpful_neighbor name is Helpful Neighbor');
+  assertEqual(find('ml_town_hero').name, 'Town Hero', 'ml_town_hero name is Town Hero');
+  assertEqual(find('ml_mansion_mogul').name, 'Mansion Mogul', 'ml_mansion_mogul name is Mansion Mogul');
+  assertEqual(find('hurv_grade_s').name, 'Perfectionist', 'hurv_grade_s name is Perfectionist');
+  assertEqual(find('hurv_flawless').name, 'Flawless', 'hurv_flawless name is Flawless');
+}
+
+// --- Shop Item Names ---
+group('Shop Item Details');
+
+{
+  const neon = SHOP_ITEMS.find(i => i.id === 'hurv_neon_theme');
+  assertEqual(neon.name, 'Neon Theme', 'Neon Theme name correct');
+  assertEqual(neon.game, 'Hurgvibbit', 'Neon Theme game is Hurgvibbit');
+
+  const turbo = SHOP_ITEMS.find(i => i.id === 'hurv_turbo_mode');
+  assertEqual(turbo.name, 'Turbo Mode', 'Turbo Mode name correct');
+  assertEqual(turbo.game, 'Hurgvibbit', 'Turbo Mode game is Hurgvibbit');
+
+  const dog = SHOP_ITEMS.find(i => i.id === 'ml_pet_dog');
+  assertEqual(dog.name, 'Pet Dog', 'Pet Dog name correct');
+  assertEqual(dog.game, 'Mini Life', 'Pet Dog game is Mini Life');
+
+  const pool = SHOP_ITEMS.find(i => i.id === 'ml_pool');
+  assertEqual(pool.name, 'Swimming Pool', 'Swimming Pool name correct');
+
+  const basement = SHOP_ITEMS.find(i => i.id === 'ml_basement');
+  assertEqual(basement.name, 'Basement', 'Basement name correct');
+}
+
+// --- Integration: Earn achievements then buy items ---
+group('Integration: Earn and Spend');
+
+localStorage.clear();
+{
+  // Earn enough to buy something
+  ggUnlockAchievement('hurv_first_timer', 'First Timer', 5);
+  ggUnlockAchievement('hurv_combo_10', 'Combo Starter', 10);
+  ggUnlockAchievement('hurv_grade_a', 'Grade A', 15);
+  ggUnlockAchievement('hurv_grade_s', 'Perfectionist', 25);
+  // Total: 55 G Bux
+  let data = ggLoad();
+  assertEqual(data.gBux, 55, 'Accumulated 55 G Bux from 4 achievements');
+
+  // Buy Neon Theme (50)
+  purchaseItem('hurv_neon_theme', 50);
+  data = ggLoad();
+  assertEqual(data.gBux, 5, 'After buying Neon Theme (50), balance is 5');
+
+  // Cannot buy Turbo Mode (75) - insufficient
+  const result = purchaseItem('hurv_turbo_mode', 75);
+  assertEqual(result, false, 'Cannot buy Turbo Mode with only 5 G Bux');
+  data = ggLoad();
+  assertEqual(data.gBux, 5, 'Balance unchanged after failed purchase');
+
+  // Earn more
+  ggUnlockAchievement('hurv_combo_25', 'Combo King', 20);
+  ggUnlockAchievement('hurv_hard_complete', 'Hard Rocker', 30);
+  ggUnlockAchievement('hurv_score_5000', 'Score Hunter', 15);
+  ggUnlockAchievement('hurv_score_15000', 'Score Legend', 25);
+  data = ggLoad();
+  assertEqual(data.gBux, 95, 'After earning 90 more, balance is 95');
+
+  // Now buy Turbo Mode
+  purchaseItem('hurv_turbo_mode', 75);
+  data = ggLoad();
+  assertEqual(data.gBux, 20, 'After buying Turbo Mode (75), balance is 20');
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>
