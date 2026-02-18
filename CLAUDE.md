@@ -27,6 +27,7 @@
   graham-games/index.html   — Main launcher (dark/gold theme, G Bux system)
   mini-life/game.html        — 3D first-person life simulator (Three.js r128)
   hurgvibbit/index.html      — Punk/metal patty-cake rhythm game
+  tower-defense/index.html   — 2D canvas tower defense game
   flying-ace/index.html      — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html          — Iframe wrapper for https://combat-retro-game.web.app
   CLAUDE.md                  — This file
@@ -69,7 +70,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - Achievements panel (28 total achievements)
 - G Bux Shop (5 items)
 
-### Achievements (28 total, 745 G Bux earnable)
+### Achievements (38 total, 930 G Bux earnable)
 
 **Hurgvibbit (10 achievements, 225G):**
 | ID | Name | Reward | Condition |
@@ -107,7 +108,21 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | ml_hard_worker | Hard Worker | 25G | Complete 10 town job shifts |
 | ml_employee_month | Employee of the Month | 50G | Complete 25 town job shifts |
 
-### G Bux Shop (5 items, 425G total)
+**Tower Defense (10 achievements, 185G):**
+| ID | Name | Reward | Condition |
+|----|------|--------|-----------|
+| td_first_blood | First Blood | 5G | Kill first enemy |
+| td_wave_5 | Getting Started | 10G | Complete wave 5 |
+| td_wave_10 | Holding Strong | 15G | Complete wave 10 |
+| td_wave_20 | Veteran Defender | 25G | Complete wave 20 |
+| td_all_towers | Arsenal | 10G | Build all 4 tower types in one game |
+| td_max_upgrade | Fully Loaded | 15G | Fully upgrade any tower |
+| td_rich | War Chest | 10G | Have 500+ gold at once |
+| td_no_leaks_10 | Impenetrable | 25G | Reach wave 10 with 20 lives |
+| td_speed_demon | Speed Demon | 20G | Complete wave 15+ on 2x speed |
+| td_victory | Supreme Commander | 50G | Beat wave 30 |
+
+### G Bux Shop (7 items, 550G total)
 | ID | Name | Cost | Effect |
 |----|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Neon colors for Hurgvibbit |
@@ -115,6 +130,8 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | ml_pet_dog | Pet Dog | 50G | Unlocks BOTH dog & cat |
 | ml_pool | Swimming Pool | 100G | Backyard pool (fun+hygiene) |
 | ml_basement | Basement | 150G | Underground expansion |
+| td_flame_tower | Flame Tower | 75G | Unlocks 5th tower type |
+| td_double_gold | War Bonds | 50G | Start each game with $200 |
 
 ---
 
@@ -276,6 +293,67 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 ### Materials (`mat` object)
 floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, pillow, tv, tvScreen, couch, couchCushion, shower, showerMetal, table, chrome, rubber, water, sand, rug, door, window, monitor, monitorScreen, keyboard.
+
+---
+
+## Tower Defense — `tower-defense/index.html`
+
+### Core Systems
+- **Renderer:** 2D Canvas, `requestAnimationFrame` loop
+- **Grid:** 16x10 tiles (52px each), fixed S-curve path
+- **Controls:** Mouse click to place/select towers, keyboard shortcuts (1-5 tower types, Space = send wave, F = toggle speed, Escape = deselect)
+- **30 waves**, game is winnable. 5s countdown between waves (or send early).
+- **2x speed toggle** (F key)
+
+### Towers (5 types)
+| Type | Cost | Damage | Range | Fire Rate | Special |
+|------|------|--------|-------|-----------|---------|
+| Arrow | $25 | 10 | 3 tiles | 0.4s | Single target |
+| Cannon | $60 | 40 | 2.5 tiles | 1.2s | Splash (1 tile radius) |
+| Ice | $40 | 5 | 3 tiles | 0.8s | Slows 50% for 2s |
+| Lightning | $80 | 25 | 3.5 tiles | 1.0s | Chains to 3 nearby enemies |
+| Flame* | $70 | 8/tick | 2 tiles | Continuous | Burns all in range, DoT 3s |
+
+*Flame tower requires G Bux shop purchase (`td_flame_tower`)
+
+- Upgradable 2 levels (cost = base cost per upgrade)
+- Upgrade: +50% damage, +15% range per level
+- Sell refund: 75% of total invested
+
+### Enemies (4 types)
+| Type | HP | Speed | Gold | Visual |
+|------|----|-------|------|--------|
+| Basic | 40 | 1.2 | $7 | Brown circle |
+| Fast | 25 | 2.4 | $9 | Small blue circle |
+| Armored | 120 | 0.7 | $13 | Grey circle + thick outline |
+| Boss | 400 | 0.5 | $40 | Large red circle |
+
+- HP scales: `base * (1 + wave * 0.2)`
+- Gold scales: `base * (1 + wave * 0.03)`
+
+### Wave System
+- Waves 1-5: Basic only (6→14 count)
+- Waves 6-10: Basic + Fast (larger waves)
+- Waves 11-15: Basic + Fast + Armored (more armored)
+- Waves 16-29: All types mixed (heavier counts)
+- Waves 10, 20, 30: Boss + escorts (2/3/5 bosses)
+- 0.45s spawn delay between enemies
+
+### Economy
+- Start: $100 (or $200 with War Bonds shop unlock)
+- Kill gold from enemies (scaled per wave)
+- Wave clear bonus: $5 + wave (if no leaks that wave)
+- Interest: 3% of gold (max $15) at wave start
+
+### Lives & Scoring
+- 20 lives. Enemy leak = -1 life, boss leak = -3 lives
+- Score = kills * 10 + waves_completed * 50 + remaining_lives * 20 (on victory)
+- Game over at 0 lives. Victory at wave 30 complete.
+
+### G Bux Integration
+- `TD_ACH` registry + `ggTry(id)` helper (same pattern as Hurgvibbit)
+- Toast notification system with queue
+- Shop unlock checks: `td_flame_tower` (flame tower visibility), `td_double_gold` (starting gold)
 
 ---
 

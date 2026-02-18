@@ -394,6 +394,23 @@
     border-radius: 8px;
   }
 
+  /* Tower Defense card */
+  .game-card.tower-defense {
+    border-left-color: #9b59b6;
+  }
+  .game-card.tower-defense:hover {
+    border-color: #9b59b6;
+    box-shadow: 0 0 30px #9b59b615, -5px 0 20px #9b59b610;
+  }
+  .game-card.tower-defense::before {
+    background: linear-gradient(90deg, #9b59b608 0%, transparent 50%);
+  }
+  .game-card.tower-defense .game-icon {
+    background: linear-gradient(135deg, #14081a, #200a2a);
+    border: 1px solid #9b59b644;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -685,6 +702,34 @@ for (let i = 0; i < 30; i++) {
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
+
+    <!-- TOWER DEFENSE -->
+    <a href="../tower-defense/index.html" class="game-card tower-defense">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#14081a" stroke="#9b59b6" stroke-width="2"/>
+          <!-- tower/shield -->
+          <rect x="20" y="12" width="10" height="20" rx="1" fill="#9b59b6" opacity="0.4"/>
+          <rect x="18" y="10" width="14" height="5" rx="1" fill="#9b59b6" opacity="0.5"/>
+          <!-- battlements -->
+          <rect x="17" y="8" width="4" height="4" rx="0.5" fill="#9b59b6" opacity="0.6"/>
+          <rect x="23" y="8" width="4" height="4" rx="0.5" fill="#9b59b6" opacity="0.6"/>
+          <rect x="29" y="8" width="4" height="4" rx="0.5" fill="#9b59b6" opacity="0.6"/>
+          <!-- base -->
+          <rect x="14" y="32" width="22" height="4" rx="1" fill="#9b59b6" opacity="0.3"/>
+          <!-- shield -->
+          <path d="M25,18 L30,22 L30,28 L25,32 L20,28 L20,22 Z" fill="#9b59b6" opacity="0.3" stroke="#9b59b6" stroke-width="0.5" opacity="0.5"/>
+          <!-- sword -->
+          <line x1="25" y1="37" x2="25" y2="42" stroke="#9b59b6" stroke-width="1.5" opacity="0.5"/>
+          <line x1="22" y1="39" x2="28" y2="39" stroke="#9b59b6" stroke-width="1" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">TOWER DEFENSE</div>
+        <div class="game-desc">Defend the realm</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
   </div>
 </div>
 
@@ -753,6 +798,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'ml_hard_worker',       name: 'Hard Worker',        desc: 'Complete 10 town job shifts',       reward: 25 },
     { id: 'ml_employee_month',    name: 'Employee of the Month', desc: 'Complete 25 town job shifts',    reward: 50 },
   ]},
+  { group: 'TOWER DEFENSE', items: [
+    { id: 'td_first_blood',   name: 'First Blood',        desc: 'Kill your first enemy',           reward: 5 },
+    { id: 'td_wave_5',        name: 'Getting Started',     desc: 'Complete wave 5',                 reward: 10 },
+    { id: 'td_wave_10',       name: 'Holding Strong',      desc: 'Complete wave 10',                reward: 15 },
+    { id: 'td_wave_20',       name: 'Veteran Defender',     desc: 'Complete wave 20',                reward: 25 },
+    { id: 'td_all_towers',    name: 'Arsenal',             desc: 'Build all 4 tower types in one game', reward: 10 },
+    { id: 'td_max_upgrade',   name: 'Fully Loaded',        desc: 'Fully upgrade any tower',         reward: 15 },
+    { id: 'td_rich',          name: 'War Chest',           desc: 'Have 500+ gold at once',          reward: 10 },
+    { id: 'td_no_leaks_10',   name: 'Impenetrable',        desc: 'Reach wave 10 with 20 lives',     reward: 25 },
+    { id: 'td_speed_demon',   name: 'Speed Demon',         desc: 'Complete wave 15+ on 2x speed',   reward: 20 },
+    { id: 'td_victory',       name: 'Supreme Commander',   desc: 'Beat wave 30',                    reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -761,6 +818,8 @@ const SHOP_ITEMS = [
   { id: 'ml_pet_dog',      name: 'Pet Dog',         desc: 'A loyal dog that follows you around',     cost: 50,  icon: '&#128054;', game: 'Mini Life' },
   { id: 'ml_pool',         name: 'Swimming Pool',   desc: 'Outdoor pool — restores fun & hygiene',   cost: 100, icon: '&#127946;', game: 'Mini Life' },
   { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
+  { id: 'td_flame_tower', name: 'Flame Tower',     desc: 'Unlocks the Flame tower type',            cost: 75,  icon: '&#128293;', game: 'Tower Defense' },
+  { id: 'td_double_gold', name: 'War Bonds',       desc: 'Start each game with $200 instead of $100', cost: 50, icon: '&#128176;', game: 'Tower Defense' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══

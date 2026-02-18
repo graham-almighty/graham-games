@@ -134,6 +134,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'ml_hard_worker',       name: 'Hard Worker',        desc: 'Complete 10 town job shifts',       reward: 25 },
     { id: 'ml_employee_month',    name: 'Employee of the Month', desc: 'Complete 25 town job shifts',    reward: 50 },
   ]},
+  { group: 'TOWER DEFENSE', items: [
+    { id: 'td_first_blood',   name: 'First Blood',        desc: 'Kill your first enemy',           reward: 5 },
+    { id: 'td_wave_5',        name: 'Getting Started',     desc: 'Complete wave 5',                 reward: 10 },
+    { id: 'td_wave_10',       name: 'Holding Strong',      desc: 'Complete wave 10',                reward: 15 },
+    { id: 'td_wave_20',       name: 'Veteran Defender',     desc: 'Complete wave 20',                reward: 25 },
+    { id: 'td_all_towers',    name: 'Arsenal',             desc: 'Build all 4 tower types in one game', reward: 10 },
+    { id: 'td_max_upgrade',   name: 'Fully Loaded',        desc: 'Fully upgrade any tower',         reward: 15 },
+    { id: 'td_rich',          name: 'War Chest',           desc: 'Have 500+ gold at once',          reward: 10 },
+    { id: 'td_no_leaks_10',   name: 'Impenetrable',        desc: 'Reach wave 10 with 20 lives',     reward: 25 },
+    { id: 'td_speed_demon',   name: 'Speed Demon',         desc: 'Complete wave 15+ on 2x speed',   reward: 20 },
+    { id: 'td_victory',       name: 'Supreme Commander',   desc: 'Beat wave 30',                    reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -142,6 +154,8 @@ const SHOP_ITEMS = [
   { id: 'ml_pet_dog',      name: 'Pet Dog',         desc: 'A loyal dog that follows you around',     cost: 50,  icon: '&#128054;', game: 'Mini Life' },
   { id: 'ml_pool',         name: 'Swimming Pool',   desc: 'Outdoor pool — restores fun & hygiene',   cost: 100, icon: '&#127946;', game: 'Mini Life' },
   { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
+  { id: 'td_flame_tower', name: 'Flame Tower',     desc: 'Unlocks the Flame tower type',            cost: 75,  icon: '&#128293;', game: 'Tower Defense' },
+  { id: 'td_double_gold', name: 'War Bonds',       desc: 'Start each game with $200 instead of $100', cost: 50, icon: '&#128176;', game: 'Tower Defense' },
 ];
 
 function purchaseItem(id, cost) {
@@ -230,18 +244,20 @@ group('Achievement Registry');
 {
   const allItems = [];
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => allItems.push(i)));
-  assertEqual(allItems.length, 28, 'Total achievements count is 28');
+  assertEqual(allItems.length, 38, 'Total achievements count is 38');
 }
 
 {
-  assertEqual(ALL_ACHIEVEMENTS.length, 2, 'Two achievement groups exist');
+  assertEqual(ALL_ACHIEVEMENTS.length, 3, 'Three achievement groups exist');
   assertEqual(ALL_ACHIEVEMENTS[0].group, 'HURGVIBBIT', 'First group is HURGVIBBIT');
   assertEqual(ALL_ACHIEVEMENTS[1].group, 'MINI LIFE', 'Second group is MINI LIFE');
+  assertEqual(ALL_ACHIEVEMENTS[2].group, 'TOWER DEFENSE', 'Third group is TOWER DEFENSE');
 }
 
 {
   assertEqual(ALL_ACHIEVEMENTS[0].items.length, 10, 'Hurgvibbit has 10 achievements');
   assertEqual(ALL_ACHIEVEMENTS[1].items.length, 18, 'Mini Life has 18 achievements');
+  assertEqual(ALL_ACHIEVEMENTS[2].items.length, 10, 'Tower Defense has 10 achievements');
 }
 
 {
@@ -254,7 +270,7 @@ group('Achievement Registry');
 {
   let totalReward = 0;
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalReward += i.reward));
-  assertEqual(totalReward, 745, 'Total earnable G Bux across all achievements is 745');
+  assertEqual(totalReward, 930, 'Total earnable G Bux across all achievements is 930');
 }
 
 {
@@ -270,6 +286,12 @@ group('Achievement Registry');
 }
 
 {
+  let tdTotal = 0;
+  ALL_ACHIEVEMENTS[2].items.forEach(i => tdTotal += i.reward);
+  assertEqual(tdTotal, 185, 'Tower Defense total rewards = 185');
+}
+
+{
   // Check specific achievements exist with correct rewards
   const find = (id) => { let r = null; ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => { if (i.id === id) r = i; })); return r; };
   assertEqual(find('hurv_first_timer').reward, 5, 'hurv_first_timer reward = 5');
@@ -281,6 +303,9 @@ group('Achievement Registry');
   assertEqual(find('ml_gym_rat').reward, 50, 'ml_gym_rat reward = 50');
   assertEqual(find('ml_town_hero').reward, 50, 'ml_town_hero reward = 50');
   assertEqual(find('ml_helpful_neighbor').reward, 25, 'ml_helpful_neighbor reward = 25');
+  assertEqual(find('td_first_blood').reward, 5, 'td_first_blood reward = 5');
+  assertEqual(find('td_victory').reward, 50, 'td_victory reward = 50');
+  assertEqual(find('td_no_leaks_10').reward, 25, 'td_no_leaks_10 reward = 25');
 }
 
 {
@@ -297,13 +322,13 @@ group('Achievement Registry');
 group('Shop Items');
 
 {
-  assertEqual(SHOP_ITEMS.length, 5, 'Shop has 5 items');
+  assertEqual(SHOP_ITEMS.length, 7, 'Shop has 7 items');
 }
 
 {
   let totalCost = 0;
   SHOP_ITEMS.forEach(i => totalCost += i.cost);
-  assertEqual(totalCost, 425, 'Total shop cost is 425 G Bux');
+  assertEqual(totalCost, 550, 'Total shop cost is 550 G Bux');
 }
 
 {
@@ -317,6 +342,10 @@ group('Shop Items');
   assertEqual(SHOP_ITEMS[3].cost, 100, 'Swimming Pool costs 100');
   assertEqual(SHOP_ITEMS[4].id, 'ml_basement', 'Shop item 4 is ml_basement');
   assertEqual(SHOP_ITEMS[4].cost, 150, 'Basement costs 150');
+  assertEqual(SHOP_ITEMS[5].id, 'td_flame_tower', 'Shop item 5 is td_flame_tower');
+  assertEqual(SHOP_ITEMS[5].cost, 75, 'Flame Tower costs 75');
+  assertEqual(SHOP_ITEMS[6].id, 'td_double_gold', 'Shop item 6 is td_double_gold');
+  assertEqual(SHOP_ITEMS[6].cost, 50, 'War Bonds costs 50');
 }
 
 {
@@ -337,8 +366,10 @@ group('Shop Items');
 {
   const hurvItems = SHOP_ITEMS.filter(i => i.game === 'Hurgvibbit');
   const mlItems = SHOP_ITEMS.filter(i => i.game === 'Mini Life');
+  const tdItems = SHOP_ITEMS.filter(i => i.game === 'Tower Defense');
   assertEqual(hurvItems.length, 2, '2 shop items for Hurgvibbit');
   assertEqual(mlItems.length, 3, '3 shop items for Mini Life');
+  assertEqual(tdItems.length, 2, '2 shop items for Tower Defense');
 }
 
 // --- Achievement Unlock Logic ---
@@ -412,13 +443,13 @@ localStorage.clear();
 
 localStorage.clear();
 {
-  ggSave({ gBux: 425, achievements: {}, shopPurchases: {} });
+  ggSave({ gBux: 550, achievements: {}, shopPurchases: {} });
   SHOP_ITEMS.forEach(item => {
     purchaseItem(item.id, item.cost);
   });
   const data = ggLoad();
-  assertEqual(data.gBux, 0, 'Buying all 5 items from 425 G Bux leaves 0');
-  assertEqual(Object.keys(data.shopPurchases).length, 5, 'All 5 items purchased');
+  assertEqual(data.gBux, 0, 'Buying all 7 items from 550 G Bux leaves 0');
+  assertEqual(Object.keys(data.shopPurchases).length, 7, 'All 7 items purchased');
 }
 
 // --- Economy Totals ---
@@ -429,10 +460,10 @@ group('Economy Balance');
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalEarnable += i.reward));
   let totalShopCost = 0;
   SHOP_ITEMS.forEach(i => totalShopCost += i.cost);
-  assertEqual(totalEarnable, 745, 'Total earnable G Bux = 745');
-  assertEqual(totalShopCost, 425, 'Total shop cost = 425');
+  assertEqual(totalEarnable, 930, 'Total earnable G Bux = 930');
+  assertEqual(totalShopCost, 550, 'Total shop cost = 550');
   assert(totalEarnable > totalShopCost, 'Earnable exceeds shop cost (player can buy everything)');
-  assertEqual(totalEarnable - totalShopCost, 320, 'Surplus after buying everything = 320');
+  assertEqual(totalEarnable - totalShopCost, 380, 'Surplus after buying everything = 380');
 }
 
 // --- Cross-references ---
@@ -529,6 +560,14 @@ group('Shop Item Details');
 
   const basement = SHOP_ITEMS.find(i => i.id === 'ml_basement');
   assertEqual(basement.name, 'Basement', 'Basement name correct');
+
+  const flame = SHOP_ITEMS.find(i => i.id === 'td_flame_tower');
+  assertEqual(flame.name, 'Flame Tower', 'Flame Tower name correct');
+  assertEqual(flame.game, 'Tower Defense', 'Flame Tower game is Tower Defense');
+
+  const warBonds = SHOP_ITEMS.find(i => i.id === 'td_double_gold');
+  assertEqual(warBonds.name, 'War Bonds', 'War Bonds name correct');
+  assertEqual(warBonds.game, 'Tower Defense', 'War Bonds game is Tower Defense');
 }
 
 // --- Integration: Earn achievements then buy items ---

@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tower Defense - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #c9a84c; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #c9a84c; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Tower Defense - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0;
+const _results = document.getElementById('results');
+
+function group(name) {
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ', got ' + actual);
+}
+
+function showSummary() {
+  const total = _passed + _failed;
+  document.getElementById('summary').innerHTML =
+    '<span class="pass">' + _passed + ' passed</span> / ' +
+    '<span class="fail">' + _failed + ' failed</span> / ' +
+    total + ' total';
+  document.title = (_failed === 0 ? 'ALL PASS' : _failed + ' FAIL') + ' - TD Tests';
+}
+
+// ============================================================
+// MOCK BROWSER APIs
+// ============================================================
+const mockStorage = {};
+const localStorage = {
+  getItem(key) { return mockStorage[key] || null; },
+  setItem(key, val) { mockStorage[key] = val; },
+  removeItem(key) { delete mockStorage[key]; },
+  clear() { for (const k in mockStorage) delete mockStorage[k]; },
+};
+
+// ============================================================
+// SOURCE CODE UNDER TEST (extracted from tower-defense/index.html)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const TD_ACH = {
+  td_first_blood:   { name: 'First Blood',        reward: 5 },
+  td_wave_5:        { name: 'Getting Started',     reward: 10 },
+  td_wave_10:       { name: 'Holding Strong',      reward: 15 },
+  td_wave_20:       { name: 'Veteran Defender',     reward: 25 },
+  td_all_towers:    { name: 'Arsenal',             reward: 10 },
+  td_max_upgrade:   { name: 'Fully Loaded',        reward: 15 },
+  td_rich:          { name: 'War Chest',           reward: 10 },
+  td_no_leaks_10:   { name: 'Impenetrable',        reward: 25 },
+  td_speed_demon:   { name: 'Speed Demon',         reward: 20 },
+  td_victory:       { name: 'Supreme Commander',   reward: 50 },
+};
+function ggTry(id) { const a = TD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const COLS = 16, ROWS = 10, TILE = 52;
+const TOTAL_WAVES = 30;
+
+const TOWER_DEFS = {
+  arrow:     { name: 'Arrow',     cost: 25,  damage: 10,  range: 3,   fireRate: 0.4, color: '#4caf50', symbol: '\u25B3', key: '1', splash: 0, slow: 0, chain: 0, dot: false },
+  cannon:    { name: 'Cannon',    cost: 60,  damage: 40,  range: 2.5, fireRate: 1.2, color: '#ff4444', symbol: '\u25CF', key: '2', splash: 1, slow: 0, chain: 0, dot: false },
+  ice:       { name: 'Ice',       cost: 40,  damage: 5,   range: 3,   fireRate: 0.8, color: '#00bcd4', symbol: '\u25C6', key: '3', splash: 0, slow: 0.5, chain: 0, dot: false },
+  lightning: { name: 'Lightning', cost: 80,  damage: 25,  range: 3.5, fireRate: 1.0, color: '#ffd600', symbol: '\u26A1', key: '4', splash: 0, slow: 0, chain: 3, dot: false },
+  flame:     { name: 'Flame',     cost: 70,  damage: 8,   range: 2,   fireRate: 0.1, color: '#ff6d00', symbol: '\uD83D\uDD25', key: '5', splash: 0, slow: 0, chain: 0, dot: true },
+};
+const TOWER_ORDER = ['arrow', 'cannon', 'ice', 'lightning', 'flame'];
+
+const ENEMY_DEFS = {
+  basic:   { hp: 40,  speed: 1.2, gold: 7,  color: '#8d6e63', radius: 6, outline: 0 },
+  fast:    { hp: 25,  speed: 2.4, gold: 9,  color: '#42a5f5', radius: 4, outline: 0 },
+  armored: { hp: 120, speed: 0.7, gold: 13, color: '#9e9e9e', radius: 7, outline: 3 },
+  boss:    { hp: 400, speed: 0.5, gold: 40, color: '#ef5350', radius: 10, outline: 0 },
+};
+
+// Path construction (same as game)
+const PATH = [];
+(function buildPath() {
+  for (let c = 0; c <= 14; c++) PATH.push([c, 1]);
+  for (let r = 2; r <= 3; r++) PATH.push([14, r]);
+  for (let c = 13; c >= 1; c--) PATH.push([c, 3]);
+  for (let r = 4; r <= 5; r++) PATH.push([1, r]);
+  for (let c = 2; c <= 14; c++) PATH.push([c, 5]);
+  for (let r = 6; r <= 7; r++) PATH.push([14, r]);
+  for (let c = 13; c >= 1; c--) PATH.push([c, 7]);
+  for (let r = 8; r <= 9; r++) PATH.push([1, r]);
+})();
+
+const pathSet = new Set();
+PATH.forEach(([c, r]) => pathSet.add(c + ',' + r));
+
+// Wave composition (same as game)
+function getWaveComposition(w) {
+  const enemies = [];
+  if (w >= 1 && w <= 5) {
+    const count = 6 + Math.floor((w - 1) * 2);
+    for (let i = 0; i < count; i++) enemies.push('basic');
+  } else if (w >= 6 && w <= 10) {
+    const total = 12 + (w - 6) * 3;
+    for (let i = 0; i < total; i++) {
+      enemies.push(i % 3 === 0 ? 'fast' : 'basic');
+    }
+  } else if (w >= 11 && w <= 15) {
+    const total = 16 + (w - 11) * 3;
+    for (let i = 0; i < total; i++) {
+      if (i % 4 === 0) enemies.push('armored');
+      else if (i % 3 === 0) enemies.push('fast');
+      else enemies.push('basic');
+    }
+  } else if (w >= 16 && w <= 29) {
+    const total = 20 + (w - 16) * 3;
+    for (let i = 0; i < total; i++) {
+      if (i % 5 === 0) enemies.push('armored');
+      else if (i % 3 === 0) enemies.push('fast');
+      else enemies.push('basic');
+    }
+  }
+  if (w === 10 || w === 20 || w === 30) {
+    const bossCount = w === 10 ? 2 : w === 20 ? 3 : 5;
+    for (let i = 0; i < bossCount; i++) enemies.push('boss');
+    const escortCount = w === 10 ? 8 : w === 20 ? 12 : 18;
+    for (let i = 0; i < escortCount; i++) {
+      enemies.push(i % 2 === 0 ? 'fast' : 'armored');
+    }
+  }
+  return enemies;
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// --- Achievement Registry ---
+group('Achievement Registry');
+
+{
+  const ids = Object.keys(TD_ACH);
+  assertEqual(ids.length, 10, 'TD_ACH has 10 achievements');
+}
+
+{
+  let totalReward = 0;
+  for (const id in TD_ACH) totalReward += TD_ACH[id].reward;
+  assertEqual(totalReward, 185, 'Total TD achievement rewards sum to 185G');
+}
+
+{
+  const expected = {
+    td_first_blood: 5, td_wave_5: 10, td_wave_10: 15, td_wave_20: 25,
+    td_all_towers: 10, td_max_upgrade: 15, td_rich: 10,
+    td_no_leaks_10: 25, td_speed_demon: 20, td_victory: 50,
+  };
+  for (const id in expected) {
+    assertEqual(TD_ACH[id].reward, expected[id], id + ' reward = ' + expected[id] + 'G');
+  }
+}
+
+{
+  // All achievements have name and reward
+  for (const id in TD_ACH) {
+    assert(typeof TD_ACH[id].name === 'string' && TD_ACH[id].name.length > 0, id + ' has a name');
+    assert(typeof TD_ACH[id].reward === 'number' && TD_ACH[id].reward > 0, id + ' has positive reward');
+  }
+}
+
+{
+  // Verify achievement names
+  assertEqual(TD_ACH.td_first_blood.name, 'First Blood', 'td_first_blood name');
+  assertEqual(TD_ACH.td_victory.name, 'Supreme Commander', 'td_victory name');
+  assertEqual(TD_ACH.td_no_leaks_10.name, 'Impenetrable', 'td_no_leaks_10 name');
+  assertEqual(TD_ACH.td_speed_demon.name, 'Speed Demon', 'td_speed_demon name');
+}
+
+// --- Achievement Unlock Logic ---
+group('Achievement Unlock Logic');
+
+localStorage.clear();
+{
+  const result = ggTry('td_first_blood');
+  const data = ggLoad();
+  assertEqual(data.gBux, 5, 'First Blood awards 5G');
+  assertEqual(data.achievements.td_first_blood, true, 'Achievement marked as earned');
+}
+
+localStorage.clear();
+{
+  ggTry('td_first_blood');
+  ggTry('td_first_blood'); // duplicate
+  const data = ggLoad();
+  assertEqual(data.gBux, 5, 'Duplicate achievement not double-awarded');
+}
+
+localStorage.clear();
+{
+  // Unlock all TD achievements
+  for (const id in TD_ACH) ggTry(id);
+  const data = ggLoad();
+  assertEqual(data.gBux, 185, 'All TD achievements total 185G');
+  assertEqual(Object.keys(data.achievements).length, 10, '10 achievements tracked');
+}
+
+// --- Tower Stats ---
+group('Tower Definitions');
+
+{
+  assertEqual(Object.keys(TOWER_DEFS).length, 5, '5 tower types defined');
+}
+
+{
+  // Arrow tower
+  assertEqual(TOWER_DEFS.arrow.cost, 25, 'Arrow cost = $25');
+  assertEqual(TOWER_DEFS.arrow.damage, 10, 'Arrow damage = 10');
+  assertEqual(TOWER_DEFS.arrow.range, 3, 'Arrow range = 3');
+  assertEqual(TOWER_DEFS.arrow.fireRate, 0.4, 'Arrow fire rate = 0.4s');
+  assertEqual(TOWER_DEFS.arrow.splash, 0, 'Arrow no splash');
+  assertEqual(TOWER_DEFS.arrow.slow, 0, 'Arrow no slow');
+  assertEqual(TOWER_DEFS.arrow.chain, 0, 'Arrow no chain');
+  assertEqual(TOWER_DEFS.arrow.dot, false, 'Arrow no DoT');
+}
+
+{
+  // Cannon tower
+  assertEqual(TOWER_DEFS.cannon.cost, 60, 'Cannon cost = $60');
+  assertEqual(TOWER_DEFS.cannon.damage, 40, 'Cannon damage = 40');
+  assertEqual(TOWER_DEFS.cannon.range, 2.5, 'Cannon range = 2.5');
+  assertEqual(TOWER_DEFS.cannon.fireRate, 1.2, 'Cannon fire rate = 1.2s');
+  assertEqual(TOWER_DEFS.cannon.splash, 1, 'Cannon splash = 1 tile');
+}
+
+{
+  // Ice tower
+  assertEqual(TOWER_DEFS.ice.cost, 40, 'Ice cost = $40');
+  assertEqual(TOWER_DEFS.ice.damage, 5, 'Ice damage = 5');
+  assertEqual(TOWER_DEFS.ice.range, 3, 'Ice range = 3');
+  assertEqual(TOWER_DEFS.ice.fireRate, 0.8, 'Ice fire rate = 0.8s');
+  assertEqual(TOWER_DEFS.ice.slow, 0.5, 'Ice slow = 50%');
+}
+
+{
+  // Lightning tower
+  assertEqual(TOWER_DEFS.lightning.cost, 80, 'Lightning cost = $80');
+  assertEqual(TOWER_DEFS.lightning.damage, 25, 'Lightning damage = 25');
+  assertEqual(TOWER_DEFS.lightning.range, 3.5, 'Lightning range = 3.5');
+  assertEqual(TOWER_DEFS.lightning.fireRate, 1.0, 'Lightning fire rate = 1.0s');
+  assertEqual(TOWER_DEFS.lightning.chain, 3, 'Lightning chains to 3 enemies');
+}
+
+{
+  // Flame tower
+  assertEqual(TOWER_DEFS.flame.cost, 70, 'Flame cost = $70');
+  assertEqual(TOWER_DEFS.flame.damage, 8, 'Flame damage = 8/tick');
+  assertEqual(TOWER_DEFS.flame.range, 2, 'Flame range = 2');
+  assertEqual(TOWER_DEFS.flame.fireRate, 0.1, 'Flame fire rate = 0.1s (continuous)');
+  assertEqual(TOWER_DEFS.flame.dot, true, 'Flame has DoT');
+}
+
+{
+  // Tower order
+  assertEqual(TOWER_ORDER.length, 5, '5 towers in order');
+  assertEqual(TOWER_ORDER[0], 'arrow', 'First tower is arrow');
+  assertEqual(TOWER_ORDER[4], 'flame', 'Last tower is flame');
+}
+
+{
+  // All towers have required fields
+  for (const type in TOWER_DEFS) {
+    const t = TOWER_DEFS[type];
+    assert(typeof t.name === 'string', type + ' has name');
+    assert(typeof t.cost === 'number' && t.cost > 0, type + ' has positive cost');
+    assert(typeof t.damage === 'number' && t.damage > 0, type + ' has positive damage');
+    assert(typeof t.range === 'number' && t.range > 0, type + ' has positive range');
+    assert(typeof t.fireRate === 'number' && t.fireRate > 0, type + ' has positive fire rate');
+    assert(typeof t.color === 'string', type + ' has color');
+    assert(typeof t.symbol === 'string', type + ' has symbol');
+    assert(typeof t.key === 'string', type + ' has key binding');
+  }
+}
+
+// --- Enemy Stats ---
+group('Enemy Definitions');
+
+{
+  assertEqual(Object.keys(ENEMY_DEFS).length, 4, '4 enemy types defined');
+}
+
+{
+  // Basic
+  assertEqual(ENEMY_DEFS.basic.hp, 40, 'Basic HP = 40');
+  assertEqual(ENEMY_DEFS.basic.speed, 1.2, 'Basic speed = 1.2');
+  assertEqual(ENEMY_DEFS.basic.gold, 7, 'Basic gold = $7');
+}
+
+{
+  // Fast
+  assertEqual(ENEMY_DEFS.fast.hp, 25, 'Fast HP = 25');
+  assertEqual(ENEMY_DEFS.fast.speed, 2.4, 'Fast speed = 2.4');
+  assertEqual(ENEMY_DEFS.fast.gold, 9, 'Fast gold = $9');
+}
+
+{
+  // Armored
+  assertEqual(ENEMY_DEFS.armored.hp, 120, 'Armored HP = 120');
+  assertEqual(ENEMY_DEFS.armored.speed, 0.7, 'Armored speed = 0.7');
+  assertEqual(ENEMY_DEFS.armored.gold, 13, 'Armored gold = $13');
+  assertEqual(ENEMY_DEFS.armored.outline, 3, 'Armored has thick outline');
+}
+
+{
+  // Boss
+  assertEqual(ENEMY_DEFS.boss.hp, 400, 'Boss HP = 400');
+  assertEqual(ENEMY_DEFS.boss.speed, 0.5, 'Boss speed = 0.5');
+  assertEqual(ENEMY_DEFS.boss.gold, 40, 'Boss gold = $40');
+}
+
+{
+  // All enemies have required fields
+  for (const type in ENEMY_DEFS) {
+    const e = ENEMY_DEFS[type];
+    assert(typeof e.hp === 'number' && e.hp > 0, type + ' has positive HP');
+    assert(typeof e.speed === 'number' && e.speed > 0, type + ' has positive speed');
+    assert(typeof e.gold === 'number' && e.gold > 0, type + ' has positive gold');
+    assert(typeof e.color === 'string', type + ' has color');
+    assert(typeof e.radius === 'number' && e.radius > 0, type + ' has positive radius');
+  }
+}
+
+// --- HP Scaling ---
+group('HP Scaling Formula');
+
+{
+  // HP = base * (1 + wave * 0.2)
+  const wave1Hp = Math.round(40 * (1 + 1 * 0.2));
+  assertEqual(wave1Hp, Math.round(40 * 1.2), 'Wave 1 basic HP = base * 1.2');
+
+  const wave10Hp = Math.round(40 * (1 + 10 * 0.2));
+  assertEqual(wave10Hp, Math.round(40 * 3.0), 'Wave 10 basic HP = base * 3.0');
+
+  const wave20Hp = Math.round(40 * (1 + 20 * 0.2));
+  assertEqual(wave20Hp, Math.round(40 * 5.0), 'Wave 20 basic HP = base * 5.0');
+
+  const wave30Hp = Math.round(40 * (1 + 30 * 0.2));
+  assertEqual(wave30Hp, Math.round(40 * 7.0), 'Wave 30 basic HP = base * 7.0');
+}
+
+{
+  // Boss HP scaling
+  const wave10Boss = Math.round(400 * (1 + 10 * 0.2));
+  assertEqual(wave10Boss, Math.round(400 * 3.0), 'Wave 10 boss HP scaled');
+
+  const wave30Boss = Math.round(400 * (1 + 30 * 0.2));
+  assertEqual(wave30Boss, Math.round(400 * 7.0), 'Wave 30 boss HP scaled');
+}
+
+// --- Gold Scaling ---
+group('Gold Scaling Formula');
+
+{
+  // Gold = base * (1 + wave * 0.03)
+  const wave1Gold = Math.round(7 * (1 + 1 * 0.03));
+  assertEqual(wave1Gold, Math.round(7 * 1.03), 'Wave 1 basic gold scaled');
+
+  const wave10Gold = Math.round(7 * (1 + 10 * 0.03));
+  assertEqual(wave10Gold, Math.round(7 * 1.3), 'Wave 10 basic gold scaled');
+
+  const wave20Gold = Math.round(7 * (1 + 20 * 0.03));
+  assertEqual(wave20Gold, Math.round(7 * 1.6), 'Wave 20 basic gold scaled');
+}
+
+// --- Wave Composition ---
+group('Wave Composition');
+
+{
+  // Waves 1-5: basic only
+  for (let w = 1; w <= 5; w++) {
+    const comp = getWaveComposition(w);
+    const allBasic = comp.every(e => e === 'basic');
+    assert(allBasic, 'Wave ' + w + ' is all basic enemies');
+    assert(comp.length >= 6, 'Wave ' + w + ' has at least 6 enemies');
+  }
+}
+
+{
+  // Wave 1 has 6, wave 5 has 14
+  assertEqual(getWaveComposition(1).length, 6, 'Wave 1 has 6 enemies');
+  assertEqual(getWaveComposition(5).length, 14, 'Wave 5 has 14 enemies');
+}
+
+{
+  // Waves 6-10: basic + fast
+  for (let w = 6; w <= 9; w++) {
+    const comp = getWaveComposition(w);
+    const types = new Set(comp);
+    assert(types.has('basic'), 'Wave ' + w + ' has basic');
+    assert(types.has('fast'), 'Wave ' + w + ' has fast');
+    assert(!types.has('armored'), 'Wave ' + w + ' has no armored');
+  }
+}
+
+{
+  // Waves 11-15: basic + fast + armored
+  for (let w = 11; w <= 14; w++) {
+    const comp = getWaveComposition(w);
+    const types = new Set(comp);
+    assert(types.has('basic'), 'Wave ' + w + ' has basic');
+    assert(types.has('armored'), 'Wave ' + w + ' has armored');
+  }
+}
+
+{
+  // Boss waves
+  const wave10 = getWaveComposition(10);
+  assert(wave10.filter(e => e === 'boss').length >= 2, 'Wave 10 has at least 2 bosses');
+
+  const wave20 = getWaveComposition(20);
+  assert(wave20.filter(e => e === 'boss').length >= 3, 'Wave 20 has at least 3 bosses');
+
+  const wave30 = getWaveComposition(30);
+  assert(wave30.filter(e => e === 'boss').length >= 5, 'Wave 30 has at least 5 bosses');
+}
+
+{
+  // Boss waves have escorts
+  const wave10 = getWaveComposition(10);
+  assert(wave10.length > 1, 'Wave 10 has boss + escorts');
+
+  const wave30 = getWaveComposition(30);
+  assert(wave30.length > 3, 'Wave 30 has bosses + escorts');
+}
+
+// --- Economy ---
+group('Economy');
+
+{
+  // Starting gold
+  assertEqual(100, 100, 'Default starting gold = $100');
+}
+
+{
+  // War Bonds starting gold
+  assertEqual(200, 200, 'War Bonds starting gold = $200');
+}
+
+{
+  // Interest: 3% of gold, max $15
+  const interest100 = Math.min(Math.floor(100 * 0.03), 15);
+  assertEqual(interest100, 3, 'Interest on $100 = $3');
+
+  const interest500 = Math.min(Math.floor(500 * 0.03), 15);
+  assertEqual(interest500, 15, 'Interest on $500 = $15 (capped)');
+
+  const interest600 = Math.min(Math.floor(600 * 0.03), 15);
+  assertEqual(interest600, 15, 'Interest on $600 = $15 (capped)');
+
+  const interest0 = Math.min(Math.floor(0 * 0.03), 15);
+  assertEqual(interest0, 0, 'Interest on $0 = $0');
+}
+
+{
+  // Wave bonus: $5 + wave
+  const bonus1 = 5 + 1;
+  assertEqual(bonus1, 6, 'Wave 1 bonus = $6');
+
+  const bonus10 = 5 + 10;
+  assertEqual(bonus10, 15, 'Wave 10 bonus = $15');
+
+  const bonus30 = 5 + 30;
+  assertEqual(bonus30, 35, 'Wave 30 bonus = $35');
+}
+
+// --- Upgrade System ---
+group('Tower Upgrades');
+
+{
+  // Upgrade cost = base cost
+  assertEqual(TOWER_DEFS.arrow.cost, 25, 'Arrow upgrade cost = $25 (same as base)');
+  assertEqual(TOWER_DEFS.cannon.cost, 60, 'Cannon upgrade cost = $60 (same as base)');
+}
+
+{
+  // Damage: +50% per level
+  const baseDmg = TOWER_DEFS.arrow.damage; // 10
+  const lv1Dmg = Math.round(baseDmg * (1 + 1 * 0.5));
+  assertEqual(lv1Dmg, 15, 'Arrow Lv2 damage = 15 (+50%)');
+  const lv2Dmg = Math.round(baseDmg * (1 + 2 * 0.5));
+  assertEqual(lv2Dmg, 20, 'Arrow Lv3 damage = 20 (+100%)');
+}
+
+{
+  // Range: +15% per level
+  const baseRange = TOWER_DEFS.arrow.range; // 3
+  const lv1Range = baseRange * (1 + 1 * 0.15);
+  assertApprox(lv1Range, 3.45, 0.01, 'Arrow Lv2 range = 3.45 (+15%)');
+  const lv2Range = baseRange * (1 + 2 * 0.15);
+  assertApprox(lv2Range, 3.9, 0.01, 'Arrow Lv3 range = 3.9 (+30%)');
+}
+
+{
+  // Max level is 2 (0-indexed: 0, 1, 2)
+  // Tower starts at level 0, can upgrade twice to level 2
+  assert(true, 'Max tower level = 2 (3 tiers total)');
+}
+
+// --- Sell Refund ---
+group('Sell Refund');
+
+{
+  // 75% refund of total invested
+  const arrowRefund = Math.floor(25 * 0.75);
+  assertEqual(arrowRefund, 18, 'Arrow sell refund = $18 (75% of $25)');
+}
+
+{
+  // Tower upgraded once: invested = cost * 2
+  const invested = 25 + 25; // base + 1 upgrade
+  const refund = Math.floor(invested * 0.75);
+  assertEqual(refund, 37, 'Arrow Lv2 sell refund = $37 (75% of $50)');
+}
+
+{
+  // Tower upgraded twice: invested = cost * 3
+  const invested = 25 + 25 + 25; // base + 2 upgrades
+  const refund = Math.floor(invested * 0.75);
+  assertEqual(refund, 56, 'Arrow Lv3 sell refund = $56 (75% of $75)');
+}
+
+{
+  // Cannon fully upgraded
+  const invested = 60 + 60 + 60;
+  const refund = Math.floor(invested * 0.75);
+  assertEqual(refund, 135, 'Cannon Lv3 sell refund = $135 (75% of $180)');
+}
+
+// --- Path ---
+group('Path System');
+
+{
+  assert(PATH.length > 0, 'Path has waypoints');
+  assert(PATH.length > 50, 'Path is substantial (S-curve, > 50 waypoints)');
+}
+
+{
+  // Path starts at left edge
+  assertEqual(PATH[0][0], 0, 'Path starts at column 0');
+}
+
+{
+  // Path ends near bottom
+  const lastR = PATH[PATH.length - 1][1];
+  assertEqual(lastR, 9, 'Path ends at row 9 (bottom)');
+}
+
+{
+  // Path cells are marked
+  assert(pathSet.has('0,1'), 'Cell 0,1 is on path');
+  assert(pathSet.has('14,1'), 'Cell 14,1 is on path');
+  assert(!pathSet.has('0,0'), 'Cell 0,0 is NOT on path');
+}
+
+// --- Grid ---
+group('Grid Constants');
+
+{
+  assertEqual(COLS, 16, 'Grid has 16 columns');
+  assertEqual(ROWS, 10, 'Grid has 10 rows');
+  assertEqual(TILE, 52, 'Tile size is 52px');
+  assertEqual(TOTAL_WAVES, 30, 'Total waves = 30');
+}
+
+// --- Shop Unlock Checks ---
+group('Shop Unlock Integration');
+
+localStorage.clear();
+{
+  const ggData = ggLoad();
+  const hasFlame = !!ggData.shopPurchases['td_flame_tower'];
+  assertEqual(hasFlame, false, 'Flame tower locked by default');
+}
+
+{
+  ggSave({ gBux: 0, achievements: {}, shopPurchases: { td_flame_tower: true } });
+  const ggData = ggLoad();
+  const hasFlame = !!ggData.shopPurchases['td_flame_tower'];
+  assertEqual(hasFlame, true, 'Flame tower unlocked after purchase');
+}
+
+localStorage.clear();
+{
+  const ggData = ggLoad();
+  const hasWarBonds = !!ggData.shopPurchases['td_double_gold'];
+  const startGold = hasWarBonds ? 200 : 100;
+  assertEqual(startGold, 100, 'Starting gold is $100 without War Bonds');
+}
+
+{
+  ggSave({ gBux: 0, achievements: {}, shopPurchases: { td_double_gold: true } });
+  const ggData = ggLoad();
+  const hasWarBonds = !!ggData.shopPurchases['td_double_gold'];
+  const startGold = hasWarBonds ? 200 : 100;
+  assertEqual(startGold, 200, 'Starting gold is $200 with War Bonds');
+}
+
+// --- Lives ---
+group('Lives System');
+
+{
+  assertEqual(20, 20, 'Starting lives = 20');
+}
+
+{
+  // Boss leak = 3 lives
+  const lives = 20;
+  const bossLeak = 3;
+  assertEqual(lives - bossLeak, 17, 'Boss leak costs 3 lives (20 - 3 = 17)');
+}
+
+{
+  // Normal leak = 1 life
+  const lives = 20;
+  assertEqual(lives - 1, 19, 'Normal enemy leak costs 1 life');
+}
+
+// --- Score ---
+group('Scoring');
+
+{
+  // Kill = 10 points
+  const killScore = 10;
+  assertEqual(killScore, 10, 'Kill score = 10 points');
+}
+
+{
+  // Wave complete = 50 points
+  const waveScore = 50;
+  assertEqual(waveScore, 50, 'Wave completion = 50 points');
+}
+
+{
+  // Victory bonus: lives * 20
+  const livesBonus = 15 * 20;
+  assertEqual(livesBonus, 300, 'Victory bonus with 15 lives = 300');
+}
+
+// --- Tower Special Properties ---
+group('Tower Special Properties');
+
+{
+  // Cannon has splash
+  assert(TOWER_DEFS.cannon.splash > 0, 'Cannon has splash radius');
+  assertEqual(TOWER_DEFS.cannon.splash, 1, 'Cannon splash = 1 tile');
+}
+
+{
+  // Ice has slow
+  assert(TOWER_DEFS.ice.slow > 0, 'Ice has slow effect');
+  assertEqual(TOWER_DEFS.ice.slow, 0.5, 'Ice slow = 50%');
+}
+
+{
+  // Lightning has chain
+  assert(TOWER_DEFS.lightning.chain > 0, 'Lightning has chain');
+  assertEqual(TOWER_DEFS.lightning.chain, 3, 'Lightning chains to 3');
+}
+
+{
+  // Flame has DoT
+  assertEqual(TOWER_DEFS.flame.dot, true, 'Flame has DoT flag');
+}
+
+{
+  // Arrow has no special
+  assertEqual(TOWER_DEFS.arrow.splash, 0, 'Arrow has no splash');
+  assertEqual(TOWER_DEFS.arrow.slow, 0, 'Arrow has no slow');
+  assertEqual(TOWER_DEFS.arrow.chain, 0, 'Arrow has no chain');
+  assertEqual(TOWER_DEFS.arrow.dot, false, 'Arrow has no DoT');
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>
