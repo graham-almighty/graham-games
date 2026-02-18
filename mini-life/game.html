@@ -551,22 +551,124 @@
     transition: transform 0.15s;
   }
   .start-btn:hover { transform: scale(1.03); }
-  .continue-btn {
-    margin-top: 6px;
-    padding: 10px 0;
-    width: 100%;
-    border-radius: 8px;
-    border: 1px solid #c9a84c66;
+
+  /* Save slots UI */
+  .save-slots { margin-top: 14px; }
+  .save-slots-title {
+    font-size: 0.75rem;
+    color: #c9a84c88;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+  }
+  .save-slot-row {
+    background: #ffffff08;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: border-color 0.15s;
+  }
+  .save-slot-row.occupied { border-color: #c9a84c44; }
+  .save-slot-info { flex: 1; min-width: 0; }
+  .save-slot-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #eee;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .save-slot-detail {
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 2px;
+  }
+  .save-slot-empty {
+    font-size: 0.8rem;
+    color: #555;
+    font-style: italic;
+    padding: 4px 0;
+  }
+  .save-slot-btns { display: flex; gap: 4px; flex-shrink: 0; }
+  .save-slot-btns button {
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.03em;
+  }
+  .slot-load-btn {
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    color: #fff;
+  }
+  .slot-load-btn:hover { filter: brightness(1.15); }
+  .slot-delete-btn {
     background: transparent;
+    border: 1px solid #cc444466 !important;
+    color: #cc4444;
+  }
+  .slot-delete-btn:hover { background: #cc444422; }
+
+  /* Name prompt overlay */
+  .name-prompt-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: #000000cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .name-prompt-overlay.visible { opacity: 1; pointer-events: all; }
+  .name-prompt-panel {
+    background: #1a1a2e;
+    border: 1px solid #c9a84c66;
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    max-width: 320px;
+    width: 85vw;
+  }
+  .name-prompt-panel h3 {
     color: #c9a84c;
+    font-size: 1rem;
+    margin-bottom: 12px;
+  }
+  .name-prompt-panel input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #0a0a1a;
+    color: #eee;
+    font-size: 1rem;
+    outline: none;
+    margin-bottom: 12px;
+  }
+  .name-prompt-panel input:focus { border-color: #c9a84c; }
+  .name-prompt-panel button {
+    padding: 8px 24px;
+    border-radius: 6px;
+    border: none;
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    color: #fff;
     font-size: 0.95rem;
     font-weight: 600;
     cursor: pointer;
-    letter-spacing: 0.05em;
-    transition: all 0.15s;
-    display: none;
   }
-  .continue-btn:hover { background: #c9a84c22; border-color: #c9a84c; }
+
   .save-toast {
     position: fixed;
     bottom: 30px;
@@ -1025,7 +1127,10 @@
       </div>
 
       <button class="start-btn" onclick="startGame()">START GAME</button>
-      <button class="continue-btn" id="continue-btn" onclick="loadGame()">CONTINUE</button>
+      <div class="save-slots">
+        <div class="save-slots-title">Saved Games</div>
+        <div id="save-slot-list"></div>
+      </div>
     </div>
     <div class="creator-right">
       <canvas id="preview-canvas" width="200" height="300"></canvas>
@@ -1088,6 +1193,14 @@
 </div>
 
 <div class="save-toast" id="save-toast">Game saved!</div>
+
+<div class="name-prompt-overlay" id="name-prompt-overlay">
+  <div class="name-prompt-panel">
+    <h3>Name Your Save</h3>
+    <input type="text" id="name-prompt-input" maxlength="20" placeholder="Enter a name...">
+    <button id="name-prompt-ok">OK</button>
+  </div>
+</div>
 
 <!-- Action tooltip -->
 <div class="action-tip" id="action-tip"></div>
@@ -2571,6 +2684,8 @@ let questsCompleted = 0;
 let npcDialogueOpen = false;
 let currentNPCId = null;
 let jobMiniGameRunning = false;
+let currentSlot = -1;
+let currentSlotName = '';
 let jobLastDay = {};
 let totalShiftsWorked = 0;
 
@@ -6267,7 +6382,7 @@ function restartGame() {
   miniGameScore = 0;
   clearAnimIntervals();
   closeMirror();
-  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay'].forEach(id => {
+  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay', 'name-prompt-overlay'].forEach(id => {
     const el = document.getElementById(id);
     el.style.background = '';
     el.classList.remove('visible');
@@ -6328,6 +6443,8 @@ function restartGame() {
   jobLastDay = {};
   totalShiftsWorked = 0;
   jobMiniGameRunning = false;
+  currentSlot = -1;
+  currentSlotName = '';
   npcDialogueOpen = false;
   currentNPCId = null;
   // Reset mansion state
@@ -6363,15 +6480,60 @@ function restartGame() {
   }
   // Show creator again
   document.getElementById('creator-screen').classList.remove('hidden');
+  renderSlotList();
   // Release pointer lock
   if (document.pointerLockElement) document.exitPointerLock();
   lastTime = performance.now();
 }
 
 // ═══ SAVE / LOAD ═══
-function saveGame() {
-  if (!gameStarted || gameOver) return;
-  const save = {
+function getSlotsMetadata() {
+  try { return JSON.parse(localStorage.getItem('minilife-slots')) || [null, null, null]; }
+  catch(e) { return [null, null, null]; }
+}
+function setSlotsMetadata(slots) { localStorage.setItem('minilife-slots', JSON.stringify(slots)); }
+
+function renderSlotList() {
+  const container = document.getElementById('save-slot-list');
+  if (!container) return;
+  container.innerHTML = '';
+  const slots = getSlotsMetadata();
+  slots.forEach((slot, i) => {
+    const row = document.createElement('div');
+    row.className = 'save-slot-row' + (slot ? ' occupied' : '');
+    if (slot) {
+      row.innerHTML = '<div class="save-slot-info"><div class="save-slot-name">' + slot.name + '</div>' +
+        '<div class="save-slot-detail">Day ' + (slot.day || 1) + ' | $' + Math.floor(slot.money || 0) + '</div></div>' +
+        '<div class="save-slot-btns"><button class="slot-load-btn" onclick="loadSlot(' + i + ')">LOAD</button>' +
+        '<button class="slot-delete-btn" onclick="deleteSlot(' + i + ')">DEL</button></div>';
+    } else {
+      row.innerHTML = '<div class="save-slot-empty">Empty</div>';
+    }
+    container.appendChild(row);
+  });
+}
+
+function promptSaveName(callback) {
+  const overlay = document.getElementById('name-prompt-overlay');
+  const input = document.getElementById('name-prompt-input');
+  const btn = document.getElementById('name-prompt-ok');
+  input.value = '';
+  overlay.classList.add('visible');
+  setTimeout(() => input.focus(), 100);
+  function finish() {
+    const name = input.value.trim() || ('Save ' + (currentSlot + 1));
+    overlay.classList.remove('visible');
+    btn.removeEventListener('click', finish);
+    input.removeEventListener('keydown', onKey);
+    callback(name);
+  }
+  function onKey(e) { if (e.key === 'Enter') finish(); }
+  btn.addEventListener('click', finish);
+  input.addEventListener('keydown', onKey);
+}
+
+function buildSaveData() {
+  return {
     needs: { ...needs },
     money,
     gameTime,
@@ -6398,17 +6560,49 @@ function saveGame() {
     jobLastDay: { ...jobLastDay },
     totalShiftsWorked,
   };
-  localStorage.setItem('minilife-save', JSON.stringify(save));
+}
+
+function writeSaveToSlot(slotIndex, name) {
+  const save = buildSaveData();
+  localStorage.setItem('minilife-slot-' + slotIndex, JSON.stringify(save));
+  const slots = getSlotsMetadata();
+  slots[slotIndex] = { name, day: save.day, money: save.money };
+  setSlotsMetadata(slots);
+  currentSlot = slotIndex;
+  currentSlotName = name;
   SFX.kaChing();
   const toast = document.getElementById('save-toast');
   toast.classList.add('visible');
   setTimeout(() => toast.classList.remove('visible'), 1500);
 }
 
-function loadGame() {
-  const raw = localStorage.getItem('minilife-save');
+function saveGame() {
+  if (!gameStarted || gameOver) return;
+  if (currentSlot >= 0 && currentSlotName) {
+    // Already have a slot — just save
+    writeSaveToSlot(currentSlot, currentSlotName);
+    return;
+  }
+  // Need to pick a slot and name
+  const slots = getSlotsMetadata();
+  const emptyIdx = slots.findIndex(s => s === null);
+  if (emptyIdx >= 0) {
+    currentSlot = emptyIdx;
+    promptSaveName(name => writeSaveToSlot(emptyIdx, name));
+  } else {
+    // All full — overwrite slot 2 (last)
+    currentSlot = 2;
+    promptSaveName(name => writeSaveToSlot(2, name));
+  }
+}
+
+function loadSlot(index) {
+  const raw = localStorage.getItem('minilife-slot-' + index);
   if (!raw) return;
   const save = JSON.parse(raw);
+  const slots = getSlotsMetadata();
+  currentSlot = index;
+  currentSlotName = slots[index] ? slots[index].name : ('Save ' + (index + 1));
 
   // Restore character options and rebuild preview to match
   charOpts.skinTone = save.charOpts.skinTone;
@@ -6547,10 +6741,28 @@ function loadGame() {
   mlCheckLivingLarge();
 }
 
-// Show continue button if a save exists
-if (localStorage.getItem('minilife-save')) {
-  document.getElementById('continue-btn').style.display = 'block';
+function deleteSlot(index) {
+  if (!confirm('Delete this save?')) return;
+  localStorage.removeItem('minilife-slot-' + index);
+  const slots = getSlotsMetadata();
+  slots[index] = null;
+  setSlotsMetadata(slots);
+  renderSlotList();
 }
+
+// Migrate old single-save format
+(function migrateSave() {
+  const oldSave = localStorage.getItem('minilife-save');
+  if (oldSave && !localStorage.getItem('minilife-slots')) {
+    localStorage.setItem('minilife-slot-0', oldSave);
+    const save = JSON.parse(oldSave);
+    setSlotsMetadata([{ name: 'Save 1', day: save.day || 1, money: save.money || 0 }, null, null]);
+    localStorage.removeItem('minilife-save');
+  }
+})();
+
+// Render save slots on page load
+renderSlotList();
 
 // ═══ RENDER LOOP ═══
 function animate() {

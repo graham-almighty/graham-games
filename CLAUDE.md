@@ -250,11 +250,15 @@ To add a new purchasable expansion:
 - Pets stay home (hidden at town/mansion)
 - If mansion is owned, clicking home car opens "Where to?" destination chooser
 
-### Save/Load
+### Save/Load (Multi-Slot)
 
-**localStorage key:** `minilife-save`
+**3 save slots** with named saves. Slot metadata stored in `minilife-slots` (array of 3). Per-slot data in `minilife-slot-0`, `minilife-slot-1`, `minilife-slot-2`.
 
-Saves: needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted.
+**Metadata shape:** `[{name, day, money}, null, null]`
+
+**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked.
+
+**Flow:** Creator screen shows 3 slot rows (LOAD/DELETE for occupied, "Empty" for free). First save prompts for name. Subsequent saves auto-save to active slot. Old `minilife-save` auto-migrated to slot 0 on first load.
 
 On load: rebuilds character, second floor, furniture, car, town/mansion as needed. Re-checks all achievements.
 

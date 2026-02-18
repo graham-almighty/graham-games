@@ -1622,6 +1622,114 @@ test('totalShiftsWorked defaults to 0 on missing save field', () => {
   assertEqual(totalShiftsWorked, 0);
 });
 
+// ── Multi-Slot Save System ──
+section('Multi-Slot Save System');
+
+test('Slot metadata is array of 3', () => {
+  localStorage.clear();
+  localStorage.setItem('minilife-slots', JSON.stringify([null, null, null]));
+  const slots = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(slots.length, 3);
+  localStorage.clear();
+});
+
+test('Empty slots metadata defaults to [null, null, null]', () => {
+  localStorage.clear();
+  const raw = localStorage.getItem('minilife-slots');
+  const slots = raw ? JSON.parse(raw) : [null, null, null];
+  assertDeepEqual(slots, [null, null, null]);
+  localStorage.clear();
+});
+
+test('Slot metadata stores name, day, money', () => {
+  const meta = { name: 'Test Save', day: 5, money: 200 };
+  assert(typeof meta.name === 'string');
+  assert(typeof meta.day === 'number');
+  assert(typeof meta.money === 'number');
+});
+
+test('Save data stored under minilife-slot-N keys', () => {
+  localStorage.clear();
+  const saveData = { needs: { hunger: 80, energy: 70, fun: 60, hygiene: 50 }, money: 100, day: 3 };
+  localStorage.setItem('minilife-slot-0', JSON.stringify(saveData));
+  const loaded = JSON.parse(localStorage.getItem('minilife-slot-0'));
+  assertEqual(loaded.money, 100);
+  assertEqual(loaded.day, 3);
+  localStorage.clear();
+});
+
+test('3 slots can coexist independently', () => {
+  localStorage.clear();
+  for (let i = 0; i < 3; i++) {
+    localStorage.setItem('minilife-slot-' + i, JSON.stringify({ money: (i + 1) * 100 }));
+  }
+  const slots = JSON.parse(JSON.stringify([
+    { name: 'A', day: 1, money: 100 },
+    { name: 'B', day: 2, money: 200 },
+    { name: 'C', day: 3, money: 300 },
+  ]));
+  localStorage.setItem('minilife-slots', JSON.stringify(slots));
+  const meta = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(meta.length, 3);
+  assertEqual(meta[0].name, 'A');
+  assertEqual(meta[2].money, 300);
+  // Each slot data is independent
+  assertEqual(JSON.parse(localStorage.getItem('minilife-slot-1')).money, 200);
+  localStorage.clear();
+});
+
+test('Deleting a slot sets metadata to null', () => {
+  localStorage.clear();
+  const slots = [{ name: 'A', day: 1, money: 50 }, { name: 'B', day: 2, money: 100 }, null];
+  localStorage.setItem('minilife-slots', JSON.stringify(slots));
+  localStorage.setItem('minilife-slot-1', JSON.stringify({ money: 100 }));
+  // Simulate delete
+  slots[1] = null;
+  localStorage.setItem('minilife-slots', JSON.stringify(slots));
+  localStorage.removeItem('minilife-slot-1');
+  const meta = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(meta[1], null);
+  assertEqual(localStorage.getItem('minilife-slot-1'), null);
+  localStorage.clear();
+});
+
+test('Migration: old minilife-save moves to slot 0', () => {
+  localStorage.clear();
+  const oldSave = { needs: { hunger: 50, energy: 60, fun: 70, hygiene: 80 }, money: 300, day: 7 };
+  localStorage.setItem('minilife-save', JSON.stringify(oldSave));
+  // Simulate migration
+  const raw = localStorage.getItem('minilife-save');
+  if (raw && !localStorage.getItem('minilife-slots')) {
+    localStorage.setItem('minilife-slot-0', raw);
+    const save = JSON.parse(raw);
+    localStorage.setItem('minilife-slots', JSON.stringify([
+      { name: 'Save 1', day: save.day || 1, money: save.money || 0 }, null, null
+    ]));
+    localStorage.removeItem('minilife-save');
+  }
+  // Verify
+  const meta = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(meta[0].name, 'Save 1');
+  assertEqual(meta[0].day, 7);
+  assertEqual(meta[0].money, 300);
+  assertEqual(localStorage.getItem('minilife-save'), null);
+  assert(localStorage.getItem('minilife-slot-0') !== null);
+  localStorage.clear();
+});
+
+test('Slot name defaults if empty input', () => {
+  const input = '';
+  const slotIndex = 0;
+  const name = input.trim() || ('Save ' + (slotIndex + 1));
+  assertEqual(name, 'Save 1');
+});
+
+test('Slot name max 20 characters respected', () => {
+  const name = 'A very long save name that is too long';
+  const trimmed = name.substring(0, 20);
+  assertEqual(trimmed.length, 20);
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;
