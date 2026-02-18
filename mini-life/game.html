@@ -313,6 +313,46 @@
     color: #eee;
   }
 
+  /* Job mini-game overlay */
+  .job-overlay {
+    background: #000000dd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .job-screen-box {
+    width: 75%;
+    max-width: 650px;
+    aspect-ratio: 16/9;
+    background: #0a0a1a;
+    border-radius: 4px;
+    border: 3px solid #222;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 50px #44aa8888, 0 0 100px #228844;
+  }
+  .job-screen-box canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+  }
+  .job-hint {
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #88ccaa;
+    letter-spacing: 0.05em;
+  }
+  .job-hint kbd {
+    background: #333;
+    border: 1px solid #555;
+    border-radius: 3px;
+    padding: 2px 8px;
+    color: #eee;
+  }
+
   /* Steam for shower */
   .steam-puff {
     position: absolute;
@@ -1065,6 +1105,7 @@
 <div class="action-overlay tv-overlay" id="tv-overlay"></div>
 <div class="action-overlay computer-overlay" id="computer-overlay"></div>
 <div class="action-overlay mirror-overlay" id="mirror-overlay"></div>
+<div class="action-overlay job-overlay" id="job-overlay"></div>
 
 <!-- Game Over -->
 <div class="game-over" id="game-over">
@@ -1168,6 +1209,9 @@ const ML_ACH = {
   ml_helpful_neighbor:  { name: 'Helpful Neighbor',   reward: 25 },
   ml_town_hero:         { name: 'Town Hero',          reward: 50 },
   ml_mansion_mogul:     { name: 'Mansion Mogul',      reward: 75 },
+  ml_first_shift:       { name: 'First Shift',         reward: 10 },
+  ml_hard_worker:       { name: 'Hard Worker',         reward: 25 },
+  ml_employee_month:    { name: 'Employee of the Month', reward: 50 },
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 function mlCheckLivingLarge() {
@@ -1581,6 +1625,22 @@ const SFX = (() => {
       osc('sine', 1200, 0.08, 0.15);
       setTimeout(() => osc('triangle', 2400, 0.12, 0.12), 60);
       setTimeout(() => noiseBurst(6000, 'highpass', 0.05, 0.08), 40);
+    },
+    jobCorrect() {
+      if (!ctx) return;
+      osc('sine', 880, 0.08, 0.2);
+      setTimeout(() => osc('sine', 1100, 0.1, 0.15), 60);
+    },
+    jobWrong() {
+      if (!ctx) return;
+      osc('sawtooth', 200, 0.12, 0.15);
+      noiseBurst(300, 'lowpass', 0.08, 0.08);
+    },
+    jobComplete() {
+      if (!ctx) return;
+      osc('sine', 523, 0.1, 0.2);
+      setTimeout(() => osc('sine', 659, 0.1, 0.2), 80);
+      setTimeout(() => osc('sine', 784, 0.15, 0.2), 160);
     },
   };
 })();
@@ -2510,6 +2570,15 @@ let questLog = {};
 let questsCompleted = 0;
 let npcDialogueOpen = false;
 let currentNPCId = null;
+let jobMiniGameRunning = false;
+let jobLastDay = {};
+let totalShiftsWorked = 0;
+
+const TOWN_JOBS = {
+  barista:  { name: 'Order Rush',   basePay: 15, desc: 'Fill drink orders!' },
+  merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
+  mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
+};
 
 const TOWN_ORIGIN = { x: 122.5, z: 0 }; // center of town
 const TOWN_BOUNDS = { xMin: 100, xMax: 145, zMin: -15, zMax: 15 };
@@ -2645,7 +2714,7 @@ function purchaseMansion() {
 }
 
 function startDrivingTransition(destination) {
-  if (npcDialogueOpen || currentAction || driveDestOpen) return;
+  if (npcDialogueOpen || currentAction || driveDestOpen || jobMiniGameRunning) return;
   const overlay = document.getElementById('drive-overlay');
   const driveText = document.getElementById('drive-text');
   if (destination === 'town') driveText.textContent = 'Driving to town...';
@@ -3596,7 +3665,7 @@ function buildMansion() {
 }
 
 function openNPCDialogue(npcId) {
-  if (npcDialogueOpen || currentAction) return;
+  if (npcDialogueOpen || currentAction || jobMiniGameRunning) return;
   npcDialogueOpen = true;
   currentNPCId = npcId;
   if (document.pointerLockElement) document.exitPointerLock();
@@ -3643,6 +3712,21 @@ function openNPCDialogue(npcId) {
     addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
   }
 
+  // Add "Work a shift" button if this NPC has a job
+  const job = TOWN_JOBS[npcId];
+  if (job) {
+    if (jobLastDay[npcId] === day) {
+      const disBtn = document.createElement('button');
+      disBtn.textContent = 'Already worked today';
+      disBtn.className = 'npc-btn-close';
+      disBtn.disabled = true;
+      disBtn.style.opacity = '0.5';
+      btnsEl.appendChild(disBtn);
+    } else {
+      addDialogueBtn(btnsEl, 'Work: ' + job.name + ' ($' + job.basePay + '+)', 'npc-btn-accept', () => startTownJob(npcId));
+    }
+  }
+
   overlay.classList.add('visible');
 }
 
@@ -3677,6 +3761,530 @@ function closeNPCDialogue() {
   npcDialogueOpen = false;
   currentNPCId = null;
   document.getElementById('npc-dialogue-overlay').classList.remove('visible');
+}
+
+// ═══ TOWN JOBS ═══
+function startTownJob(npcId) {
+  closeNPCDialogue();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  const job = TOWN_JOBS[npcId];
+  overlay.innerHTML = '<div class="job-screen-box"><canvas id="job-canvas" width="640" height="360"></canvas></div>' +
+    '<div class="job-hint" id="job-hint"></div>';
+  overlay.classList.add('visible');
+  const canvas = document.getElementById('job-canvas');
+  const ctx = canvas.getContext('2d');
+  const hintEl = document.getElementById('job-hint');
+  if (npcId === 'barista') {
+    hintEl.innerHTML = '<kbd>W</kbd> Water  <kbd>M</kbd> Milk  <kbd>C</kbd> Coffee  <kbd>S</kbd> Sugar';
+    runCafeJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+  } else if (npcId === 'merchant') {
+    hintEl.innerHTML = '<kbd>A</kbd> / <kbd>D</kbd> Move cart';
+    runShopJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+  } else if (npcId === 'mayor') {
+    hintEl.innerHTML = '<kbd>A</kbd> Approve  <kbd>D</kbd> Deny';
+    runTownHallJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+  }
+}
+
+function finishTownJob(npcId, score) {
+  jobMiniGameRunning = false;
+  const job = TOWN_JOBS[npcId];
+  const finalScore = Math.max(0, score);
+  const pay = job.basePay + Math.floor(finalScore * 0.5);
+  money += pay;
+  needs.energy = Math.max(0, needs.energy - 15);
+  needs.hunger = Math.max(0, needs.hunger - 10);
+  jobLastDay[npcId] = day;
+  totalShiftsWorked++;
+  SFX.jobComplete();
+  SFX.kaChing();
+  mlTry('ml_first_shift');
+  if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
+  if (totalShiftsWorked >= 25) mlTry('ml_employee_month');
+  if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+  showTip('Shift done! Earned $' + pay);
+  const overlay = document.getElementById('job-overlay');
+  overlay.classList.remove('visible');
+  setTimeout(() => { overlay.innerHTML = ''; }, 500);
+}
+
+// --- Cafe: Order Rush ---
+function runCafeJob(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const DRINKS = [
+    { name: 'Espresso',   recipe: ['C','W'] },
+    { name: 'Latte',      recipe: ['C','M','W'] },
+    { name: 'Mocha',      recipe: ['C','M','S'] },
+    { name: 'Tea',        recipe: ['W','W','S'] },
+    { name: 'Cappuccino', recipe: ['C','M','M'] },
+    { name: 'Americano',  recipe: ['C','W','W'] },
+    { name: 'Sweet Milk', recipe: ['M','S'] },
+    { name: 'Hot Cocoa',  recipe: ['M','S','W'] },
+  ];
+  const KEY_COLORS = { W: '#4488cc', M: '#eeeedd', C: '#6b3a1f', S: '#ffcc44' };
+  const KEY_NAMES = { W: 'Water', M: 'Milk', C: 'Coffee', S: 'Sugar' };
+  let orders = [];
+  let score = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let spawnInterval = 3.5;
+  let flash = null;
+  let running = true;
+
+  function spawnOrder() {
+    const drink = DRINKS[Math.floor(Math.random() * DRINKS.length)];
+    orders.push({ name: drink.name, recipe: [...drink.recipe], progress: 0, timer: 7, x: 0 });
+  }
+  spawnOrder();
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key.toUpperCase();
+    if (!['W','M','C','S'].includes(k)) return;
+    e.preventDefault();
+    flash = { key: k, t: 0.3 };
+    if (orders.length === 0) return;
+    const order = orders[0];
+    if (order.recipe[order.progress] === k) {
+      order.progress++;
+      SFX.jobCorrect();
+      if (order.progress >= order.recipe.length) {
+        score += 10;
+        orders.shift();
+      }
+    } else {
+      score = Math.max(0, score - 2);
+      order.progress = 0;
+      SFX.jobWrong();
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    spawnTimer += dt;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnInterval = Math.max(2, spawnInterval - 0.15);
+      if (orders.length < 5) spawnOrder();
+    }
+    // Update orders
+    for (let i = orders.length - 1; i >= 0; i--) {
+      orders[i].timer -= dt;
+      if (orders[i].timer <= 0) {
+        score = Math.max(0, score - 3);
+        orders.splice(i, 1);
+      }
+    }
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Draw
+    ctx.fillStyle = '#3a2218';
+    ctx.fillRect(0, 0, W, H);
+    // Counter
+    ctx.fillStyle = '#5a3a28';
+    ctx.fillRect(0, H - 80, W, 80);
+    ctx.fillStyle = '#7a5a48';
+    ctx.fillRect(0, H - 82, W, 4);
+
+    // Orders as tickets
+    const ticketW = 110, ticketH = 130, gap = 12;
+    const startX = (W - Math.min(orders.length, 5) * (ticketW + gap)) / 2;
+    orders.forEach((order, i) => {
+      if (i >= 5) return;
+      const tx = startX + i * (ticketW + gap);
+      const ty = 30;
+      // Ticket bg
+      ctx.fillStyle = i === 0 ? '#fff8e0' : '#e8e0d0';
+      ctx.fillRect(tx, ty, ticketW, ticketH);
+      ctx.strokeStyle = i === 0 ? '#c9a84c' : '#999';
+      ctx.lineWidth = i === 0 ? 2 : 1;
+      ctx.strokeRect(tx, ty, ticketW, ticketH);
+      // Drink name
+      ctx.fillStyle = '#333';
+      ctx.font = 'bold 13px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(order.name, tx + ticketW / 2, ty + 20);
+      // Recipe keys
+      order.recipe.forEach((k, ki) => {
+        const kx = tx + 15 + ki * 32;
+        const ky = ty + 40;
+        ctx.fillStyle = ki < order.progress ? '#44aa44' : (ki === order.progress && i === 0 ? '#ffcc44' : '#888');
+        ctx.beginPath();
+        ctx.arc(kx + 12, ky + 12, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px monospace';
+        ctx.fillText(k, kx + 12, ky + 17);
+      });
+      // Timer bar
+      const barY = ty + ticketH - 16;
+      const pct = Math.max(0, order.timer / 7);
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(tx + 5, barY, ticketW - 10, 8);
+      ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
+      ctx.fillRect(tx + 5, barY, (ticketW - 10) * pct, 8);
+    });
+
+    // Key flash
+    if (flash) {
+      ctx.fillStyle = KEY_COLORS[flash.key] || '#fff';
+      ctx.globalAlpha = flash.t / 0.3;
+      ctx.font = 'bold 48px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(flash.key, W / 2, H - 30);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (15 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, H - 50);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Shop: Shelf Stocker ---
+function runShopJob(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const ITEM_TYPES = [
+    { name: 'Box', color: '#cc8844', w: 24, h: 24 },
+    { name: 'Can', color: '#44aa66', w: 18, h: 26 },
+    { name: 'Jar', color: '#aa66cc', w: 20, h: 24 },
+    { name: 'Bag', color: '#cc6644', w: 26, h: 20 },
+    { name: 'Bottle', color: '#4488cc', w: 16, h: 28 },
+  ];
+  const BOMB = { name: 'Bomb', color: '#cc2222', w: 22, h: 22, isBomb: true };
+  let cart = { x: W / 2, w: 80 };
+  let items = [];
+  let particles = [];
+  let score = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let spawnInterval = 0.8;
+  let keys = {};
+  let screenFlash = 0;
+  let running = true;
+
+  function spawnItem() {
+    const isBomb = Math.random() < 0.15;
+    const type = isBomb ? BOMB : ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+    items.push({ x: 30 + Math.random() * (W - 60), y: -20, speed: 80 + Math.random() * 60 + (30 - timeLeft) * 3, type });
+  }
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key.toLowerCase();
+    if (k === 'a' || k === 'arrowleft') { keys.left = e.type === 'keydown'; e.preventDefault(); }
+    if (k === 'd' || k === 'arrowright') { keys.right = e.type === 'keydown'; e.preventDefault(); }
+  }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    spawnTimer += dt;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnInterval = Math.max(0.35, spawnInterval - 0.02);
+      spawnItem();
+    }
+
+    // Move cart
+    const speed = 350;
+    if (keys.left) cart.x -= speed * dt;
+    if (keys.right) cart.x += speed * dt;
+    cart.x = Math.max(cart.w / 2, Math.min(W - cart.w / 2, cart.x));
+
+    // Update items
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
+      item.y += item.speed * dt;
+      // Check catch
+      if (item.y + item.type.h / 2 >= H - 50 && item.y - item.type.h / 2 <= H - 20) {
+        if (Math.abs(item.x - cart.x) < (cart.w / 2 + item.type.w / 2)) {
+          if (item.type.isBomb) {
+            score = Math.max(0, score - 5);
+            screenFlash = 0.3;
+            SFX.jobWrong();
+          } else {
+            score += 5;
+            SFX.jobCorrect();
+            for (let p = 0; p < 5; p++) {
+              particles.push({ x: item.x, y: H - 40, vx: (Math.random() - 0.5) * 100, vy: -Math.random() * 80, t: 0.5, color: item.type.color });
+            }
+          }
+          items.splice(i, 1);
+          continue;
+        }
+      }
+      // Miss — fell off screen
+      if (item.y > H + 20) {
+        if (!item.type.isBomb) {
+          score = Math.max(0, score - 3);
+        }
+        items.splice(i, 1);
+      }
+    }
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 200 * dt; p.t -= dt;
+      if (p.t <= 0) particles.splice(i, 1);
+    }
+    if (screenFlash > 0) screenFlash -= dt;
+
+    // Draw
+    ctx.fillStyle = '#d4e8f0';
+    ctx.fillRect(0, 0, W, H);
+    // Shelves decoration
+    ctx.fillStyle = '#8b6e4e';
+    for (let sy = 60; sy < H - 80; sy += 80) {
+      ctx.fillRect(10, sy, 40, 6);
+      ctx.fillRect(W - 50, sy, 40, 6);
+    }
+    // Floor
+    ctx.fillStyle = '#bba882';
+    ctx.fillRect(0, H - 15, W, 15);
+
+    // Items
+    items.forEach(item => {
+      ctx.fillStyle = item.type.color;
+      ctx.fillRect(item.x - item.type.w / 2, item.y - item.type.h / 2, item.type.w, item.type.h);
+      if (item.type.isBomb) {
+        ctx.fillStyle = '#ff4444';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', item.x, item.y + 5);
+      }
+    });
+
+    // Cart
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cart.x - cart.w / 2, H - 50, cart.w, 30);
+    ctx.fillStyle = '#888';
+    ctx.fillRect(cart.x - cart.w / 2 + 4, H - 48, cart.w - 8, 4);
+    // Wheels
+    ctx.fillStyle = '#333';
+    ctx.beginPath(); ctx.arc(cart.x - cart.w / 3, H - 18, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cart.x + cart.w / 3, H - 18, 6, 0, Math.PI * 2); ctx.fill();
+
+    // Particles
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.t / 0.5;
+      ctx.fillRect(p.x - 3, p.y - 3, 6, 6);
+      ctx.globalAlpha = 1;
+    });
+
+    // Screen flash (bomb)
+    if (screenFlash > 0) {
+      ctx.fillStyle = 'rgba(255,50,50,' + (screenFlash / 0.3 * 0.3) + ')';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // HUD
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (15 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, 22);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKey);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Town Hall: Stamp Sorter ---
+function runTownHallJob(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const RULES = [
+    { text: 'APPROVE blue, DENY red',     approve: '#4488cc', deny: '#cc4444', aName: 'blue', dName: 'red' },
+    { text: 'APPROVE green, DENY yellow',  approve: '#44aa66', deny: '#ccaa44', aName: 'green', dName: 'yellow' },
+    { text: 'APPROVE red, DENY blue',      approve: '#cc4444', deny: '#4488cc', aName: 'red', dName: 'blue' },
+    { text: 'APPROVE yellow, DENY green',  approve: '#ccaa44', deny: '#44aa66', aName: 'yellow', dName: 'green' },
+    { text: 'DENY blue, APPROVE red',      approve: '#cc4444', deny: '#4488cc', aName: 'red', dName: 'blue' },
+    { text: 'APPROVE green, DENY red',     approve: '#44aa66', deny: '#cc4444', aName: 'green', dName: 'red' },
+  ];
+  let currentRule = RULES[0];
+  let doc = null;
+  let score = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let docTimer = 0;
+  let docsThisRule = 0;
+  let ruleChangeAt = 6 + Math.floor(Math.random() * 3);
+  let stamp = null;
+  let newRuleFlash = 0;
+  let running = true;
+  let docCount = 0;
+
+  function pickRule() {
+    let next;
+    do { next = RULES[Math.floor(Math.random() * RULES.length)]; } while (next === currentRule);
+    currentRule = next;
+    docsThisRule = 0;
+    ruleChangeAt = 6 + Math.floor(Math.random() * 3);
+    newRuleFlash = 1.0;
+  }
+
+  function spawnDoc() {
+    const isApprove = Math.random() < 0.5;
+    doc = { color: isApprove ? currentRule.approve : currentRule.deny, shouldApprove: isApprove, timer: 3 };
+    docTimer = 0;
+    docCount++;
+  }
+  spawnDoc();
+
+  function onKey(e) {
+    if (!running || !doc) return;
+    const k = e.key.toLowerCase();
+    if (k !== 'a' && k !== 'd') return;
+    e.preventDefault();
+    const approved = (k === 'a');
+    const correct = (approved === doc.shouldApprove);
+    if (correct) {
+      score += 10;
+      stamp = { text: approved ? 'APPROVED' : 'DENIED', color: approved ? '#44aa44' : '#cc4444', t: 0.6 };
+      SFX.jobCorrect();
+    } else {
+      score = Math.max(0, score - 5);
+      stamp = { text: 'WRONG!', color: '#ff4444', t: 0.6 };
+      SFX.jobWrong();
+    }
+    docsThisRule++;
+    if (docsThisRule >= ruleChangeAt) pickRule();
+    doc = null;
+    setTimeout(() => { if (running) spawnDoc(); }, 500);
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    if (newRuleFlash > 0) newRuleFlash -= dt;
+
+    // Doc timeout
+    if (doc) {
+      doc.timer -= dt;
+      if (doc.timer <= 0) {
+        score = Math.max(0, score - 3);
+        stamp = { text: 'TOO SLOW', color: '#ff8844', t: 0.6 };
+        docsThisRule++;
+        if (docsThisRule >= ruleChangeAt) pickRule();
+        doc = null;
+        setTimeout(() => { if (running) spawnDoc(); }, 500);
+      }
+    }
+    if (stamp) { stamp.t -= dt; if (stamp.t <= 0) stamp = null; }
+
+    // Draw
+    ctx.fillStyle = '#e8dcc8';
+    ctx.fillRect(0, 0, W, H);
+    // Desk
+    ctx.fillStyle = '#8b6e4e';
+    ctx.fillRect(0, H - 60, W, 60);
+    ctx.fillStyle = '#a08060';
+    ctx.fillRect(0, H - 62, W, 4);
+
+    // Rule display
+    ctx.fillStyle = newRuleFlash > 0.5 ? '#cc4444' : '#333';
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(newRuleFlash > 0.5 ? 'NEW RULE!' : currentRule.text, W / 2, 30);
+
+    // Document
+    if (doc) {
+      const dx = W / 2 - 80, dy = 60, dw = 160, dh = 200;
+      // Paper
+      ctx.fillStyle = '#fffff0';
+      ctx.fillRect(dx, dy, dw, dh);
+      ctx.strokeStyle = '#999';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(dx, dy, dw, dh);
+      // Color header
+      ctx.fillStyle = doc.color;
+      ctx.fillRect(dx, dy, dw, 40);
+      // Lines
+      ctx.fillStyle = '#ccc';
+      for (let ly = dy + 60; ly < dy + dh - 20; ly += 18) {
+        ctx.fillRect(dx + 15, ly, dw - 30, 2);
+      }
+      // Timer bar
+      const pct = Math.max(0, doc.timer / 3);
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(dx, dy + dh + 8, dw, 8);
+      ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
+      ctx.fillRect(dx, dy + dh + 8, dw * pct, 8);
+    }
+
+    // Stamp overlay
+    if (stamp) {
+      ctx.save();
+      ctx.translate(W / 2, 170);
+      ctx.rotate(-0.2);
+      ctx.globalAlpha = Math.min(1, stamp.t / 0.3);
+      ctx.font = 'bold 36px monospace';
+      ctx.fillStyle = stamp.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(stamp.text, 0, 0);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (15 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, H - 30);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
 }
 
 function purchaseFurniture(id) {
@@ -3947,7 +4555,7 @@ const EYE_HEIGHT = 1.5;
 // Pointer lock
 renderer.domElement.addEventListener('click', (e) => {
   SFX.init();
-  if (!pointerLocked && !gameOver && gameStarted && !npcDialogueOpen && !shopOpen && !petMenuOpen) {
+  if (!pointerLocked && !gameOver && gameStarted && !npcDialogueOpen && !shopOpen && !petMenuOpen && !jobMiniGameRunning) {
     renderer.domElement.requestPointerLock();
   }
 });
@@ -4048,7 +4656,7 @@ let miniGameRunning = false;
 let miniGameKeys = {};
 
 function openDriveDestMenu() {
-  if (npcDialogueOpen || currentAction || driveDestOpen) return;
+  if (npcDialogueOpen || currentAction || driveDestOpen || jobMiniGameRunning) return;
   driveDestOpen = true;
   if (document.pointerLockElement) document.exitPointerLock();
   document.getElementById('drive-dest-overlay').classList.add('visible');
@@ -5659,7 +6267,7 @@ function restartGame() {
   miniGameScore = 0;
   clearAnimIntervals();
   closeMirror();
-  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay'].forEach(id => {
+  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay'].forEach(id => {
     const el = document.getElementById(id);
     el.style.background = '';
     el.classList.remove('visible');
@@ -5717,6 +6325,9 @@ function restartGame() {
   inTown = false;
   questLog = {};
   questsCompleted = 0;
+  jobLastDay = {};
+  totalShiftsWorked = 0;
+  jobMiniGameRunning = false;
   npcDialogueOpen = false;
   currentNPCId = null;
   // Reset mansion state
@@ -5784,6 +6395,8 @@ function saveGame() {
     inMansion,
     questLog: JSON.parse(JSON.stringify(questLog)),
     questsCompleted,
+    jobLastDay: { ...jobLastDay },
+    totalShiftsWorked,
   };
   localStorage.setItem('minilife-save', JSON.stringify(save));
   SFX.kaChing();
@@ -5877,6 +6490,8 @@ function loadGame() {
   }
   if (save.questLog) questLog = save.questLog;
   if (save.questsCompleted) questsCompleted = save.questsCompleted;
+  if (save.jobLastDay) jobLastDay = save.jobLastDay;
+  if (save.totalShiftsWorked) totalShiftsWorked = save.totalShiftsWorked;
   if (save.inTown && save.hasCar) {
     if (!townGroup) {
       townGroup = buildTown();
@@ -5926,6 +6541,9 @@ function loadGame() {
   if (questsCompleted >= 1) mlTry('ml_helpful_neighbor');
   if (questsCompleted >= 4) mlTry('ml_town_hero');
   if (hasMansion) mlTry('ml_mansion_mogul');
+  if (totalShiftsWorked >= 1) mlTry('ml_first_shift');
+  if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
+  if (totalShiftsWorked >= 25) mlTry('ml_employee_month');
   mlCheckLivingLarge();
 }
 

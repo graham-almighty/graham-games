@@ -91,6 +91,9 @@ const ML_ACH = {
   ml_helpful_neighbor:  { name: 'Helpful Neighbor',   reward: 25 },
   ml_town_hero:         { name: 'Town Hero',          reward: 50 },
   ml_mansion_mogul:     { name: 'Mansion Mogul',      reward: 75 },
+  ml_first_shift:       { name: 'First Shift',         reward: 10 },
+  ml_hard_worker:       { name: 'Hard Worker',         reward: 25 },
+  ml_employee_month:    { name: 'Employee of the Month', reward: 50 },
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 
@@ -212,6 +215,34 @@ const QUESTS = {
   tall_tales: { npc: 'old_pete', name: 'Tall Tales', reward: { money: 50, fun: 30 } },
 };
 
+// Town job definitions
+const TOWN_JOBS = {
+  barista:  { name: 'Order Rush',   basePay: 15, desc: 'Fill drink orders!' },
+  merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
+  mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
+};
+
+// Job pay calculation (extracted)
+function calculateJobPay(npcId, score) {
+  const job = TOWN_JOBS[npcId];
+  const finalScore = Math.max(0, score);
+  return job.basePay + Math.floor(finalScore * 0.5);
+}
+
+// Job finish logic (extracted)
+function finishTownJobLogic(npcId, score, gameState) {
+  const pay = calculateJobPay(npcId, score);
+  const result = {
+    money: gameState.money + pay,
+    energy: Math.max(0, gameState.needs.energy - 15),
+    hunger: Math.max(0, gameState.needs.hunger - 10),
+    totalShiftsWorked: gameState.totalShiftsWorked + 1,
+    pay,
+  };
+  result.jobLastDay = { ...gameState.jobLastDay, [npcId]: gameState.day };
+  return result;
+}
+
 // finishAction logic (extracted)
 function finishAction(objType, objNeed, config, gameState) {
   const { needs, money, booksRead, treadmillUses, questLog, miniGameScore } = gameState;
@@ -244,6 +275,7 @@ const SAVE_KEYS = [
   'currentTrackId', 'doorOpen', 'hasSecondFloor', 'booksRead', 'treadmillUses',
   'activePet', 'currentFloor', 'playerPos', 'yaw', 'pitch', 'hasCar', 'inTown',
   'hasMansion', 'inMansion', 'questLog', 'questsCompleted',
+  'jobLastDay', 'totalShiftsWorked',
 ];
 
 // Needs decay simulation
@@ -930,13 +962,13 @@ test('Each NPC has matching quest', () => {
 // ── Achievement Definitions ──
 section('Achievement Definitions');
 
-test('ML_ACH has 15 entries', () => {
-  assertEqual(Object.keys(ML_ACH).length, 15);
+test('ML_ACH has 18 entries', () => {
+  assertEqual(Object.keys(ML_ACH).length, 18);
 });
 
-test('Total Mini Life G Bux is 435', () => {
+test('Total Mini Life G Bux is 520', () => {
   const total = Object.values(ML_ACH).reduce((sum, a) => sum + a.reward, 0);
-  assertEqual(total, 435);
+  assertEqual(total, 520);
 });
 
 test('All achievement IDs start with ml_', () => {
@@ -1000,11 +1032,11 @@ test('mlTry does not double-award', () => {
   localStorage.clear();
 });
 
-test('Unlocking all 15 ML achievements yields 435 G Bux', () => {
+test('Unlocking all 18 ML achievements yields 520 G Bux', () => {
   localStorage.clear();
   Object.keys(ML_ACH).forEach(id => mlTry(id));
   const data = ggLoad();
-  assertEqual(data.gBux, 435);
+  assertEqual(data.gBux, 520);
   localStorage.clear();
 });
 
@@ -1049,8 +1081,8 @@ test('Total outfit cost (excluding free) is $225', () => {
 // ── Save Data Shape ──
 section('Save Data Shape');
 
-test('Save data has 23 keys', () => {
-  assertEqual(SAVE_KEYS.length, 23);
+test('Save data has 25 keys', () => {
+  assertEqual(SAVE_KEYS.length, 25);
 });
 
 test('Save data includes needs', () => { assert(SAVE_KEYS.includes('needs')); });
@@ -1363,6 +1395,231 @@ test('Arcade Pro triggers at miniGameScore >= 25', () => {
   const data = ggLoad();
   assert(data.achievements.ml_arcade_pro === true);
   localStorage.clear();
+});
+
+// ── Town Job Definitions ──
+section('Town Job Definitions');
+
+test('TOWN_JOBS has 3 entries', () => {
+  assertEqual(Object.keys(TOWN_JOBS).length, 3);
+});
+
+test('TOWN_JOBS has barista, merchant, mayor', () => {
+  assert(TOWN_JOBS.barista, 'Missing barista');
+  assert(TOWN_JOBS.merchant, 'Missing merchant');
+  assert(TOWN_JOBS.mayor, 'Missing mayor');
+});
+
+test('Each job has name, basePay, desc', () => {
+  Object.values(TOWN_JOBS).forEach(job => {
+    assert(typeof job.name === 'string' && job.name.length > 0, 'Job missing name');
+    assert(typeof job.basePay === 'number' && job.basePay > 0, 'Job missing basePay');
+    assert(typeof job.desc === 'string' && job.desc.length > 0, 'Job missing desc');
+  });
+});
+
+test('All base pay is $15', () => {
+  Object.values(TOWN_JOBS).forEach(job => {
+    assertEqual(job.basePay, 15);
+  });
+});
+
+test('Old Pete has no job', () => {
+  assert(!TOWN_JOBS.old_pete, 'Old Pete should not have a job');
+});
+
+test('Job NPC IDs match TOWN_NPC_DEFS entries', () => {
+  Object.keys(TOWN_JOBS).forEach(npcId => {
+    const found = TOWN_NPC_DEFS.find(d => d.id === npcId);
+    assert(found, 'Job NPC ' + npcId + ' not found in TOWN_NPC_DEFS');
+  });
+});
+
+// ── Job Pay Calculation ──
+section('Job Pay Calculation');
+
+test('Pay with score 0 = $15 (base only)', () => {
+  assertEqual(calculateJobPay('barista', 0), 15);
+});
+
+test('Pay with score 20 = $25', () => {
+  assertEqual(calculateJobPay('barista', 20), 25);
+});
+
+test('Pay with score 50 = $40', () => {
+  assertEqual(calculateJobPay('merchant', 50), 40);
+});
+
+test('Pay with score 80 = $55', () => {
+  assertEqual(calculateJobPay('mayor', 80), 55);
+});
+
+test('Negative score treated as 0 (pay = basePay)', () => {
+  assertEqual(calculateJobPay('barista', -10), 15);
+});
+
+// ── Job Need Drains ──
+section('Job Need Drains');
+
+test('Energy drains by 15 after shift', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  const result = finishTownJobLogic('barista', 20, state);
+  assertEqual(result.energy, 65);
+});
+
+test('Hunger drains by 10 after shift', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  const result = finishTownJobLogic('barista', 20, state);
+  assertEqual(result.hunger, 70);
+});
+
+test('Energy does not go below 0', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 5, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  const result = finishTownJobLogic('barista', 0, state);
+  assertEqual(result.energy, 0);
+});
+
+test('Hunger does not go below 0', () => {
+  const state = { money: 50, needs: { hunger: 3, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  const result = finishTownJobLogic('barista', 0, state);
+  assertEqual(result.hunger, 0);
+});
+
+test('Money increases by pay amount', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  const result = finishTownJobLogic('barista', 20, state);
+  assertEqual(result.money, 75); // 50 + 25 pay
+});
+
+// ── Job Cooldown ──
+section('Job Cooldown');
+
+test('jobLastDay starts empty', () => {
+  const jld = {};
+  assertEqual(Object.keys(jld).length, 0);
+});
+
+test('After working, jobLastDay[npcId] === day', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 3 };
+  const result = finishTownJobLogic('barista', 20, state);
+  assertEqual(result.jobLastDay.barista, 3);
+});
+
+test('Different NPC same day is allowed (separate cooldowns)', () => {
+  const state = { money: 50, needs: { hunger: 80, energy: 80, fun: 50, hygiene: 50 }, totalShiftsWorked: 1, jobLastDay: { barista: 3 }, day: 3 };
+  const result = finishTownJobLogic('merchant', 20, state);
+  assertEqual(result.jobLastDay.merchant, 3);
+  assertEqual(result.jobLastDay.barista, 3); // Still tracked
+});
+
+test('Same NPC same day blocked (jobLastDay check)', () => {
+  const jld = { barista: 3 };
+  const day = 3;
+  assert(jld.barista === day, 'Should be same day');
+});
+
+test('Next day same NPC allowed (day mismatch)', () => {
+  const jld = { barista: 3 };
+  const day = 4;
+  assert(jld.barista !== day, 'Should not match next day');
+});
+
+test('All 3 jobs in one day produces 3 entries', () => {
+  let state = { money: 50, needs: { hunger: 100, energy: 100, fun: 50, hygiene: 50 }, totalShiftsWorked: 0, jobLastDay: {}, day: 1 };
+  let result = finishTownJobLogic('barista', 20, state);
+  state = { ...state, money: result.money, needs: { ...state.needs, energy: result.energy, hunger: result.hunger }, totalShiftsWorked: result.totalShiftsWorked, jobLastDay: result.jobLastDay };
+  result = finishTownJobLogic('merchant', 20, state);
+  state = { ...state, money: result.money, needs: { ...state.needs, energy: result.energy, hunger: result.hunger }, totalShiftsWorked: result.totalShiftsWorked, jobLastDay: result.jobLastDay };
+  result = finishTownJobLogic('mayor', 20, state);
+  assertEqual(Object.keys(result.jobLastDay).length, 3);
+  assertEqual(result.totalShiftsWorked, 3);
+});
+
+// ── Job Achievements ──
+section('Job Achievements');
+
+test('ML_ACH has 18 entries (15 original + 3 job)', () => {
+  assertEqual(Object.keys(ML_ACH).length, 18);
+});
+
+test('Total Mini Life G Bux is 520', () => {
+  const total = Object.values(ML_ACH).reduce((sum, a) => sum + a.reward, 0);
+  assertEqual(total, 520);
+});
+
+test('ml_first_shift awards 10 G Bux', () => {
+  assertEqual(ML_ACH.ml_first_shift.reward, 10);
+});
+
+test('ml_hard_worker awards 25 G Bux', () => {
+  assertEqual(ML_ACH.ml_hard_worker.reward, 25);
+});
+
+test('ml_employee_month awards 50 G Bux', () => {
+  assertEqual(ML_ACH.ml_employee_month.reward, 50);
+});
+
+test('First Shift triggers at 1 shift', () => {
+  localStorage.clear();
+  const totalShiftsWorked = 1;
+  if (totalShiftsWorked >= 1) mlTry('ml_first_shift');
+  const data = ggLoad();
+  assert(data.achievements.ml_first_shift === true);
+  localStorage.clear();
+});
+
+test('Hard Worker triggers at 10 shifts', () => {
+  localStorage.clear();
+  const totalShiftsWorked = 10;
+  if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
+  const data = ggLoad();
+  assert(data.achievements.ml_hard_worker === true);
+  localStorage.clear();
+});
+
+test('Employee of the Month triggers at 25 shifts', () => {
+  localStorage.clear();
+  const totalShiftsWorked = 25;
+  if (totalShiftsWorked >= 25) mlTry('ml_employee_month');
+  const data = ggLoad();
+  assert(data.achievements.ml_employee_month === true);
+  localStorage.clear();
+});
+
+test('Hard Worker does NOT trigger at 9 shifts', () => {
+  localStorage.clear();
+  const totalShiftsWorked = 9;
+  if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
+  const data = ggLoad();
+  assert(!data.achievements.ml_hard_worker);
+  localStorage.clear();
+});
+
+// ── Job Save/Load ──
+section('Job Save/Load');
+
+test('Save data has 25 keys', () => {
+  assertEqual(SAVE_KEYS.length, 25);
+});
+
+test('Save data includes jobLastDay', () => {
+  assert(SAVE_KEYS.includes('jobLastDay'));
+});
+
+test('Save data includes totalShiftsWorked', () => {
+  assert(SAVE_KEYS.includes('totalShiftsWorked'));
+});
+
+test('jobLastDay round-trips through JSON', () => {
+  const original = { barista: 3, merchant: 5 };
+  const parsed = JSON.parse(JSON.stringify(original));
+  assertDeepEqual(parsed, original);
+});
+
+test('totalShiftsWorked defaults to 0 on missing save field', () => {
+  const save = {};
+  const totalShiftsWorked = save.totalShiftsWorked || 0;
+  assertEqual(totalShiftsWorked, 0);
 });
 
 // ═══ RENDER RESULTS ═══

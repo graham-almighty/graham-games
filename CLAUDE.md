@@ -66,10 +66,10 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - Dark/gold serpent double-G SVG logo
 - 4 game cards with color-coded borders
 - G Bux balance display (top right)
-- Achievements panel (25 total achievements)
+- Achievements panel (28 total achievements)
 - G Bux Shop (5 items)
 
-### Achievements (25 total, 665 G Bux earnable)
+### Achievements (28 total, 745 G Bux earnable)
 
 **Hurgvibbit (10 achievements, 225G):**
 | ID | Name | Reward | Condition |
@@ -85,7 +85,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | hurv_flawless | Flawless | 30G | 100% hit rate |
 | hurv_rhythm_master | Rhythm Master | 50G | S grade on Hard |
 
-**Mini Life (15 achievements, 440G):**
+**Mini Life (18 achievements, 520G):**
 | ID | Name | Reward | Condition |
 |----|------|--------|-----------|
 | ml_new_home | New Home | 5G | Start first game |
@@ -103,6 +103,9 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | ml_helpful_neighbor | Helpful Neighbor | 25G | Complete 1 quest |
 | ml_town_hero | Town Hero | 50G | Complete all 4 quests |
 | ml_mansion_mogul | Mansion Mogul | 75G | Purchase mansion |
+| ml_first_shift | First Shift | 10G | Complete a town job |
+| ml_hard_worker | Hard Worker | 25G | Complete 10 town job shifts |
+| ml_employee_month | Employee of the Month | 50G | Complete 25 town job shifts |
 
 ### G Bux Shop (5 items, 425G total)
 | ID | Name | Cost | Effect |

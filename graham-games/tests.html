@@ -130,6 +130,9 @@ const ALL_ACHIEVEMENTS = [
     { id: 'ml_helpful_neighbor',  name: 'Helpful Neighbor',   desc: 'Complete a town quest',             reward: 25 },
     { id: 'ml_town_hero',         name: 'Town Hero',          desc: 'Complete all 4 town quests',        reward: 50 },
     { id: 'ml_mansion_mogul',     name: 'Mansion Mogul',      desc: 'Purchase the mansion',              reward: 75 },
+    { id: 'ml_first_shift',       name: 'First Shift',        desc: 'Complete a town job',               reward: 10 },
+    { id: 'ml_hard_worker',       name: 'Hard Worker',        desc: 'Complete 10 town job shifts',       reward: 25 },
+    { id: 'ml_employee_month',    name: 'Employee of the Month', desc: 'Complete 25 town job shifts',    reward: 50 },
   ]},
 ];
 
@@ -227,7 +230,7 @@ group('Achievement Registry');
 {
   const allItems = [];
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => allItems.push(i)));
-  assertEqual(allItems.length, 25, 'Total achievements count is 25');
+  assertEqual(allItems.length, 28, 'Total achievements count is 28');
 }
 
 {
@@ -238,7 +241,7 @@ group('Achievement Registry');
 
 {
   assertEqual(ALL_ACHIEVEMENTS[0].items.length, 10, 'Hurgvibbit has 10 achievements');
-  assertEqual(ALL_ACHIEVEMENTS[1].items.length, 15, 'Mini Life has 15 achievements');
+  assertEqual(ALL_ACHIEVEMENTS[1].items.length, 18, 'Mini Life has 18 achievements');
 }
 
 {
@@ -251,7 +254,7 @@ group('Achievement Registry');
 {
   let totalReward = 0;
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalReward += i.reward));
-  assertEqual(totalReward, 665, 'Total earnable G Bux across all achievements is 665');
+  assertEqual(totalReward, 745, 'Total earnable G Bux across all achievements is 745');
 }
 
 {
@@ -263,7 +266,7 @@ group('Achievement Registry');
 {
   let mlTotal = 0;
   ALL_ACHIEVEMENTS[1].items.forEach(i => mlTotal += i.reward);
-  assertEqual(mlTotal, 440, 'Mini Life total rewards = 440');
+  assertEqual(mlTotal, 520, 'Mini Life total rewards = 520');
 }
 
 {
@@ -426,10 +429,10 @@ group('Economy Balance');
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalEarnable += i.reward));
   let totalShopCost = 0;
   SHOP_ITEMS.forEach(i => totalShopCost += i.cost);
-  assertEqual(totalEarnable, 665, 'Total earnable G Bux = 665');
+  assertEqual(totalEarnable, 745, 'Total earnable G Bux = 745');
   assertEqual(totalShopCost, 425, 'Total shop cost = 425');
   assert(totalEarnable > totalShopCost, 'Earnable exceeds shop cost (player can buy everything)');
-  assertEqual(totalEarnable - totalShopCost, 240, 'Surplus after buying everything = 240');
+  assertEqual(totalEarnable - totalShopCost, 320, 'Surplus after buying everything = 320');
 }
 
 // --- Cross-references ---
