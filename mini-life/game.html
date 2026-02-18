@@ -3829,13 +3829,13 @@ function runCafeJob(canvas, ctx, onFinish) {
   let timeLeft = 30;
   let lastTime = performance.now();
   let spawnTimer = 0;
-  let spawnInterval = 3.5;
+  let spawnInterval = 4.5;
   let flash = null;
   let running = true;
 
   function spawnOrder() {
     const drink = DRINKS[Math.floor(Math.random() * DRINKS.length)];
-    orders.push({ name: drink.name, recipe: [...drink.recipe], progress: 0, timer: 7, x: 0 });
+    orders.push({ name: drink.name, recipe: [...drink.recipe], progress: 0, timer: 10, x: 0 });
   }
   spawnOrder();
 
@@ -3855,7 +3855,7 @@ function runCafeJob(canvas, ctx, onFinish) {
         orders.shift();
       }
     } else {
-      score = Math.max(0, score - 2);
+      score = Math.max(0, score - 1);
       order.progress = 0;
       SFX.jobWrong();
     }
@@ -3870,14 +3870,14 @@ function runCafeJob(canvas, ctx, onFinish) {
     spawnTimer += dt;
     if (spawnTimer >= spawnInterval) {
       spawnTimer = 0;
-      spawnInterval = Math.max(2, spawnInterval - 0.15);
+      spawnInterval = Math.max(2.5, spawnInterval - 0.1);
       if (orders.length < 5) spawnOrder();
     }
     // Update orders
     for (let i = orders.length - 1; i >= 0; i--) {
       orders[i].timer -= dt;
       if (orders[i].timer <= 0) {
-        score = Math.max(0, score - 3);
+        score = Math.max(0, score - 1);
         orders.splice(i, 1);
       }
     }
@@ -3924,7 +3924,7 @@ function runCafeJob(canvas, ctx, onFinish) {
       });
       // Timer bar
       const barY = ty + ticketH - 16;
-      const pct = Math.max(0, order.timer / 7);
+      const pct = Math.max(0, order.timer / 10);
       ctx.fillStyle = '#ddd';
       ctx.fillRect(tx + 5, barY, ticketW - 10, 8);
       ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
@@ -3973,22 +3973,22 @@ function runShopJob(canvas, ctx, onFinish) {
     { name: 'Bottle', color: '#4488cc', w: 16, h: 28 },
   ];
   const BOMB = { name: 'Bomb', color: '#cc2222', w: 22, h: 22, isBomb: true };
-  let cart = { x: W / 2, w: 80 };
+  let cart = { x: W / 2, w: 110 };
   let items = [];
   let particles = [];
   let score = 0;
   let timeLeft = 30;
   let lastTime = performance.now();
   let spawnTimer = 0;
-  let spawnInterval = 0.8;
+  let spawnInterval = 1.2;
   let keys = {};
   let screenFlash = 0;
   let running = true;
 
   function spawnItem() {
-    const isBomb = Math.random() < 0.15;
+    const isBomb = Math.random() < 0.1;
     const type = isBomb ? BOMB : ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
-    items.push({ x: 30 + Math.random() * (W - 60), y: -20, speed: 80 + Math.random() * 60 + (30 - timeLeft) * 3, type });
+    items.push({ x: 30 + Math.random() * (W - 60), y: -20, speed: 60 + Math.random() * 40 + (30 - timeLeft) * 2, type });
   }
 
   function onKey(e) {
@@ -4008,7 +4008,7 @@ function runShopJob(canvas, ctx, onFinish) {
     spawnTimer += dt;
     if (spawnTimer >= spawnInterval) {
       spawnTimer = 0;
-      spawnInterval = Math.max(0.35, spawnInterval - 0.02);
+      spawnInterval = Math.max(0.6, spawnInterval - 0.015);
       spawnItem();
     }
 
@@ -4026,7 +4026,7 @@ function runShopJob(canvas, ctx, onFinish) {
       if (item.y + item.type.h / 2 >= H - 50 && item.y - item.type.h / 2 <= H - 20) {
         if (Math.abs(item.x - cart.x) < (cart.w / 2 + item.type.w / 2)) {
           if (item.type.isBomb) {
-            score = Math.max(0, score - 5);
+            score = Math.max(0, score - 3);
             screenFlash = 0.3;
             SFX.jobWrong();
           } else {
@@ -4043,7 +4043,7 @@ function runShopJob(canvas, ctx, onFinish) {
       // Miss — fell off screen
       if (item.y > H + 20) {
         if (!item.type.isBomb) {
-          score = Math.max(0, score - 3);
+          score = Math.max(0, score - 1);
         }
         items.splice(i, 1);
       }
@@ -4145,7 +4145,7 @@ function runTownHallJob(canvas, ctx, onFinish) {
   let lastTime = performance.now();
   let docTimer = 0;
   let docsThisRule = 0;
-  let ruleChangeAt = 6 + Math.floor(Math.random() * 3);
+  let ruleChangeAt = 8 + Math.floor(Math.random() * 4);
   let stamp = null;
   let newRuleFlash = 0;
   let running = true;
@@ -4156,13 +4156,13 @@ function runTownHallJob(canvas, ctx, onFinish) {
     do { next = RULES[Math.floor(Math.random() * RULES.length)]; } while (next === currentRule);
     currentRule = next;
     docsThisRule = 0;
-    ruleChangeAt = 6 + Math.floor(Math.random() * 3);
+    ruleChangeAt = 8 + Math.floor(Math.random() * 4);
     newRuleFlash = 1.0;
   }
 
   function spawnDoc() {
     const isApprove = Math.random() < 0.5;
-    doc = { color: isApprove ? currentRule.approve : currentRule.deny, shouldApprove: isApprove, timer: 3 };
+    doc = { color: isApprove ? currentRule.approve : currentRule.deny, shouldApprove: isApprove, timer: 5 };
     docTimer = 0;
     docCount++;
   }
@@ -4180,7 +4180,7 @@ function runTownHallJob(canvas, ctx, onFinish) {
       stamp = { text: approved ? 'APPROVED' : 'DENIED', color: approved ? '#44aa44' : '#cc4444', t: 0.6 };
       SFX.jobCorrect();
     } else {
-      score = Math.max(0, score - 5);
+      score = Math.max(0, score - 2);
       stamp = { text: 'WRONG!', color: '#ff4444', t: 0.6 };
       SFX.jobWrong();
     }
@@ -4202,7 +4202,7 @@ function runTownHallJob(canvas, ctx, onFinish) {
     if (doc) {
       doc.timer -= dt;
       if (doc.timer <= 0) {
-        score = Math.max(0, score - 3);
+        score = Math.max(0, score - 1);
         stamp = { text: 'TOO SLOW', color: '#ff8844', t: 0.6 };
         docsThisRule++;
         if (docsThisRule >= ruleChangeAt) pickRule();
@@ -4245,7 +4245,7 @@ function runTownHallJob(canvas, ctx, onFinish) {
         ctx.fillRect(dx + 15, ly, dw - 30, 2);
       }
       // Timer bar
-      const pct = Math.max(0, doc.timer / 3);
+      const pct = Math.max(0, doc.timer / 5);
       ctx.fillStyle = '#ddd';
       ctx.fillRect(dx, dy + dh + 8, dw, 8);
       ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
