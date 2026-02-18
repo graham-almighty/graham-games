@@ -40,7 +40,7 @@
     pointer-events: none;
   }
 
-  #title-screen, #game-screen, #end-screen {
+  #title-screen, #game-screen, #end-screen, #map-screen, #story-screen {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -305,6 +305,134 @@
   .score-row .value { color: #c9a84c; font-family: 'Cinzel', serif; }
   .score-row.total { border-top: 1px solid #333; margin-top: 6px; padding-top: 8px; font-size: 1rem; }
   .score-row.total .label { color: #eee; }
+  .end-buttons { display: flex; gap: 12px; align-items: center; flex-direction: column; }
+
+  /* Map Select Screen */
+  #map-screen h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #c9a84c;
+    text-shadow: 0 0 20px #c9a84c44;
+    margin-bottom: 6px;
+  }
+  .map-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    color: #888;
+    letter-spacing: 0.15em;
+    margin-bottom: 20px;
+  }
+  .map-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 500px;
+    width: 90%;
+    margin-bottom: 20px;
+    max-height: 55vh;
+    overflow-y: auto;
+  }
+  .map-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: #14141a;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .map-card:hover:not(.locked) {
+    border-color: #c9a84c;
+    background: #1a1a22;
+    box-shadow: 0 0 15px #c9a84c22;
+  }
+  .map-card.locked {
+    opacity: 0.4;
+    cursor: default;
+  }
+  .map-card.completed {
+    border-color: #4caf5088;
+  }
+  .map-chapter {
+    font-family: 'Cinzel', serif;
+    color: #9b59b6;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    min-width: 44px;
+    text-align: center;
+  }
+  .map-info { flex: 1; }
+  .map-name {
+    font-family: 'Cinzel', serif;
+    color: #c9a84c;
+    font-size: 0.95rem;
+    margin-bottom: 3px;
+  }
+  .map-desc {
+    color: #888;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+  .map-status {
+    font-size: 1.2rem;
+    min-width: 28px;
+    text-align: center;
+  }
+
+  /* Story Screen */
+  #story-screen {
+    padding: 30px;
+  }
+  .story-box {
+    max-width: 560px;
+    text-align: center;
+  }
+  .story-chapter {
+    font-family: 'Cinzel', serif;
+    color: #9b59b6;
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .story-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    font-weight: 900;
+    color: #c9a84c;
+    text-shadow: 0 0 20px #c9a84c44;
+    margin-bottom: 24px;
+  }
+  .story-narration {
+    font-style: italic;
+    color: #aaa;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .story-dialogue {
+    text-align: left;
+    margin-bottom: 24px;
+  }
+  .story-line {
+    padding: 8px 14px;
+    border-left: 3px solid #9b59b644;
+    margin-bottom: 10px;
+  }
+  .story-speaker {
+    font-family: 'Cinzel', serif;
+    color: #c9a84c;
+    font-size: 0.78rem;
+    margin-bottom: 3px;
+  }
+  .story-text {
+    color: #ccc;
+    font-size: 0.82rem;
+    line-height: 1.4;
+  }
 
   /* Toast */
   .gg-toast {
@@ -343,6 +471,19 @@
   <a href="../graham-games/index.html" class="exit-btn">EXIT TO LAUNCHER</a>
 </div>
 
+<!-- MAP SELECT SCREEN -->
+<div id="map-screen" class="hidden">
+  <h1>TOWER DEFENSE</h1>
+  <div class="map-sub">// SELECT YOUR BATTLE //</div>
+  <div class="map-cards" id="map-cards"></div>
+  <a href="../graham-games/index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<!-- STORY SCREEN -->
+<div id="story-screen" class="hidden">
+  <div class="story-box" id="story-content"></div>
+</div>
+
 <!-- GAME SCREEN -->
 <div id="game-screen" class="hidden">
   <div class="game-area">
@@ -356,7 +497,7 @@
     </div>
     <canvas id="game-canvas"></canvas>
     <div class="bottom-bar">
-      <span>SCORE: <span id="hud-score">0</span></span>
+      <span id="hud-map-name"></span> &mdash; <span>SCORE: <span id="hud-score">0</span></span>
     </div>
   </div>
   <div class="side-panel" id="side-panel"></div>
@@ -367,8 +508,7 @@
   <h1 id="end-title">VICTORY</h1>
   <div class="end-sub" id="end-sub">You defended the realm!</div>
   <div class="score-breakdown" id="score-breakdown"></div>
-  <button class="punk-btn" onclick="startGame()">PLAY AGAIN</button>
-  <a href="../graham-games/index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+  <div class="end-buttons" id="end-buttons"></div>
 </div>
 
 <script>
@@ -424,30 +564,9 @@ function ggTry(id) { const a = TD_ACH[id]; if (a) ggUnlockAchievement(id, a.name
 const COLS = 16, ROWS = 10, TILE = 52;
 const TOTAL_WAVES = 30;
 
-// S-curve path: defined as grid coordinates [col, row]
-const PATH = [];
-(function buildPath() {
-  // Row 1 (top-ish): left to right
-  for (let c = 0; c <= 14; c++) PATH.push([c, 1]);
-  // Down
-  for (let r = 2; r <= 3; r++) PATH.push([14, r]);
-  // Row 3: right to left
-  for (let c = 13; c >= 1; c--) PATH.push([c, 3]);
-  // Down
-  for (let r = 4; r <= 5; r++) PATH.push([1, r]);
-  // Row 5: left to right
-  for (let c = 2; c <= 14; c++) PATH.push([c, 5]);
-  // Down
-  for (let r = 6; r <= 7; r++) PATH.push([14, r]);
-  // Row 7: right to left
-  for (let c = 13; c >= 1; c--) PATH.push([c, 7]);
-  // Down to exit
-  for (let r = 8; r <= 9; r++) PATH.push([1, r]);
-})();
-
-// Mark path cells
-const pathSet = new Set();
-PATH.forEach(([c, r]) => pathSet.add(c + ',' + r));
+// Dynamic path — set by setMap()
+let PATH = [];
+let pathSet = new Set();
 
 // Tower definitions
 const TOWER_DEFS = {
@@ -467,6 +586,204 @@ const ENEMY_DEFS = {
   boss:    { hp: 400, speed: 0.5, gold: 40, color: '#ef5350', radius: 10, outline: 0 },
 };
 
+// ═══ MAP DEFINITIONS ═══
+const MAP_DEFS = [
+  {
+    id: 'forest_gate',
+    name: 'The Forest Gate',
+    chapter: 'I',
+    desc: 'Hold the first line of defense against the approaching horde.',
+    hpMultiplier: 1.0,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 14; c++) p.push([c, 1]);
+      for (let r = 2; r <= 3; r++) p.push([14, r]);
+      for (let c = 13; c >= 1; c--) p.push([c, 3]);
+      for (let r = 4; r <= 5; r++) p.push([1, r]);
+      for (let c = 2; c <= 14; c++) p.push([c, 5]);
+      for (let r = 6; r <= 7; r++) p.push([14, r]);
+      for (let c = 13; c >= 1; c--) p.push([c, 7]);
+      for (let r = 8; r <= 9; r++) p.push([1, r]);
+      return p;
+    },
+    intro: {
+      narration: 'The kingdom of Aurelion has stood for a thousand years, but darkness gathers at its borders. The horde approaches from the east, and the forest gate is the first line of defense.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'Soldier, the scouts report a massive force heading this way. The forest gate must hold.' },
+        { speaker: 'Commander Aric', text: 'Set your defenses wisely. This is where we make our stand.' },
+      ]
+    },
+    victory: {
+      narration: 'The forest gate holds firm. Broken bodies of the invaders litter the path, and the survivors flee into the trees.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'Well fought! But our scouts report the enemy is rerouting toward the river crossing.' },
+        { speaker: 'Commander Aric', text: 'Rest while you can. We march at dawn.' },
+      ]
+    }
+  },
+  {
+    id: 'river_crossing',
+    name: 'River Crossing',
+    chapter: 'II',
+    desc: 'Defend the bridge over the River Ashfall before the heartland is exposed.',
+    hpMultiplier: 1.15,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 10; c++) p.push([c, 0]);
+      for (let r = 1; r <= 2; r++) p.push([10, r]);
+      for (let c = 9; c >= 2; c--) p.push([c, 2]);
+      for (let r = 3; r <= 4; r++) p.push([2, r]);
+      for (let c = 3; c <= 12; c++) p.push([c, 4]);
+      for (let r = 5; r <= 6; r++) p.push([12, r]);
+      for (let c = 11; c >= 4; c--) p.push([c, 6]);
+      for (let r = 7; r <= 8; r++) p.push([4, r]);
+      for (let c = 5; c <= 14; c++) p.push([c, 8]);
+      p.push([14, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The enemy has found a way around the forest. A crucial bridge spans the River Ashfall, and if it falls, the heartland lies exposed.',
+      dialogue: [
+        { speaker: 'Scout Lira', text: 'Commander, the enemy vanguard is tougher than what we faced at the forest. They\'ve brought armored units.' },
+        { speaker: 'Commander Aric', text: 'We hold the bridge. No one crosses.' },
+      ]
+    },
+    victory: {
+      narration: 'The bridge holds. Enemy bodies wash downstream as the remaining forces retreat toward the mountains.',
+      dialogue: [
+        { speaker: 'Scout Lira', text: 'They\'re heading for the mountain pass. If they get through, they\'ll be at the capital\'s doorstep.' },
+        { speaker: 'Commander Aric', text: 'Then we beat them there. Move out!' },
+      ]
+    }
+  },
+  {
+    id: 'mountain_pass',
+    name: 'Mountain Pass',
+    chapter: 'III',
+    desc: 'Use the narrow switchbacks to funnel the enemy into deadly killzones.',
+    hpMultiplier: 1.3,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 14; c++) p.push([c, 0]);
+      for (let r = 1; r <= 2; r++) p.push([14, r]);
+      for (let c = 13; c >= 2; c--) p.push([c, 2]);
+      for (let r = 3; r <= 4; r++) p.push([2, r]);
+      for (let c = 3; c <= 12; c++) p.push([c, 4]);
+      for (let r = 5; r <= 6; r++) p.push([12, r]);
+      for (let c = 11; c >= 6; c--) p.push([c, 6]);
+      for (let r = 7; r <= 9; r++) p.push([6, r]);
+      return p;
+    },
+    intro: {
+      narration: 'The mountain pass is narrow and treacherous \u2014 a natural fortress. The enemy will have to wind through switchbacks and tight corridors.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'The terrain is our ally here. Use these narrow passages to funnel them into your killzones.' },
+        { speaker: 'Scout Lira', text: 'I\'ve spotted their advance scouts. They\'re close.' },
+      ]
+    },
+    victory: {
+      narration: 'The pass is choked with wreckage. The mountains have become a graveyard for the invaders.',
+      dialogue: [
+        { speaker: 'Scout Lira', text: 'The survivors are fleeing into the Dark Swamp. That cursed place...' },
+        { speaker: 'Commander Aric', text: 'We cannot let them regroup. Pursue them into the mire.' },
+      ]
+    }
+  },
+  {
+    id: 'dark_swamp',
+    name: 'The Dark Swamp',
+    chapter: 'IV',
+    desc: 'Navigate the twisting labyrinth where enemies lurk at every corner.',
+    hpMultiplier: 1.5,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 3; c++) p.push([c, 5]);
+      for (let r = 4; r >= 1; r--) p.push([3, r]);
+      for (let c = 4; c <= 8; c++) p.push([c, 1]);
+      for (let r = 2; r <= 3; r++) p.push([8, r]);
+      for (let c = 7; c >= 5; c--) p.push([c, 3]);
+      for (let r = 4; r <= 7; r++) p.push([5, r]);
+      for (let c = 6; c <= 10; c++) p.push([c, 7]);
+      for (let r = 6; r >= 3; r--) p.push([10, r]);
+      for (let c = 11; c <= 14; c++) p.push([c, 3]);
+      for (let r = 4; r <= 5; r++) p.push([14, r]);
+      for (let c = 13; c >= 11; c--) p.push([c, 5]);
+      for (let r = 6; r <= 8; r++) p.push([11, r]);
+      for (let c = 12; c <= 15; c++) p.push([c, 8]);
+      p.push([15, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The Dark Swamp \u2014 a twisting labyrinth of murky waterways and treacherous ground. The enemy hides in its depths, regrouping for one final push.',
+      dialogue: [
+        { speaker: 'Scout Lira', text: 'The paths here twist back on themselves. Watch for ambushes at every corner.' },
+        { speaker: 'Commander Aric', text: 'Their general is desperate. Desperate enemies are the most dangerous.' },
+      ]
+    },
+    victory: {
+      narration: 'The swamp claims the enemy\'s vanguard. Their general retreats with his remaining elite guard toward an ancient ruin \u2014 the Dragon\'s Lair.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'We\'ve broken their army, but the general still lives. He\'s holed up in the Dragon\'s Lair.' },
+        { speaker: 'Scout Lira', text: 'That ancient cavern... they say a dragon once nested there. Let\'s hope the legends aren\'t true.' },
+      ]
+    }
+  },
+  {
+    id: 'dragons_lair',
+    name: "Dragon's Lair",
+    chapter: 'V',
+    desc: 'The final stand in an ancient cavern. End the war once and for all.',
+    hpMultiplier: 1.75,
+    buildPath() {
+      const p = [];
+      for (let r = 0; r <= 3; r++) p.push([0, r]);
+      for (let c = 1; c <= 5; c++) p.push([c, 3]);
+      for (let r = 2; r >= 0; r--) p.push([5, r]);
+      for (let c = 6; c <= 11; c++) p.push([c, 0]);
+      for (let r = 1; r <= 4; r++) p.push([11, r]);
+      for (let c = 10; c >= 7; c--) p.push([c, 4]);
+      for (let r = 5; r <= 7; r++) p.push([7, r]);
+      for (let c = 8; c <= 13; c++) p.push([c, 7]);
+      for (let r = 6; r >= 2; r--) p.push([13, r]);
+      for (let c = 14; c <= 15; c++) p.push([c, 2]);
+      for (let r = 3; r <= 8; r++) p.push([15, r]);
+      for (let c = 14; c >= 3; c--) p.push([c, 8]);
+      p.push([3, 9]);
+      for (let c = 2; c >= 0; c--) p.push([c, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The Dragon\'s Lair \u2014 an ancient cavern of twisted stone and forgotten power. The enemy general has gathered his most elite warriors for a final, desperate stand.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'This is it, soldier. Everything we\'ve fought for comes down to this battle.' },
+        { speaker: 'Commander Aric', text: 'They will throw everything they have at us. Do not falter. The kingdom stands behind you.' },
+      ]
+    },
+    victory: {
+      narration: 'The Dragon\'s Lair falls silent. The enemy general lies defeated among his broken army. The war is over.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'You did it. Against all odds, you held the line. The kingdom of Aurelion is saved.' },
+        { speaker: 'Scout Lira', text: 'Songs will be sung of this day. Of the defender who stood against the darkness and prevailed.' },
+        { speaker: 'Commander Aric', text: 'Rest now, hero. You have earned it.' },
+      ]
+    }
+  }
+];
+
+// ═══ MAP PROGRESS ═══
+const TD_PROGRESS_KEY = 'td-map-progress';
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(TD_PROGRESS_KEY)) || { unlockedMaps: 1 }; }
+  catch(e) { return { unlockedMaps: 1 }; }
+}
+function saveProgress(data) { localStorage.setItem(TD_PROGRESS_KEY, JSON.stringify(data)); }
+
+function setMap(mapIndex) {
+  PATH = MAP_DEFS[mapIndex].buildPath();
+  pathSet = new Set();
+  PATH.forEach(([c, r]) => pathSet.add(c + ',' + r));
+}
+
 // ═══ GAME STATE ═══
 let gold, lives, score, wave, enemies, towers, projectiles, effects;
 let waveActive, waveCountdown, spawnQueue, spawnTimer;
@@ -475,6 +792,7 @@ let selectedTowerType, selectedPlacedTower;
 let towerTypesBuilt, noLeaks, firstKill;
 let usedSpeedOnWave15Plus;
 let lastTime;
+let currentMapIndex = 0;
 
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
@@ -483,14 +801,16 @@ canvas.height = ROWS * TILE;
 
 // ═══ SCREENS ═══
 function showScreen(id) {
-  ['title-screen', 'game-screen', 'end-screen'].forEach(s => {
+  ['title-screen', 'game-screen', 'end-screen', 'map-screen', 'story-screen'].forEach(s => {
     document.getElementById(s).classList.toggle('hidden', s !== id);
   });
 }
 
-document.getElementById('play-btn').addEventListener('click', startGame);
+document.getElementById('play-btn').addEventListener('click', showMapSelect);
 
 function startGame() {
+  setMap(currentMapIndex);
+
   const ggData = ggLoad();
   const hasWarBonds = !!ggData.shopPurchases['td_double_gold'];
   gold = hasWarBonds ? 200 : 100;
@@ -518,6 +838,7 @@ function startGame() {
 
   document.getElementById('speed-btn').textContent = '1x';
   document.getElementById('speed-btn').classList.remove('active');
+  document.getElementById('hud-map-name').textContent = MAP_DEFS[currentMapIndex].name.toUpperCase();
 
   showScreen('game-screen');
   buildSidePanel();
@@ -604,7 +925,7 @@ function launchWave() {
 
 function spawnEnemy(type) {
   const def = ENEMY_DEFS[type];
-  const hpScale = 1 + wave * 0.2;
+  const hpScale = (1 + wave * 0.2) * MAP_DEFS[currentMapIndex].hpMultiplier;
   const goldScale = 1 + wave * 0.03;
   enemies.push({
     type,
@@ -1369,24 +1690,118 @@ function endGame(won) {
     victory = true;
     score += lives * 20;
     ggTry('td_victory');
+
+    // Unlock next map
+    const progress = loadProgress();
+    progress.unlockedMaps = Math.min(5, Math.max(progress.unlockedMaps, currentMapIndex + 2));
+    saveProgress(progress);
   } else {
     gameOver = true;
   }
 
   cancelAnimationFrame(animFrame);
 
+  const mapName = MAP_DEFS[currentMapIndex].name;
   document.getElementById('end-title').textContent = won ? 'VICTORY' : 'DEFEATED';
-  document.getElementById('end-sub').textContent = won ? 'You defended the realm!' : 'The enemy broke through...';
+  document.getElementById('end-sub').textContent = won
+    ? mapName + ' \u2014 You defended the realm!'
+    : mapName + ' \u2014 The enemy broke through...';
 
-  const kills = score > 0 ? Math.floor((score - wave * 50 - (won ? lives * 20 : 0)) / 10) : 0;
   const breakdown = document.getElementById('score-breakdown');
   breakdown.innerHTML =
+    '<div class="score-row"><span class="label">Map</span><span class="value">' + mapName + '</span></div>' +
     '<div class="score-row"><span class="label">Waves Completed</span><span class="value">' + wave + '</span></div>' +
     '<div class="score-row"><span class="label">Lives Remaining</span><span class="value">' + lives + '</span></div>' +
     '<div class="score-row"><span class="label">Gold</span><span class="value">$' + gold + '</span></div>' +
     '<div class="score-row total"><span class="label">FINAL SCORE</span><span class="value">' + score + '</span></div>';
 
+  const btns = document.getElementById('end-buttons');
+  if (won) {
+    btns.innerHTML =
+      '<button class="punk-btn" id="end-continue-btn">CONTINUE</button>' +
+      '<button class="punk-btn" id="end-replay-btn" style="background:transparent;border-color:#555;color:#888">REPLAY</button>';
+    document.getElementById('end-continue-btn').addEventListener('click', function() { showStoryOutro(currentMapIndex); });
+    document.getElementById('end-replay-btn').addEventListener('click', startGame);
+  } else {
+    btns.innerHTML =
+      '<button class="punk-btn" id="end-retry-btn">RETRY</button>' +
+      '<button class="punk-btn" id="end-mapsel-btn" style="background:transparent;border-color:#555;color:#888">MAP SELECT</button>';
+    document.getElementById('end-retry-btn').addEventListener('click', function() { showStoryIntro(currentMapIndex); });
+    document.getElementById('end-mapsel-btn').addEventListener('click', showMapSelect);
+  }
+
   showScreen('end-screen');
+}
+
+// ═══ MAP SELECT & STORY SCREENS ═══
+function showMapSelect() {
+  const progress = loadProgress();
+  const cards = document.getElementById('map-cards');
+  cards.innerHTML = '';
+
+  MAP_DEFS.forEach(function(map, i) {
+    const unlocked = (i + 1) <= progress.unlockedMaps;
+    const completed = (i + 1) < progress.unlockedMaps;
+    const card = document.createElement('div');
+    card.className = 'map-card' + (completed ? ' completed' : '') + (!unlocked ? ' locked' : '');
+
+    let statusIcon = '';
+    if (completed) statusIcon = '\u2705';
+    else if (!unlocked) statusIcon = '\uD83D\uDD12';
+
+    card.innerHTML =
+      '<div class="map-chapter">CH. ' + map.chapter + '</div>' +
+      '<div class="map-info"><div class="map-name">' + map.name + '</div><div class="map-desc">' + map.desc + '</div></div>' +
+      '<div class="map-status">' + statusIcon + '</div>';
+
+    if (unlocked) {
+      card.addEventListener('click', function() {
+        currentMapIndex = i;
+        showStoryIntro(i);
+      });
+    }
+    cards.appendChild(card);
+  });
+
+  showScreen('map-screen');
+}
+
+function showStoryIntro(mapIndex) {
+  const map = MAP_DEFS[mapIndex];
+  const box = document.getElementById('story-content');
+
+  let html = '<div class="story-chapter">Chapter ' + map.chapter + '</div>';
+  html += '<div class="story-title">' + map.name + '</div>';
+  html += '<div class="story-narration">' + map.intro.narration + '</div>';
+  html += '<div class="story-dialogue">';
+  map.intro.dialogue.forEach(function(d) {
+    html += '<div class="story-line"><div class="story-speaker">' + d.speaker + '</div><div class="story-text">\u201C' + d.text + '\u201D</div></div>';
+  });
+  html += '</div>';
+  html += '<button class="punk-btn" id="story-btn">BEGIN</button>';
+  box.innerHTML = html;
+
+  document.getElementById('story-btn').addEventListener('click', startGame);
+  showScreen('story-screen');
+}
+
+function showStoryOutro(mapIndex) {
+  const map = MAP_DEFS[mapIndex];
+  const box = document.getElementById('story-content');
+
+  let html = '<div class="story-chapter">Chapter ' + map.chapter + ' \u2014 Victory</div>';
+  html += '<div class="story-title">' + map.name + '</div>';
+  html += '<div class="story-narration">' + map.victory.narration + '</div>';
+  html += '<div class="story-dialogue">';
+  map.victory.dialogue.forEach(function(d) {
+    html += '<div class="story-line"><div class="story-speaker">' + d.speaker + '</div><div class="story-text">\u201C' + d.text + '\u201D</div></div>';
+  });
+  html += '</div>';
+  html += '<button class="punk-btn" id="story-btn">CONTINUE</button>';
+  box.innerHTML = html;
+
+  document.getElementById('story-btn').addEventListener('click', showMapSelect);
+  showScreen('story-screen');
 }
 
 // Start on title

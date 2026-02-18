@@ -135,19 +135,164 @@ const ENEMY_DEFS = {
   boss:    { hp: 400, speed: 0.5, gold: 40, color: '#ef5350', radius: 10, outline: 0 },
 };
 
-// Path construction (same as game)
-const PATH = [];
-(function buildPath() {
-  for (let c = 0; c <= 14; c++) PATH.push([c, 1]);
-  for (let r = 2; r <= 3; r++) PATH.push([14, r]);
-  for (let c = 13; c >= 1; c--) PATH.push([c, 3]);
-  for (let r = 4; r <= 5; r++) PATH.push([1, r]);
-  for (let c = 2; c <= 14; c++) PATH.push([c, 5]);
-  for (let r = 6; r <= 7; r++) PATH.push([14, r]);
-  for (let c = 13; c >= 1; c--) PATH.push([c, 7]);
-  for (let r = 8; r <= 9; r++) PATH.push([1, r]);
-})();
+// MAP_DEFS (same as game)
+const MAP_DEFS = [
+  {
+    id: 'forest_gate', name: 'The Forest Gate', chapter: 'I',
+    desc: 'Hold the first line of defense against the approaching horde.',
+    hpMultiplier: 1.0,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 14; c++) p.push([c, 1]);
+      for (let r = 2; r <= 3; r++) p.push([14, r]);
+      for (let c = 13; c >= 1; c--) p.push([c, 3]);
+      for (let r = 4; r <= 5; r++) p.push([1, r]);
+      for (let c = 2; c <= 14; c++) p.push([c, 5]);
+      for (let r = 6; r <= 7; r++) p.push([14, r]);
+      for (let c = 13; c >= 1; c--) p.push([c, 7]);
+      for (let r = 8; r <= 9; r++) p.push([1, r]);
+      return p;
+    },
+    intro: {
+      narration: 'The kingdom of Aurelion has stood for a thousand years, but darkness gathers at its borders. The horde approaches from the east, and the forest gate is the first line of defense.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'Soldier, the scouts report a massive force heading this way. The forest gate must hold.' },
+        { speaker: 'Commander Aric', text: 'Set your defenses wisely. This is where we make our stand.' },
+      ]
+    },
+    victory: {
+      narration: 'The forest gate holds firm. Broken bodies of the invaders litter the path, and the survivors flee into the trees.',
+      dialogue: [
+        { speaker: 'Commander Aric', text: 'Well fought! But our scouts report the enemy is rerouting toward the river crossing.' },
+        { speaker: 'Commander Aric', text: 'Rest while you can. We march at dawn.' },
+      ]
+    }
+  },
+  {
+    id: 'river_crossing', name: 'River Crossing', chapter: 'II',
+    desc: 'Defend the bridge over the River Ashfall before the heartland is exposed.',
+    hpMultiplier: 1.15,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 10; c++) p.push([c, 0]);
+      for (let r = 1; r <= 2; r++) p.push([10, r]);
+      for (let c = 9; c >= 2; c--) p.push([c, 2]);
+      for (let r = 3; r <= 4; r++) p.push([2, r]);
+      for (let c = 3; c <= 12; c++) p.push([c, 4]);
+      for (let r = 5; r <= 6; r++) p.push([12, r]);
+      for (let c = 11; c >= 4; c--) p.push([c, 6]);
+      for (let r = 7; r <= 8; r++) p.push([4, r]);
+      for (let c = 5; c <= 14; c++) p.push([c, 8]);
+      p.push([14, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The enemy has found a way around the forest.',
+      dialogue: [{ speaker: 'Scout Lira', text: 'They\'ve brought armored units.' }, { speaker: 'Commander Aric', text: 'We hold the bridge.' }]
+    },
+    victory: {
+      narration: 'The bridge holds.',
+      dialogue: [{ speaker: 'Scout Lira', text: 'They\'re heading for the mountain pass.' }, { speaker: 'Commander Aric', text: 'Move out!' }]
+    }
+  },
+  {
+    id: 'mountain_pass', name: 'Mountain Pass', chapter: 'III',
+    desc: 'Use the narrow switchbacks to funnel the enemy into deadly killzones.',
+    hpMultiplier: 1.3,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 14; c++) p.push([c, 0]);
+      for (let r = 1; r <= 2; r++) p.push([14, r]);
+      for (let c = 13; c >= 2; c--) p.push([c, 2]);
+      for (let r = 3; r <= 4; r++) p.push([2, r]);
+      for (let c = 3; c <= 12; c++) p.push([c, 4]);
+      for (let r = 5; r <= 6; r++) p.push([12, r]);
+      for (let c = 11; c >= 6; c--) p.push([c, 6]);
+      for (let r = 7; r <= 9; r++) p.push([6, r]);
+      return p;
+    },
+    intro: {
+      narration: 'The mountain pass is narrow and treacherous.',
+      dialogue: [{ speaker: 'Commander Aric', text: 'The terrain is our ally.' }, { speaker: 'Scout Lira', text: 'They\'re close.' }]
+    },
+    victory: {
+      narration: 'The pass is choked with wreckage.',
+      dialogue: [{ speaker: 'Scout Lira', text: 'The survivors are fleeing.' }, { speaker: 'Commander Aric', text: 'Pursue them.' }]
+    }
+  },
+  {
+    id: 'dark_swamp', name: 'The Dark Swamp', chapter: 'IV',
+    desc: 'Navigate the twisting labyrinth where enemies lurk at every corner.',
+    hpMultiplier: 1.5,
+    buildPath() {
+      const p = [];
+      for (let c = 0; c <= 3; c++) p.push([c, 5]);
+      for (let r = 4; r >= 1; r--) p.push([3, r]);
+      for (let c = 4; c <= 8; c++) p.push([c, 1]);
+      for (let r = 2; r <= 3; r++) p.push([8, r]);
+      for (let c = 7; c >= 5; c--) p.push([c, 3]);
+      for (let r = 4; r <= 7; r++) p.push([5, r]);
+      for (let c = 6; c <= 10; c++) p.push([c, 7]);
+      for (let r = 6; r >= 3; r--) p.push([10, r]);
+      for (let c = 11; c <= 14; c++) p.push([c, 3]);
+      for (let r = 4; r <= 5; r++) p.push([14, r]);
+      for (let c = 13; c >= 11; c--) p.push([c, 5]);
+      for (let r = 6; r <= 8; r++) p.push([11, r]);
+      for (let c = 12; c <= 15; c++) p.push([c, 8]);
+      p.push([15, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The Dark Swamp is a twisting labyrinth.',
+      dialogue: [{ speaker: 'Scout Lira', text: 'Watch for ambushes.' }, { speaker: 'Commander Aric', text: 'Desperate enemies are dangerous.' }]
+    },
+    victory: {
+      narration: 'The swamp claims the vanguard.',
+      dialogue: [{ speaker: 'Commander Aric', text: 'The general still lives.' }, { speaker: 'Scout Lira', text: 'He\'s in the Dragon\'s Lair.' }]
+    }
+  },
+  {
+    id: 'dragons_lair', name: "Dragon's Lair", chapter: 'V',
+    desc: 'The final stand in an ancient cavern. End the war once and for all.',
+    hpMultiplier: 1.75,
+    buildPath() {
+      const p = [];
+      for (let r = 0; r <= 3; r++) p.push([0, r]);
+      for (let c = 1; c <= 5; c++) p.push([c, 3]);
+      for (let r = 2; r >= 0; r--) p.push([5, r]);
+      for (let c = 6; c <= 11; c++) p.push([c, 0]);
+      for (let r = 1; r <= 4; r++) p.push([11, r]);
+      for (let c = 10; c >= 7; c--) p.push([c, 4]);
+      for (let r = 5; r <= 7; r++) p.push([7, r]);
+      for (let c = 8; c <= 13; c++) p.push([c, 7]);
+      for (let r = 6; r >= 2; r--) p.push([13, r]);
+      for (let c = 14; c <= 15; c++) p.push([c, 2]);
+      for (let r = 3; r <= 8; r++) p.push([15, r]);
+      for (let c = 14; c >= 3; c--) p.push([c, 8]);
+      p.push([3, 9]);
+      for (let c = 2; c >= 0; c--) p.push([c, 9]);
+      return p;
+    },
+    intro: {
+      narration: 'The Dragon\'s Lair is an ancient cavern.',
+      dialogue: [{ speaker: 'Commander Aric', text: 'This is it.' }, { speaker: 'Commander Aric', text: 'Do not falter.' }]
+    },
+    victory: {
+      narration: 'The war is over.',
+      dialogue: [{ speaker: 'Commander Aric', text: 'The kingdom is saved.' }, { speaker: 'Scout Lira', text: 'Songs will be sung.' }, { speaker: 'Commander Aric', text: 'Rest now, hero.' }]
+    }
+  }
+];
 
+const TD_PROGRESS_KEY = 'td-map-progress';
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(TD_PROGRESS_KEY)) || { unlockedMaps: 1 }; }
+  catch(e) { return { unlockedMaps: 1 }; }
+}
+function saveProgress(data) { localStorage.setItem(TD_PROGRESS_KEY, JSON.stringify(data)); }
+
+// Build default path from map 0 for backward compat with existing tests
+const PATH = MAP_DEFS[0].buildPath();
 const pathSet = new Set();
 PATH.forEach(([c, r]) => pathSet.add(c + ',' + r));
 
@@ -387,10 +532,10 @@ group('Enemy Definitions');
 }
 
 // --- HP Scaling ---
-group('HP Scaling Formula');
+group('HP Scaling Formula (Base, Map 1)');
 
 {
-  // HP = base * (1 + wave * 0.2)
+  // HP = base * (1 + wave * 0.2) * mapMultiplier (1.0 for map 1)
   const wave1Hp = Math.round(40 * (1 + 1 * 0.2));
   assertEqual(wave1Hp, Math.round(40 * 1.2), 'Wave 1 basic HP = base * 1.2');
 
@@ -592,30 +737,33 @@ group('Sell Refund');
   assertEqual(refund, 135, 'Cannon Lv3 sell refund = $135 (75% of $180)');
 }
 
-// --- Path ---
-group('Path System');
+// --- Path (Map 1 backward compat) ---
+group('Path System (Map 1)');
 
 {
-  assert(PATH.length > 0, 'Path has waypoints');
-  assert(PATH.length > 50, 'Path is substantial (S-curve, > 50 waypoints)');
+  const map1Path = MAP_DEFS[0].buildPath();
+  assert(map1Path.length > 0, 'Map 1 path has waypoints');
+  assert(map1Path.length > 50, 'Map 1 path is substantial (S-curve, > 50 waypoints)');
 }
 
 {
   // Path starts at left edge
-  assertEqual(PATH[0][0], 0, 'Path starts at column 0');
+  const map1Path = MAP_DEFS[0].buildPath();
+  assertEqual(map1Path[0][0], 0, 'Map 1 path starts at column 0');
 }
 
 {
   // Path ends near bottom
-  const lastR = PATH[PATH.length - 1][1];
-  assertEqual(lastR, 9, 'Path ends at row 9 (bottom)');
+  const map1Path = MAP_DEFS[0].buildPath();
+  const lastR = map1Path[map1Path.length - 1][1];
+  assertEqual(lastR, 9, 'Map 1 path ends at row 9 (bottom)');
 }
 
 {
-  // Path cells are marked
-  assert(pathSet.has('0,1'), 'Cell 0,1 is on path');
-  assert(pathSet.has('14,1'), 'Cell 14,1 is on path');
-  assert(!pathSet.has('0,0'), 'Cell 0,0 is NOT on path');
+  // Path cells are marked (using default PATH which is map 0)
+  assert(pathSet.has('0,1'), 'Cell 0,1 is on map 1 path');
+  assert(pathSet.has('14,1'), 'Cell 14,1 is on map 1 path');
+  assert(!pathSet.has('0,0'), 'Cell 0,0 is NOT on map 1 path');
 }
 
 // --- Grid ---
@@ -734,6 +882,256 @@ group('Tower Special Properties');
   assertEqual(TOWER_DEFS.arrow.slow, 0, 'Arrow has no slow');
   assertEqual(TOWER_DEFS.arrow.chain, 0, 'Arrow has no chain');
   assertEqual(TOWER_DEFS.arrow.dot, false, 'Arrow has no DoT');
+}
+
+// --- Map Definitions ---
+group('Map Definitions');
+
+{
+  assertEqual(MAP_DEFS.length, 5, '5 maps defined');
+}
+
+{
+  // All maps have required fields
+  const requiredFields = ['id', 'name', 'chapter', 'desc', 'hpMultiplier', 'buildPath', 'intro', 'victory'];
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const map = MAP_DEFS[i];
+    for (const field of requiredFields) {
+      assert(map[field] !== undefined, 'Map ' + (i + 1) + ' has field: ' + field);
+    }
+  }
+}
+
+{
+  // HP multipliers are ascending
+  for (let i = 1; i < MAP_DEFS.length; i++) {
+    assert(MAP_DEFS[i].hpMultiplier > MAP_DEFS[i - 1].hpMultiplier,
+      'Map ' + (i + 1) + ' HP multiplier (' + MAP_DEFS[i].hpMultiplier + ') > Map ' + i + ' (' + MAP_DEFS[i - 1].hpMultiplier + ')');
+  }
+}
+
+{
+  // Check specific HP multipliers
+  assertApprox(MAP_DEFS[0].hpMultiplier, 1.0, 0.01, 'Map 1 HP multiplier = 1.0x');
+  assertApprox(MAP_DEFS[1].hpMultiplier, 1.15, 0.01, 'Map 2 HP multiplier = 1.15x');
+  assertApprox(MAP_DEFS[2].hpMultiplier, 1.3, 0.01, 'Map 3 HP multiplier = 1.3x');
+  assertApprox(MAP_DEFS[3].hpMultiplier, 1.5, 0.01, 'Map 4 HP multiplier = 1.5x');
+  assertApprox(MAP_DEFS[4].hpMultiplier, 1.75, 0.01, 'Map 5 HP multiplier = 1.75x');
+}
+
+{
+  // Each map has unique id
+  const ids = MAP_DEFS.map(m => m.id);
+  const uniqueIds = new Set(ids);
+  assertEqual(uniqueIds.size, 5, 'All 5 map IDs are unique');
+}
+
+{
+  // buildPath returns arrays
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    assert(Array.isArray(path), 'Map ' + (i + 1) + ' buildPath returns array');
+    assert(path.length > 20, 'Map ' + (i + 1) + ' path has > 20 cells (got ' + path.length + ')');
+  }
+}
+
+// --- Path Validation (All Maps) ---
+group('Path Validation (All Maps)');
+
+{
+  // Each path stays within grid bounds
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    let allInBounds = true;
+    for (const [c, r] of path) {
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) {
+        allInBounds = false;
+        break;
+      }
+    }
+    assert(allInBounds, 'Map ' + (i + 1) + ' (' + MAP_DEFS[i].name + ') path within grid bounds');
+  }
+}
+
+{
+  // Each path has contiguous cardinal steps (no diagonal or jumps)
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    let contiguous = true;
+    for (let j = 1; j < path.length; j++) {
+      const dc = Math.abs(path[j][0] - path[j - 1][0]);
+      const dr = Math.abs(path[j][1] - path[j - 1][1]);
+      if ((dc + dr) !== 1) {
+        contiguous = false;
+        break;
+      }
+    }
+    assert(contiguous, 'Map ' + (i + 1) + ' (' + MAP_DEFS[i].name + ') path has contiguous cardinal steps');
+  }
+}
+
+{
+  // No duplicate cells in any path
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    const cellSet = new Set();
+    let hasDupes = false;
+    for (const [c, r] of path) {
+      const key = c + ',' + r;
+      if (cellSet.has(key)) { hasDupes = true; break; }
+      cellSet.add(key);
+    }
+    assert(!hasDupes, 'Map ' + (i + 1) + ' (' + MAP_DEFS[i].name + ') path has no duplicate cells');
+  }
+}
+
+{
+  // Each path starts at a grid edge (col 0, col 15, row 0, or row 9)
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    const [sc, sr] = path[0];
+    const atEdge = sc === 0 || sc === COLS - 1 || sr === 0 || sr === ROWS - 1;
+    assert(atEdge, 'Map ' + (i + 1) + ' path starts at a grid edge');
+  }
+}
+
+{
+  // Each path ends at a grid edge
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const path = MAP_DEFS[i].buildPath();
+    const [ec, er] = path[path.length - 1];
+    const atEdge = ec === 0 || ec === COLS - 1 || er === 0 || er === ROWS - 1;
+    assert(atEdge, 'Map ' + (i + 1) + ' path ends at a grid edge');
+  }
+}
+
+// --- Map Progress ---
+group('Map Progress');
+
+localStorage.clear();
+{
+  const progress = loadProgress();
+  assertEqual(progress.unlockedMaps, 1, 'Default progress = 1 map unlocked');
+}
+
+{
+  // Save and load round-trip
+  saveProgress({ unlockedMaps: 3 });
+  const progress = loadProgress();
+  assertEqual(progress.unlockedMaps, 3, 'Save/load round-trip: 3 maps unlocked');
+}
+
+{
+  // Beating map N unlocks N+1
+  localStorage.clear();
+  const progress = loadProgress();
+  // Simulate beating map 1 (index 0)
+  progress.unlockedMaps = Math.min(5, Math.max(progress.unlockedMaps, 0 + 2));
+  saveProgress(progress);
+  assertEqual(loadProgress().unlockedMaps, 2, 'Beating map 1 unlocks map 2');
+}
+
+{
+  // Beating map 5 stays capped at 5
+  saveProgress({ unlockedMaps: 5 });
+  const progress = loadProgress();
+  const updated = Math.min(5, Math.max(progress.unlockedMaps, 4 + 2));
+  assertEqual(updated, 5, 'Progress capped at 5 (cannot exceed max maps)');
+}
+
+{
+  // Beating earlier map doesn't reduce progress
+  saveProgress({ unlockedMaps: 4 });
+  const progress = loadProgress();
+  const updated = Math.min(5, Math.max(progress.unlockedMaps, 0 + 2));
+  assertEqual(updated, 4, 'Beating map 1 with 4 unlocked keeps 4');
+}
+
+localStorage.clear();
+
+// --- HP Scaling with Map Multiplier ---
+group('HP Scaling with Map Multiplier');
+
+{
+  // Map 1 (1.0x) wave 1 basic
+  const hp = Math.round(40 * (1 + 1 * 0.2) * 1.0);
+  assertEqual(hp, 48, 'Map 1 wave 1 basic HP = 48');
+}
+
+{
+  // Map 5 (1.75x) wave 30 boss
+  const hp = Math.round(400 * (1 + 30 * 0.2) * 1.75);
+  assertEqual(hp, 4900, 'Map 5 wave 30 boss HP = 4900');
+}
+
+{
+  // Map 2 (1.15x) wave 10 basic
+  const hp = Math.round(40 * (1 + 10 * 0.2) * 1.15);
+  assertEqual(hp, 138, 'Map 2 wave 10 basic HP = 138');
+}
+
+{
+  // Map 3 (1.3x) wave 20 armored
+  const hp = Math.round(120 * (1 + 20 * 0.2) * 1.3);
+  assertEqual(hp, 780, 'Map 3 wave 20 armored HP = 780');
+}
+
+{
+  // Map 4 (1.5x) wave 15 fast
+  const hp = Math.round(25 * (1 + 15 * 0.2) * 1.5);
+  assertEqual(hp, 150, 'Map 4 wave 15 fast HP = 150');
+}
+
+// --- Story Content ---
+group('Story Content');
+
+{
+  // Each map has intro with narration and dialogue
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const map = MAP_DEFS[i];
+    assert(typeof map.intro.narration === 'string' && map.intro.narration.length > 0,
+      'Map ' + (i + 1) + ' has intro narration');
+    assert(Array.isArray(map.intro.dialogue) && map.intro.dialogue.length > 0,
+      'Map ' + (i + 1) + ' has intro dialogue');
+  }
+}
+
+{
+  // Each map has victory with narration and dialogue
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const map = MAP_DEFS[i];
+    assert(typeof map.victory.narration === 'string' && map.victory.narration.length > 0,
+      'Map ' + (i + 1) + ' has victory narration');
+    assert(Array.isArray(map.victory.dialogue) && map.victory.dialogue.length > 0,
+      'Map ' + (i + 1) + ' has victory dialogue');
+  }
+}
+
+{
+  // Dialogue entries have speaker and text
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    const map = MAP_DEFS[i];
+    for (const d of map.intro.dialogue) {
+      assert(typeof d.speaker === 'string' && d.speaker.length > 0,
+        'Map ' + (i + 1) + ' intro dialogue has speaker');
+      assert(typeof d.text === 'string' && d.text.length > 0,
+        'Map ' + (i + 1) + ' intro dialogue has text');
+    }
+    for (const d of map.victory.dialogue) {
+      assert(typeof d.speaker === 'string' && d.speaker.length > 0,
+        'Map ' + (i + 1) + ' victory dialogue has speaker');
+      assert(typeof d.text === 'string' && d.text.length > 0,
+        'Map ' + (i + 1) + ' victory dialogue has text');
+    }
+  }
+}
+
+{
+  // Map chapter numbers are in order
+  const expectedChapters = ['I', 'II', 'III', 'IV', 'V'];
+  for (let i = 0; i < MAP_DEFS.length; i++) {
+    assertEqual(MAP_DEFS[i].chapter, expectedChapters[i], 'Map ' + (i + 1) + ' chapter = ' + expectedChapters[i]);
+  }
 }
 
 // ============================================================

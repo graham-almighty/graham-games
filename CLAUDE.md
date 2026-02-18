@@ -300,10 +300,29 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 
 ### Core Systems
 - **Renderer:** 2D Canvas, `requestAnimationFrame` loop
-- **Grid:** 16x10 tiles (52px each), fixed S-curve path
+- **Grid:** 16x10 tiles (52px each), dynamic path per map
 - **Controls:** Mouse click to place/select towers, keyboard shortcuts (1-5 tower types, Space = send wave, F = toggle speed, Escape = deselect)
 - **30 waves**, game is winnable. 5s countdown between waves (or send early).
 - **2x speed toggle** (F key)
+- **UI flow:** Title → Map Select → Story Intro → Game → End → (Story Outro on victory) → Map Select
+
+### Campaign Maps (5 maps, linear unlock)
+
+`MAP_DEFS` array. Progress stored in `td-map-progress` localStorage key (`{ unlockedMaps: N }`).
+
+| # | Chapter | Name | HP Mult | Path Style |
+|---|---------|------|---------|------------|
+| 1 | I | The Forest Gate | 1.0x | S-curve (classic) |
+| 2 | II | River Crossing | 1.15x | Zigzag, shorter horizontal runs |
+| 3 | III | Mountain Pass | 1.3x | Spiral inward, exits mid-bottom |
+| 4 | IV | The Dark Swamp | 1.5x | Winding with tight 90° corners |
+| 5 | V | Dragon's Lair | 1.75x | Complex weaving, exits bottom-left |
+
+- Map N playable if `N <= unlockedMaps` (1-indexed)
+- Victory on map N: `unlockedMaps = max(current, N+1)`, capped at 5
+- Each map has `buildPath()` returning `[[col,row], ...]`, `intro` and `victory` story objects
+- Story screens: chapter, title, narration, dialogue with speaker/text
+- Fantasy storyline: kingdom of Aurelion under siege, Commander Aric and Scout Lira NPCs
 
 ### Towers (5 types)
 | Type | Cost | Damage | Range | Fire Rate | Special |
@@ -328,7 +347,7 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 | Armored | 120 | 0.7 | $13 | Grey circle + thick outline |
 | Boss | 400 | 0.5 | $40 | Large red circle |
 
-- HP scales: `base * (1 + wave * 0.2)`
+- HP scales: `base * (1 + wave * 0.2) * mapHpMultiplier`
 - Gold scales: `base * (1 + wave * 0.03)`
 
 ### Wave System
