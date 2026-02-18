@@ -3268,14 +3268,6 @@ function buildMansion() {
     step.castShadow = true;
     g.add(step);
   }
-  // Stair railings
-  const railMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
-  const stairRail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 7), goldMat);
-  stairRail.position.set(285, 2.5, 6.5);
-  g.add(stairRail);
-  const stairRail2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.2, 7), goldMat);
-  stairRail2.position.set(288, 2.5, 6.5);
-  g.add(stairRail2);
 
   // ═══ UPPER FLOOR ═══
   // Upper floor slab (with stairwell hole)
