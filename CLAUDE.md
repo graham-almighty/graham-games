@@ -24,14 +24,15 @@
 
 ```
 /home/graham/src/
-  graham-games/index.html   — Main launcher (dark/gold theme, G Bux system)
-  mini-life/game.html        — 3D first-person life simulator (Three.js r128)
-  hurgvibbit/index.html      — Punk/metal patty-cake rhythm game
-  tower-defense/index.html   — 2D canvas tower defense game
-  flying-ace/index.html      — Iframe wrapper for https://flying-ace-board-game.web.app
-  combat/index.html          — Iframe wrapper for https://combat-retro-game.web.app
-  CLAUDE.md                  — This file
-  README.md                  — GitHub documentation
+  graham-games/index.html     — Main launcher (dark/gold theme, G Bux system)
+  mini-life/game.html          — 3D first-person life simulator (Three.js r128)
+  hurgvibbit/index.html        — Punk/metal patty-cake rhythm game
+  tower-defense/index.html     — 2D canvas tower defense game
+  ancient-warfare/index.html   — 3D army battle simulator (Three.js r128)
+  flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
+  combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
+  CLAUDE.md                    — This file
+  README.md                    — GitHub documentation
 ```
 
 All games are standalone single-file HTML. External games (Flying Ace, Combat) use iframe wrappers with a shared toolbar (GG logo, title, EXIT TO LAUNCHER button).
@@ -65,12 +66,12 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 ## Launcher — `graham-games/index.html`
 
 - Dark/gold serpent double-G SVG logo
-- 4 game cards with color-coded borders
+- 6 game cards with color-coded borders
 - G Bux balance display (top right)
-- Achievements panel (28 total achievements)
-- G Bux Shop (5 items)
+- Achievements panel (48 total achievements)
+- G Bux Shop (9 items)
 
-### Achievements (38 total, 930 G Bux earnable)
+### Achievements (48 total, 1145 G Bux earnable)
 
 **Hurgvibbit (10 achievements, 225G):**
 | ID | Name | Reward | Condition |
@@ -122,7 +123,21 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | td_speed_demon | Speed Demon | 20G | Complete wave 15+ on 2x speed |
 | td_victory | Supreme Commander | 50G | Beat wave 30 |
 
-### G Bux Shop (7 items, 550G total)
+**Ancient Warfare (10 achievements, 215G):**
+| ID | Name | Reward | Condition |
+|----|------|--------|-----------|
+| aw_first_battle | First Blood | 5G | Complete a battle |
+| aw_victor | Victorious | 10G | Win a battle |
+| aw_flawless | Flawless Victory | 30G | Win without losing a unit |
+| aw_cavalry_charge | Cavalry Charge | 15G | Win with 5+ cavalry |
+| aw_archer_army | Rain of Arrows | 15G | Win with 5+ archers |
+| aw_balanced | Balanced Forces | 20G | Win using all 5 base unit types |
+| aw_underdog | Underdog | 25G | Win outnumbered 2:1 |
+| aw_speed_demon | Blitz | 20G | Win in under 30 seconds |
+| aw_commander | Commander | 25G | Win 5 battles |
+| aw_warlord | Warlord | 50G | Win 10 battles |
+
+### G Bux Shop (9 items, 675G total)
 | ID | Name | Cost | Effect |
 |----|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Neon colors for Hurgvibbit |
@@ -132,6 +147,8 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | ml_basement | Basement | 150G | Underground expansion |
 | td_flame_tower | Flame Tower | 75G | Unlocks 5th tower type |
 | td_double_gold | War Bonds | 50G | Start each game with $200 |
+| aw_war_elephant | War Elephant | 75G | Unlocks 6th unit type |
+| aw_battle_horn | Battle Horn | 50G | +10% damage for first 10s |
 
 ---
 
@@ -373,6 +390,72 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 - `TD_ACH` registry + `ggTry(id)` helper (same pattern as Hurgvibbit)
 - Toast notification system with queue
 - Shop unlock checks: `td_flame_tower` (flame tower visibility), `td_double_gold` (starting gold)
+
+---
+
+## Ancient Warfare — `ancient-warfare/index.html`
+
+### Core Systems
+- **Renderer:** Three.js r128, single `<script>` tag, CDN loaded
+- **Camera:** RTS perspective (~45° angle), right-drag orbit, scroll zoom, WASD pan
+- **Battlefield:** 40x30 green plane with decorative rocks and trees
+- **Teams:** Blue (player, #4488ff) vs Red (AI, #ff4444)
+- **Shadow maps, 3-light setup** (ambient + directional + hemisphere)
+
+### Game Flow
+1. **Title Screen** → PLAY button
+2. **Deployment Phase** — 200 gold budget, sidebar unit picker, click left half to place, CLEAR ALL to reset
+3. **Battle Phase** — Enemy auto-generated matching budget. Units auto-fight. Controls: pause (Space), 2x speed (F), select unit (click), command attack (right-click enemy), camera orbit/zoom/pan
+4. **End Screen** — Victory/Defeat with stats, achievement checks, PLAY AGAIN / EXIT
+
+### Unit Types (5 base + 1 unlockable)
+| Type | Cost | HP | Damage | Speed | Range | Special |
+|------|------|----|--------|-------|-------|---------|
+| Swordsman | 10 | 100 | 15 | 1.5 | 1.5 (melee) | Balanced |
+| Archer | 15 | 60 | 12 | 1.2 | 8 | Ranged, 5 dmg melee, retreats if < 3 |
+| Spearman | 12 | 130 | 12 | 1.0 | 1.8 (melee) | 2x vs cavalry/elephant |
+| Cavalry | 25 | 90 | 20 | 3.0 | 1.8 (melee) | First hit 2x (charge) |
+| Catapult | 40 | 80 | 45 | 0.4 | 12 | Splash (radius 3), stationary |
+| War Elephant* | 50 | 300 | 30 | 0.8 | 2.0 (melee) | Tank, trample |
+
+*War Elephant requires G Bux shop unlock (`aw_war_elephant`)
+
+### Combat AI
+- Each unit: find nearest enemy → move toward → attack when in range
+- Archers maintain distance, retreat if enemy < 3 units away
+- Cavalry charge bonus on first hit (2x damage), then normal
+- Catapults target clusters, stay stationary, splash damage
+- Spearman 2x damage vs cavalry and elephant types
+- Attack cooldowns: melee 0.8s, archer 1.0s, catapult 3.0s
+
+### Projectile System
+- **Arrows:** straight line, speed 15, single target within 2 units of impact
+- **Boulders:** parabolic arc (sin curve * dist * 0.3), speed 8, splash damage within radius 3
+- Splash damage formula: `baseDmg * (1 - dist / (splash + 1))`
+
+### Battle Horn Shop Buff
+- Purchased via G Bux shop (`aw_battle_horn`)
+- +10% damage for blue team for first 10 seconds of battle
+- `battleHornActive` flag, `battleHornTimer` countdown
+
+### Enemy AI Army Generator
+- Matches player's spent budget
+- Weighted random unit selection (swordsman 30, spearman 25, archer 20, cavalry 15, elephant 8, catapult 5)
+- Units placed in right half of field (x > 0)
+- Respects shop unlock (no elephants without `aw_war_elephant`)
+
+### Stats Persistence
+- **localStorage key:** `aw-stats` → `{ wins: N, battles: N }`
+- Incremented after each battle, wins only on victory
+
+### G Bux Integration
+- `AW_ACH` registry + `ggTry(id)` helper (same pattern as Tower Defense)
+- Toast notification system with queue
+- Shop unlock checks: `aw_war_elephant` (elephant unit), `aw_battle_horn` (damage buff)
+
+### Sound Effects (Web Audio API)
+- `SFX.swordClash()`, `SFX.arrowShot()`, `SFX.arrowHit()`, `SFX.catapultLaunch()`, `SFX.catapultImpact()`
+- `SFX.cavalryCharge()`, `SFX.battleHorn()`, `SFX.victory()`, `SFX.defeat()`, `SFX.place()`
 
 ---
 

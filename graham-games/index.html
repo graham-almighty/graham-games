@@ -411,6 +411,23 @@
     border-radius: 8px;
   }
 
+  /* Ancient Warfare card */
+  .game-card.ancient-warfare {
+    border-left-color: #cd7f32;
+  }
+  .game-card.ancient-warfare:hover {
+    border-color: #cd7f32;
+    box-shadow: 0 0 30px #cd7f3215, -5px 0 20px #cd7f3210;
+  }
+  .game-card.ancient-warfare::before {
+    background: linear-gradient(90deg, #cd7f3208 0%, transparent 50%);
+  }
+  .game-card.ancient-warfare .game-icon {
+    background: linear-gradient(135deg, #1a1008, #2a1a08);
+    border: 1px solid #cd7f3244;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -548,10 +565,6 @@ for (let i = 0; i < 30; i++) {
         <path d="M-8,5 Q0,10 12,4" fill="none" stroke="#1a5c2a" stroke-width="1"/>
       </g>
 
-      <!-- Tail (at end of G bar) -->
-      <path d="M95,145 Q85,145 80,140 Q74,133 72,125 Q71,118 74,113" fill="none" stroke="url(#serpent1)" stroke-width="10" stroke-linecap="round"/>
-      <path d="M74,113 Q76,108 74,104 Q71,100 68,102" fill="none" stroke="#2a8a4a" stroke-width="6" stroke-linecap="round"/>
-      <path d="M68,102 L65,106" fill="none" stroke="#1a5c2a" stroke-width="3" stroke-linecap="round"/>
     </g>
 
     <!-- ═══ RIGHT SERPENT forming "G" ═══ -->
@@ -580,15 +593,8 @@ for (let i = 0; i < 30; i++) {
         <path d="M-8,5 Q0,10 12,4" fill="none" stroke="#1a5c2a" stroke-width="1"/>
       </g>
 
-      <!-- Tail -->
-      <path d="M248,150 Q238,150 233,145 Q227,138 225,130 Q224,123 227,118" fill="none" stroke="url(#serpent2)" stroke-width="10" stroke-linecap="round"/>
-      <path d="M227,118 Q229,113 227,109 Q224,105 221,107" fill="none" stroke="#2a8a4a" stroke-width="6" stroke-linecap="round"/>
-      <path d="M221,107 L218,111" fill="none" stroke="#1a5c2a" stroke-width="3" stroke-linecap="round"/>
     </g>
 
-    <!-- Center intertwine - serpents crossing in the middle -->
-    <path d="M128,110 Q140,95 155,100 Q168,105 168,90" fill="none" stroke="url(#serpent1)" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
-    <path d="M168,115 Q158,100 148,105 Q138,110 130,95" fill="none" stroke="url(#serpent2)" stroke-width="8" stroke-linecap="round" opacity="0.5"/>
   </svg>
 
   <div class="title">GRAHAM GAMES</div>
@@ -730,6 +736,29 @@ for (let i = 0; i < 30; i++) {
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
+
+    <!-- ANCIENT WARFARE -->
+    <a href="../ancient-warfare/index.html" class="game-card ancient-warfare">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a1008" stroke="#cd7f32" stroke-width="2"/>
+          <!-- crossed swords -->
+          <line x1="14" y1="38" x2="36" y2="12" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
+          <line x1="36" y1="38" x2="14" y2="12" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
+          <!-- sword hilts -->
+          <line x1="12" y1="36" x2="18" y2="40" stroke="#cd7f32" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="34" y1="36" x2="40" y2="40" stroke="#cd7f32" stroke-width="1.5" stroke-linecap="round"/>
+          <!-- shield center -->
+          <circle cx="25" cy="25" r="6" fill="#cd7f32" opacity="0.2" stroke="#cd7f32" stroke-width="1"/>
+          <circle cx="25" cy="25" r="3" fill="#cd7f32" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">ANCIENT WARFARE</div>
+        <div class="game-desc">3D army battle simulator</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
   </div>
 </div>
 
@@ -810,6 +839,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'td_speed_demon',   name: 'Speed Demon',         desc: 'Complete wave 15+ on 2x speed',   reward: 20 },
     { id: 'td_victory',       name: 'Supreme Commander',   desc: 'Beat wave 30',                    reward: 50 },
   ]},
+  { group: 'ANCIENT WARFARE', items: [
+    { id: 'aw_first_battle',   name: 'First Blood',        desc: 'Complete a battle',               reward: 5 },
+    { id: 'aw_victor',         name: 'Victorious',          desc: 'Win a battle',                    reward: 10 },
+    { id: 'aw_flawless',       name: 'Flawless Victory',    desc: 'Win without losing a unit',       reward: 30 },
+    { id: 'aw_cavalry_charge', name: 'Cavalry Charge',      desc: 'Win with 5+ cavalry',             reward: 15 },
+    { id: 'aw_archer_army',    name: 'Rain of Arrows',      desc: 'Win with 5+ archers',             reward: 15 },
+    { id: 'aw_balanced',       name: 'Balanced Forces',      desc: 'Win using all 5 base unit types', reward: 20 },
+    { id: 'aw_underdog',       name: 'Underdog',            desc: 'Win outnumbered 2:1',             reward: 25 },
+    { id: 'aw_speed_demon',    name: 'Blitz',               desc: 'Win in under 30 seconds',         reward: 20 },
+    { id: 'aw_commander',      name: 'Commander',            desc: 'Win 5 battles',                   reward: 25 },
+    { id: 'aw_warlord',        name: 'Warlord',              desc: 'Win 10 battles',                  reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -820,6 +861,8 @@ const SHOP_ITEMS = [
   { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
   { id: 'td_flame_tower', name: 'Flame Tower',     desc: 'Unlocks the Flame tower type',            cost: 75,  icon: '&#128293;', game: 'Tower Defense' },
   { id: 'td_double_gold', name: 'War Bonds',       desc: 'Start each game with $200 instead of $100', cost: 50, icon: '&#128176;', game: 'Tower Defense' },
+  { id: 'aw_war_elephant', name: 'War Elephant',   desc: 'Unlocks the War Elephant unit type',      cost: 75,  icon: '&#128024;', game: 'Ancient Warfare' },
+  { id: 'aw_battle_horn',  name: 'Battle Horn',     desc: '+10% damage for first 10s of battle',     cost: 50,  icon: '&#128739;', game: 'Ancient Warfare' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══

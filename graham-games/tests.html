@@ -146,6 +146,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'td_speed_demon',   name: 'Speed Demon',         desc: 'Complete wave 15+ on 2x speed',   reward: 20 },
     { id: 'td_victory',       name: 'Supreme Commander',   desc: 'Beat wave 30',                    reward: 50 },
   ]},
+  { group: 'ANCIENT WARFARE', items: [
+    { id: 'aw_first_battle',   name: 'First Blood',        desc: 'Complete a battle',               reward: 5 },
+    { id: 'aw_victor',         name: 'Victorious',          desc: 'Win a battle',                    reward: 10 },
+    { id: 'aw_flawless',       name: 'Flawless Victory',    desc: 'Win without losing a unit',       reward: 30 },
+    { id: 'aw_cavalry_charge', name: 'Cavalry Charge',      desc: 'Win with 5+ cavalry',             reward: 15 },
+    { id: 'aw_archer_army',    name: 'Rain of Arrows',      desc: 'Win with 5+ archers',             reward: 15 },
+    { id: 'aw_balanced',       name: 'Balanced Forces',      desc: 'Win using all 5 base unit types', reward: 20 },
+    { id: 'aw_underdog',       name: 'Underdog',            desc: 'Win outnumbered 2:1',             reward: 25 },
+    { id: 'aw_speed_demon',    name: 'Blitz',               desc: 'Win in under 30 seconds',         reward: 20 },
+    { id: 'aw_commander',      name: 'Commander',            desc: 'Win 5 battles',                   reward: 25 },
+    { id: 'aw_warlord',        name: 'Warlord',              desc: 'Win 10 battles',                  reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -156,6 +168,8 @@ const SHOP_ITEMS = [
   { id: 'ml_basement',     name: 'Basement',        desc: 'Underground expansion with workbench',    cost: 150, icon: '&#127975;', game: 'Mini Life' },
   { id: 'td_flame_tower', name: 'Flame Tower',     desc: 'Unlocks the Flame tower type',            cost: 75,  icon: '&#128293;', game: 'Tower Defense' },
   { id: 'td_double_gold', name: 'War Bonds',       desc: 'Start each game with $200 instead of $100', cost: 50, icon: '&#128176;', game: 'Tower Defense' },
+  { id: 'aw_war_elephant', name: 'War Elephant',   desc: 'Unlocks the War Elephant unit type',      cost: 75,  icon: '&#128024;', game: 'Ancient Warfare' },
+  { id: 'aw_battle_horn',  name: 'Battle Horn',     desc: '+10% damage for first 10s of battle',     cost: 50,  icon: '&#128739;', game: 'Ancient Warfare' },
 ];
 
 function purchaseItem(id, cost) {
@@ -244,20 +258,22 @@ group('Achievement Registry');
 {
   const allItems = [];
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => allItems.push(i)));
-  assertEqual(allItems.length, 38, 'Total achievements count is 38');
+  assertEqual(allItems.length, 48, 'Total achievements count is 48');
 }
 
 {
-  assertEqual(ALL_ACHIEVEMENTS.length, 3, 'Three achievement groups exist');
+  assertEqual(ALL_ACHIEVEMENTS.length, 4, 'Four achievement groups exist');
   assertEqual(ALL_ACHIEVEMENTS[0].group, 'HURGVIBBIT', 'First group is HURGVIBBIT');
   assertEqual(ALL_ACHIEVEMENTS[1].group, 'MINI LIFE', 'Second group is MINI LIFE');
   assertEqual(ALL_ACHIEVEMENTS[2].group, 'TOWER DEFENSE', 'Third group is TOWER DEFENSE');
+  assertEqual(ALL_ACHIEVEMENTS[3].group, 'ANCIENT WARFARE', 'Fourth group is ANCIENT WARFARE');
 }
 
 {
   assertEqual(ALL_ACHIEVEMENTS[0].items.length, 10, 'Hurgvibbit has 10 achievements');
   assertEqual(ALL_ACHIEVEMENTS[1].items.length, 18, 'Mini Life has 18 achievements');
   assertEqual(ALL_ACHIEVEMENTS[2].items.length, 10, 'Tower Defense has 10 achievements');
+  assertEqual(ALL_ACHIEVEMENTS[3].items.length, 10, 'Ancient Warfare has 10 achievements');
 }
 
 {
@@ -270,7 +286,7 @@ group('Achievement Registry');
 {
   let totalReward = 0;
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalReward += i.reward));
-  assertEqual(totalReward, 930, 'Total earnable G Bux across all achievements is 930');
+  assertEqual(totalReward, 1145, 'Total earnable G Bux across all achievements is 1145');
 }
 
 {
@@ -292,6 +308,12 @@ group('Achievement Registry');
 }
 
 {
+  let awTotal = 0;
+  ALL_ACHIEVEMENTS[3].items.forEach(i => awTotal += i.reward);
+  assertEqual(awTotal, 215, 'Ancient Warfare total rewards = 215');
+}
+
+{
   // Check specific achievements exist with correct rewards
   const find = (id) => { let r = null; ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => { if (i.id === id) r = i; })); return r; };
   assertEqual(find('hurv_first_timer').reward, 5, 'hurv_first_timer reward = 5');
@@ -306,6 +328,9 @@ group('Achievement Registry');
   assertEqual(find('td_first_blood').reward, 5, 'td_first_blood reward = 5');
   assertEqual(find('td_victory').reward, 50, 'td_victory reward = 50');
   assertEqual(find('td_no_leaks_10').reward, 25, 'td_no_leaks_10 reward = 25');
+  assertEqual(find('aw_first_battle').reward, 5, 'aw_first_battle reward = 5');
+  assertEqual(find('aw_warlord').reward, 50, 'aw_warlord reward = 50');
+  assertEqual(find('aw_flawless').reward, 30, 'aw_flawless reward = 30');
 }
 
 {
@@ -322,13 +347,13 @@ group('Achievement Registry');
 group('Shop Items');
 
 {
-  assertEqual(SHOP_ITEMS.length, 7, 'Shop has 7 items');
+  assertEqual(SHOP_ITEMS.length, 9, 'Shop has 9 items');
 }
 
 {
   let totalCost = 0;
   SHOP_ITEMS.forEach(i => totalCost += i.cost);
-  assertEqual(totalCost, 550, 'Total shop cost is 550 G Bux');
+  assertEqual(totalCost, 675, 'Total shop cost is 675 G Bux');
 }
 
 {
@@ -346,6 +371,10 @@ group('Shop Items');
   assertEqual(SHOP_ITEMS[5].cost, 75, 'Flame Tower costs 75');
   assertEqual(SHOP_ITEMS[6].id, 'td_double_gold', 'Shop item 6 is td_double_gold');
   assertEqual(SHOP_ITEMS[6].cost, 50, 'War Bonds costs 50');
+  assertEqual(SHOP_ITEMS[7].id, 'aw_war_elephant', 'Shop item 7 is aw_war_elephant');
+  assertEqual(SHOP_ITEMS[7].cost, 75, 'War Elephant costs 75');
+  assertEqual(SHOP_ITEMS[8].id, 'aw_battle_horn', 'Shop item 8 is aw_battle_horn');
+  assertEqual(SHOP_ITEMS[8].cost, 50, 'Battle Horn costs 50');
 }
 
 {
@@ -367,9 +396,11 @@ group('Shop Items');
   const hurvItems = SHOP_ITEMS.filter(i => i.game === 'Hurgvibbit');
   const mlItems = SHOP_ITEMS.filter(i => i.game === 'Mini Life');
   const tdItems = SHOP_ITEMS.filter(i => i.game === 'Tower Defense');
+  const awItems = SHOP_ITEMS.filter(i => i.game === 'Ancient Warfare');
   assertEqual(hurvItems.length, 2, '2 shop items for Hurgvibbit');
   assertEqual(mlItems.length, 3, '3 shop items for Mini Life');
   assertEqual(tdItems.length, 2, '2 shop items for Tower Defense');
+  assertEqual(awItems.length, 2, '2 shop items for Ancient Warfare');
 }
 
 // --- Achievement Unlock Logic ---
@@ -443,13 +474,13 @@ localStorage.clear();
 
 localStorage.clear();
 {
-  ggSave({ gBux: 550, achievements: {}, shopPurchases: {} });
+  ggSave({ gBux: 675, achievements: {}, shopPurchases: {} });
   SHOP_ITEMS.forEach(item => {
     purchaseItem(item.id, item.cost);
   });
   const data = ggLoad();
-  assertEqual(data.gBux, 0, 'Buying all 7 items from 550 G Bux leaves 0');
-  assertEqual(Object.keys(data.shopPurchases).length, 7, 'All 7 items purchased');
+  assertEqual(data.gBux, 0, 'Buying all 9 items from 675 G Bux leaves 0');
+  assertEqual(Object.keys(data.shopPurchases).length, 9, 'All 9 items purchased');
 }
 
 // --- Economy Totals ---
@@ -460,10 +491,10 @@ group('Economy Balance');
   ALL_ACHIEVEMENTS.forEach(g => g.items.forEach(i => totalEarnable += i.reward));
   let totalShopCost = 0;
   SHOP_ITEMS.forEach(i => totalShopCost += i.cost);
-  assertEqual(totalEarnable, 930, 'Total earnable G Bux = 930');
-  assertEqual(totalShopCost, 550, 'Total shop cost = 550');
+  assertEqual(totalEarnable, 1145, 'Total earnable G Bux = 1145');
+  assertEqual(totalShopCost, 675, 'Total shop cost = 675');
   assert(totalEarnable > totalShopCost, 'Earnable exceeds shop cost (player can buy everything)');
-  assertEqual(totalEarnable - totalShopCost, 380, 'Surplus after buying everything = 380');
+  assertEqual(totalEarnable - totalShopCost, 470, 'Surplus after buying everything = 470');
 }
 
 // --- Cross-references ---
@@ -568,6 +599,16 @@ group('Shop Item Details');
   const warBonds = SHOP_ITEMS.find(i => i.id === 'td_double_gold');
   assertEqual(warBonds.name, 'War Bonds', 'War Bonds name correct');
   assertEqual(warBonds.game, 'Tower Defense', 'War Bonds game is Tower Defense');
+
+  const elephant = SHOP_ITEMS.find(i => i.id === 'aw_war_elephant');
+  assertEqual(elephant.name, 'War Elephant', 'War Elephant name correct');
+  assertEqual(elephant.game, 'Ancient Warfare', 'War Elephant game is Ancient Warfare');
+  assertEqual(elephant.cost, 75, 'War Elephant costs 75');
+
+  const horn = SHOP_ITEMS.find(i => i.id === 'aw_battle_horn');
+  assertEqual(horn.name, 'Battle Horn', 'Battle Horn name correct');
+  assertEqual(horn.game, 'Ancient Warfare', 'Battle Horn game is Ancient Warfare');
+  assertEqual(horn.cost, 50, 'Battle Horn costs 50');
 }
 
 // --- Integration: Earn achievements then buy items ---

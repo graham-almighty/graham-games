@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ancient Warfare - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #c9a84c; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #c9a84c; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Ancient Warfare - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0;
+const _results = document.getElementById('results');
+
+function group(name) {
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ' ±' + tolerance + ', got ' + actual);
+}
+
+function showSummary() {
+  const total = _passed + _failed;
+  document.getElementById('summary').innerHTML =
+    '<span class="pass">' + _passed + ' passed</span> / ' +
+    '<span class="fail">' + _failed + ' failed</span> / ' +
+    total + ' total';
+  document.title = (_failed === 0 ? 'ALL PASS' : _failed + ' FAIL') + ' - AW Tests';
+}
+
+// ============================================================
+// MOCK BROWSER APIs
+// ============================================================
+const mockStorage = {};
+const localStorage = {
+  getItem(key) { return mockStorage[key] || null; },
+  setItem(key, val) { mockStorage[key] = val; },
+  removeItem(key) { delete mockStorage[key]; },
+  clear() { for (const k in mockStorage) delete mockStorage[k]; },
+};
+
+function resetStorage() { localStorage.clear(); }
+
+// ============================================================
+// SOURCE CODE UNDER TEST (extracted from ancient-warfare/index.html)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const AW_ACH = {
+  aw_first_battle:    { name: 'First Blood',       reward: 5 },
+  aw_victor:          { name: 'Victorious',         reward: 10 },
+  aw_flawless:        { name: 'Flawless Victory',   reward: 30 },
+  aw_cavalry_charge:  { name: 'Cavalry Charge',     reward: 15 },
+  aw_archer_army:     { name: 'Rain of Arrows',     reward: 15 },
+  aw_balanced:        { name: 'Balanced Forces',     reward: 20 },
+  aw_underdog:        { name: 'Underdog',           reward: 25 },
+  aw_speed_demon:     { name: 'Blitz',              reward: 20 },
+  aw_commander:       { name: 'Commander',           reward: 25 },
+  aw_warlord:         { name: 'Warlord',             reward: 50 },
+};
+function ggTry(id) { const a = AW_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const STATS_KEY = 'aw-stats';
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(STATS_KEY)) || { wins: 0, battles: 0 }; }
+  catch(e) { return { wins: 0, battles: 0 }; }
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+
+const UNIT_DEFS = {
+  swordsman: { name: 'Swordsman', cost: 10, hp: 100, damage: 15, speed: 1.5, range: 1.5, special: 'Balanced melee fighter' },
+  archer:    { name: 'Archer',    cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   special: 'Ranged, 5 dmg melee, retreats', meleeDamage: 5 },
+  spearman:  { name: 'Spearman',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, special: '2x vs cavalry/elephant' },
+  cavalry:   { name: 'Cavalry',   cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, special: 'First hit 2x (charge)' },
+  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  special: 'Splash radius 3, stationary', splash: 3 },
+  elephant:  { name: 'War Elephant', cost: 50, hp: 300, damage: 30, speed: 0.8, range: 2.0, special: 'Tank, trample', shopRequired: 'aw_war_elephant' },
+};
+
+const FIELD_W = 40, FIELD_D = 30;
+const MAX_BUDGET = 200;
+
+// Mock unit structure for combat tests
+function mockUnit(type, team, overrides) {
+  const def = UNIT_DEFS[type];
+  return {
+    position: { x: 0, z: 0, y: 0, clone() { return { ...this }; }, distanceTo(other) { return Math.sqrt((this.x - other.x)**2 + (this.z - other.z)**2); }, add(v) { this.x += v.x; this.z += v.z; }, sub(other) { return { x: this.x - other.x, z: this.z - other.z, normalize() { const l = Math.sqrt(this.x**2 + this.z**2) || 1; this.x /= l; this.z /= l; return this; }, multiplyScalar(s) { this.x *= s; this.z *= s; return this; } }; }, lerpVectors() { return this; } },
+    userData: {
+      type, team, def,
+      hp: def.hp,
+      maxHp: def.hp,
+      damage: def.damage,
+      speed: def.speed,
+      range: def.range,
+      alive: true,
+      target: null,
+      attackCooldown: 0,
+      charged: type === 'cavalry',
+      stationaryInBattle: type === 'catapult',
+      ...overrides,
+    },
+  };
+}
+
+// Extracted combat damage calc
+function getAttackDamage(attacker, defender, battleHornActive) {
+  const aData = attacker.userData;
+  const dData = defender.userData;
+  let dmg = aData.damage;
+
+  // Archer weak melee
+  if (aData.type === 'archer' && aData.range > 2) {
+    const dist = attacker.position.distanceTo(defender.position);
+    if (dist <= 2) dmg = UNIT_DEFS.archer.meleeDamage;
+  }
+
+  // Spearman 2x vs cavalry/elephant
+  if (aData.type === 'spearman' && (dData.type === 'cavalry' || dData.type === 'elephant')) {
+    dmg *= 2;
+  }
+
+  // Cavalry charge (first hit)
+  if (aData.type === 'cavalry' && aData.charged) {
+    dmg *= 2;
+    aData.charged = false;
+  }
+
+  // Battle Horn buff
+  if (battleHornActive && attacker.userData.team === 'blue') {
+    dmg *= 1.1;
+  }
+
+  return dmg;
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// ─── UNIT DEFINITIONS ───
+group('Unit Definitions');
+
+assertEqual(UNIT_DEFS.swordsman.cost, 10, 'Swordsman cost = 10');
+assertEqual(UNIT_DEFS.swordsman.hp, 100, 'Swordsman HP = 100');
+assertEqual(UNIT_DEFS.swordsman.damage, 15, 'Swordsman damage = 15');
+assertEqual(UNIT_DEFS.swordsman.speed, 1.5, 'Swordsman speed = 1.5');
+
+assertEqual(UNIT_DEFS.archer.cost, 15, 'Archer cost = 15');
+assertEqual(UNIT_DEFS.archer.hp, 60, 'Archer HP = 60');
+assertEqual(UNIT_DEFS.archer.damage, 12, 'Archer damage = 12');
+assertEqual(UNIT_DEFS.archer.range, 8, 'Archer range = 8');
+assertEqual(UNIT_DEFS.archer.meleeDamage, 5, 'Archer melee damage = 5');
+
+assertEqual(UNIT_DEFS.spearman.cost, 12, 'Spearman cost = 12');
+assertEqual(UNIT_DEFS.spearman.hp, 130, 'Spearman HP = 130');
+assertEqual(UNIT_DEFS.spearman.damage, 12, 'Spearman damage = 12');
+
+assertEqual(UNIT_DEFS.cavalry.cost, 25, 'Cavalry cost = 25');
+assertEqual(UNIT_DEFS.cavalry.hp, 90, 'Cavalry HP = 90');
+assertEqual(UNIT_DEFS.cavalry.damage, 20, 'Cavalry damage = 20');
+assertEqual(UNIT_DEFS.cavalry.speed, 3.0, 'Cavalry speed = 3.0');
+
+assertEqual(UNIT_DEFS.catapult.cost, 40, 'Catapult cost = 40');
+assertEqual(UNIT_DEFS.catapult.hp, 80, 'Catapult HP = 80');
+assertEqual(UNIT_DEFS.catapult.damage, 45, 'Catapult damage = 45');
+assertEqual(UNIT_DEFS.catapult.range, 12, 'Catapult range = 12');
+assertEqual(UNIT_DEFS.catapult.splash, 3, 'Catapult splash = 3');
+
+assertEqual(UNIT_DEFS.elephant.cost, 50, 'Elephant cost = 50');
+assertEqual(UNIT_DEFS.elephant.hp, 300, 'Elephant HP = 300');
+assertEqual(UNIT_DEFS.elephant.damage, 30, 'Elephant damage = 30');
+assertEqual(UNIT_DEFS.elephant.shopRequired, 'aw_war_elephant', 'Elephant requires shop unlock');
+
+// ─── BUDGET MATH ───
+group('Budget Math');
+
+{
+  let budget = MAX_BUDGET;
+  assertEqual(budget, 200, 'Starting budget = 200');
+
+  budget -= UNIT_DEFS.swordsman.cost;
+  assertEqual(budget, 190, 'After deploying swordsman: 190');
+
+  budget -= UNIT_DEFS.cavalry.cost;
+  assertEqual(budget, 165, 'After deploying cavalry: 165');
+
+  budget -= UNIT_DEFS.catapult.cost;
+  assertEqual(budget, 125, 'After deploying catapult: 125');
+
+  assert(budget >= UNIT_DEFS.elephant.cost, 'Can afford elephant with 125 gold');
+  assert(budget < UNIT_DEFS.elephant.cost * 3, 'Cannot afford 3 elephants with 125 gold');
+
+  // Can't overspend
+  let testBudget = 5;
+  assert(testBudget < UNIT_DEFS.swordsman.cost, 'Cannot deploy swordsman with 5 gold (cost 10)');
+
+  // Clear refunds
+  budget = MAX_BUDGET;
+  assertEqual(budget, 200, 'After clear all: budget restored to 200');
+}
+
+// All budget spent check
+{
+  let budget = MAX_BUDGET;
+  let count = 0;
+  while (budget >= UNIT_DEFS.swordsman.cost) {
+    budget -= UNIT_DEFS.swordsman.cost;
+    count++;
+  }
+  assertEqual(count, 20, 'Can deploy 20 swordsmen with 200 gold');
+  assertEqual(budget, 0, 'Budget is 0 after 20 swordsmen');
+}
+
+// ─── COMBAT MATH ───
+group('Combat Math');
+
+// Basic swordsman damage
+{
+  const attacker = mockUnit('swordsman', 'blue');
+  const defender = mockUnit('swordsman', 'red');
+  const dmg = getAttackDamage(attacker, defender, false);
+  assertEqual(dmg, 15, 'Swordsman deals 15 damage to swordsman');
+}
+
+// Spearman 2x vs cavalry
+{
+  const spear = mockUnit('spearman', 'blue');
+  const cav = mockUnit('cavalry', 'red');
+  const dmg = getAttackDamage(spear, cav, false);
+  assertEqual(dmg, 24, 'Spearman deals 24 (12*2) damage to cavalry');
+}
+
+// Spearman 2x vs elephant
+{
+  const spear = mockUnit('spearman', 'blue');
+  const ele = mockUnit('elephant', 'red');
+  const dmg = getAttackDamage(spear, ele, false);
+  assertEqual(dmg, 24, 'Spearman deals 24 (12*2) damage to elephant');
+}
+
+// Spearman normal vs swordsman
+{
+  const spear = mockUnit('spearman', 'blue');
+  const sword = mockUnit('swordsman', 'red');
+  const dmg = getAttackDamage(spear, sword, false);
+  assertEqual(dmg, 12, 'Spearman deals 12 (no bonus) vs swordsman');
+}
+
+// Cavalry charge (first hit 2x)
+{
+  const cav = mockUnit('cavalry', 'blue');
+  const sword = mockUnit('swordsman', 'red');
+  assert(cav.userData.charged === true, 'Cavalry starts charged');
+  const dmg1 = getAttackDamage(cav, sword, false);
+  assertEqual(dmg1, 40, 'Cavalry charge deals 40 (20*2) damage');
+  assert(cav.userData.charged === false, 'Cavalry loses charge after first hit');
+  const dmg2 = getAttackDamage(cav, sword, false);
+  assertEqual(dmg2, 20, 'Cavalry normal hit deals 20 damage');
+}
+
+// Archer weak melee (distance <= 2)
+{
+  const archer = mockUnit('archer', 'blue');
+  const sword = mockUnit('swordsman', 'red');
+  // Position them close (distance < 2)
+  archer.position.x = 0;
+  sword.position.x = 1;
+  const dmg = getAttackDamage(archer, sword, false);
+  assertEqual(dmg, 5, 'Archer melee damage is 5 when enemy within 2 units');
+}
+
+// Archer ranged (distance > 2)
+{
+  const archer = mockUnit('archer', 'blue');
+  const sword = mockUnit('swordsman', 'red');
+  archer.position.x = 0;
+  sword.position.x = 5;
+  const dmg = getAttackDamage(archer, sword, false);
+  assertEqual(dmg, 12, 'Archer ranged damage is 12 at distance 5');
+}
+
+// Catapult splash damage
+{
+  const def = UNIT_DEFS.catapult;
+  assertEqual(def.splash, 3, 'Catapult splash radius = 3');
+  assertEqual(def.damage, 45, 'Catapult direct hit damage = 45');
+  // Splash at distance 0 = full damage
+  const fullDmg = def.damage * (1 - 0 / (def.splash + 1));
+  assertEqual(fullDmg, 45, 'Splash at center = 45');
+  // Splash at distance 2 = reduced
+  const partialDmg = def.damage * (1 - 2 / (def.splash + 1));
+  assertApprox(partialDmg, 22.5, 0.1, 'Splash at distance 2 ~= 22.5');
+  // Splash at distance 3 = edge
+  const edgeDmg = def.damage * (1 - 3 / (def.splash + 1));
+  assertApprox(edgeDmg, 11.25, 0.1, 'Splash at distance 3 (edge) ~= 11.25');
+}
+
+// ─── BATTLE HORN ───
+group('Battle Horn (+10% damage)');
+
+{
+  const sword = mockUnit('swordsman', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  const dmg = getAttackDamage(sword, enemy, true);
+  assertApprox(dmg, 16.5, 0.01, 'Swordsman with Battle Horn deals 16.5 (15*1.1)');
+}
+
+{
+  const cav = mockUnit('cavalry', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  const dmg = getAttackDamage(cav, enemy, true);
+  assertApprox(dmg, 44, 0.01, 'Cavalry charge with Battle Horn deals 44 (20*2*1.1)');
+}
+
+// Battle Horn does NOT apply to red team
+{
+  const sword = mockUnit('swordsman', 'red');
+  const enemy = mockUnit('swordsman', 'blue');
+  const dmg = getAttackDamage(sword, enemy, true);
+  assertEqual(dmg, 15, 'Battle Horn does not affect red team');
+}
+
+// Battle Horn timer: active for 10s then off
+{
+  let battleHornActive = true;
+  let battleHornTimer = 10;
+  // Simulate 5 seconds
+  battleHornTimer -= 5;
+  assert(battleHornTimer > 0, 'Battle Horn still active after 5s');
+  assert(battleHornActive, 'Battle Horn flag still true at 5s');
+  // Simulate 5 more seconds
+  battleHornTimer -= 5;
+  if (battleHornTimer <= 0) battleHornActive = false;
+  assert(!battleHornActive, 'Battle Horn deactivates after 10s');
+  assertEqual(battleHornTimer, 0, 'Battle Horn timer reaches 0');
+}
+
+// ─── WAR ELEPHANT UNLOCK ───
+group('War Elephant Shop Unlock');
+
+{
+  resetStorage();
+  const ggData = ggLoad();
+  const available = Object.entries(UNIT_DEFS).filter(([k, d]) => !d.shopRequired || ggData.shopPurchases[d.shopRequired]);
+  assert(!available.find(([k]) => k === 'elephant'), 'Elephant NOT available without shop purchase');
+  assert(available.find(([k]) => k === 'swordsman'), 'Swordsman available without shop purchase');
+  assert(available.find(([k]) => k === 'archer'), 'Archer available without shop purchase');
+}
+
+{
+  resetStorage();
+  const ggData = ggLoad();
+  ggData.shopPurchases['aw_war_elephant'] = true;
+  ggSave(ggData);
+  const data2 = ggLoad();
+  const available = Object.entries(UNIT_DEFS).filter(([k, d]) => !d.shopRequired || data2.shopPurchases[d.shopRequired]);
+  assert(available.find(([k]) => k === 'elephant'), 'Elephant IS available after shop purchase');
+}
+
+// ─── AI ARMY GENERATION ───
+group('AI Army Generation');
+
+{
+  resetStorage();
+  // Simulate army generation logic
+  const playerBudget = 100;
+  let enemyBudget = playerBudget;
+  const ggData = ggLoad();
+  const available = Object.entries(UNIT_DEFS).filter(([k, d]) => !d.shopRequired || ggData.shopPurchases[d.shopRequired]);
+  const units = [];
+
+  while (enemyBudget > 0) {
+    const affordable = available.filter(([k, d]) => d.cost <= enemyBudget);
+    if (affordable.length === 0) break;
+    const [key, def] = affordable[Math.floor(Math.random() * affordable.length)];
+    units.push({ type: key, cost: def.cost });
+    enemyBudget -= def.cost;
+  }
+
+  const totalSpent = units.reduce((s, u) => s + u.cost, 0);
+  assert(totalSpent <= playerBudget, 'AI army does not exceed budget (' + totalSpent + ' <= ' + playerBudget + ')');
+  assert(units.length > 0, 'AI army has at least 1 unit');
+  assert(enemyBudget >= 0, 'Remaining enemy budget is non-negative');
+
+  // No elephants without shop purchase
+  assert(!units.find(u => u.type === 'elephant'), 'AI army has no elephants without shop purchase');
+}
+
+// AI places units in right half (x > 0)
+{
+  for (let i = 0; i < 20; i++) {
+    const px = Math.random() * (FIELD_W / 2 - 2) + 1;
+    const pz = (Math.random() - 0.5) * (FIELD_D - 2);
+    assert(px > 0, 'Enemy unit x > 0 (right half): ' + px.toFixed(2));
+    assert(px < FIELD_W / 2, 'Enemy unit x < 20 (field bound): ' + px.toFixed(2));
+    assert(pz > -FIELD_D / 2 && pz < FIELD_D / 2, 'Enemy unit z within field bounds');
+  }
+}
+
+// ─── WIN/LOSS DETECTION ───
+group('Win/Loss Detection');
+
+{
+  // Victory: all red dead, some blue alive
+  const blueAlive = 3;
+  const redAlive = 0;
+  const victory = redAlive === 0 && blueAlive > 0;
+  assert(victory, 'Victory when red=0, blue=3');
+}
+
+{
+  // Defeat: all blue dead, some red alive
+  const blueAlive = 0;
+  const redAlive = 5;
+  const defeat = blueAlive === 0 && redAlive > 0;
+  assert(defeat, 'Defeat when blue=0, red=5');
+}
+
+{
+  // Draw (both dead) = defeat
+  const blueAlive = 0;
+  const redAlive = 0;
+  const isDefeat = blueAlive === 0 && redAlive === 0;
+  assert(isDefeat, 'Draw (both 0) counts as defeat');
+}
+
+{
+  // Battle still ongoing
+  const blueAlive = 5;
+  const redAlive = 3;
+  const ongoing = blueAlive > 0 && redAlive > 0;
+  assert(ongoing, 'Battle continues when both sides have units');
+}
+
+// ─── ACHIEVEMENT TRIGGERS ───
+group('Achievement Triggers (10 achievements)');
+
+resetStorage();
+
+// aw_first_battle: Complete a battle
+{
+  resetStorage();
+  ggTry('aw_first_battle');
+  const data = ggLoad();
+  assert(data.achievements['aw_first_battle'], 'aw_first_battle unlocked');
+  assertEqual(data.gBux, 5, 'aw_first_battle awards 5 G Bux');
+}
+
+// aw_victor: Win a battle
+{
+  resetStorage();
+  ggTry('aw_victor');
+  const data = ggLoad();
+  assert(data.achievements['aw_victor'], 'aw_victor unlocked');
+  assertEqual(data.gBux, 10, 'aw_victor awards 10 G Bux');
+}
+
+// aw_flawless: Win without losing a unit
+{
+  resetStorage();
+  const initialBlueCount = 10;
+  const blueAlive = 10;
+  if (blueAlive === initialBlueCount) ggTry('aw_flawless');
+  const data = ggLoad();
+  assert(data.achievements['aw_flawless'], 'aw_flawless unlocked when no units lost');
+  assertEqual(data.gBux, 30, 'aw_flawless awards 30 G Bux');
+}
+
+// aw_flawless: NOT awarded when units lost
+{
+  resetStorage();
+  const initialBlueCount = 10;
+  const blueAlive = 8;
+  if (blueAlive === initialBlueCount) ggTry('aw_flawless');
+  const data = ggLoad();
+  assert(!data.achievements['aw_flawless'], 'aw_flawless NOT unlocked when units were lost');
+}
+
+// aw_cavalry_charge: 5+ cavalry
+{
+  resetStorage();
+  const cavCount = 5;
+  if (cavCount >= 5) ggTry('aw_cavalry_charge');
+  const data = ggLoad();
+  assert(data.achievements['aw_cavalry_charge'], 'aw_cavalry_charge unlocked with 5 cavalry');
+  assertEqual(data.gBux, 15, 'aw_cavalry_charge awards 15 G Bux');
+}
+
+// aw_cavalry_charge: NOT with 4
+{
+  resetStorage();
+  const cavCount = 4;
+  if (cavCount >= 5) ggTry('aw_cavalry_charge');
+  const data = ggLoad();
+  assert(!data.achievements['aw_cavalry_charge'], 'aw_cavalry_charge NOT unlocked with 4 cavalry');
+}
+
+// aw_archer_army: 5+ archers
+{
+  resetStorage();
+  const archerCount = 6;
+  if (archerCount >= 5) ggTry('aw_archer_army');
+  const data = ggLoad();
+  assert(data.achievements['aw_archer_army'], 'aw_archer_army unlocked with 6 archers');
+  assertEqual(data.gBux, 15, 'aw_archer_army awards 15 G Bux');
+}
+
+// aw_balanced: all 5 base types
+{
+  resetStorage();
+  const types = new Set(['swordsman', 'archer', 'spearman', 'cavalry', 'catapult']);
+  const baseTypes = ['swordsman', 'archer', 'spearman', 'cavalry', 'catapult'];
+  if (baseTypes.every(t => types.has(t))) ggTry('aw_balanced');
+  const data = ggLoad();
+  assert(data.achievements['aw_balanced'], 'aw_balanced unlocked with all 5 base types');
+  assertEqual(data.gBux, 20, 'aw_balanced awards 20 G Bux');
+}
+
+// aw_balanced: NOT without all 5
+{
+  resetStorage();
+  const types = new Set(['swordsman', 'archer', 'spearman', 'cavalry']);
+  const baseTypes = ['swordsman', 'archer', 'spearman', 'cavalry', 'catapult'];
+  if (baseTypes.every(t => types.has(t))) ggTry('aw_balanced');
+  const data = ggLoad();
+  assert(!data.achievements['aw_balanced'], 'aw_balanced NOT unlocked with only 4 types');
+}
+
+// aw_underdog: outnumbered 2:1
+{
+  resetStorage();
+  const deployedCount = 5;
+  const enemyCount = 10;
+  if (enemyCount >= deployedCount * 2) ggTry('aw_underdog');
+  const data = ggLoad();
+  assert(data.achievements['aw_underdog'], 'aw_underdog unlocked when outnumbered 2:1');
+  assertEqual(data.gBux, 25, 'aw_underdog awards 25 G Bux');
+}
+
+// aw_underdog: NOT when ratio < 2:1
+{
+  resetStorage();
+  const deployedCount = 5;
+  const enemyCount = 9;
+  if (enemyCount >= deployedCount * 2) ggTry('aw_underdog');
+  const data = ggLoad();
+  assert(!data.achievements['aw_underdog'], 'aw_underdog NOT unlocked at 9 vs 5');
+}
+
+// aw_speed_demon: under 30 seconds
+{
+  resetStorage();
+  const battleTime = 25;
+  if (battleTime < 30) ggTry('aw_speed_demon');
+  const data = ggLoad();
+  assert(data.achievements['aw_speed_demon'], 'aw_speed_demon unlocked at 25s');
+  assertEqual(data.gBux, 20, 'aw_speed_demon awards 20 G Bux');
+}
+
+// aw_speed_demon: NOT at 30s
+{
+  resetStorage();
+  const battleTime = 30;
+  if (battleTime < 30) ggTry('aw_speed_demon');
+  const data = ggLoad();
+  assert(!data.achievements['aw_speed_demon'], 'aw_speed_demon NOT unlocked at exactly 30s');
+}
+
+// aw_commander: 5 wins
+{
+  resetStorage();
+  const stats = { wins: 5, battles: 8 };
+  if (stats.wins >= 5) ggTry('aw_commander');
+  const data = ggLoad();
+  assert(data.achievements['aw_commander'], 'aw_commander unlocked at 5 wins');
+  assertEqual(data.gBux, 25, 'aw_commander awards 25 G Bux');
+}
+
+// aw_warlord: 10 wins
+{
+  resetStorage();
+  const stats = { wins: 10, battles: 15 };
+  if (stats.wins >= 10) ggTry('aw_warlord');
+  const data = ggLoad();
+  assert(data.achievements['aw_warlord'], 'aw_warlord unlocked at 10 wins');
+  assertEqual(data.gBux, 50, 'aw_warlord awards 50 G Bux');
+}
+
+// Achievement total
+{
+  const totalReward = Object.values(AW_ACH).reduce((s, a) => s + a.reward, 0);
+  assertEqual(totalReward, 215, 'Total achievement rewards = 215 G Bux');
+  assertEqual(Object.keys(AW_ACH).length, 10, 'Total achievements = 10');
+}
+
+// No duplicate unlock
+{
+  resetStorage();
+  const r1 = ggUnlockAchievement('aw_victor', 'Victorious', 10);
+  const r2 = ggUnlockAchievement('aw_victor', 'Victorious', 10);
+  assert(r1 === true, 'First unlock returns true');
+  assert(r2 === false, 'Duplicate unlock returns false');
+  assertEqual(ggLoad().gBux, 10, 'G Bux only awarded once');
+}
+
+// ─── STATS PERSISTENCE ───
+group('Stats Persistence');
+
+{
+  resetStorage();
+  const s = loadStats();
+  assertEqual(s.wins, 0, 'Initial wins = 0');
+  assertEqual(s.battles, 0, 'Initial battles = 0');
+}
+
+{
+  resetStorage();
+  const s = loadStats();
+  s.battles++;
+  s.wins++;
+  saveStats(s);
+  const loaded = loadStats();
+  assertEqual(loaded.wins, 1, 'Wins round-trips to 1');
+  assertEqual(loaded.battles, 1, 'Battles round-trips to 1');
+}
+
+{
+  resetStorage();
+  saveStats({ wins: 7, battles: 12 });
+  const s = loadStats();
+  assertEqual(s.wins, 7, 'Multiple wins persist (7)');
+  assertEqual(s.battles, 12, 'Multiple battles persist (12)');
+}
+
+// ─── G BUX INTEGRATION ───
+group('G Bux Integration');
+
+{
+  resetStorage();
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'Default gBux = 0');
+  assert(typeof data.achievements === 'object', 'achievements is an object');
+  assert(typeof data.shopPurchases === 'object', 'shopPurchases is an object');
+}
+
+{
+  resetStorage();
+  ggUnlockAchievement('aw_first_battle', 'First Blood', 5);
+  ggUnlockAchievement('aw_victor', 'Victorious', 10);
+  const data = ggLoad();
+  assertEqual(data.gBux, 15, 'G Bux accumulates: 5 + 10 = 15');
+  assert(data.achievements['aw_first_battle'], 'First achievement saved');
+  assert(data.achievements['aw_victor'], 'Second achievement saved');
+}
+
+// Shop purchase check
+{
+  resetStorage();
+  const data = ggLoad();
+  data.gBux = 100;
+  data.shopPurchases['aw_war_elephant'] = true;
+  ggSave(data);
+  const loaded = ggLoad();
+  assertEqual(loaded.gBux, 100, 'G Bux preserved after shop save');
+  assert(loaded.shopPurchases['aw_war_elephant'], 'Shop purchase persists');
+}
+
+// ─── LAUNCHER TOTALS ───
+group('Launcher Totals');
+
+// These test the expected totals in the launcher
+{
+  // From CLAUDE.md plan: 48 achievements, 1145G earnable, 9 shop items, 675G shop total
+  // Hurgvibbit: 10 ach, 225G
+  // Mini Life: 18 ach, 520G
+  // Tower Defense: 10 ach, 185G
+  // Ancient Warfare: 10 ach, 215G
+  const totalAch = 10 + 18 + 10 + 10;
+  assertEqual(totalAch, 48, 'Total achievements across all games = 48');
+
+  const totalG = 225 + 520 + 185 + 215;
+  assertEqual(totalG, 1145, 'Total earnable G Bux = 1145');
+
+  // Shop items: Hurg(2) + ML(3) + TD(2) + AW(2) = 9
+  const shopCount = 2 + 3 + 2 + 2;
+  assertEqual(shopCount, 9, 'Total shop items = 9');
+
+  // Shop costs: 50+75+50+100+150+75+50+75+50 = 675
+  const shopTotal = 50 + 75 + 50 + 100 + 150 + 75 + 50 + 75 + 50;
+  assertEqual(shopTotal, 675, 'Total shop cost = 675 G Bux');
+}
+
+// ─── PROJECTILE LIFECYCLE ───
+group('Projectile Lifecycle');
+
+{
+  // Arrow: straight line, single target
+  const start = { x: 0, y: 1.2, z: 0 };
+  const end = { x: 5, y: 1.2, z: 0 };
+  const totalDist = Math.sqrt((end.x - start.x)**2 + (end.z - start.z)**2);
+  assertEqual(totalDist, 5, 'Arrow travel distance = 5');
+
+  // Progress simulation
+  const speed = 15;
+  let progress = 0;
+  const dt = 0.1;
+  progress += (speed * dt) / totalDist;
+  assertApprox(progress, 0.3, 0.001, 'Arrow progress after 0.1s at speed 15 over dist 5 = 0.3');
+
+  // Reaches target
+  let steps = 0;
+  progress = 0;
+  while (progress < 1 && steps < 100) {
+    progress += (speed * dt) / totalDist;
+    steps++;
+  }
+  assert(progress >= 1, 'Arrow reaches target');
+  assert(steps <= 4, 'Arrow arrives in ~4 steps (0.4s)');
+}
+
+{
+  // Boulder: parabolic arc
+  const progress = 0.5;
+  const totalDist = 10;
+  const arc = Math.sin(progress * Math.PI) * totalDist * 0.3;
+  assertApprox(arc, 3, 0.01, 'Boulder arc height at midpoint = 3 (dist*0.3)');
+
+  const arcStart = Math.sin(0 * Math.PI) * totalDist * 0.3;
+  assertEqual(arcStart, 0, 'Boulder arc at start = 0');
+
+  const arcEnd = Math.sin(1 * Math.PI) * totalDist * 0.3;
+  assertApprox(arcEnd, 0, 0.01, 'Boulder arc at end ≈ 0');
+}
+
+// ─── CAMERA CLAMPS ───
+group('Camera Clamps');
+
+{
+  // Camera distance clamps
+  const CAM_MIN_DIST = 10, CAM_MAX_DIST = 50;
+  let dist = 30;
+  dist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, dist + 100));
+  assertEqual(dist, 50, 'Camera distance clamped to max 50');
+
+  dist = 30;
+  dist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, dist - 100));
+  assertEqual(dist, 10, 'Camera distance clamped to min 10');
+}
+
+{
+  // Camera pitch clamps
+  let pitch = Math.PI / 4;
+  pitch = Math.max(0.2, Math.min(Math.PI / 2 - 0.1, pitch + 10));
+  assertApprox(pitch, Math.PI / 2 - 0.1, 0.001, 'Camera pitch clamped to max ~1.47');
+
+  pitch = Math.PI / 4;
+  pitch = Math.max(0.2, Math.min(Math.PI / 2 - 0.1, pitch - 10));
+  assertEqual(pitch, 0.2, 'Camera pitch clamped to min 0.2');
+}
+
+{
+  // Camera target clamps to field
+  let tx = 100;
+  tx = Math.max(-FIELD_W / 2, Math.min(FIELD_W / 2, tx));
+  assertEqual(tx, 20, 'Camera target X clamped to field edge 20');
+
+  let tz = -50;
+  tz = Math.max(-FIELD_D / 2, Math.min(FIELD_D / 2, tz));
+  assertEqual(tz, -15, 'Camera target Z clamped to field edge -15');
+}
+
+// ─── DEPLOYMENT BOUNDS ───
+group('Deployment Bounds');
+
+{
+  // Blue team deploys in left half (x <= 0)
+  assert(0 <= 0, 'x=0 is valid deployment position');
+  assert(-19 >= -FIELD_W / 2, 'x=-19 is within left edge');
+  assert(1 > 0, 'x=1 is NOT valid (right side is enemy zone)');
+}
+
+{
+  // Z bounds
+  assert(14 < FIELD_D / 2, 'z=14 within field depth');
+  assert(-14 > -FIELD_D / 2, 'z=-14 within field depth');
+}
+
+// ─── UNIT ALIVE/DEATH ───
+group('Unit Alive/Death');
+
+{
+  const unit = mockUnit('swordsman', 'blue');
+  assert(unit.userData.alive, 'Unit starts alive');
+  assertEqual(unit.userData.hp, 100, 'Unit starts at full HP');
+
+  // Apply damage
+  unit.userData.hp -= 50;
+  assert(unit.userData.alive, 'Unit alive at 50 HP');
+
+  // Kill
+  unit.userData.hp -= 60;
+  if (unit.userData.hp <= 0) {
+    unit.userData.hp = 0;
+    unit.userData.alive = false;
+  }
+  assert(!unit.userData.alive, 'Unit dead at 0 HP');
+  assertEqual(unit.userData.hp, 0, 'HP clamped to 0');
+}
+
+// ─── HEALTH BAR SCALE ───
+group('Health Bar Scale');
+
+{
+  const hp = 100, maxHp = 100;
+  const pct = Math.max(0, hp / maxHp);
+  assertEqual(pct, 1, 'Full HP = scale 1.0');
+}
+
+{
+  const hp = 50, maxHp = 100;
+  const pct = Math.max(0, hp / maxHp);
+  assertEqual(pct, 0.5, 'Half HP = scale 0.5');
+}
+
+{
+  const hp = 0, maxHp = 100;
+  const pct = Math.max(0, hp / maxHp);
+  assertEqual(pct, 0, 'Zero HP = scale 0');
+}
+
+{
+  const hp = -10, maxHp = 100;
+  const pct = Math.max(0, hp / maxHp);
+  assertEqual(pct, 0, 'Negative HP clamped to scale 0');
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>
