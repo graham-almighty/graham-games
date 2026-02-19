@@ -40,7 +40,7 @@
     pointer-events: none;
   }
 
-  #title-screen, #deploy-screen, #battle-screen, #end-screen {
+  #title-screen, #deploy-screen, #battle-screen, #end-screen, #level-screen, #campaign-end-screen {
     position: absolute; inset: 0;
     display: flex; flex-direction: column;
     align-items: center; justify-content: center;
@@ -341,6 +341,97 @@
     transition: all 0.15s;
   }
   .exit-bar .exit-btn:hover { color: #c9a84c; border-color: #c9a84c; }
+
+  /* Level Select */
+  .level-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    max-width: 800px;
+    padding: 0 20px;
+    margin-bottom: 24px;
+  }
+  .level-card {
+    background: #ffffff08;
+    border: 2px solid #555;
+    border-radius: 8px;
+    padding: 14px 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 120px;
+  }
+  .level-card:hover:not(.locked) { border-color: #cd7f32; background: #cd7f3215; transform: translateY(-2px); }
+  .level-card.locked { opacity: 0.35; cursor: default; pointer-events: none; }
+  .level-card.completed { border-color: #4caf50; }
+  .level-card.completed:hover { border-color: #66cc77; background: #4caf5015; }
+  .level-card .lc-num {
+    font-family: 'Cinzel', serif;
+    font-size: 1.4rem;
+    color: #c9a84c;
+    font-weight: bold;
+  }
+  .level-card.locked .lc-num { color: #555; }
+  .level-card.completed .lc-num { color: #4caf50; }
+  .level-card .lc-name {
+    font-size: 0.7rem;
+    color: #aaa;
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+  .level-card.locked .lc-name { color: #444; }
+  .level-card .lc-lock { font-size: 1.2rem; color: #555; }
+
+  /* Campaign End Screen */
+  .camp-rewards {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 20px;
+    text-align: center;
+    line-height: 2;
+  }
+  .camp-rewards span { color: #c9a84c; font-weight: bold; }
+  .camp-rewards .gold-earn { color: #4caf50; font-weight: bold; }
+  .camp-end-btns { display: flex; gap: 10px; margin-top: 8px; }
+
+  /* Deploy sidebar campaign info */
+  .deploy-level-info {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #aaa;
+    padding: 6px;
+    border: 1px solid #cd7f3233;
+    border-radius: 4px;
+    background: #cd7f320a;
+    margin-bottom: 6px;
+  }
+  .deploy-level-info .dli-name {
+    font-family: 'Cinzel', serif;
+    color: #cd7f32;
+    font-size: 0.85rem;
+    margin-bottom: 2px;
+  }
+  .deploy-enemy-preview {
+    font-size: 0.7rem;
+    color: #888;
+    padding: 6px;
+    border: 1px solid #ff444433;
+    border-radius: 4px;
+    background: #ff44440a;
+    margin-bottom: 4px;
+  }
+  .deploy-enemy-preview .dep-title {
+    font-family: 'Cinzel', serif;
+    color: #ff6666;
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+  }
+  .deploy-enemy-preview .dep-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 1px 0;
+  }
+  .dep-row .dep-count { color: #ff8888; }
 </style>
 </head>
 <body>
@@ -372,8 +463,25 @@
   <div class="title-icon">&#9876;&#65039;</div>
   <h1>ANCIENT WARFARE</h1>
   <div class="title-sub">3D Army Battle Simulator</div>
-  <button class="punk-btn" onclick="showScreen('deploy-screen')">PLAY</button>
+  <button class="punk-btn" onclick="startCampaignMode()">CAMPAIGN</button>
+  <button class="punk-btn" onclick="startSkirmishMode()">SKIRMISH</button>
   <button class="punk-btn secondary" onclick="window.location.href='../graham-games/index.html'">EXIT</button>
+</div>
+
+<!-- Level Select Screen -->
+<div id="level-screen" class="hidden">
+  <h1 style="font-family:'Cinzel Decorative',serif;font-size:2rem;color:#c9a84c;margin-bottom:4px;letter-spacing:0.1em;">CAMPAIGN</h1>
+  <div class="title-sub" style="margin-bottom:20px;">Select a battle</div>
+  <div class="level-grid" id="level-grid"></div>
+  <button class="punk-btn secondary" onclick="showScreen('title-screen')">BACK</button>
+</div>
+
+<!-- Campaign End Screen -->
+<div id="campaign-end-screen" class="hidden">
+  <h1 id="camp-end-title"></h1>
+  <div class="end-stats" id="camp-end-stats"></div>
+  <div class="camp-rewards" id="camp-rewards"></div>
+  <div class="camp-end-btns" id="camp-end-btns"></div>
 </div>
 
 <!-- Deploy Screen -->
@@ -660,13 +768,97 @@ const UNIT_DEFS = {
 const FIELD_W = 40, FIELD_D = 30;
 
 // ═══════════════════════════════════════════
+// CAMPAIGN LEVEL DEFINITIONS
+// ═══════════════════════════════════════════
+const LEVEL_DEFS = [
+  { name: 'Border Skirmish', enemies: [{type:'swordsman',count:5},{type:'archer',count:2}], startGold: 100, healPct: 0.5 },
+  { name: 'Forest Ambush', enemies: [{type:'swordsman',count:3},{type:'archer',count:5},{type:'spearman',count:2}], startGold: 80, healPct: 0.5 },
+  { name: 'River Defense', enemies: [{type:'swordsman',count:4},{type:'spearman',count:4},{type:'cavalry',count:2}], startGold: 70, healPct: 0.5 },
+  { name: 'The Open Plains', enemies: [{type:'cavalry',count:4},{type:'swordsman',count:4},{type:'archer',count:3}], startGold: 60, healPct: 0.4 },
+  { name: 'The Siege Lines', enemies: [{type:'catapult',count:2},{type:'spearman',count:6},{type:'swordsman',count:5}], startGold: 60, healPct: 0.4 },
+  { name: 'Mountain Pass', enemies: [{type:'swordsman',count:6},{type:'archer',count:4},{type:'spearman',count:4},{type:'cavalry',count:2}], startGold: 50, healPct: 0.4 },
+  { name: 'The War Camp', enemies: [{type:'swordsman',count:6},{type:'archer',count:4},{type:'spearman',count:4},{type:'cavalry',count:3},{type:'catapult',count:2}], startGold: 50, healPct: 0.3 },
+  { name: 'The Burning Fields', enemies: [{type:'cavalry',count:5},{type:'catapult',count:3},{type:'swordsman',count:6},{type:'spearman',count:4},{type:'elephant',count:1}], startGold: 40, healPct: 0.3 },
+  { name: 'The Iron Fortress', enemies: [{type:'swordsman',count:8},{type:'spearman',count:6},{type:'archer',count:5},{type:'catapult',count:3},{type:'cavalry',count:3},{type:'elephant',count:2}], startGold: 40, healPct: 0.3 },
+  { name: 'The Final Battle', enemies: [{type:'swordsman',count:10},{type:'archer',count:6},{type:'spearman',count:6},{type:'cavalry',count:5},{type:'catapult',count:4},{type:'elephant',count:3}], startGold: 30, healPct: 0.25 },
+];
+
+// ═══════════════════════════════════════════
+// CAMPAIGN PERSISTENCE
+// ═══════════════════════════════════════════
+const CAMPAIGN_KEY = 'aw-campaign-progress';
+function loadCampaignProgress() {
+  try { return JSON.parse(localStorage.getItem(CAMPAIGN_KEY)) || { unlockedLevels: 1 }; }
+  catch(e) { return { unlockedLevels: 1 }; }
+}
+function saveCampaignProgress(p) { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(p)); }
+
+// ═══════════════════════════════════════════
+// CAMPAIGN STATE
+// ═══════════════════════════════════════════
+let isCampaignMode = false;
+let campaignState = null; // { levelIndex, gold, survivors: [{type,hp,maxHp}], preBattleSnapshot }
+
+function startCampaignMode() {
+  isCampaignMode = true;
+  showLevelSelect();
+}
+
+function startSkirmishMode() {
+  isCampaignMode = false;
+  campaignState = null;
+  showScreen('deploy-screen');
+  initDeployment();
+}
+
+function showLevelSelect() {
+  showScreen('level-screen');
+  const progress = loadCampaignProgress();
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < LEVEL_DEFS.length; i++) {
+    const def = LEVEL_DEFS[i];
+    const unlocked = i < progress.unlockedLevels;
+    const completed = i < progress.unlockedLevels - 1;
+    const card = document.createElement('div');
+    card.className = 'level-card' + (unlocked ? '' : ' locked') + (completed ? ' completed' : '');
+    if (unlocked) {
+      card.innerHTML = '<div class="lc-num">' + (i + 1) + '</div><div class="lc-name">' + def.name + '</div>';
+      card.onclick = () => startCampaignLevel(i);
+    } else {
+      card.innerHTML = '<div class="lc-lock">&#128274;</div><div class="lc-name">' + def.name + '</div>';
+    }
+    grid.appendChild(card);
+  }
+}
+
+function startCampaignLevel(index) {
+  campaignState = {
+    levelIndex: index,
+    gold: LEVEL_DEFS[index].startGold,
+    survivors: [],
+    preBattleSnapshot: null,
+  };
+  showScreen('deploy-screen');
+  initCampaignDeployment();
+}
+
+function getLevelEnemyBudget(index) {
+  const def = LEVEL_DEFS[index];
+  let total = 0;
+  for (const e of def.enemies) total += UNIT_DEFS[e.type].cost * e.count;
+  return total;
+}
+
+// ═══════════════════════════════════════════
 // SCREEN MANAGEMENT
 // ═══════════════════════════════════════════
 function showScreen(id) {
-  ['title-screen', 'deploy-screen', 'battle-screen', 'end-screen'].forEach(s => {
+  ['title-screen', 'deploy-screen', 'battle-screen', 'end-screen', 'level-screen', 'campaign-end-screen'].forEach(s => {
     document.getElementById(s).classList.toggle('hidden', s !== id);
   });
-  if (id === 'deploy-screen') initDeployment();
+  if (id === 'deploy-screen' && !isCampaignMode) initDeployment();
+  currentScreen = id;
 }
 
 // ═══════════════════════════════════════════
@@ -1088,6 +1280,7 @@ function buildUnitModel(type, team) {
 // DEPLOYMENT PHASE
 // ═══════════════════════════════════════════
 let deployedUnits = [];
+let survivorUnits = []; // campaign survivors (not removed by clearDeployment)
 let budget = 200;
 const MAX_BUDGET = 200;
 let selectedUnitType = null;
@@ -1095,9 +1288,9 @@ let deployRaycaster = new THREE.Raycaster();
 let deployMouse = new THREE.Vector2();
 
 function initDeployment() {
-  currentScreen = 'deploy-screen';
   budget = MAX_BUDGET;
   deployedUnits = [];
+  survivorUnits = [];
   selectedUnitType = null;
 
   const container = document.getElementById('deploy-canvas-wrap');
@@ -1115,11 +1308,115 @@ function initDeployment() {
   cameraDistance = 25;
   updateCamera();
 
+  renderDeploySidebar();
   renderUnitButtons();
   updateBudgetDisplay();
   updateDeployCount();
 
   renderDeployLoop();
+}
+
+function initCampaignDeployment() {
+  const cs = campaignState;
+  const levelDef = LEVEL_DEFS[cs.levelIndex];
+  budget = cs.gold;
+  deployedUnits = [];
+  survivorUnits = [];
+  selectedUnitType = null;
+
+  const container = document.getElementById('deploy-canvas-wrap');
+  initThree(container);
+  renderer.setSize(window.innerWidth - 240, window.innerHeight);
+  camera.aspect = (window.innerWidth - 240) / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  buildBattlefield();
+  buildDeployGrid();
+
+  // Place surviving units from previous levels
+  if (cs.survivors.length > 0) {
+    const spacing = Math.min(2, (FIELD_D - 2) / cs.survivors.length);
+    const startZ = -(cs.survivors.length - 1) * spacing / 2;
+    for (let i = 0; i < cs.survivors.length; i++) {
+      const s = cs.survivors[i];
+      const unit = buildUnitModel(s.type, 'blue');
+      unit.userData.hp = s.hp;
+      unit.userData.maxHp = s.maxHp;
+      updateHealthBar(unit);
+      unit.position.set(-FIELD_W / 4, 0, startZ + i * spacing);
+      unit.rotation.y = -Math.PI / 2;
+      scene.add(unit);
+      deployedUnits.push(unit);
+      survivorUnits.push(unit);
+    }
+  }
+
+  // Spawn enemy army on right side (visible during deployment)
+  spawnCampaignEnemies(levelDef);
+
+  // Camera shows full field
+  cameraTarget.set(0, 0, 0);
+  cameraAngle = Math.PI / 4;
+  cameraPitch = Math.PI / 4;
+  cameraDistance = 35;
+  updateCamera();
+
+  renderDeploySidebar();
+  renderUnitButtons();
+  updateBudgetDisplay();
+  updateDeployCount();
+
+  renderDeployLoop();
+}
+
+function spawnCampaignEnemies(levelDef) {
+  enemyUnits = [];
+  for (const entry of levelDef.enemies) {
+    for (let i = 0; i < entry.count; i++) {
+      const unit = buildUnitModel(entry.type, 'red');
+      const px = Math.random() * (FIELD_W / 2 - 2) + 1;
+      const pz = (Math.random() - 0.5) * (FIELD_D - 2);
+      unit.position.set(px, 0, pz);
+      unit.rotation.y = Math.PI / 2;
+      scene.add(unit);
+      enemyUnits.push(unit);
+    }
+  }
+}
+
+function renderDeploySidebar() {
+  const sidebar = document.getElementById('deploy-sidebar');
+  // Remove any existing campaign info sections
+  sidebar.querySelectorAll('.deploy-level-info, .deploy-enemy-preview').forEach(el => el.remove());
+
+  const h3 = sidebar.querySelector('h3');
+  if (isCampaignMode && campaignState) {
+    const levelDef = LEVEL_DEFS[campaignState.levelIndex];
+    // Insert level info after h3
+    const info = document.createElement('div');
+    info.className = 'deploy-level-info';
+    info.innerHTML = '<div class="dli-name">Level ' + (campaignState.levelIndex + 1) + ': ' + levelDef.name + '</div>' +
+      (campaignState.survivors.length > 0 ? '<div>Survivors: ' + campaignState.survivors.length + ' units</div>' : '');
+    h3.after(info);
+
+    // Enemy preview
+    const preview = document.createElement('div');
+    preview.className = 'deploy-enemy-preview';
+    let rows = '';
+    for (const e of levelDef.enemies) {
+      rows += '<div class="dep-row"><span>' + UNIT_DEFS[e.type].name + '</span><span class="dep-count">x' + e.count + '</span></div>';
+    }
+    preview.innerHTML = '<div class="dep-title">Enemy Forces</div>' + rows;
+    info.after(preview);
+  }
+
+  // Update budget display format
+  const budgetEl = document.querySelector('.deploy-budget');
+  if (isCampaignMode) {
+    budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span>';
+  } else {
+    budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span> / 200';
+  }
 }
 
 function renderUnitButtons() {
@@ -1145,7 +1442,8 @@ function renderUnitButtons() {
 }
 
 function updateBudgetDisplay() {
-  document.getElementById('budget-display').textContent = budget;
+  const el = document.getElementById('budget-display');
+  if (el) el.textContent = budget;
   document.getElementById('start-battle-btn').classList.toggle('disabled', deployedUnits.length === 0);
   renderUnitButtons();
 }
@@ -1155,9 +1453,23 @@ function updateDeployCount() {
 }
 
 function clearDeployment() {
-  for (const u of deployedUnits) { scene.remove(u); }
-  deployedUnits = [];
-  budget = MAX_BUDGET;
+  if (isCampaignMode) {
+    // Only remove newly placed units, keep survivors
+    for (const u of deployedUnits) {
+      if (!survivorUnits.includes(u)) scene.remove(u);
+    }
+    // Recalculate budget: give back cost of removed units
+    let refund = 0;
+    for (const u of deployedUnits) {
+      if (!survivorUnits.includes(u)) refund += UNIT_DEFS[u.userData.type].cost;
+    }
+    deployedUnits = [...survivorUnits];
+    budget += refund;
+  } else {
+    for (const u of deployedUnits) { scene.remove(u); }
+    deployedUnits = [];
+    budget = MAX_BUDGET;
+  }
   updateBudgetDisplay();
   updateDeployCount();
 }
@@ -1536,7 +1848,6 @@ function clampToField(unit) {
 function startBattle() {
   if (deployedUnits.length === 0) return;
 
-  currentScreen = 'battle-screen';
   showScreen('battle-screen');
 
   const container = document.getElementById('battle-canvas-wrap');
@@ -1547,9 +1858,20 @@ function startBattle() {
 
   removeDeployGrid();
 
-  // Generate enemy army with same budget as player spent
-  const spent = MAX_BUDGET - budget;
-  generateEnemyArmy(spent);
+  if (isCampaignMode) {
+    // Campaign: enemies already on field, take snapshot for retry
+    // Snapshot uses original gold/survivors (before spending in deployment)
+    campaignState.preBattleSnapshot = {
+      gold: campaignState.gold,
+      survivors: campaignState.survivors.map(s => ({...s})),
+    };
+    // Update campaign gold to reflect what's left after deployment
+    campaignState.gold = budget;
+  } else {
+    // Skirmish: generate enemy army with same budget as player spent
+    const spent = MAX_BUDGET - budget;
+    generateEnemyArmy(spent);
+  }
 
   initialBlueCount = deployedUnits.length;
 
@@ -1695,37 +2017,154 @@ function endBattle(victory) {
 
   // Show end screen after short delay
   setTimeout(() => {
-    const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
-    const redAlive = enemyUnits.filter(u => u.userData.alive).length;
-    const titleEl = document.getElementById('end-title');
-    titleEl.textContent = victory ? 'VICTORY' : 'DEFEAT';
-    titleEl.className = victory ? 'victory-title' : 'defeat-title';
+    if (isCampaignMode) {
+      showCampaignEndScreen(victory);
+    } else {
+      const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+      const redAlive = enemyUnits.filter(u => u.userData.alive).length;
+      const titleEl = document.getElementById('end-title');
+      titleEl.textContent = victory ? 'VICTORY' : 'DEFEAT';
+      titleEl.className = victory ? 'victory-title' : 'defeat-title';
 
-    const mins = Math.floor(battleTime / 60);
-    const secs = Math.floor(battleTime % 60);
-    document.getElementById('end-stats').innerHTML =
-      'Your army: <span>' + deployedUnits.length + '</span> deployed, <span>' + blueAlive + '</span> survived<br>' +
-      'Enemy army: <span>' + enemyUnits.length + '</span> units, <span>' + redAlive + '</span> remaining<br>' +
-      'Battle time: <span>' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span><br>' +
-      'Total wins: <span>' + loadStats().wins + '</span>';
+      const mins = Math.floor(battleTime / 60);
+      const secs = Math.floor(battleTime % 60);
+      document.getElementById('end-stats').innerHTML =
+        'Your army: <span>' + deployedUnits.length + '</span> deployed, <span>' + blueAlive + '</span> survived<br>' +
+        'Enemy army: <span>' + enemyUnits.length + '</span> units, <span>' + redAlive + '</span> remaining<br>' +
+        'Battle time: <span>' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span><br>' +
+        'Total wins: <span>' + loadStats().wins + '</span>';
 
-    showScreen('end-screen');
-    currentScreen = 'end-screen';
+      showScreen('end-screen');
+    }
   }, 1500);
 }
 
-function resetToDeployment() {
-  // Clean up
+function showCampaignEndScreen(victory) {
+  const cs = campaignState;
+  const levelDef = LEVEL_DEFS[cs.levelIndex];
+  const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+  const redAlive = enemyUnits.filter(u => u.userData.alive).length;
+  const enemyKilled = enemyUnits.filter(u => !u.userData.alive);
+
+  // Calculate gold earned from kills
+  let killGold = 0;
+  for (const u of enemyKilled) killGold += UNIT_DEFS[u.userData.type].cost;
+
+  const titleEl = document.getElementById('camp-end-title');
+  titleEl.textContent = victory ? 'VICTORY' : 'DEFEAT';
+  titleEl.className = victory ? 'victory-title' : 'defeat-title';
+
+  const mins = Math.floor(battleTime / 60);
+  const secs = Math.floor(battleTime % 60);
+  document.getElementById('camp-end-stats').innerHTML =
+    'Level ' + (cs.levelIndex + 1) + ': <span>' + levelDef.name + '</span><br>' +
+    'Your army: <span>' + deployedUnits.length + '</span> deployed, <span>' + blueAlive + '</span> survived<br>' +
+    'Enemy army: <span>' + enemyUnits.length + '</span> units, <span>' + redAlive + '</span> remaining<br>' +
+    'Battle time: <span>' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span>';
+
+  if (victory) {
+    // Collect survivors
+    const survivors = [];
+    for (const u of deployedUnits) {
+      if (!u.userData.alive) continue;
+      const healed = Math.min(u.userData.maxHp, u.userData.hp + (u.userData.maxHp - u.userData.hp) * levelDef.healPct);
+      survivors.push({ type: u.userData.type, hp: healed, maxHp: u.userData.maxHp });
+    }
+
+    const newGold = cs.gold + killGold;
+
+    document.getElementById('camp-rewards').innerHTML =
+      'Kill gold: <span class="gold-earn">+' + killGold + 'g</span><br>' +
+      'Total gold: <span>' + newGold + 'g</span><br>' +
+      'Survivors healed <span>' + Math.round(levelDef.healPct * 100) + '%</span>';
+
+    // Unlock next level
+    const progress = loadCampaignProgress();
+    if (cs.levelIndex + 1 >= progress.unlockedLevels && cs.levelIndex + 1 < LEVEL_DEFS.length) {
+      progress.unlockedLevels = cs.levelIndex + 2;
+      saveCampaignProgress(progress);
+    }
+
+    // Update campaign state for next level
+    campaignState.gold = newGold;
+    campaignState.survivors = survivors;
+
+    // Buttons
+    const btns = document.getElementById('camp-end-btns');
+    btns.innerHTML = '';
+    if (cs.levelIndex + 1 < LEVEL_DEFS.length) {
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'punk-btn';
+      nextBtn.textContent = 'NEXT LEVEL';
+      nextBtn.onclick = () => advanceCampaignLevel();
+      btns.appendChild(nextBtn);
+    } else {
+      const winMsg = document.createElement('div');
+      winMsg.style.cssText = 'font-family:Cinzel,serif;color:#c9a84c;font-size:1.1rem;margin:8px 0;';
+      winMsg.textContent = 'Campaign Complete!';
+      btns.appendChild(winMsg);
+    }
+    const lvlBtn = document.createElement('button');
+    lvlBtn.className = 'punk-btn secondary';
+    lvlBtn.textContent = 'LEVEL SELECT';
+    lvlBtn.onclick = () => { cleanupBattleScene(); showLevelSelect(); };
+    btns.appendChild(lvlBtn);
+  } else {
+    document.getElementById('camp-rewards').innerHTML = '';
+
+    const btns = document.getElementById('camp-end-btns');
+    btns.innerHTML = '';
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'punk-btn';
+    retryBtn.textContent = 'RETRY';
+    retryBtn.onclick = () => retryCampaignLevel();
+    btns.appendChild(retryBtn);
+    const lvlBtn = document.createElement('button');
+    lvlBtn.className = 'punk-btn secondary';
+    lvlBtn.textContent = 'LEVEL SELECT';
+    lvlBtn.onclick = () => { cleanupBattleScene(); showLevelSelect(); };
+    btns.appendChild(lvlBtn);
+  }
+
+  showScreen('campaign-end-screen');
+}
+
+function advanceCampaignLevel() {
+  cleanupBattleScene();
+  campaignState.levelIndex++;
+  showScreen('deploy-screen');
+  initCampaignDeployment();
+}
+
+function retryCampaignLevel() {
+  cleanupBattleScene();
+  // Restore pre-battle snapshot
+  const snap = campaignState.preBattleSnapshot;
+  campaignState.gold = snap.gold;
+  campaignState.survivors = snap.survivors.map(s => ({...s}));
+  showScreen('deploy-screen');
+  initCampaignDeployment();
+}
+
+function cleanupBattleScene() {
   for (const u of deployedUnits) scene.remove(u);
   for (const u of enemyUnits) scene.remove(u);
   for (const p of projectiles) scene.remove(p.mesh);
   deployedUnits = [];
+  survivorUnits = [];
   enemyUnits = [];
   projectiles = [];
   selectedBattleUnit = null;
   commandTarget = null;
   battleRunning = false;
+}
+
+function resetToDeployment() {
+  cleanupBattleScene();
+  isCampaignMode = false;
+  campaignState = null;
   showScreen('deploy-screen');
+  initDeployment();
 }
 
 // ═══════════════════════════════════════════
@@ -1861,10 +2300,15 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (key === 'escape') {
-    if (currentScreen === 'deploy-screen') showScreen('title-screen');
-    if (currentScreen === 'battle-screen' && battlePaused) {
-      // Could add pause menu
+    if (currentScreen === 'deploy-screen') {
+      if (isCampaignMode) {
+        cleanupBattleScene();
+        showLevelSelect();
+      } else {
+        showScreen('title-screen');
+      }
     }
+    if (currentScreen === 'level-screen') showScreen('title-screen');
   }
 });
 
