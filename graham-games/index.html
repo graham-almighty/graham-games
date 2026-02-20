@@ -478,6 +478,227 @@
     90% { opacity: 0.1; }
     100% { opacity: 0; transform: translateY(-100vh); }
   }
+
+  /* ═══ SCHOOL MODE ═══ */
+  .school-badge {
+    display: none;
+    background: #2e7d32;
+    color: #fff;
+    font-size: 0.6rem;
+    padding: 3px 12px;
+    border-radius: 12px;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .school-badge.visible { display: block; }
+
+  .game-card.school-blocked {
+    opacity: 0.3;
+    pointer-events: none;
+    filter: grayscale(80%);
+  }
+  .school-blocked-tag {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    font-size: 0.55rem;
+    color: #ff4444;
+    background: #ff444422;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    z-index: 2;
+  }
+
+  .school-input, .school-select {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    background: #1a1a22;
+    color: #ddd;
+    border: 1px solid #444;
+    padding: 6px 12px;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+  }
+  .school-input:focus, .school-select:focus { border-color: #c9a84c; }
+  .school-select option { background: #1a1a22; }
+  .school-label {
+    font-size: 0.7rem;
+    color: #888;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .school-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    padding: 8px 24px;
+    border: 1px solid #2e7d32;
+    background: #2e7d3222;
+    color: #4caf50;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    border-radius: 4px;
+    transition: all 0.15s;
+    width: 100%;
+    margin-top: 10px;
+  }
+  .school-btn:hover { background: #2e7d3244; box-shadow: 0 0 15px #2e7d3222; }
+  .school-btn.danger { border-color: #c62828; color: #ef5350; background: #c6282822; }
+  .school-btn.danger:hover { background: #c6282844; box-shadow: 0 0 15px #c6282822; }
+  .school-error {
+    font-size: 0.65rem;
+    color: #ef5350;
+    margin-top: 4px;
+    min-height: 1em;
+  }
+  .school-field { margin-bottom: 12px; }
+  .school-status {
+    font-size: 0.75rem;
+    color: #4caf50;
+    margin-bottom: 12px;
+    padding: 8px;
+    background: #2e7d3215;
+    border-radius: 4px;
+    border: 1px solid #2e7d3244;
+  }
+
+  /* ═══ GAME PLAYER (iframe) ═══ */
+  #game-player {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #000;
+    flex-direction: column;
+  }
+  #game-player.visible { display: flex; }
+  .gp-toolbar {
+    height: 42px;
+    background: linear-gradient(180deg, #1a1a2e, #0f0f1a);
+    border-bottom: 1px solid #c9a84c44;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+  .gp-logo {
+    width: 28px;
+    height: 28px;
+    filter: drop-shadow(0 0 4px #2a8a4a44);
+  }
+  .gp-title {
+    font-family: 'Cinzel', serif;
+    color: #c9a84c;
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    flex: 1;
+  }
+  .gp-timer {
+    font-family: 'Cinzel Decorative', serif;
+    color: #4caf50;
+    font-size: 0.85rem;
+    padding: 2px 10px;
+    border: 1px solid #4caf5044;
+    border-radius: 4px;
+    background: #4caf5011;
+  }
+  .gp-timer.warning { color: #ff9800; border-color: #ff980044; background: #ff980011; }
+  .gp-timer.danger { color: #ef5350; border-color: #ef535044; background: #ef535011; }
+  .gp-exit {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    background: transparent;
+    color: #888;
+    border: 1px solid #555;
+    padding: 5px 12px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .gp-exit:hover { color: #c9a84c; border-color: #c9a84c; }
+  .gp-iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+  }
+
+  /* ═══ QUIZ OVERLAY ═══ */
+  #quiz-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: #000000dd;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+  }
+  #quiz-overlay.visible { display: flex; }
+  .quiz-panel {
+    background: linear-gradient(135deg, #141418, #1a1a22);
+    border: 2px solid #c9a84c;
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 480px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 0 60px #c9a84c22;
+  }
+  .quiz-subject {
+    font-size: 0.65rem;
+    color: #4caf50;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .quiz-question {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    color: #eee;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    min-height: 60px;
+  }
+  .quiz-answers {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .quiz-answer {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    padding: 10px 16px;
+    background: #ffffff08;
+    border: 1px solid #444;
+    color: #ddd;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s;
+    text-align: left;
+  }
+  .quiz-answer:hover { border-color: #c9a84c; background: #c9a84c11; }
+  .quiz-answer.correct { border-color: #4caf50; background: #4caf5022; color: #4caf50; }
+  .quiz-answer.wrong { border-color: #ef5350; background: #ef535022; color: #ef5350; }
+  .quiz-answer.reveal { border-color: #4caf50; background: #4caf5022; color: #4caf50; }
+  .quiz-answer.disabled { pointer-events: none; opacity: 0.6; }
+  .quiz-feedback {
+    font-size: 0.8rem;
+    min-height: 1.5em;
+    margin-bottom: 8px;
+  }
+  .quiz-feedback.success { color: #4caf50; }
+  .quiz-feedback.fail { color: #ef5350; }
+  .quiz-wait {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.2rem;
+    color: #ef5350;
+  }
 </style>
 </head>
 <body>
@@ -603,10 +824,12 @@ for (let i = 0; i < 30; i++) {
     <span class="gbux-amount" id="gbux-amount">0</span>
     <span class="gbux-label">G BUX</span>
   </div>
+  <div class="school-badge" id="school-badge">SCHOOL MODE ACTIVE</div>
   <div class="divider"></div>
   <div class="launcher-nav">
     <button class="nav-btn" onclick="openAchievements()">&#127942; ACHIEVEMENTS</button>
     <button class="nav-btn" onclick="openShop()">&#128176; G BUX SHOP</button>
+    <button class="nav-btn" onclick="openSchoolMode()">&#127891; SCHOOL MODE</button>
   </div>
 
   <div class="game-list">
@@ -796,6 +1019,41 @@ for (let i = 0; i < 30; i++) {
   </div>
 </div>
 
+<!-- School Mode Overlay -->
+<div class="gg-overlay" id="school-overlay">
+  <div class="gg-panel">
+    <h2>&#127891; SCHOOL MODE</h2>
+    <div class="gg-panel-sub">Parental controls &amp; learning quizzes</div>
+    <div id="school-content"></div>
+    <button class="gg-close" onclick="closeSchoolMode()">CLOSE</button>
+  </div>
+</div>
+
+<!-- Game Player (iframe container for school mode) -->
+<div id="game-player">
+  <div class="gp-toolbar">
+    <svg class="gp-logo" viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+      <path d="M130,40 C120,25 90,15 65,20 C35,28 18,55 15,85 C12,115 18,150 35,175 C50,195 75,205 100,200 C115,196 125,185 128,170 L128,145 L95,145" fill="none" stroke="#2a8a4a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M275,60 C268,42 245,30 220,32 C190,37 170,60 168,90 C165,120 172,158 190,182 C205,200 228,210 252,206 C268,202 278,190 280,176 L280,150 L248,150" fill="none" stroke="#2a8a4a" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="gp-title" id="gp-title">GAME</div>
+    <div class="gp-timer" id="gp-timer">2:00</div>
+    <button class="gp-exit" onclick="exitGamePlayer()">EXIT TO LAUNCHER</button>
+  </div>
+  <iframe class="gp-iframe" id="gp-iframe" allow="pointer-lock"></iframe>
+</div>
+
+<!-- Quiz Overlay -->
+<div id="quiz-overlay">
+  <div class="quiz-panel">
+    <div class="quiz-subject" id="quiz-subject">MATH</div>
+    <div class="quiz-question" id="quiz-question">Loading...</div>
+    <div class="quiz-answers" id="quiz-answers"></div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+    <div class="quiz-wait" id="quiz-wait"></div>
+  </div>
+</div>
+
 <script>
 // ═══ G BUX SYSTEM ═══
 const GG_KEY = 'graham-games-data';
@@ -952,11 +1210,389 @@ window.addEventListener('focus', refreshGBux);
 window.addEventListener('pageshow', refreshGBux);
 refreshGBux();
 
+// ═══ SCHOOL MODE ═══
+const BLOCKED_GAMES = ['combat', 'ancient-warfare'];
+
+function getSchoolMode() {
+  const data = ggLoad();
+  return data.schoolMode || null;
+}
+function setSchoolMode(sm) {
+  const data = ggLoad();
+  data.schoolMode = sm;
+  ggSave(data);
+}
+
+function getQuizInterval() {
+  const sm = getSchoolMode();
+  return (sm && sm.interval) ? sm.interval : 120;
+}
+function formatInterval(seconds) {
+  if (seconds < 60) return seconds + 's';
+  const m = seconds / 60;
+  return m + (m === 1 ? ' min' : ' min');
+}
+
+function openSchoolMode() {
+  const container = document.getElementById('school-content');
+  const sm = getSchoolMode();
+  if (sm && sm.enabled) {
+    container.innerHTML =
+      '<div class="school-status">School Mode is ACTIVE — Subject: ' + sm.subject.charAt(0).toUpperCase() + sm.subject.slice(1) + ' — Quiz every ' + formatInterval(sm.interval || 120) + '</div>' +
+      '<div class="school-field"><label class="school-label">Enter PIN to disable</label>' +
+      '<input type="password" class="school-input" id="school-pin-off" maxlength="4" inputmode="numeric" placeholder="4-digit PIN"></div>' +
+      '<div class="school-error" id="school-error-off"></div>' +
+      '<button class="school-btn danger" onclick="disableSchoolMode()">DISABLE SCHOOL MODE</button>';
+  } else {
+    container.innerHTML =
+      '<div class="school-field"><label class="school-label">Subject</label>' +
+      '<select class="school-select" id="school-subject">' +
+      '<option value="math">Math</option><option value="science">Science</option>' +
+      '<option value="english">English</option><option value="history">History</option></select></div>' +
+      '<div class="school-field"><label class="school-label">Quiz Interval</label>' +
+      '<select class="school-select" id="school-interval">' +
+      '<option value="30">30 seconds</option><option value="60">1 minute</option>' +
+      '<option value="120" selected>2 minutes</option><option value="180">3 minutes</option>' +
+      '<option value="240">4 minutes</option><option value="300">5 minutes</option></select></div>' +
+      '<div class="school-field"><label class="school-label">Set PIN (4 digits)</label>' +
+      '<input type="password" class="school-input" id="school-pin" maxlength="4" inputmode="numeric" placeholder="4-digit PIN"></div>' +
+      '<div class="school-field"><label class="school-label">Confirm PIN</label>' +
+      '<input type="password" class="school-input" id="school-pin-confirm" maxlength="4" inputmode="numeric" placeholder="Confirm PIN"></div>' +
+      '<div class="school-error" id="school-error-on"></div>' +
+      '<button class="school-btn" onclick="enableSchoolMode()">ENABLE SCHOOL MODE</button>';
+  }
+  document.getElementById('school-overlay').classList.add('visible');
+}
+function closeSchoolMode() { document.getElementById('school-overlay').classList.remove('visible'); }
+
+function enableSchoolMode() {
+  const pin = document.getElementById('school-pin').value;
+  const confirm = document.getElementById('school-pin-confirm').value;
+  const subject = document.getElementById('school-subject').value;
+  const interval = parseInt(document.getElementById('school-interval').value);
+  const err = document.getElementById('school-error-on');
+  if (!/^\d{4}$/.test(pin)) { err.textContent = 'PIN must be exactly 4 digits'; return; }
+  if (pin !== confirm) { err.textContent = 'PINs do not match'; return; }
+  setSchoolMode({ enabled: true, pin: pin, subject: subject, interval: interval });
+  applySchoolMode();
+  closeSchoolMode();
+}
+
+function disableSchoolMode() {
+  const pin = document.getElementById('school-pin-off').value;
+  const err = document.getElementById('school-error-off');
+  const sm = getSchoolMode();
+  if (!sm) return;
+  if (pin !== sm.pin) { err.textContent = 'Incorrect PIN'; return; }
+  setSchoolMode(null);
+  applySchoolMode();
+  closeSchoolMode();
+}
+
+function applySchoolMode() {
+  const sm = getSchoolMode();
+  const badge = document.getElementById('school-badge');
+  badge.classList.toggle('visible', !!(sm && sm.enabled));
+  const cards = document.querySelectorAll('.game-card');
+  cards.forEach(card => {
+    const isBlocked = BLOCKED_GAMES.some(cls => card.classList.contains(cls));
+    card.classList.toggle('school-blocked', !!(sm && sm.enabled && isBlocked));
+    const existingTag = card.querySelector('.school-blocked-tag');
+    if (existingTag) existingTag.remove();
+    if (sm && sm.enabled && isBlocked) {
+      const tag = document.createElement('span');
+      tag.className = 'school-blocked-tag';
+      tag.textContent = 'BLOCKED';
+      card.appendChild(tag);
+    }
+  });
+}
+
+// ═══ GAME CARD INTERCEPTION (School Mode) ═══
+document.querySelector('.game-list').addEventListener('click', function(e) {
+  const sm = getSchoolMode();
+  if (!sm || !sm.enabled) return;
+  const card = e.target.closest('.game-card');
+  if (!card) return;
+  if (card.classList.contains('school-blocked')) return;
+  e.preventDefault();
+  const href = card.getAttribute('href');
+  const titleEl = card.querySelector('.game-title');
+  const title = titleEl ? titleEl.textContent : 'GAME';
+  openGamePlayer(href, title);
+});
+
+// ═══ GAME PLAYER ═══
+let quizTimerInterval = null;
+let quizTimeLeft = 120;
+let quizActive = false;
+
+function openGamePlayer(href, title) {
+  document.getElementById('gp-title').textContent = title;
+  document.getElementById('gp-iframe').src = href;
+  document.getElementById('game-player').classList.add('visible');
+  quizActive = false;
+  quizTimeLeft = getQuizInterval();
+  updateTimerDisplay();
+  startQuizTimer();
+}
+
+function exitGamePlayer() {
+  if (quizActive) return;
+  stopQuizTimer();
+  document.getElementById('game-player').classList.remove('visible');
+  document.getElementById('gp-iframe').src = '';
+  hideQuiz();
+}
+
+function startQuizTimer() {
+  stopQuizTimer();
+  quizTimerInterval = setInterval(function() {
+    if (quizActive) return;
+    quizTimeLeft--;
+    updateTimerDisplay();
+    if (quizTimeLeft <= 0) {
+      stopQuizTimer();
+      showQuiz();
+    }
+  }, 1000);
+}
+
+function stopQuizTimer() {
+  if (quizTimerInterval) { clearInterval(quizTimerInterval); quizTimerInterval = null; }
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('gp-timer');
+  const m = Math.floor(quizTimeLeft / 60);
+  const s = quizTimeLeft % 60;
+  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  el.classList.remove('warning', 'danger');
+  if (quizTimeLeft <= 15) el.classList.add('danger');
+  else if (quizTimeLeft <= 30) el.classList.add('warning');
+}
+
+// ═══ QUESTION BANKS ═══
+const SCIENCE_QUESTIONS = [
+  { q: 'What planet is closest to the Sun?', a: 'Mercury', w: ['Venus', 'Earth', 'Mars'] },
+  { q: 'What gas do plants absorb from the air?', a: 'Carbon dioxide', w: ['Oxygen', 'Nitrogen', 'Helium'] },
+  { q: 'How many legs does an insect have?', a: '6', w: ['4', '8', '10'] },
+  { q: 'What is the largest planet in our solar system?', a: 'Jupiter', w: ['Saturn', 'Neptune', 'Earth'] },
+  { q: 'What do you call animals that eat only plants?', a: 'Herbivores', w: ['Carnivores', 'Omnivores', 'Insectivores'] },
+  { q: 'Water freezes at what temperature in Fahrenheit?', a: '32 degrees', w: ['0 degrees', '100 degrees', '212 degrees'] },
+  { q: 'What is the hardest natural substance on Earth?', a: 'Diamond', w: ['Gold', 'Iron', 'Quartz'] },
+  { q: 'What organ pumps blood through the body?', a: 'Heart', w: ['Lungs', 'Brain', 'Liver'] },
+  { q: 'What are the three states of matter?', a: 'Solid, liquid, gas', w: ['Hot, warm, cold', 'Big, medium, small', 'Light, dark, clear'] },
+  { q: 'What force keeps us on the ground?', a: 'Gravity', w: ['Magnetism', 'Friction', 'Wind'] },
+  { q: 'What star is closest to Earth?', a: 'The Sun', w: ['Polaris', 'Sirius', 'Alpha Centauri'] },
+  { q: 'What is a baby frog called?', a: 'Tadpole', w: ['Cub', 'Pup', 'Kitten'] },
+  { q: 'Which planet is known as the Red Planet?', a: 'Mars', w: ['Venus', 'Jupiter', 'Saturn'] },
+  { q: 'What do caterpillars turn into?', a: 'Butterflies', w: ['Beetles', 'Spiders', 'Dragonflies'] },
+  { q: 'How many bones does an adult human have?', a: '206', w: ['100', '306', '150'] },
+  { q: 'What is the boiling point of water in Celsius?', a: '100 degrees', w: ['50 degrees', '200 degrees', '0 degrees'] },
+  { q: 'What type of animal is a whale?', a: 'Mammal', w: ['Fish', 'Reptile', 'Amphibian'] },
+  { q: 'What is the largest ocean on Earth?', a: 'Pacific Ocean', w: ['Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean'] },
+  { q: 'What part of the plant makes food from sunlight?', a: 'Leaves', w: ['Roots', 'Stem', 'Flowers'] },
+  { q: 'What is the process plants use to make food called?', a: 'Photosynthesis', w: ['Respiration', 'Digestion', 'Evaporation'] },
+  { q: 'What are the tiny building blocks of all living things?', a: 'Cells', w: ['Atoms', 'Molecules', 'Tissues'] },
+  { q: 'Which gas makes up most of Earth\'s atmosphere?', a: 'Nitrogen', w: ['Oxygen', 'Carbon dioxide', 'Hydrogen'] },
+  { q: 'What type of rock is formed by volcanic eruption?', a: 'Igneous', w: ['Sedimentary', 'Metamorphic', 'Limestone'] },
+  { q: 'What is the layer of air around the Earth called?', a: 'Atmosphere', w: ['Biosphere', 'Lithosphere', 'Hydrosphere'] },
+  { q: 'What is the speed of light approximately?', a: '186,000 miles per second', w: ['1,000 miles per hour', '700 miles per hour', '86,000 miles per second'] },
+];
+
+const ENGLISH_QUESTIONS = [
+  { q: 'What is a synonym for "happy"?', a: 'Joyful', w: ['Sad', 'Angry', 'Tired'] },
+  { q: 'What is the opposite of "hot"?', a: 'Cold', w: ['Warm', 'Wet', 'Dry'] },
+  { q: 'Which word is a noun?', a: 'Dog', w: ['Run', 'Quickly', 'Beautiful'] },
+  { q: 'Which word is a verb?', a: 'Jump', w: ['Table', 'Happy', 'Slowly'] },
+  { q: 'Which is spelled correctly?', a: 'Necessary', w: ['Necessery', 'Neccessary', 'Necesary'] },
+  { q: 'What is the plural of "child"?', a: 'Children', w: ['Childs', 'Childrens', 'Childes'] },
+  { q: 'Which word is an adjective?', a: 'Bright', w: ['Walk', 'House', 'Quickly'] },
+  { q: 'What is a synonym for "big"?', a: 'Large', w: ['Small', 'Tiny', 'Short'] },
+  { q: 'What is the opposite of "begin"?', a: 'End', w: ['Start', 'Continue', 'Pause'] },
+  { q: 'Which is spelled correctly?', a: 'Because', w: ['Becuase', 'Becouse', 'Becuz'] },
+  { q: 'What is the past tense of "run"?', a: 'Ran', w: ['Runned', 'Runed', 'Running'] },
+  { q: 'Which word is an adverb?', a: 'Slowly', w: ['Slow', 'Table', 'Green'] },
+  { q: 'What punctuation ends a question?', a: 'Question mark', w: ['Period', 'Exclamation mark', 'Comma'] },
+  { q: 'Which is a complete sentence?', a: 'The cat sat on the mat.', w: ['Running fast.', 'Very big.', 'Under the table.'] },
+  { q: 'What is a synonym for "small"?', a: 'Tiny', w: ['Huge', 'Wide', 'Tall'] },
+  { q: 'What is the opposite of "light"?', a: 'Dark', w: ['Bright', 'White', 'Clear'] },
+  { q: 'Which is spelled correctly?', a: 'Separate', w: ['Seperate', 'Separete', 'Seprate'] },
+  { q: 'What is the plural of "mouse"?', a: 'Mice', w: ['Mouses', 'Mices', 'Mouse'] },
+  { q: 'What part of speech is "the"?', a: 'Article', w: ['Noun', 'Verb', 'Adjective'] },
+  { q: 'What is the past tense of "eat"?', a: 'Ate', w: ['Eated', 'Eaten', 'Eating'] },
+  { q: 'Which word means "to find out"?', a: 'Discover', w: ['Forget', 'Hide', 'Ignore'] },
+  { q: 'What is a group of related sentences called?', a: 'Paragraph', w: ['Chapter', 'Word', 'Letter'] },
+  { q: 'Which is a proper noun?', a: 'London', w: ['city', 'dog', 'river'] },
+  { q: 'What is the opposite of "quiet"?', a: 'Loud', w: ['Silent', 'Soft', 'Calm'] },
+  { q: 'What does "abbreviate" mean?', a: 'To shorten', w: ['To lengthen', 'To repeat', 'To replace'] },
+];
+
+const HISTORY_QUESTIONS = [
+  { q: 'Who was the first President of the United States?', a: 'George Washington', w: ['Thomas Jefferson', 'Abraham Lincoln', 'John Adams'] },
+  { q: 'What ancient civilization built the pyramids?', a: 'Egyptians', w: ['Romans', 'Greeks', 'Aztecs'] },
+  { q: 'Who invented the light bulb?', a: 'Thomas Edison', w: ['Benjamin Franklin', 'Nikola Tesla', 'Alexander Bell'] },
+  { q: 'What country gifted the Statue of Liberty to the US?', a: 'France', w: ['England', 'Spain', 'Italy'] },
+  { q: 'What year did Christopher Columbus reach the Americas?', a: '1492', w: ['1776', '1066', '1620'] },
+  { q: 'What famous ship sank in 1912?', a: 'Titanic', w: ['Mayflower', 'Santa Maria', 'Lusitania'] },
+  { q: 'Who was known as the "King of Rock and Roll"?', a: 'Elvis Presley', w: ['Michael Jackson', 'John Lennon', 'Chuck Berry'] },
+  { q: 'What ancient wonder was in the city of Babylon?', a: 'Hanging Gardens', w: ['Great Pyramid', 'Colosseum', 'Parthenon'] },
+  { q: 'Which president freed the slaves?', a: 'Abraham Lincoln', w: ['George Washington', 'Thomas Jefferson', 'Theodore Roosevelt'] },
+  { q: 'What is the longest wall ever built?', a: 'Great Wall of China', w: ['Hadrian\'s Wall', 'Berlin Wall', 'Wall of Babylon'] },
+  { q: 'Who was the first person to walk on the Moon?', a: 'Neil Armstrong', w: ['Buzz Aldrin', 'John Glenn', 'Yuri Gagarin'] },
+  { q: 'What ancient civilization created the Olympic Games?', a: 'Greeks', w: ['Romans', 'Egyptians', 'Persians'] },
+  { q: 'What holiday celebrates American independence?', a: 'Fourth of July', w: ['Thanksgiving', 'Memorial Day', 'Labor Day'] },
+  { q: 'Who wrote the Declaration of Independence?', a: 'Thomas Jefferson', w: ['George Washington', 'Benjamin Franklin', 'James Madison'] },
+  { q: 'What was the name of the ship the Pilgrims sailed on?', a: 'Mayflower', w: ['Santa Maria', 'Titanic', 'Discovery'] },
+  { q: 'What empire built the Colosseum in Rome?', a: 'Roman Empire', w: ['Greek Empire', 'Ottoman Empire', 'Persian Empire'] },
+  { q: 'Who painted the Mona Lisa?', a: 'Leonardo da Vinci', w: ['Michelangelo', 'Picasso', 'Van Gogh'] },
+  { q: 'What continent did ancient Aztecs live on?', a: 'North America', w: ['South America', 'Europe', 'Africa'] },
+  { q: 'Who invented the telephone?', a: 'Alexander Graham Bell', w: ['Thomas Edison', 'Nikola Tesla', 'Samuel Morse'] },
+  { q: 'What was the first animal sent into space?', a: 'Fruit flies', w: ['Dog', 'Monkey', 'Cat'] },
+  { q: 'Which explorer sailed around the world first?', a: 'Ferdinand Magellan', w: ['Christopher Columbus', 'Marco Polo', 'Vasco da Gama'] },
+  { q: 'What material did ancient Egyptians write on?', a: 'Papyrus', w: ['Paper', 'Clay', 'Silk'] },
+  { q: 'What famous document begins with "We the People"?', a: 'U.S. Constitution', w: ['Declaration of Independence', 'Bill of Rights', 'Magna Carta'] },
+  { q: 'What is the oldest known civilization?', a: 'Sumerians', w: ['Egyptians', 'Greeks', 'Chinese'] },
+  { q: 'Who discovered gravity by watching an apple fall?', a: 'Isaac Newton', w: ['Galileo', 'Einstein', 'Copernicus'] },
+];
+
+function generateMathQuestion() {
+  const ops = ['+', '-', '\u00d7', '\u00f7'];
+  const op = ops[Math.floor(Math.random() * ops.length)];
+  let a, b, answer;
+  if (op === '+') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * 12) + 1;
+    answer = a + b;
+  } else if (op === '-') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * a) + 1;
+    answer = a - b;
+  } else if (op === '\u00d7') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * 12) + 1;
+    answer = a * b;
+  } else {
+    b = Math.floor(Math.random() * 11) + 2;
+    answer = Math.floor(Math.random() * 12) + 1;
+    a = b * answer;
+  }
+  const wrongSet = new Set();
+  while (wrongSet.size < 3) {
+    let w = answer + (Math.floor(Math.random() * 10) - 5);
+    if (w !== answer && w >= 0) wrongSet.add(w);
+  }
+  return { q: 'What is ' + a + ' ' + op + ' ' + b + '?', a: String(answer), w: Array.from(wrongSet).map(String) };
+}
+
+let recentQuestions = [];
+
+function getQuestion(subject) {
+  let question;
+  if (subject === 'math') {
+    question = generateMathQuestion();
+  } else {
+    const bank = subject === 'science' ? SCIENCE_QUESTIONS : subject === 'english' ? ENGLISH_QUESTIONS : HISTORY_QUESTIONS;
+    const available = bank.filter((_, i) => !recentQuestions.includes(subject + '_' + i));
+    if (available.length === 0) { recentQuestions = []; return getQuestion(subject); }
+    const idx = Math.floor(Math.random() * available.length);
+    const origIdx = bank.indexOf(available[idx]);
+    question = available[idx];
+    recentQuestions.push(subject + '_' + origIdx);
+    if (recentQuestions.length > 8) recentQuestions.shift();
+  }
+  const options = [question.a, ...question.w];
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return { question: question.q, correct: question.a, options: options };
+}
+
+// ═══ QUIZ OVERLAY ═══
+let currentQuizData = null;
+let quizWaitInterval = null;
+
+function showQuiz() {
+  quizActive = true;
+  const sm = getSchoolMode();
+  if (!sm) return;
+  currentQuizData = getQuestion(sm.subject);
+  document.getElementById('quiz-subject').textContent = sm.subject.toUpperCase();
+  document.getElementById('quiz-question').textContent = currentQuizData.question;
+  document.getElementById('quiz-feedback').textContent = '';
+  document.getElementById('quiz-feedback').className = 'quiz-feedback';
+  document.getElementById('quiz-wait').textContent = '';
+  const answersEl = document.getElementById('quiz-answers');
+  answersEl.innerHTML = '';
+  currentQuizData.options.forEach(function(opt, i) {
+    const btn = document.createElement('button');
+    btn.className = 'quiz-answer';
+    btn.textContent = opt;
+    btn.onclick = function() { answerQuiz(i); };
+    answersEl.appendChild(btn);
+  });
+  document.getElementById('quiz-overlay').classList.add('visible');
+}
+
+function hideQuiz() {
+  quizActive = false;
+  if (quizWaitInterval) { clearInterval(quizWaitInterval); quizWaitInterval = null; }
+  document.getElementById('quiz-overlay').classList.remove('visible');
+}
+
+function answerQuiz(index) {
+  if (!currentQuizData) return;
+  const buttons = document.querySelectorAll('#quiz-answers .quiz-answer');
+  const selected = currentQuizData.options[index];
+  const isCorrect = selected === currentQuizData.correct;
+  buttons.forEach(function(btn, i) {
+    btn.classList.add('disabled');
+    if (currentQuizData.options[i] === currentQuizData.correct) btn.classList.add(isCorrect ? 'correct' : 'reveal');
+    if (i === index && !isCorrect) btn.classList.add('wrong');
+  });
+  const fb = document.getElementById('quiz-feedback');
+  if (isCorrect) {
+    fb.textContent = 'Correct! Keep playing!';
+    fb.className = 'quiz-feedback success';
+    setTimeout(function() {
+      hideQuiz();
+      quizTimeLeft = getQuizInterval();
+      updateTimerDisplay();
+      startQuizTimer();
+    }, 1200);
+  } else {
+    fb.textContent = 'Not quite! The answer is: ' + currentQuizData.correct;
+    fb.className = 'quiz-feedback fail';
+    let waitTime = 20;
+    const waitEl = document.getElementById('quiz-wait');
+    waitEl.textContent = 'Try again in ' + waitTime + 's...';
+    quizWaitInterval = setInterval(function() {
+      waitTime--;
+      if (waitTime <= 0) {
+        clearInterval(quizWaitInterval);
+        quizWaitInterval = null;
+        waitEl.textContent = '';
+        showQuiz();
+      } else {
+        waitEl.textContent = 'Try again in ' + waitTime + 's...';
+      }
+    }, 1000);
+  }
+}
+
+// Apply school mode on load
+applySchoolMode();
+
 // Close overlays on escape
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
+    if (quizActive) return;
+    if (document.getElementById('game-player').classList.contains('visible')) { exitGamePlayer(); return; }
     closeAchievements();
     closeShop();
+    closeSchoolMode();
   }
 });
 </script>

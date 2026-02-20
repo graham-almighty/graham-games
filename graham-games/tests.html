@@ -651,6 +651,613 @@ localStorage.clear();
 }
 
 // ============================================================
+// SCHOOL MODE FUNCTIONS (replicated from index.html)
+// ============================================================
+const BLOCKED_GAMES = ['combat', 'ancient-warfare'];
+
+function getSchoolMode() {
+  const data = ggLoad();
+  return data.schoolMode || null;
+}
+function setSchoolMode(sm) {
+  const data = ggLoad();
+  data.schoolMode = sm;
+  ggSave(data);
+}
+
+function getQuizInterval() {
+  const sm = getSchoolMode();
+  return (sm && sm.interval) ? sm.interval : 120;
+}
+function formatInterval(seconds) {
+  if (seconds < 60) return seconds + 's';
+  const m = seconds / 60;
+  return m + (m === 1 ? ' min' : ' min');
+}
+
+const SCIENCE_QUESTIONS = [
+  { q: 'What planet is closest to the Sun?', a: 'Mercury', w: ['Venus', 'Earth', 'Mars'] },
+  { q: 'What gas do plants absorb from the air?', a: 'Carbon dioxide', w: ['Oxygen', 'Nitrogen', 'Helium'] },
+  { q: 'How many legs does an insect have?', a: '6', w: ['4', '8', '10'] },
+  { q: 'What is the largest planet in our solar system?', a: 'Jupiter', w: ['Saturn', 'Neptune', 'Earth'] },
+  { q: 'What do you call animals that eat only plants?', a: 'Herbivores', w: ['Carnivores', 'Omnivores', 'Insectivores'] },
+  { q: 'Water freezes at what temperature in Fahrenheit?', a: '32 degrees', w: ['0 degrees', '100 degrees', '212 degrees'] },
+  { q: 'What is the hardest natural substance on Earth?', a: 'Diamond', w: ['Gold', 'Iron', 'Quartz'] },
+  { q: 'What organ pumps blood through the body?', a: 'Heart', w: ['Lungs', 'Brain', 'Liver'] },
+  { q: 'What are the three states of matter?', a: 'Solid, liquid, gas', w: ['Hot, warm, cold', 'Big, medium, small', 'Light, dark, clear'] },
+  { q: 'What force keeps us on the ground?', a: 'Gravity', w: ['Magnetism', 'Friction', 'Wind'] },
+  { q: 'What star is closest to Earth?', a: 'The Sun', w: ['Polaris', 'Sirius', 'Alpha Centauri'] },
+  { q: 'What is a baby frog called?', a: 'Tadpole', w: ['Cub', 'Pup', 'Kitten'] },
+  { q: 'Which planet is known as the Red Planet?', a: 'Mars', w: ['Venus', 'Jupiter', 'Saturn'] },
+  { q: 'What do caterpillars turn into?', a: 'Butterflies', w: ['Beetles', 'Spiders', 'Dragonflies'] },
+  { q: 'How many bones does an adult human have?', a: '206', w: ['100', '306', '150'] },
+  { q: 'What is the boiling point of water in Celsius?', a: '100 degrees', w: ['50 degrees', '200 degrees', '0 degrees'] },
+  { q: 'What type of animal is a whale?', a: 'Mammal', w: ['Fish', 'Reptile', 'Amphibian'] },
+  { q: 'What is the largest ocean on Earth?', a: 'Pacific Ocean', w: ['Atlantic Ocean', 'Indian Ocean', 'Arctic Ocean'] },
+  { q: 'What part of the plant makes food from sunlight?', a: 'Leaves', w: ['Roots', 'Stem', 'Flowers'] },
+  { q: 'What is the process plants use to make food called?', a: 'Photosynthesis', w: ['Respiration', 'Digestion', 'Evaporation'] },
+  { q: 'What are the tiny building blocks of all living things?', a: 'Cells', w: ['Atoms', 'Molecules', 'Tissues'] },
+  { q: 'Which gas makes up most of Earth\'s atmosphere?', a: 'Nitrogen', w: ['Oxygen', 'Carbon dioxide', 'Hydrogen'] },
+  { q: 'What type of rock is formed by volcanic eruption?', a: 'Igneous', w: ['Sedimentary', 'Metamorphic', 'Limestone'] },
+  { q: 'What is the layer of air around the Earth called?', a: 'Atmosphere', w: ['Biosphere', 'Lithosphere', 'Hydrosphere'] },
+  { q: 'What is the speed of light approximately?', a: '186,000 miles per second', w: ['1,000 miles per hour', '700 miles per hour', '86,000 miles per second'] },
+];
+
+const ENGLISH_QUESTIONS = [
+  { q: 'What is a synonym for "happy"?', a: 'Joyful', w: ['Sad', 'Angry', 'Tired'] },
+  { q: 'What is the opposite of "hot"?', a: 'Cold', w: ['Warm', 'Wet', 'Dry'] },
+  { q: 'Which word is a noun?', a: 'Dog', w: ['Run', 'Quickly', 'Beautiful'] },
+  { q: 'Which word is a verb?', a: 'Jump', w: ['Table', 'Happy', 'Slowly'] },
+  { q: 'Which is spelled correctly?', a: 'Necessary', w: ['Necessery', 'Neccessary', 'Necesary'] },
+  { q: 'What is the plural of "child"?', a: 'Children', w: ['Childs', 'Childrens', 'Childes'] },
+  { q: 'Which word is an adjective?', a: 'Bright', w: ['Walk', 'House', 'Quickly'] },
+  { q: 'What is a synonym for "big"?', a: 'Large', w: ['Small', 'Tiny', 'Short'] },
+  { q: 'What is the opposite of "begin"?', a: 'End', w: ['Start', 'Continue', 'Pause'] },
+  { q: 'Which is spelled correctly?', a: 'Because', w: ['Becuase', 'Becouse', 'Becuz'] },
+  { q: 'What is the past tense of "run"?', a: 'Ran', w: ['Runned', 'Runed', 'Running'] },
+  { q: 'Which word is an adverb?', a: 'Slowly', w: ['Slow', 'Table', 'Green'] },
+  { q: 'What punctuation ends a question?', a: 'Question mark', w: ['Period', 'Exclamation mark', 'Comma'] },
+  { q: 'Which is a complete sentence?', a: 'The cat sat on the mat.', w: ['Running fast.', 'Very big.', 'Under the table.'] },
+  { q: 'What is a synonym for "small"?', a: 'Tiny', w: ['Huge', 'Wide', 'Tall'] },
+  { q: 'What is the opposite of "light"?', a: 'Dark', w: ['Bright', 'White', 'Clear'] },
+  { q: 'Which is spelled correctly?', a: 'Separate', w: ['Seperate', 'Separete', 'Seprate'] },
+  { q: 'What is the plural of "mouse"?', a: 'Mice', w: ['Mouses', 'Mices', 'Mouse'] },
+  { q: 'What part of speech is "the"?', a: 'Article', w: ['Noun', 'Verb', 'Adjective'] },
+  { q: 'What is the past tense of "eat"?', a: 'Ate', w: ['Eated', 'Eaten', 'Eating'] },
+  { q: 'Which word means "to find out"?', a: 'Discover', w: ['Forget', 'Hide', 'Ignore'] },
+  { q: 'What is a group of related sentences called?', a: 'Paragraph', w: ['Chapter', 'Word', 'Letter'] },
+  { q: 'Which is a proper noun?', a: 'London', w: ['city', 'dog', 'river'] },
+  { q: 'What is the opposite of "quiet"?', a: 'Loud', w: ['Silent', 'Soft', 'Calm'] },
+  { q: 'What does "abbreviate" mean?', a: 'To shorten', w: ['To lengthen', 'To repeat', 'To replace'] },
+];
+
+const HISTORY_QUESTIONS = [
+  { q: 'Who was the first President of the United States?', a: 'George Washington', w: ['Thomas Jefferson', 'Abraham Lincoln', 'John Adams'] },
+  { q: 'What ancient civilization built the pyramids?', a: 'Egyptians', w: ['Romans', 'Greeks', 'Aztecs'] },
+  { q: 'Who invented the light bulb?', a: 'Thomas Edison', w: ['Benjamin Franklin', 'Nikola Tesla', 'Alexander Bell'] },
+  { q: 'What country gifted the Statue of Liberty to the US?', a: 'France', w: ['England', 'Spain', 'Italy'] },
+  { q: 'What year did Christopher Columbus reach the Americas?', a: '1492', w: ['1776', '1066', '1620'] },
+  { q: 'What famous ship sank in 1912?', a: 'Titanic', w: ['Mayflower', 'Santa Maria', 'Lusitania'] },
+  { q: 'Who was known as the "King of Rock and Roll"?', a: 'Elvis Presley', w: ['Michael Jackson', 'John Lennon', 'Chuck Berry'] },
+  { q: 'What ancient wonder was in the city of Babylon?', a: 'Hanging Gardens', w: ['Great Pyramid', 'Colosseum', 'Parthenon'] },
+  { q: 'Which president freed the slaves?', a: 'Abraham Lincoln', w: ['George Washington', 'Thomas Jefferson', 'Theodore Roosevelt'] },
+  { q: 'What is the longest wall ever built?', a: 'Great Wall of China', w: ['Hadrian\'s Wall', 'Berlin Wall', 'Wall of Babylon'] },
+  { q: 'Who was the first person to walk on the Moon?', a: 'Neil Armstrong', w: ['Buzz Aldrin', 'John Glenn', 'Yuri Gagarin'] },
+  { q: 'What ancient civilization created the Olympic Games?', a: 'Greeks', w: ['Romans', 'Egyptians', 'Persians'] },
+  { q: 'What holiday celebrates American independence?', a: 'Fourth of July', w: ['Thanksgiving', 'Memorial Day', 'Labor Day'] },
+  { q: 'Who wrote the Declaration of Independence?', a: 'Thomas Jefferson', w: ['George Washington', 'Benjamin Franklin', 'James Madison'] },
+  { q: 'What was the name of the ship the Pilgrims sailed on?', a: 'Mayflower', w: ['Santa Maria', 'Titanic', 'Discovery'] },
+  { q: 'What empire built the Colosseum in Rome?', a: 'Roman Empire', w: ['Greek Empire', 'Ottoman Empire', 'Persian Empire'] },
+  { q: 'Who painted the Mona Lisa?', a: 'Leonardo da Vinci', w: ['Michelangelo', 'Picasso', 'Van Gogh'] },
+  { q: 'What continent did ancient Aztecs live on?', a: 'North America', w: ['South America', 'Europe', 'Africa'] },
+  { q: 'Who invented the telephone?', a: 'Alexander Graham Bell', w: ['Thomas Edison', 'Nikola Tesla', 'Samuel Morse'] },
+  { q: 'What was the first animal sent into space?', a: 'Fruit flies', w: ['Dog', 'Monkey', 'Cat'] },
+  { q: 'Which explorer sailed around the world first?', a: 'Ferdinand Magellan', w: ['Christopher Columbus', 'Marco Polo', 'Vasco da Gama'] },
+  { q: 'What material did ancient Egyptians write on?', a: 'Papyrus', w: ['Paper', 'Clay', 'Silk'] },
+  { q: 'What famous document begins with "We the People"?', a: 'U.S. Constitution', w: ['Declaration of Independence', 'Bill of Rights', 'Magna Carta'] },
+  { q: 'What is the oldest known civilization?', a: 'Sumerians', w: ['Egyptians', 'Greeks', 'Chinese'] },
+  { q: 'Who discovered gravity by watching an apple fall?', a: 'Isaac Newton', w: ['Galileo', 'Einstein', 'Copernicus'] },
+];
+
+function generateMathQuestion() {
+  const ops = ['+', '-', '\u00d7', '\u00f7'];
+  const op = ops[Math.floor(Math.random() * ops.length)];
+  let a, b, answer;
+  if (op === '+') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * 12) + 1;
+    answer = a + b;
+  } else if (op === '-') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * a) + 1;
+    answer = a - b;
+  } else if (op === '\u00d7') {
+    a = Math.floor(Math.random() * 12) + 1;
+    b = Math.floor(Math.random() * 12) + 1;
+    answer = a * b;
+  } else {
+    b = Math.floor(Math.random() * 11) + 2;
+    answer = Math.floor(Math.random() * 12) + 1;
+    a = b * answer;
+  }
+  const wrongSet = new Set();
+  while (wrongSet.size < 3) {
+    let w = answer + (Math.floor(Math.random() * 10) - 5);
+    if (w !== answer && w >= 0) wrongSet.add(w);
+  }
+  return { q: 'What is ' + a + ' ' + op + ' ' + b + '?', a: String(answer), w: Array.from(wrongSet).map(String) };
+}
+
+let recentQuestions = [];
+
+function getQuestion(subject) {
+  let question;
+  if (subject === 'math') {
+    question = generateMathQuestion();
+  } else {
+    const bank = subject === 'science' ? SCIENCE_QUESTIONS : subject === 'english' ? ENGLISH_QUESTIONS : HISTORY_QUESTIONS;
+    const available = bank.filter((_, i) => !recentQuestions.includes(subject + '_' + i));
+    if (available.length === 0) { recentQuestions = []; return getQuestion(subject); }
+    const idx = Math.floor(Math.random() * available.length);
+    const origIdx = bank.indexOf(available[idx]);
+    question = available[idx];
+    recentQuestions.push(subject + '_' + origIdx);
+    if (recentQuestions.length > 8) recentQuestions.shift();
+  }
+  const options = [question.a, ...question.w];
+  for (let i = options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [options[i], options[j]] = [options[j], options[i]];
+  }
+  return { question: question.q, correct: question.a, options: options };
+}
+
+// ============================================================
+// SCHOOL MODE TESTS
+// ============================================================
+
+group('School Mode: State Helpers');
+
+localStorage.clear();
+{
+  const sm = getSchoolMode();
+  assertEqual(sm, null, 'getSchoolMode returns null when no school mode set');
+}
+
+{
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math' });
+  const sm = getSchoolMode();
+  assertEqual(sm.enabled, true, 'setSchoolMode persists enabled flag');
+  assertEqual(sm.pin, '1234', 'setSchoolMode persists pin');
+  assertEqual(sm.subject, 'math', 'setSchoolMode persists subject');
+}
+
+{
+  setSchoolMode(null);
+  const sm = getSchoolMode();
+  assertEqual(sm, null, 'setSchoolMode(null) clears school mode');
+}
+
+{
+  // Verify school mode doesn't clobber existing data
+  localStorage.clear();
+  ggSave({ gBux: 100, achievements: { test: true }, shopPurchases: { item: true } });
+  setSchoolMode({ enabled: true, pin: '5678', subject: 'science' });
+  const data = ggLoad();
+  assertEqual(data.gBux, 100, 'Setting school mode preserves gBux');
+  assertEqual(data.achievements.test, true, 'Setting school mode preserves achievements');
+  assertEqual(data.shopPurchases.item, true, 'Setting school mode preserves shopPurchases');
+  assertEqual(data.schoolMode.pin, '5678', 'School mode data saved alongside existing data');
+}
+
+group('School Mode: Enable / Disable Round-Trip');
+
+localStorage.clear();
+{
+  // Enable
+  setSchoolMode({ enabled: true, pin: '0000', subject: 'english' });
+  let sm = getSchoolMode();
+  assertEqual(sm.enabled, true, 'School mode enabled after set');
+  assertEqual(sm.subject, 'english', 'Subject is english');
+
+  // Disable
+  setSchoolMode(null);
+  sm = getSchoolMode();
+  assertEqual(sm, null, 'School mode disabled after set to null');
+
+  // Re-enable with different subject
+  setSchoolMode({ enabled: true, pin: '9999', subject: 'history' });
+  sm = getSchoolMode();
+  assertEqual(sm.subject, 'history', 'Subject updated to history on re-enable');
+  assertEqual(sm.pin, '9999', 'PIN updated on re-enable');
+}
+
+group('School Mode: PIN Validation');
+
+{
+  // Valid 4-digit PINs
+  assert(/^\d{4}$/.test('1234'), 'PIN "1234" is valid');
+  assert(/^\d{4}$/.test('0000'), 'PIN "0000" is valid');
+  assert(/^\d{4}$/.test('9999'), 'PIN "9999" is valid');
+
+  // Invalid PINs
+  assert(!/^\d{4}$/.test('123'), 'PIN "123" (too short) is invalid');
+  assert(!/^\d{4}$/.test('12345'), 'PIN "12345" (too long) is invalid');
+  assert(!/^\d{4}$/.test('abcd'), 'PIN "abcd" (letters) is invalid');
+  assert(!/^\d{4}$/.test('12ab'), 'PIN "12ab" (mixed) is invalid');
+  assert(!/^\d{4}$/.test(''), 'PIN "" (empty) is invalid');
+  assert(!/^\d{4}$/.test('12 4'), 'PIN "12 4" (space) is invalid');
+}
+
+{
+  // PIN match/mismatch
+  const pin = '4567';
+  const confirm = '4567';
+  const wrongConfirm = '4568';
+  assertEqual(pin === confirm, true, 'Matching PINs pass confirmation');
+  assertEqual(pin === wrongConfirm, false, 'Mismatched PINs fail confirmation');
+}
+
+{
+  // Wrong PIN rejection
+  localStorage.clear();
+  setSchoolMode({ enabled: true, pin: '1111', subject: 'math' });
+  const sm = getSchoolMode();
+  assertEqual('2222' !== sm.pin, true, 'Wrong PIN "2222" is rejected against "1111"');
+  assertEqual('1111' === sm.pin, true, 'Correct PIN "1111" is accepted');
+}
+
+group('School Mode: Quiz Interval');
+
+localStorage.clear();
+{
+  // Default interval when not set
+  const interval = getQuizInterval();
+  assertEqual(interval, 120, 'Default quiz interval is 120s when school mode off');
+}
+
+{
+  // Default interval when schoolMode has no interval field (backward compat)
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math' });
+  const interval = getQuizInterval();
+  assertEqual(interval, 120, 'Default quiz interval is 120s when interval field missing');
+}
+
+{
+  // Custom intervals
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math', interval: 30 });
+  assertEqual(getQuizInterval(), 30, 'Quiz interval = 30 when set to 30');
+
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math', interval: 60 });
+  assertEqual(getQuizInterval(), 60, 'Quiz interval = 60 when set to 60');
+
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math', interval: 180 });
+  assertEqual(getQuizInterval(), 180, 'Quiz interval = 180 when set to 180');
+
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math', interval: 240 });
+  assertEqual(getQuizInterval(), 240, 'Quiz interval = 240 when set to 240');
+
+  setSchoolMode({ enabled: true, pin: '1234', subject: 'math', interval: 300 });
+  assertEqual(getQuizInterval(), 300, 'Quiz interval = 300 when set to 300');
+}
+
+{
+  // Interval persists through save/load
+  localStorage.clear();
+  setSchoolMode({ enabled: true, pin: '5555', subject: 'science', interval: 60 });
+  const sm = getSchoolMode();
+  assertEqual(sm.interval, 60, 'Interval persists in localStorage');
+}
+
+{
+  // formatInterval helper
+  assertEqual(formatInterval(30), '30s', 'formatInterval(30) = "30s"');
+  assertEqual(formatInterval(60), '1 min', 'formatInterval(60) = "1 min"');
+  assertEqual(formatInterval(120), '2 min', 'formatInterval(120) = "2 min"');
+  assertEqual(formatInterval(180), '3 min', 'formatInterval(180) = "3 min"');
+  assertEqual(formatInterval(240), '4 min', 'formatInterval(240) = "4 min"');
+  assertEqual(formatInterval(300), '5 min', 'formatInterval(300) = "5 min"');
+}
+
+{
+  // Valid interval options
+  const validIntervals = [30, 60, 120, 180, 240, 300];
+  validIntervals.forEach(v => {
+    setSchoolMode({ enabled: true, pin: '0000', subject: 'math', interval: v });
+    assertEqual(getQuizInterval(), v, 'getQuizInterval returns ' + v + ' when set to ' + v);
+  });
+}
+
+group('School Mode: Blocked Games');
+
+{
+  assertEqual(BLOCKED_GAMES.length, 2, 'Two games are blocked');
+  assert(BLOCKED_GAMES.includes('combat'), 'Combat is in blocked list');
+  assert(BLOCKED_GAMES.includes('ancient-warfare'), 'Ancient Warfare is in blocked list');
+  assert(!BLOCKED_GAMES.includes('hurgvibbit'), 'Hurgvibbit is NOT blocked');
+  assert(!BLOCKED_GAMES.includes('flying-ace'), 'Flying Ace is NOT blocked');
+  assert(!BLOCKED_GAMES.includes('mini-life'), 'Mini Life is NOT blocked');
+  assert(!BLOCKED_GAMES.includes('tower-defense'), 'Tower Defense is NOT blocked');
+}
+
+group('School Mode: Persistence Across Refresh');
+
+localStorage.clear();
+{
+  setSchoolMode({ enabled: true, pin: '3456', subject: 'science' });
+  // Simulate refresh by re-reading
+  const sm = getSchoolMode();
+  assertEqual(sm.enabled, true, 'School mode persists after simulated refresh');
+  assertEqual(sm.pin, '3456', 'PIN persists after simulated refresh');
+  assertEqual(sm.subject, 'science', 'Subject persists after simulated refresh');
+}
+
+group('School Mode: Math Question Generation');
+
+{
+  for (let i = 0; i < 50; i++) {
+    const q = generateMathQuestion();
+    assert(typeof q.q === 'string' && q.q.length > 0, 'Math question ' + i + ' has question text');
+    assert(typeof q.a === 'string', 'Math question ' + i + ' answer is string');
+    assertEqual(q.w.length, 3, 'Math question ' + i + ' has exactly 3 wrong answers');
+    assert(!q.w.includes(q.a), 'Math question ' + i + ' wrong answers exclude correct answer');
+    // All answers should be non-negative
+    assert(parseInt(q.a) >= 0, 'Math question ' + i + ' correct answer is non-negative');
+    q.w.forEach(w => assert(parseInt(w) >= 0, 'Math question ' + i + ' wrong answer "' + w + '" is non-negative'));
+  }
+}
+
+{
+  // Verify math correctness
+  for (let i = 0; i < 100; i++) {
+    const q = generateMathQuestion();
+    const match = q.q.match(/What is (\d+) (.) (\d+)\?/);
+    if (match) {
+      const a = parseInt(match[1]);
+      const op = match[2];
+      const b = parseInt(match[3]);
+      let expected;
+      if (op === '+') expected = a + b;
+      else if (op === '-') expected = a - b;
+      else if (op === '\u00d7') expected = a * b;
+      else if (op === '\u00f7') expected = a / b;
+      assertEqual(String(expected), q.a, 'Math: ' + a + ' ' + op + ' ' + b + ' = ' + expected);
+    }
+  }
+}
+
+{
+  // Division always produces whole numbers
+  for (let i = 0; i < 50; i++) {
+    const q = generateMathQuestion();
+    if (q.q.includes('\u00f7')) {
+      const ans = parseInt(q.a);
+      assertEqual(String(ans), q.a, 'Division answer ' + q.a + ' is a whole number');
+    }
+  }
+}
+
+{
+  // Subtraction never produces negative
+  for (let i = 0; i < 50; i++) {
+    const q = generateMathQuestion();
+    if (q.q.includes('-')) {
+      assert(parseInt(q.a) >= 0, 'Subtraction answer is non-negative: ' + q.q + ' = ' + q.a);
+    }
+  }
+}
+
+group('School Mode: Static Question Banks');
+
+{
+  assertEqual(SCIENCE_QUESTIONS.length, 25, 'Science bank has 25 questions');
+  assertEqual(ENGLISH_QUESTIONS.length, 25, 'English bank has 25 questions');
+  assertEqual(HISTORY_QUESTIONS.length, 25, 'History bank has 25 questions');
+}
+
+{
+  [SCIENCE_QUESTIONS, ENGLISH_QUESTIONS, HISTORY_QUESTIONS].forEach((bank, bi) => {
+    const bankName = ['Science', 'English', 'History'][bi];
+    bank.forEach((q, i) => {
+      assert(typeof q.q === 'string' && q.q.length > 0, bankName + ' Q' + i + ' has question text');
+      assert(typeof q.a === 'string' && q.a.length > 0, bankName + ' Q' + i + ' has answer');
+      assertEqual(q.w.length, 3, bankName + ' Q' + i + ' has 3 wrong answers');
+      assert(!q.w.includes(q.a), bankName + ' Q' + i + ' wrong answers exclude correct');
+    });
+  });
+}
+
+group('School Mode: getQuestion()');
+
+{
+  recentQuestions = [];
+  const q = getQuestion('math');
+  assert(typeof q.question === 'string', 'getQuestion(math) returns question text');
+  assert(typeof q.correct === 'string', 'getQuestion(math) returns correct answer');
+  assertEqual(q.options.length, 4, 'getQuestion(math) returns 4 options');
+  assert(q.options.includes(q.correct), 'Options include the correct answer');
+}
+
+{
+  recentQuestions = [];
+  const q = getQuestion('science');
+  assertEqual(q.options.length, 4, 'getQuestion(science) returns 4 options');
+  assert(q.options.includes(q.correct), 'Science options include correct answer');
+  // Verify it's actually a science question
+  const found = SCIENCE_QUESTIONS.some(sq => sq.q === q.question);
+  assert(found, 'Science question comes from SCIENCE_QUESTIONS bank');
+}
+
+{
+  recentQuestions = [];
+  const q = getQuestion('english');
+  assertEqual(q.options.length, 4, 'getQuestion(english) returns 4 options');
+  const found = ENGLISH_QUESTIONS.some(eq => eq.q === q.question);
+  assert(found, 'English question comes from ENGLISH_QUESTIONS bank');
+}
+
+{
+  recentQuestions = [];
+  const q = getQuestion('history');
+  assertEqual(q.options.length, 4, 'getQuestion(history) returns 4 options');
+  const found = HISTORY_QUESTIONS.some(hq => hq.q === q.question);
+  assert(found, 'History question comes from HISTORY_QUESTIONS bank');
+}
+
+{
+  // Options are shuffled (run 20 times, at least one should differ from [correct, w1, w2, w3])
+  recentQuestions = [];
+  let sawDifferentOrder = false;
+  for (let i = 0; i < 20; i++) {
+    const q = getQuestion('science');
+    if (q.options[0] !== q.correct) { sawDifferentOrder = true; break; }
+  }
+  assert(sawDifferentOrder, 'Options are shuffled (correct answer not always first)');
+}
+
+group('School Mode: No Repeats Within 8');
+
+{
+  recentQuestions = [];
+  const seen = [];
+  for (let i = 0; i < 8; i++) {
+    const q = getQuestion('science');
+    assert(!seen.includes(q.question), 'Science question ' + i + ' is not a repeat within first 8');
+    seen.push(q.question);
+  }
+}
+
+{
+  recentQuestions = [];
+  const seen = [];
+  for (let i = 0; i < 8; i++) {
+    const q = getQuestion('english');
+    assert(!seen.includes(q.question), 'English question ' + i + ' is not a repeat within first 8');
+    seen.push(q.question);
+  }
+}
+
+{
+  recentQuestions = [];
+  const seen = [];
+  for (let i = 0; i < 8; i++) {
+    const q = getQuestion('history');
+    assert(!seen.includes(q.question), 'History question ' + i + ' is not a repeat within first 8');
+    seen.push(q.question);
+  }
+}
+
+{
+  // Can exhaust all 25 questions without error
+  recentQuestions = [];
+  let ok = true;
+  for (let i = 0; i < 30; i++) {
+    try { getQuestion('science'); } catch(e) { ok = false; }
+  }
+  assert(ok, 'Can generate 30 science questions without error (wraps around)');
+}
+
+group('School Mode: All Subjects Selectable');
+
+{
+  const validSubjects = ['math', 'science', 'english', 'history'];
+  validSubjects.forEach(subject => {
+    recentQuestions = [];
+    const q = getQuestion(subject);
+    assert(q.options.length === 4, 'Subject "' + subject + '" returns 4 options');
+    assert(q.options.includes(q.correct), 'Subject "' + subject + '" includes correct answer');
+  });
+}
+
+group('School Mode: localStorage Backward Compatibility');
+
+localStorage.clear();
+{
+  // Existing data without schoolMode field
+  ggSave({ gBux: 50, achievements: { test: true }, shopPurchases: {} });
+  const sm = getSchoolMode();
+  assertEqual(sm, null, 'getSchoolMode returns null for data without schoolMode field');
+  // Existing data is untouched
+  const data = ggLoad();
+  assertEqual(data.gBux, 50, 'Existing gBux preserved when schoolMode is absent');
+  assertEqual(data.achievements.test, true, 'Existing achievements preserved');
+}
+
+group('School Mode: Timer Logic');
+
+{
+  // Timer display formatting
+  function formatTimer(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  assertEqual(formatTimer(120), '2:00', 'Timer 120s = 2:00');
+  assertEqual(formatTimer(90), '1:30', 'Timer 90s = 1:30');
+  assertEqual(formatTimer(60), '1:00', 'Timer 60s = 1:00');
+  assertEqual(formatTimer(30), '0:30', 'Timer 30s = 0:30');
+  assertEqual(formatTimer(9), '0:09', 'Timer 9s = 0:09 (zero-padded)');
+  assertEqual(formatTimer(0), '0:00', 'Timer 0s = 0:00');
+  assertEqual(formatTimer(1), '0:01', 'Timer 1s = 0:01');
+  assertEqual(formatTimer(59), '0:59', 'Timer 59s = 0:59');
+  assertEqual(formatTimer(119), '1:59', 'Timer 119s = 1:59');
+  assertEqual(formatTimer(300), '5:00', 'Timer 300s = 5:00');
+  assertEqual(formatTimer(180), '3:00', 'Timer 180s = 3:00');
+  assertEqual(formatTimer(240), '4:00', 'Timer 240s = 4:00');
+}
+
+{
+  // Timer warning thresholds
+  function getTimerClass(seconds) {
+    if (seconds <= 15) return 'danger';
+    if (seconds <= 30) return 'warning';
+    return '';
+  }
+  assertEqual(getTimerClass(120), '', 'Timer 120s has no warning class');
+  assertEqual(getTimerClass(31), '', 'Timer 31s has no warning class');
+  assertEqual(getTimerClass(30), 'warning', 'Timer 30s has warning class');
+  assertEqual(getTimerClass(16), 'warning', 'Timer 16s has warning class');
+  assertEqual(getTimerClass(15), 'danger', 'Timer 15s has danger class');
+  assertEqual(getTimerClass(1), 'danger', 'Timer 1s has danger class');
+  assertEqual(getTimerClass(0), 'danger', 'Timer 0s has danger class');
+}
+
+group('School Mode: Math Wrong Answer Quality');
+
+{
+  // Wrong answers should be unique and different from correct
+  for (let i = 0; i < 50; i++) {
+    const q = generateMathQuestion();
+    const wrongSet = new Set(q.w);
+    assertEqual(wrongSet.size, 3, 'Math Q' + i + ' has 3 unique wrong answers');
+    assert(!wrongSet.has(q.a), 'Math Q' + i + ' wrong answers exclude correct');
+  }
+}
+
+group('School Mode: Subject-Specific Question Validation');
+
+{
+  // Verify all science answers are among the options after getQuestion
+  recentQuestions = [];
+  for (let i = 0; i < 10; i++) {
+    const q = getQuestion('science');
+    assert(q.options.includes(q.correct), 'Science getQuestion ' + i + ': correct in options');
+    const uniqueOpts = new Set(q.options);
+    assertEqual(uniqueOpts.size, 4, 'Science getQuestion ' + i + ': all 4 options unique');
+  }
+}
+
+{
+  recentQuestions = [];
+  for (let i = 0; i < 10; i++) {
+    const q = getQuestion('math');
+    assert(q.options.includes(q.correct), 'Math getQuestion ' + i + ': correct in options');
+    const uniqueOpts = new Set(q.options);
+    assertEqual(uniqueOpts.size, 4, 'Math getQuestion ' + i + ': all 4 options unique');
+  }
+}
+
+// ============================================================
 showSummary();
 </script>
 </body>
