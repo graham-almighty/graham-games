@@ -120,8 +120,10 @@ function ggTry(id) { const a = AW_ACH[id]; if (a) ggUnlockAchievement(id, a.name
 
 const STATS_KEY = 'aw-stats';
 function loadStats() {
-  try { return JSON.parse(localStorage.getItem(STATS_KEY)) || { wins: 0, battles: 0 }; }
-  catch(e) { return { wins: 0, battles: 0 }; }
+  try {
+    const s = JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+    return { wins: s.wins || 0, battles: s.battles || 0, bonusGold: s.bonusGold || 0 };
+  } catch(e) { return { wins: 0, battles: 0, bonusGold: 0 }; }
 }
 function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
 
@@ -130,7 +132,7 @@ const UNIT_DEFS = {
   archer:    { name: 'Archer',    cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   special: 'Ranged, 5 dmg melee, retreats', meleeDamage: 5 },
   spearman:  { name: 'Spearman',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, special: '2x vs cavalry/elephant' },
   cavalry:   { name: 'Cavalry',   cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, special: 'First hit 2x (charge)' },
-  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  special: 'Splash radius 3, stationary', splash: 3 },
+  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  special: 'Splash radius 3, very slow', splash: 3 },
   elephant:  { name: 'War Elephant', cost: 50, hp: 300, damage: 30, speed: 0.8, range: 2.0, special: 'Tank, trample', shopRequired: 'aw_war_elephant' },
 };
 
@@ -181,7 +183,7 @@ function mockUnit(type, team, overrides) {
       target: null,
       attackCooldown: 0,
       charged: type === 'cavalry',
-      stationaryInBattle: type === 'catapult',
+      stationaryInBattle: false,
       ...overrides,
     },
   };
@@ -715,6 +717,99 @@ group('Stats Persistence');
   const s = loadStats();
   assertEqual(s.wins, 7, 'Multiple wins persist (7)');
   assertEqual(s.battles, 12, 'Multiple battles persist (12)');
+}
+
+// ─── VICTORY BONUS GOLD ───
+group('Victory Bonus Gold');
+
+{
+  resetStorage();
+  const s = loadStats();
+  assertEqual(s.bonusGold, 0, 'Initial bonusGold = 0');
+}
+
+{
+  resetStorage();
+  // Simulate a battle win awarding 50 bonus gold
+  const stats = loadStats();
+  stats.battles++;
+  stats.wins++;
+  stats.bonusGold += 50;
+  saveStats(stats);
+  const loaded = loadStats();
+  assertEqual(loaded.bonusGold, 50, 'Bonus gold = 50 after 1 win');
+}
+
+{
+  resetStorage();
+  // Simulate 3 wins accumulating bonus gold
+  const stats = loadStats();
+  for (let i = 0; i < 3; i++) {
+    stats.battles++;
+    stats.wins++;
+    stats.bonusGold += 50;
+  }
+  saveStats(stats);
+  const loaded = loadStats();
+  assertEqual(loaded.bonusGold, 150, 'Bonus gold = 150 after 3 wins');
+  assertEqual(loaded.wins, 3, 'Wins tracked correctly (3)');
+}
+
+{
+  resetStorage();
+  // Loss does NOT award bonus gold
+  const stats = loadStats();
+  stats.battles++;
+  // no stats.wins++ or bonusGold += 50
+  saveStats(stats);
+  const loaded = loadStats();
+  assertEqual(loaded.bonusGold, 0, 'Bonus gold = 0 after a loss');
+  assertEqual(loaded.battles, 1, 'Battle count still incremented on loss');
+}
+
+{
+  resetStorage();
+  // Bonus gold adds to skirmish deployment budget
+  saveStats({ wins: 2, battles: 3, bonusGold: 100 });
+  const stats = loadStats();
+  const skirmishBudget = MAX_BUDGET + stats.bonusGold;
+  assertEqual(skirmishBudget, 300, 'Skirmish budget = 200 + 100 bonusGold = 300');
+}
+
+{
+  resetStorage();
+  // Zero bonus gold means default budget
+  const stats = loadStats();
+  const skirmishBudget = MAX_BUDGET + stats.bonusGold;
+  assertEqual(skirmishBudget, 200, 'No bonus gold: skirmish budget = 200');
+}
+
+{
+  resetStorage();
+  // Bonus gold adds to campaign start gold
+  saveStats({ wins: 1, battles: 1, bonusGold: 50 });
+  const stats = loadStats();
+  const campaignGold = LEVEL_DEFS[0].startGold + stats.bonusGold;
+  assertEqual(campaignGold, LEVEL_DEFS[0].startGold + 50, 'Campaign level 1 gold includes bonusGold');
+}
+
+{
+  resetStorage();
+  // Old stats without bonusGold still load correctly
+  localStorage.setItem(STATS_KEY, JSON.stringify({ wins: 5, battles: 10 }));
+  const s = loadStats();
+  assertEqual(s.wins, 5, 'Legacy stats: wins preserved');
+  assertEqual(s.battles, 10, 'Legacy stats: battles preserved');
+  assertEqual(s.bonusGold, 0, 'Legacy stats: bonusGold defaults to 0');
+}
+
+{
+  resetStorage();
+  // 10 wins = 500 bonus gold
+  saveStats({ wins: 10, battles: 15, bonusGold: 500 });
+  const loaded = loadStats();
+  assertEqual(loaded.bonusGold, 500, '10 wins: bonusGold = 500');
+  assertEqual(MAX_BUDGET + loaded.bonusGold, 700, 'Skirmish budget = 200 + 500 = 700');
 }
 
 // ─── G BUX INTEGRATION ───

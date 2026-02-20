@@ -583,8 +583,10 @@ function ggTry(id) { const a = AW_ACH[id]; if (a) ggUnlockAchievement(id, a.name
 // ═══════════════════════════════════════════
 const STATS_KEY = 'aw-stats';
 function loadStats() {
-  try { return JSON.parse(localStorage.getItem(STATS_KEY)) || { wins: 0, battles: 0 }; }
-  catch(e) { return { wins: 0, battles: 0 }; }
+  try {
+    const s = JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+    return { wins: s.wins || 0, battles: s.battles || 0, bonusGold: s.bonusGold || 0 };
+  } catch(e) { return { wins: 0, battles: 0, bonusGold: 0 }; }
 }
 function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
 
@@ -761,7 +763,7 @@ const UNIT_DEFS = {
   archer:    { name: 'Archer',    cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   icon: '&#127993;', special: 'Ranged, 5 dmg melee, retreats', meleeDamage: 5 },
   spearman:  { name: 'Spearman',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, icon: '&#128737;', special: '2x vs cavalry/elephant' },
   cavalry:   { name: 'Cavalry',   cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '&#127943;', special: 'First hit 2x (charge)' },
-  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '&#129516;', special: 'Splash radius 3, stationary', splash: 3 },
+  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '&#129516;', special: 'Splash radius 3, very slow', splash: 3 },
   elephant:  { name: 'War Elephant', cost: 50, hp: 300, damage: 30, speed: 0.8, range: 2.0, icon: '&#128024;', special: 'Tank, trample', shopRequired: 'aw_war_elephant' },
 };
 
@@ -835,7 +837,7 @@ function showLevelSelect() {
 function startCampaignLevel(index) {
   campaignState = {
     levelIndex: index,
-    gold: LEVEL_DEFS[index].startGold,
+    gold: LEVEL_DEFS[index].startGold + loadStats().bonusGold,
     survivors: [],
     preBattleSnapshot: null,
   };
@@ -1269,7 +1271,7 @@ function buildUnitModel(type, team) {
     attackCooldown: 0,
     charged: type === 'cavalry',
     hbGroup, hbFill,
-    stationaryInBattle: type === 'catapult',
+    stationaryInBattle: false,
   };
 
   group.castShadow = true;
@@ -1288,7 +1290,8 @@ let deployRaycaster = new THREE.Raycaster();
 let deployMouse = new THREE.Vector2();
 
 function initDeployment() {
-  budget = MAX_BUDGET;
+  const stats = loadStats();
+  budget = MAX_BUDGET + stats.bonusGold;
   deployedUnits = [];
   survivorUnits = [];
   selectedUnitType = null;
@@ -1415,7 +1418,8 @@ function renderDeploySidebar() {
   if (isCampaignMode) {
     budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span>';
   } else {
-    budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span> / 200';
+    const totalBudget = MAX_BUDGET + loadStats().bonusGold;
+    budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span> / ' + totalBudget;
   }
 }
 
@@ -1779,14 +1783,17 @@ function updateCombatAI(dt) {
           faceTarget(unit, target);
         }
       } else if (u.type === 'catapult') {
-        // Catapult: stationary, fire boulders
-        if (dist <= attackRange && u.attackCooldown <= 0) {
-          // Target cluster center
-          const clusterPos = findClusterCenter(target, enemies);
-          spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.catapult.splash);
-          u.attackCooldown = 3.0;
+        // Catapult: fire boulders, creep forward if out of range
+        if (dist <= attackRange) {
+          if (u.attackCooldown <= 0) {
+            const clusterPos = findClusterCenter(target, enemies);
+            spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.catapult.splash);
+            u.attackCooldown = 3.0;
+          }
+          faceTarget(unit, target);
+        } else {
+          moveToward(unit, target, dt);
         }
-        faceTarget(unit, target);
       }
     } else {
       // Melee
@@ -1973,7 +1980,10 @@ function endBattle(victory) {
 
   const stats = loadStats();
   stats.battles++;
-  if (victory) stats.wins++;
+  if (victory) {
+    stats.wins++;
+    stats.bonusGold += 50;
+  }
   saveStats(stats);
 
   // Achievement checks
@@ -2073,17 +2083,18 @@ function showCampaignEndScreen(victory) {
 
     const newGold = cs.gold + killGold;
 
+    // Unlock next level
+    const progress = loadCampaignProgress();
+    if (cs.levelIndex + 1 >= progress.unlockedLevels) {
+      progress.unlockedLevels = Math.min(cs.levelIndex + 2, LEVEL_DEFS.length + 1);
+      saveCampaignProgress(progress);
+    }
+
     document.getElementById('camp-rewards').innerHTML =
       'Kill gold: <span class="gold-earn">+' + killGold + 'g</span><br>' +
       'Total gold: <span>' + newGold + 'g</span><br>' +
-      'Survivors healed <span>' + Math.round(levelDef.healPct * 100) + '%</span>';
-
-    // Unlock next level
-    const progress = loadCampaignProgress();
-    if (cs.levelIndex + 1 >= progress.unlockedLevels && cs.levelIndex + 1 < LEVEL_DEFS.length) {
-      progress.unlockedLevels = cs.levelIndex + 2;
-      saveCampaignProgress(progress);
-    }
+      'Survivors healed <span>' + Math.round(levelDef.healPct * 100) + '%</span><br>' +
+      'Victory bonus: <span class="gold-earn">+50g</span> (deployment budget)';
 
     // Update campaign state for next level
     campaignState.gold = newGold;
