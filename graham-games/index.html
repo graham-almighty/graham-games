@@ -246,7 +246,17 @@
     align-items: center;
     width: 100%;
     max-width: 500px;
+    max-height: 55vh;
+    overflow-y: auto;
+    padding-right: 8px;
+    scroll-behavior: smooth;
+    scrollbar-width: thin;
+    scrollbar-color: #c9a84c66 #1a1a2e;
   }
+  .game-list::-webkit-scrollbar { width: 6px; }
+  .game-list::-webkit-scrollbar-track { background: #1a1a2e; border-radius: 3px; }
+  .game-list::-webkit-scrollbar-thumb { background: #c9a84c66; border-radius: 3px; }
+  .game-list::-webkit-scrollbar-thumb:hover { background: #c9a84c99; }
 
   .game-card {
     width: 100%;

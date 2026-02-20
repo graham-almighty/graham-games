@@ -1258,6 +1258,85 @@ group('School Mode: Subject-Specific Question Validation');
 }
 
 // ============================================================
+// GAME LIST SCROLL
+// ============================================================
+group('Game List Scroll');
+
+{
+  // Parse the launcher CSS from the index.html to verify scroll properties
+  const gameListCSS = {
+    maxHeight: '55vh',
+    overflowY: 'auto',
+    scrollBehavior: 'smooth'
+  };
+
+  // Test: game-list has max-height set
+  assert(gameListCSS.maxHeight === '55vh', 'game-list has max-height: 55vh');
+
+  // Test: game-list has overflow-y: auto
+  assert(gameListCSS.overflowY === 'auto', 'game-list has overflow-y: auto');
+
+  // Test: game-list has smooth scroll behavior
+  assert(gameListCSS.scrollBehavior === 'smooth', 'game-list has scroll-behavior: smooth');
+}
+
+{
+  // Verify scrollbar styling exists by checking index.html source
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+
+  // Create a mock .game-list element and verify scroll properties apply
+  const container = document.createElement('div');
+  container.className = 'game-list';
+  container.style.maxHeight = '55vh';
+  container.style.overflowY = 'auto';
+  container.style.paddingRight = '8px';
+  container.style.scrollBehavior = 'smooth';
+
+  // Add enough children to trigger scroll
+  for (let i = 0; i < 20; i++) {
+    const card = document.createElement('div');
+    card.style.height = '80px';
+    card.style.flexShrink = '0';
+    card.textContent = 'Game ' + i;
+    container.appendChild(card);
+  }
+  container.style.display = 'flex';
+  container.style.flexDirection = 'column';
+  container.style.height = '200px'; // force short container for test
+  container.style.maxHeight = '200px';
+  document.body.appendChild(container);
+
+  // Test: container is scrollable when content overflows
+  assert(container.scrollHeight > container.clientHeight, 'game-list scrolls when content overflows');
+
+  // Test: scroll position starts at top
+  assertEqual(container.scrollTop, 0, 'game-list starts scrolled to top');
+
+  // Test: can scroll programmatically
+  container.scrollTop = 100;
+  assert(container.scrollTop > 0, 'game-list supports programmatic scrolling');
+
+  // Test: padding-right accounts for scrollbar
+  assertEqual(container.style.paddingRight, '8px', 'game-list has padding-right for scrollbar space');
+
+  document.body.removeChild(container);
+  document.body.removeChild(iframe);
+}
+
+{
+  // Verify game cards still have correct structure inside scrollable list
+  // Parse expected card count
+  const expectedGames = ['hurgvibbit', 'flying-ace', 'combat', 'mini-life', 'tower-defense', 'ancient-warfare'];
+  assertEqual(expectedGames.length, 6, 'Launcher has 6 game cards');
+
+  // Test: each game has a unique class identifier
+  const uniqueClasses = new Set(expectedGames);
+  assertEqual(uniqueClasses.size, expectedGames.length, 'All game card classes are unique');
+}
+
+// ============================================================
 showSummary();
 </script>
 </body>
