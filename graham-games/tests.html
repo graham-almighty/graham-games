@@ -1263,15 +1263,19 @@ group('School Mode: Subject-Specific Question Validation');
 group('Game List Scroll');
 
 {
-  // Parse the launcher CSS from the index.html to verify scroll properties
+  // Verify scroll-related CSS properties for game-list
   const gameListCSS = {
-    maxHeight: '55vh',
+    flex: '1',
+    minHeight: '0',
     overflowY: 'auto',
     scrollBehavior: 'smooth'
   };
 
-  // Test: game-list has max-height set
-  assert(gameListCSS.maxHeight === '55vh', 'game-list has max-height: 55vh');
+  // Test: game-list uses flex: 1 to fill remaining space
+  assert(gameListCSS.flex === '1', 'game-list has flex: 1');
+
+  // Test: game-list has min-height: 0 for proper flex overflow
+  assert(gameListCSS.minHeight === '0', 'game-list has min-height: 0');
 
   // Test: game-list has overflow-y: auto
   assert(gameListCSS.overflowY === 'auto', 'game-list has overflow-y: auto');
@@ -1289,7 +1293,6 @@ group('Game List Scroll');
   // Create a mock .game-list element and verify scroll properties apply
   const container = document.createElement('div');
   container.className = 'game-list';
-  container.style.maxHeight = '55vh';
   container.style.overflowY = 'auto';
   container.style.paddingRight = '8px';
   container.style.scrollBehavior = 'smooth';
