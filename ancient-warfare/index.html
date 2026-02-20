@@ -257,6 +257,21 @@
   #unit-info .ui-stat { color: #888; }
   #unit-info .ui-stat span { color: #ddd; }
 
+  #fp-crosshair {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    opacity: 0.7;
+    z-index: 5;
+    pointer-events: none;
+  }
+
   /* End Screen */
   #end-screen h1 {
     font-family: 'Cinzel Decorative', serif;
@@ -463,6 +478,7 @@
   <div class="title-icon">&#9876;&#65039;</div>
   <h1>ANCIENT WARFARE</h1>
   <div class="title-sub">3D Army Battle Simulator</div>
+  <button class="punk-btn" id="continue-btn" onclick="continueCampaign()" style="display:none">CONTINUE CAMPAIGN</button>
   <button class="punk-btn" onclick="startCampaignMode()">CAMPAIGN</button>
   <button class="punk-btn" onclick="startSkirmishMode()">SKIRMISH</button>
   <button class="punk-btn secondary" onclick="window.location.href='../graham-games/index.html'">EXIT</button>
@@ -502,6 +518,7 @@
 <!-- Battle Screen -->
 <div id="battle-screen" class="hidden">
   <div id="battle-canvas-wrap"></div>
+  <div id="fp-crosshair"></div>
   <div id="battle-hud">
     <div class="hud-item"><span class="hud-label">Blue:</span><span class="hud-val" id="hud-blue">0</span></div>
     <div class="hud-item"><span class="hud-label">Red:</span><span class="hud-val" id="hud-red">0</span></div>
@@ -510,6 +527,7 @@
   <div id="battle-controls">
     <button id="btn-pause" onclick="togglePause()">PAUSE [SPACE]</button>
     <button id="btn-speed" onclick="toggleSpeed()">2X SPEED [F]</button>
+    <button id="btn-possess" onclick="togglePossession()" style="display:none">POSSESS [P]</button>
   </div>
   <div id="unit-info">
     <div class="ui-name" id="ui-name"></div>
@@ -795,11 +813,50 @@ function loadCampaignProgress() {
 }
 function saveCampaignProgress(p) { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(p)); }
 
+const CAMPAIGN_SAVE_KEY = 'aw-campaign-save';
+function saveCampaignRun(state) {
+  localStorage.setItem(CAMPAIGN_SAVE_KEY, JSON.stringify({
+    levelIndex: state.levelIndex,
+    gold: state.gold,
+    survivors: state.survivors,
+  }));
+}
+function loadCampaignRun() {
+  try { return JSON.parse(localStorage.getItem(CAMPAIGN_SAVE_KEY)); }
+  catch(e) { return null; }
+}
+function clearCampaignRun() { localStorage.removeItem(CAMPAIGN_SAVE_KEY); }
+
 // ═══════════════════════════════════════════
 // CAMPAIGN STATE
 // ═══════════════════════════════════════════
 let isCampaignMode = false;
 let campaignState = null; // { levelIndex, gold, survivors: [{type,hp,maxHp}], preBattleSnapshot }
+
+function refreshTitleScreen() {
+  const btn = document.getElementById('continue-btn');
+  const save = loadCampaignRun();
+  if (save && save.levelIndex < LEVEL_DEFS.length) {
+    btn.style.display = '';
+    btn.textContent = 'CONTINUE CAMPAIGN (Level ' + (save.levelIndex + 1) + ')';
+  } else {
+    btn.style.display = 'none';
+  }
+}
+
+function continueCampaign() {
+  const save = loadCampaignRun();
+  if (!save) return;
+  isCampaignMode = true;
+  campaignState = {
+    levelIndex: save.levelIndex,
+    gold: save.gold,
+    survivors: save.survivors || [],
+    preBattleSnapshot: null,
+  };
+  showScreen('deploy-screen');
+  initCampaignDeployment();
+}
 
 function startCampaignMode() {
   isCampaignMode = true;
@@ -860,6 +917,7 @@ function showScreen(id) {
     document.getElementById(s).classList.toggle('hidden', s !== id);
   });
   if (id === 'deploy-screen' && !isCampaignMode) initDeployment();
+  if (id === 'title-screen') refreshTitleScreen();
   currentScreen = id;
 }
 
@@ -926,6 +984,15 @@ function onResize() {
 }
 
 function updateCamera() {
+  if (possessedUnit) {
+    const eyeY = getUnitEyeHeight(possessedUnit.userData.type);
+    camera.position.set(possessedUnit.position.x, eyeY, possessedUnit.position.z);
+    const lookX = possessedUnit.position.x + Math.sin(possessYaw) * Math.cos(possessPitch);
+    const lookY = eyeY + Math.sin(possessPitch);
+    const lookZ = possessedUnit.position.z + Math.cos(possessYaw) * Math.cos(possessPitch);
+    camera.lookAt(lookX, lookY, lookZ);
+    return;
+  }
   const x = cameraTarget.x + cameraDistance * Math.sin(cameraAngle) * Math.cos(cameraPitch);
   const y = cameraTarget.y + cameraDistance * Math.sin(cameraPitch);
   const z = cameraTarget.z + cameraDistance * Math.cos(cameraAngle) * Math.cos(cameraPitch);
@@ -1668,6 +1735,23 @@ let battleHornActive = false;
 let battleHornTimer = 0;
 let initialBlueCount = 0;
 
+// Possession state
+let possessedUnit = null;
+let possessYaw = 0;
+let possessPitch = 0;
+let possessKeys = { w: false, a: false, s: false, d: false };
+let savedCameraState = null;
+
+function getUnitEyeHeight(type) {
+  switch (type) {
+    case 'cavalry': return 1.55;
+    case 'elephant': return 2.35;
+    case 'archer': return 1.3;
+    case 'catapult': return 1.3;
+    default: return 1.4;
+  }
+}
+
 function applyDamage(unit, amount) {
   if (!unit.userData.alive) return;
   unit.userData.hp -= amount;
@@ -1747,6 +1831,31 @@ function updateCombatAI(dt) {
 
     u.attackCooldown = Math.max(0, u.attackCooldown - dt);
 
+    // Possessed unit: skip movement, auto-attack only
+    if (unit === possessedUnit) {
+      const found = findNearestEnemy(unit, enemies);
+      if (!found.target) return;
+      u.target = found.target;
+      const isRanged = u.type === 'archer' || u.type === 'catapult';
+      if (isRanged) {
+        if (found.dist <= u.range && u.attackCooldown <= 0) {
+          if (u.type === 'archer') {
+            spawnArrow(unit.position, found.target.position, getAttackDamage(unit, found.target), u.team);
+            u.attackCooldown = 1.0;
+          } else {
+            const clusterPos = findClusterCenter(found.target, enemies);
+            spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.catapult.splash);
+            u.attackCooldown = 3.0;
+          }
+        }
+      } else if (found.dist <= u.range && u.attackCooldown <= 0) {
+        applyDamage(found.target, getAttackDamage(unit, found.target));
+        u.attackCooldown = 0.8;
+        SFX.swordClash();
+      }
+      return;
+    }
+
     // If has a command target, override AI
     let target, dist;
     if (unit === selectedBattleUnit && commandTarget && commandTarget.userData.alive) {
@@ -1813,6 +1922,24 @@ function updateCombatAI(dt) {
 
   for (const u of allBlue) processUnit(u, allRed);
   for (const u of allRed) processUnit(u, allBlue);
+}
+
+function updatePossessedMovement(dt) {
+  if (!possessedUnit || !possessedUnit.userData.alive) return;
+  const speed = possessedUnit.userData.speed;
+  const forward = new THREE.Vector3(Math.sin(possessYaw), 0, Math.cos(possessYaw));
+  const right = new THREE.Vector3(forward.z, 0, -forward.x);
+  const move = new THREE.Vector3(0, 0, 0);
+  if (possessKeys.w) move.add(forward);
+  if (possessKeys.s) move.sub(forward);
+  if (possessKeys.a) move.sub(right);
+  if (possessKeys.d) move.add(right);
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed * dt);
+    possessedUnit.position.add(move);
+    clampToField(possessedUnit);
+    possessedUnit.rotation.y = -Math.atan2(forward.z, forward.x);
+  }
 }
 
 function moveToward(unit, target, dt) {
@@ -1908,6 +2035,7 @@ function startBattle() {
 
   document.getElementById('btn-pause').classList.remove('active');
   document.getElementById('btn-speed').classList.remove('active');
+  document.getElementById('btn-possess').style.display = 'none';
   document.getElementById('unit-info').style.display = 'none';
 
   clock.getDelta(); // Reset clock
@@ -1931,8 +2059,12 @@ function battleLoop() {
       if (battleHornTimer <= 0) battleHornActive = false;
     }
 
+    updatePossessedMovement(dt);
     updateCombatAI(dt);
     updateProjectiles(dt);
+
+    // Check if possessed unit died
+    if (possessedUnit && !possessedUnit.userData.alive) exitPossession();
   }
 
   // HUD
@@ -1944,9 +2076,10 @@ function battleLoop() {
   const secs = Math.floor(battleTime % 60);
   document.getElementById('hud-time').textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
 
-  // Update selected unit info
-  if (selectedBattleUnit && selectedBattleUnit.userData.alive) {
-    document.getElementById('ui-hp').textContent = Math.ceil(selectedBattleUnit.userData.hp) + '/' + selectedBattleUnit.userData.maxHp;
+  // Update selected/possessed unit info
+  const infoUnit = possessedUnit || selectedBattleUnit;
+  if (infoUnit && infoUnit.userData.alive) {
+    document.getElementById('ui-hp').textContent = Math.ceil(infoUnit.userData.hp) + '/' + infoUnit.userData.maxHp;
   }
 
   billboardHealthBars();
@@ -1972,10 +2105,62 @@ function toggleSpeed() {
   document.getElementById('btn-speed').classList.toggle('active', battleSpeed === 2);
 }
 
+function enterPossession() {
+  if (!selectedBattleUnit || !selectedBattleUnit.userData.alive) return;
+  possessedUnit = selectedBattleUnit;
+  savedCameraState = { angle: cameraAngle, pitch: cameraPitch, distance: cameraDistance, target: cameraTarget.clone() };
+  possessYaw = possessedUnit.rotation.y + Math.PI / 2;
+  possessPitch = 0;
+  possessKeys = { w: false, a: false, s: false, d: false };
+  commandTarget = null;
+  possessedUnit.visible = false;
+  possessedUnit.userData.hbGroup.visible = false;
+  camera.fov = 75;
+  camera.updateProjectionMatrix();
+  document.getElementById('fp-crosshair').style.display = 'block';
+  document.getElementById('btn-possess').textContent = 'EXIT [P]';
+  document.getElementById('btn-possess').classList.add('active');
+  document.getElementById('ui-name').textContent = possessedUnit.userData.def.name + ' [POSSESSED]';
+  renderer.domElement.requestPointerLock();
+}
+
+function exitPossession() {
+  if (!possessedUnit) return;
+  document.exitPointerLock();
+  if (possessedUnit.userData.alive) {
+    possessedUnit.visible = true;
+    possessedUnit.userData.hbGroup.visible = true;
+  }
+  cameraTarget.copy(possessedUnit.position);
+  if (savedCameraState) {
+    cameraAngle = savedCameraState.angle;
+    cameraPitch = savedCameraState.pitch;
+    cameraDistance = savedCameraState.distance;
+  }
+  camera.fov = 45;
+  camera.updateProjectionMatrix();
+  possessedUnit = null;
+  savedCameraState = null;
+  possessKeys = { w: false, a: false, s: false, d: false };
+  document.getElementById('fp-crosshair').style.display = 'none';
+  document.getElementById('btn-possess').textContent = 'POSSESS [P]';
+  document.getElementById('btn-possess').classList.remove('active');
+  if (!selectedBattleUnit || !selectedBattleUnit.userData.alive) {
+    document.getElementById('unit-info').style.display = 'none';
+    document.getElementById('btn-possess').style.display = 'none';
+  }
+}
+
+function togglePossession() {
+  if (possessedUnit) exitPossession();
+  else if (selectedBattleUnit && selectedBattleUnit.userData.alive && !battlePaused) enterPossession();
+}
+
 // ═══════════════════════════════════════════
 // BATTLE END
 // ═══════════════════════════════════════════
 function endBattle(victory) {
+  if (possessedUnit) exitPossession();
   battleRunning = false;
 
   const stats = loadStats();
@@ -2110,6 +2295,7 @@ function showCampaignEndScreen(victory) {
       nextBtn.onclick = () => advanceCampaignLevel();
       btns.appendChild(nextBtn);
     } else {
+      clearCampaignRun();
       const winMsg = document.createElement('div');
       winMsg.style.cssText = 'font-family:Cinzel,serif;color:#c9a84c;font-size:1.1rem;margin:8px 0;';
       winMsg.textContent = 'Campaign Complete!';
@@ -2143,6 +2329,7 @@ function showCampaignEndScreen(victory) {
 function advanceCampaignLevel() {
   cleanupBattleScene();
   campaignState.levelIndex++;
+  saveCampaignRun(campaignState);
   showScreen('deploy-screen');
   initCampaignDeployment();
 }
@@ -2158,6 +2345,7 @@ function retryCampaignLevel() {
 }
 
 function cleanupBattleScene() {
+  if (possessedUnit) exitPossession();
   for (const u of deployedUnits) scene.remove(u);
   for (const u of enemyUnits) scene.remove(u);
   for (const p of projectiles) scene.remove(p.mesh);
@@ -2204,7 +2392,7 @@ document.addEventListener('mousedown', (e) => {
     }
   }
 
-  if (currentScreen === 'battle-screen') {
+  if (currentScreen === 'battle-screen' && !possessedUnit) {
     if (e.button === 0) {
       // Left click: select unit
       const rect = renderer.domElement.getBoundingClientRect();
@@ -2227,10 +2415,12 @@ document.addEventListener('mousedown', (e) => {
         document.getElementById('ui-name').textContent = hitUnit.userData.def.name + ' (Blue)';
         document.getElementById('ui-hp').textContent = Math.ceil(hitUnit.userData.hp) + '/' + hitUnit.userData.maxHp;
         document.getElementById('ui-dmg').textContent = hitUnit.userData.damage;
+        document.getElementById('btn-possess').style.display = '';
       } else {
         selectedBattleUnit = null;
         commandTarget = null;
         document.getElementById('unit-info').style.display = 'none';
+        document.getElementById('btn-possess').style.display = 'none';
       }
     }
     if (e.button === 2 && selectedBattleUnit) {
@@ -2264,7 +2454,7 @@ document.addEventListener('mousedown', (e) => {
   }
 
   // Camera drag (right mouse button)
-  if (e.button === 2) {
+  if (e.button === 2 && !possessedUnit) {
     isDragging = true;
     lastMouseX = e.clientX;
     lastMouseY = e.clientY;
@@ -2272,6 +2462,11 @@ document.addEventListener('mousedown', (e) => {
 });
 
 document.addEventListener('mousemove', (e) => {
+  if (possessedUnit && document.pointerLockElement === renderer.domElement) {
+    possessYaw -= e.movementX * 0.003;
+    possessPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, possessPitch - e.movementY * 0.003));
+    return;
+  }
   if (isDragging) {
     const dx = e.clientX - lastMouseX;
     const dy = e.clientY - lastMouseY;
@@ -2287,6 +2482,7 @@ document.addEventListener('mouseup', (e) => {
 });
 
 document.addEventListener('wheel', (e) => {
+  if (possessedUnit) return;
   if (currentScreen === 'deploy-screen' || currentScreen === 'battle-screen') {
     cameraDistance = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, cameraDistance + e.deltaY * 0.02));
   }
@@ -2300,40 +2496,58 @@ document.addEventListener('contextmenu', (e) => {
 
 document.addEventListener('keydown', (e) => {
   const key = e.key.toLowerCase();
-  if (key === 'w') panKeys.w = true;
-  if (key === 'a') panKeys.a = true;
-  if (key === 's' && !e.ctrlKey) panKeys.s = true;
-  if (key === 'd') panKeys.d = true;
+  if (possessedUnit) {
+    if (key === 'w') possessKeys.w = true;
+    if (key === 'a') possessKeys.a = true;
+    if (key === 's' && !e.ctrlKey) possessKeys.s = true;
+    if (key === 'd') possessKeys.d = true;
+  } else {
+    if (key === 'w') panKeys.w = true;
+    if (key === 'a') panKeys.a = true;
+    if (key === 's' && !e.ctrlKey) panKeys.s = true;
+    if (key === 'd') panKeys.d = true;
+  }
 
   if (currentScreen === 'battle-screen') {
     if (key === ' ') { e.preventDefault(); togglePause(); }
     if (key === 'f') toggleSpeed();
+    if (key === 'p') togglePossession();
   }
 
   if (key === 'escape') {
-    if (currentScreen === 'deploy-screen') {
+    if (currentScreen === 'battle-screen' && possessedUnit) {
+      exitPossession();
+    } else if (currentScreen === 'deploy-screen') {
       if (isCampaignMode) {
         cleanupBattleScene();
         showLevelSelect();
       } else {
         showScreen('title-screen');
       }
+    } else if (currentScreen === 'level-screen') {
+      showScreen('title-screen');
     }
-    if (currentScreen === 'level-screen') showScreen('title-screen');
   }
 });
 
 document.addEventListener('keyup', (e) => {
   const key = e.key.toLowerCase();
-  if (key === 'w') panKeys.w = false;
-  if (key === 'a') panKeys.a = false;
-  if (key === 's') panKeys.s = false;
-  if (key === 'd') panKeys.d = false;
+  if (key === 'w') { panKeys.w = false; possessKeys.w = false; }
+  if (key === 'a') { panKeys.a = false; possessKeys.a = false; }
+  if (key === 's') { panKeys.s = false; possessKeys.s = false; }
+  if (key === 'd') { panKeys.d = false; possessKeys.d = false; }
+});
+
+document.addEventListener('pointerlockchange', () => {
+  if (possessedUnit && document.pointerLockElement !== renderer.domElement) {
+    exitPossession();
+  }
 });
 
 // Camera pan update
 setInterval(() => {
   if (currentScreen !== 'deploy-screen' && currentScreen !== 'battle-screen') return;
+  if (possessedUnit) return;
   const fwd = new THREE.Vector3(-Math.sin(cameraAngle), 0, -Math.cos(cameraAngle));
   const right = new THREE.Vector3(fwd.z, 0, -fwd.x);
   if (panKeys.w) cameraTarget.add(fwd.clone().multiplyScalar(CAM_PAN_SPEED));

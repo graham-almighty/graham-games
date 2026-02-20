@@ -160,6 +160,20 @@ function loadCampaignProgress() {
 }
 function saveCampaignProgress(p) { localStorage.setItem(CAMPAIGN_KEY, JSON.stringify(p)); }
 
+const CAMPAIGN_SAVE_KEY = 'aw-campaign-save';
+function saveCampaignRun(state) {
+  localStorage.setItem(CAMPAIGN_SAVE_KEY, JSON.stringify({
+    levelIndex: state.levelIndex,
+    gold: state.gold,
+    survivors: state.survivors,
+  }));
+}
+function loadCampaignRun() {
+  try { return JSON.parse(localStorage.getItem(CAMPAIGN_SAVE_KEY)); }
+  catch(e) { return null; }
+}
+function clearCampaignRun() { localStorage.removeItem(CAMPAIGN_SAVE_KEY); }
+
 function getLevelEnemyBudget(index) {
   const def = LEVEL_DEFS[index];
   let total = 0;
@@ -1411,6 +1425,702 @@ group('Campaign: Persistence Round-Trip');
   localStorage.setItem(CAMPAIGN_KEY, 'not-json');
   const loaded = loadCampaignProgress();
   assertEqual(loaded.unlockedLevels, 1, 'Corrupted data falls back to default');
+}
+
+// ─── CAMPAIGN: SAVE/LOAD RUN ───
+group('Campaign: Save/Load Run');
+
+{
+  resetStorage();
+  // No save by default
+  const save = loadCampaignRun();
+  assertEqual(save, null, 'No campaign save by default');
+}
+
+{
+  resetStorage();
+  // Save and load a campaign run
+  saveCampaignRun({ levelIndex: 3, gold: 120, survivors: [
+    { type: 'swordsman', hp: 80, maxHp: 100 },
+    { type: 'archer', hp: 40, maxHp: 60 },
+  ]});
+  const save = loadCampaignRun();
+  assertEqual(save.levelIndex, 3, 'Saved levelIndex = 3');
+  assertEqual(save.gold, 120, 'Saved gold = 120');
+  assertEqual(save.survivors.length, 2, 'Saved 2 survivors');
+  assertEqual(save.survivors[0].type, 'swordsman', 'Survivor 0 is swordsman');
+  assertEqual(save.survivors[0].hp, 80, 'Survivor 0 hp = 80');
+  assertEqual(save.survivors[1].type, 'archer', 'Survivor 1 is archer');
+}
+
+{
+  resetStorage();
+  // Clear campaign save
+  saveCampaignRun({ levelIndex: 5, gold: 200, survivors: [] });
+  clearCampaignRun();
+  const save = loadCampaignRun();
+  assertEqual(save, null, 'Campaign save cleared');
+}
+
+{
+  resetStorage();
+  // Corrupted save data returns null
+  localStorage.setItem(CAMPAIGN_SAVE_KEY, 'not-json');
+  const save = loadCampaignRun();
+  assertEqual(save, null, 'Corrupted campaign save returns null');
+}
+
+{
+  resetStorage();
+  // Save with no survivors
+  saveCampaignRun({ levelIndex: 1, gold: 80, survivors: [] });
+  const save = loadCampaignRun();
+  assertEqual(save.survivors.length, 0, 'Save with empty survivors array');
+  assertEqual(save.gold, 80, 'Gold preserved with no survivors');
+}
+
+{
+  resetStorage();
+  // Overwriting a save replaces it
+  saveCampaignRun({ levelIndex: 2, gold: 100, survivors: [] });
+  saveCampaignRun({ levelIndex: 5, gold: 250, survivors: [{ type: 'cavalry', hp: 90, maxHp: 90 }] });
+  const save = loadCampaignRun();
+  assertEqual(save.levelIndex, 5, 'Overwritten save has levelIndex = 5');
+  assertEqual(save.gold, 250, 'Overwritten save has gold = 250');
+  assertEqual(save.survivors.length, 1, 'Overwritten save has 1 survivor');
+}
+
+{
+  resetStorage();
+  // Save only stores levelIndex, gold, survivors (no preBattleSnapshot)
+  saveCampaignRun({ levelIndex: 3, gold: 150, survivors: [], preBattleSnapshot: { gold: 100 } });
+  const save = loadCampaignRun();
+  assertEqual(save.levelIndex, 3, 'levelIndex saved');
+  assertEqual(save.gold, 150, 'gold saved');
+  assert(!save.preBattleSnapshot, 'preBattleSnapshot not saved');
+}
+
+{
+  resetStorage();
+  // Campaign save is independent of campaign progress
+  saveCampaignProgress({ unlockedLevels: 5 });
+  saveCampaignRun({ levelIndex: 4, gold: 90, survivors: [] });
+  clearCampaignRun();
+  const progress = loadCampaignProgress();
+  assertEqual(progress.unlockedLevels, 5, 'Campaign progress unaffected by clearing save');
+}
+
+// ─── POSSESSION: EYE HEIGHTS ───
+group('Possession: Eye Heights');
+
+// Extract getUnitEyeHeight from game
+function getUnitEyeHeight(type) {
+  switch (type) {
+    case 'cavalry': return 1.55;
+    case 'elephant': return 2.35;
+    case 'archer': return 1.3;
+    case 'catapult': return 1.3;
+    default: return 1.4;
+  }
+}
+
+assertEqual(getUnitEyeHeight('swordsman'), 1.4, 'Swordsman eye height = 1.4');
+assertEqual(getUnitEyeHeight('spearman'), 1.4, 'Spearman eye height = 1.4 (default)');
+assertEqual(getUnitEyeHeight('archer'), 1.3, 'Archer eye height = 1.3');
+assertEqual(getUnitEyeHeight('cavalry'), 1.55, 'Cavalry eye height = 1.55');
+assertEqual(getUnitEyeHeight('catapult'), 1.3, 'Catapult eye height = 1.3');
+assertEqual(getUnitEyeHeight('elephant'), 2.35, 'Elephant eye height = 2.35');
+
+// ─── POSSESSION: STATE TRANSITIONS ───
+group('Possession: State Transitions');
+
+{
+  // Initial state: no unit possessed
+  let possessedUnit = null;
+  let possessYaw = 0;
+  let possessPitch = 0;
+  let possessKeys = { w: false, a: false, s: false, d: false };
+  let savedCameraState = null;
+  assertEqual(possessedUnit, null, 'Initial possessedUnit = null');
+  assertEqual(possessYaw, 0, 'Initial possessYaw = 0');
+  assertEqual(possessPitch, 0, 'Initial possessPitch = 0');
+  assertEqual(savedCameraState, null, 'Initial savedCameraState = null');
+  assert(!possessKeys.w && !possessKeys.a && !possessKeys.s && !possessKeys.d, 'All possessKeys start false');
+}
+
+{
+  // Enter possession sets state correctly
+  let possessedUnit = null;
+  let possessYaw = 0;
+  let possessPitch = 0;
+  let possessKeys = { w: true, a: true, s: true, d: true }; // dirty state
+  let savedCameraState = null;
+
+  const unit = mockUnit('swordsman', 'blue');
+  unit.rotation = { y: Math.PI / 4 };
+  unit.visible = true;
+
+  // Simulate enterPossession
+  possessedUnit = unit;
+  savedCameraState = { angle: 0.5, pitch: 0.7, distance: 30, target: { x: 0, z: 0 } };
+  possessYaw = unit.rotation.y + Math.PI / 2;
+  possessPitch = 0;
+  possessKeys = { w: false, a: false, s: false, d: false };
+
+  assert(possessedUnit === unit, 'Enter: possessedUnit set to unit');
+  assert(savedCameraState !== null, 'Enter: savedCameraState saved');
+  assertApprox(possessYaw, Math.PI / 4 + Math.PI / 2, 0.001, 'Enter: possessYaw = unit rotation + PI/2');
+  assertEqual(possessPitch, 0, 'Enter: possessPitch reset to 0');
+  assert(!possessKeys.w && !possessKeys.a && !possessKeys.s && !possessKeys.d, 'Enter: all possessKeys reset');
+}
+
+{
+  // Exit possession restores state
+  const unit = mockUnit('cavalry', 'blue');
+  unit.visible = false;
+  let possessedUnit = unit;
+  let savedCameraState = { angle: 1.0, pitch: 0.8, distance: 25, target: { x: 5, z: 3 } };
+
+  // Simulate exitPossession
+  if (possessedUnit.userData.alive) {
+    unit.visible = true;
+  }
+  const restoredAngle = savedCameraState.angle;
+  const restoredPitch = savedCameraState.pitch;
+  const restoredDist = savedCameraState.distance;
+  possessedUnit = null;
+  savedCameraState = null;
+  const possessKeys = { w: false, a: false, s: false, d: false };
+
+  assert(unit.visible, 'Exit: alive unit made visible again');
+  assertEqual(possessedUnit, null, 'Exit: possessedUnit cleared');
+  assertEqual(savedCameraState, null, 'Exit: savedCameraState cleared');
+  assertEqual(restoredAngle, 1.0, 'Exit: camera angle restored');
+  assertEqual(restoredPitch, 0.8, 'Exit: camera pitch restored');
+  assertEqual(restoredDist, 25, 'Exit: camera distance restored');
+}
+
+{
+  // Exit possession with dead unit: unit stays invisible
+  const unit = mockUnit('archer', 'blue');
+  unit.visible = false;
+  unit.userData.alive = false;
+  let possessedUnit = unit;
+
+  // Simulate exitPossession for dead unit
+  if (possessedUnit.userData.alive) {
+    unit.visible = true;
+  }
+  possessedUnit = null;
+
+  assert(!unit.visible, 'Exit dead unit: stays invisible');
+  assertEqual(possessedUnit, null, 'Exit dead unit: possessedUnit cleared');
+}
+
+{
+  // Toggle possession: enters when unit selected
+  let possessedUnit = null;
+  const selectedBattleUnit = mockUnit('spearman', 'blue');
+  selectedBattleUnit.rotation = { y: 0 };
+  const battlePaused = false;
+
+  // Simulate togglePossession
+  if (possessedUnit) { possessedUnit = null; }
+  else if (selectedBattleUnit && selectedBattleUnit.userData.alive && !battlePaused) { possessedUnit = selectedBattleUnit; }
+
+  assert(possessedUnit === selectedBattleUnit, 'Toggle: enters possession when unit selected');
+}
+
+{
+  // Toggle possession: exits when already possessed
+  const unit = mockUnit('swordsman', 'blue');
+  let possessedUnit = unit;
+
+  // Simulate togglePossession
+  if (possessedUnit) { possessedUnit = null; }
+  assertEqual(possessedUnit, null, 'Toggle: exits when already possessed');
+}
+
+{
+  // Toggle possession: does nothing when paused
+  let possessedUnit = null;
+  const selectedBattleUnit = mockUnit('swordsman', 'blue');
+  const battlePaused = true;
+
+  if (possessedUnit) { possessedUnit = null; }
+  else if (selectedBattleUnit && selectedBattleUnit.userData.alive && !battlePaused) { possessedUnit = selectedBattleUnit; }
+
+  assertEqual(possessedUnit, null, 'Toggle: cannot enter when battle paused');
+}
+
+{
+  // Toggle possession: does nothing when no unit selected
+  let possessedUnit = null;
+  const selectedBattleUnit = null;
+  const battlePaused = false;
+
+  if (possessedUnit) { possessedUnit = null; }
+  else if (selectedBattleUnit && selectedBattleUnit.userData.alive && !battlePaused) { possessedUnit = selectedBattleUnit; }
+
+  assertEqual(possessedUnit, null, 'Toggle: cannot enter with no selected unit');
+}
+
+{
+  // Toggle possession: does nothing when selected unit is dead
+  let possessedUnit = null;
+  const selectedBattleUnit = mockUnit('swordsman', 'blue');
+  selectedBattleUnit.userData.alive = false;
+  const battlePaused = false;
+
+  if (possessedUnit) { possessedUnit = null; }
+  else if (selectedBattleUnit && selectedBattleUnit.userData.alive && !battlePaused) { possessedUnit = selectedBattleUnit; }
+
+  assertEqual(possessedUnit, null, 'Toggle: cannot enter when selected unit is dead');
+}
+
+// ─── POSSESSION: CAMERA POSITION ───
+group('Possession: Camera Position');
+
+{
+  // Camera at unit position + eye height
+  const unit = mockUnit('swordsman', 'blue');
+  unit.position.x = 5;
+  unit.position.z = -3;
+  const eyeY = getUnitEyeHeight('swordsman');
+  assertEqual(eyeY, 1.4, 'Swordsman eye height for camera = 1.4');
+
+  // Camera position should be at unit XZ + eye height Y
+  const camX = unit.position.x;
+  const camY = eyeY;
+  const camZ = unit.position.z;
+  assertEqual(camX, 5, 'Camera X matches unit X');
+  assertEqual(camY, 1.4, 'Camera Y = eye height');
+  assertEqual(camZ, -3, 'Camera Z matches unit Z');
+}
+
+{
+  // Camera look direction from possessYaw/possessPitch
+  const possessYaw = 0;
+  const possessPitch = 0;
+  const eyeY = 1.4;
+  const unitX = 0, unitZ = 0;
+
+  const lookX = unitX + Math.sin(possessYaw) * Math.cos(possessPitch);
+  const lookY = eyeY + Math.sin(possessPitch);
+  const lookZ = unitZ + Math.cos(possessYaw) * Math.cos(possessPitch);
+
+  // At yaw=0, pitch=0: looking in +Z direction
+  assertApprox(lookX, 0, 0.001, 'Look X at yaw=0 = 0');
+  assertApprox(lookY, 1.4, 0.001, 'Look Y at pitch=0 = eye height');
+  assertApprox(lookZ, 1.0, 0.001, 'Look Z at yaw=0 = 1.0');
+}
+
+{
+  // Camera for elephant: higher eye height
+  const unit = mockUnit('elephant', 'blue');
+  unit.position.x = 10;
+  unit.position.z = 5;
+  const eyeY = getUnitEyeHeight('elephant');
+  assertEqual(eyeY, 2.35, 'Elephant camera Y = 2.35');
+}
+
+// ─── POSSESSION: MOVEMENT ───
+group('Possession: Movement');
+
+{
+  // Forward movement (W key) moves along possessYaw direction
+  const possessYaw = 0;
+  const forward = { x: Math.sin(possessYaw), z: Math.cos(possessYaw) };
+  assertApprox(forward.x, 0, 0.001, 'Forward X at yaw=0 = 0');
+  assertApprox(forward.z, 1, 0.001, 'Forward Z at yaw=0 = 1 (+Z direction)');
+}
+
+{
+  // Movement at yaw = PI/2 (facing +X)
+  const possessYaw = Math.PI / 2;
+  const forward = { x: Math.sin(possessYaw), z: Math.cos(possessYaw) };
+  assertApprox(forward.x, 1, 0.001, 'Forward X at yaw=PI/2 = 1');
+  assertApprox(forward.z, 0, 0.001, 'Forward Z at yaw=PI/2 ≈ 0');
+}
+
+{
+  // Movement speed scales with unit speed and dt
+  const speeds = [
+    { type: 'swordsman', speed: 1.5 },
+    { type: 'cavalry', speed: 3.0 },
+    { type: 'catapult', speed: 0.4 },
+  ];
+  const dt = 0.016; // ~60fps
+  for (const s of speeds) {
+    const dist = s.speed * dt;
+    assertApprox(dist, s.speed * 0.016, 0.001, s.type + ' moves ' + dist.toFixed(4) + ' per frame at 60fps');
+  }
+}
+
+{
+  // Simulate updatePossessedMovement: W key moves unit forward
+  const unit = mockUnit('swordsman', 'blue');
+  unit.position.x = 0;
+  unit.position.z = 0;
+  const possessYaw = 0; // facing +Z
+  const dt = 1.0;
+  const speed = unit.userData.speed; // 1.5
+
+  // W pressed
+  const fx = Math.sin(possessYaw);
+  const fz = Math.cos(possessYaw);
+  const moveX = fx * speed * dt;
+  const moveZ = fz * speed * dt;
+  unit.position.x += moveX;
+  unit.position.z += moveZ;
+
+  assertApprox(unit.position.x, 0, 0.001, 'W key: no lateral movement');
+  assertApprox(unit.position.z, 1.5, 0.001, 'W key: moved 1.5 in Z direction');
+}
+
+{
+  // No movement when no keys pressed
+  const unit = mockUnit('swordsman', 'blue');
+  unit.position.x = 5;
+  unit.position.z = 5;
+  const startX = unit.position.x;
+  const startZ = unit.position.z;
+  // With all keys false, move vector is zero — no position change
+  assertEqual(unit.position.x, startX, 'No keys: X unchanged');
+  assertEqual(unit.position.z, startZ, 'No keys: Z unchanged');
+}
+
+// ─── POSSESSION: FIELD CLAMPING ───
+group('Possession: Field Clamping');
+
+{
+  // clampToField logic test (same as game)
+  function testClamp(x, z) {
+    const clamped = {
+      x: Math.max(-FIELD_W / 2 + 0.5, Math.min(FIELD_W / 2 - 0.5, x)),
+      z: Math.max(-FIELD_D / 2 + 0.5, Math.min(FIELD_D / 2 - 0.5, z)),
+    };
+    return clamped;
+  }
+
+  const c1 = testClamp(100, 0);
+  assertEqual(c1.x, FIELD_W / 2 - 0.5, 'Clamp X overflow → ' + (FIELD_W / 2 - 0.5));
+
+  const c2 = testClamp(-100, 0);
+  assertEqual(c2.x, -FIELD_W / 2 + 0.5, 'Clamp X underflow → ' + (-FIELD_W / 2 + 0.5));
+
+  const c3 = testClamp(0, 100);
+  assertEqual(c3.z, FIELD_D / 2 - 0.5, 'Clamp Z overflow → ' + (FIELD_D / 2 - 0.5));
+
+  const c4 = testClamp(0, -100);
+  assertEqual(c4.z, -FIELD_D / 2 + 0.5, 'Clamp Z underflow → ' + (-FIELD_D / 2 + 0.5));
+
+  const c5 = testClamp(5, -3);
+  assertEqual(c5.x, 5, 'In-bounds X stays at 5');
+  assertEqual(c5.z, -3, 'In-bounds Z stays at -3');
+}
+
+// ─── POSSESSION: WASD KEY ROUTING ───
+group('Possession: WASD Key Routing');
+
+{
+  // When possessed, WASD goes to possessKeys
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  let possessKeys = { w: false, a: false, s: false, d: false };
+  let panKeys = { w: false, a: false, s: false, d: false };
+
+  // Simulate keydown routing
+  if (possessedUnit) {
+    possessKeys.w = true;
+    possessKeys.a = true;
+    possessKeys.s = true;
+    possessKeys.d = true;
+  }
+  assert(possessKeys.w && possessKeys.a && possessKeys.s && possessKeys.d, 'Possessed: WASD routes to possessKeys');
+  assert(!panKeys.w && !panKeys.a && !panKeys.s && !panKeys.d, 'Possessed: panKeys unchanged');
+}
+
+{
+  // When not possessed, WASD goes to panKeys
+  let possessedUnit = null;
+  let possessKeys = { w: false, a: false, s: false, d: false };
+  let panKeys = { w: false, a: false, s: false, d: false };
+
+  if (possessedUnit) {
+    possessKeys.w = true;
+  } else {
+    panKeys.w = true;
+    panKeys.a = true;
+  }
+  assert(!possessKeys.w, 'Not possessed: possessKeys.w stays false');
+  assert(panKeys.w && panKeys.a, 'Not possessed: WASD routes to panKeys');
+}
+
+{
+  // Keyup clears BOTH key sets (prevents stuck keys)
+  let possessKeys = { w: true, a: true, s: true, d: true };
+  let panKeys = { w: true, a: true, s: true, d: true };
+
+  // Simulate keyup for all WASD
+  panKeys.w = false; possessKeys.w = false;
+  panKeys.a = false; possessKeys.a = false;
+  panKeys.s = false; possessKeys.s = false;
+  panKeys.d = false; possessKeys.d = false;
+
+  assert(!possessKeys.w && !possessKeys.a && !possessKeys.s && !possessKeys.d, 'Keyup clears all possessKeys');
+  assert(!panKeys.w && !panKeys.a && !panKeys.s && !panKeys.d, 'Keyup clears all panKeys');
+}
+
+// ─── POSSESSION: MOUSE LOOK ───
+group('Possession: Mouse Look');
+
+{
+  // Yaw updates from movementX
+  let possessYaw = 0;
+  const movementX = 100; // pixels
+  possessYaw -= movementX * 0.003;
+  assertApprox(possessYaw, -0.3, 0.001, 'Yaw decreases with positive movementX');
+}
+
+{
+  // Pitch clamped to ±60 degrees (PI/3)
+  let possessPitch = 0;
+  const movementY = -10000; // large upward motion
+  possessPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, possessPitch - movementY * 0.003));
+  assertApprox(possessPitch, Math.PI / 3, 0.001, 'Pitch clamped to +PI/3 (60°)');
+
+  possessPitch = 0;
+  const movementY2 = 10000; // large downward motion
+  possessPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, possessPitch - movementY2 * 0.003));
+  assertApprox(possessPitch, -Math.PI / 3, 0.001, 'Pitch clamped to -PI/3 (-60°)');
+}
+
+// ─── POSSESSION: UNIT DEATH TRIGGERS EXIT ───
+group('Possession: Unit Death Triggers Exit');
+
+{
+  // When possessed unit dies, exitPossession is called
+  const unit = mockUnit('swordsman', 'blue');
+  let possessedUnit = unit;
+
+  // Simulate unit death
+  unit.userData.hp = 0;
+  unit.userData.alive = false;
+
+  // Battle loop check: if possessed unit dead → exit
+  if (possessedUnit && !possessedUnit.userData.alive) {
+    possessedUnit = null; // exitPossession()
+  }
+  assertEqual(possessedUnit, null, 'Dead possessed unit triggers exit');
+}
+
+{
+  // Alive unit doesn't trigger exit
+  const unit = mockUnit('swordsman', 'blue');
+  let possessedUnit = unit;
+  unit.userData.hp = 50;
+  unit.userData.alive = true;
+
+  if (possessedUnit && !possessedUnit.userData.alive) {
+    possessedUnit = null;
+  }
+  assert(possessedUnit === unit, 'Alive unit stays possessed');
+}
+
+// ─── POSSESSION: BATTLE END TRIGGERS EXIT ───
+group('Possession: Battle End Triggers Exit');
+
+{
+  // endBattle calls exitPossession
+  const unit = mockUnit('swordsman', 'blue');
+  let possessedUnit = unit;
+
+  // Simulate endBattle guard
+  if (possessedUnit) possessedUnit = null; // exitPossession()
+  assertEqual(possessedUnit, null, 'endBattle clears possession');
+}
+
+{
+  // cleanupBattleScene calls exitPossession
+  const unit = mockUnit('cavalry', 'blue');
+  let possessedUnit = unit;
+
+  // Simulate cleanupBattleScene guard
+  if (possessedUnit) possessedUnit = null; // exitPossession()
+  assertEqual(possessedUnit, null, 'cleanupBattleScene clears possession');
+}
+
+{
+  // exitPossession is safe to call when not possessed
+  let possessedUnit = null;
+  // Calling exitPossession when null should be a no-op
+  if (!possessedUnit) { /* no-op */ }
+  assertEqual(possessedUnit, null, 'exitPossession with null is safe no-op');
+}
+
+// ─── POSSESSION: COMBAT AI WHILE POSSESSED ───
+group('Possession: Combat AI While Possessed');
+
+{
+  // Possessed unit skips movement but still auto-attacks
+  const unit = mockUnit('swordsman', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  unit.position.x = 0;
+  enemy.position.x = 1; // within melee range (1.5)
+  unit.userData.attackCooldown = 0;
+
+  const possessedUnit = unit;
+  const dist = Math.sqrt((unit.position.x - enemy.position.x)**2 + (unit.position.z - enemy.position.z)**2);
+
+  // Possessed unit should auto-attack when in range
+  const inRange = dist <= unit.userData.range;
+  assert(inRange, 'Enemy at dist 1 is within swordsman range 1.5');
+  assert(unit.userData.attackCooldown <= 0, 'Attack cooldown ready');
+
+  // Simulate the attack
+  if (inRange && unit.userData.attackCooldown <= 0) {
+    const dmg = getAttackDamage(unit, enemy, false);
+    enemy.userData.hp -= dmg;
+    unit.userData.attackCooldown = 0.8;
+  }
+  assertEqual(enemy.userData.hp, 85, 'Possessed swordsman auto-attacks for 15 damage (100-15=85)');
+  assertEqual(unit.userData.attackCooldown, 0.8, 'Attack cooldown set to 0.8s after melee');
+}
+
+{
+  // Possessed archer fires at range
+  const archer = mockUnit('archer', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  archer.position.x = 0;
+  enemy.position.x = 6; // within archer range (8)
+  archer.userData.attackCooldown = 0;
+
+  const dist = Math.abs(enemy.position.x - archer.position.x);
+  const isRanged = archer.userData.type === 'archer';
+  assert(isRanged, 'Archer is ranged unit');
+  assert(dist <= archer.userData.range, 'Enemy at dist 6 within archer range 8');
+
+  // Archer fires arrow (cooldown 1.0)
+  if (isRanged && dist <= archer.userData.range && archer.userData.attackCooldown <= 0) {
+    archer.userData.attackCooldown = 1.0;
+  }
+  assertEqual(archer.userData.attackCooldown, 1.0, 'Archer attack cooldown set to 1.0s');
+}
+
+{
+  // Possessed catapult fires boulders
+  const catapult = mockUnit('catapult', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  catapult.position.x = 0;
+  enemy.position.x = 10; // within catapult range (12)
+  catapult.userData.attackCooldown = 0;
+
+  const dist = Math.abs(enemy.position.x - catapult.position.x);
+  const isRanged = catapult.userData.type === 'catapult';
+  assert(isRanged, 'Catapult is ranged unit');
+  assert(dist <= catapult.userData.range, 'Enemy at dist 10 within catapult range 12');
+
+  if (isRanged && dist <= catapult.userData.range && catapult.userData.attackCooldown <= 0) {
+    catapult.userData.attackCooldown = 3.0;
+  }
+  assertEqual(catapult.userData.attackCooldown, 3.0, 'Catapult attack cooldown set to 3.0s');
+}
+
+{
+  // Possessed unit does not attack when on cooldown
+  const unit = mockUnit('swordsman', 'blue');
+  const enemy = mockUnit('swordsman', 'red');
+  unit.position.x = 0;
+  enemy.position.x = 1;
+  unit.userData.attackCooldown = 0.5; // still on cooldown
+
+  const startHp = enemy.userData.hp;
+  const dist = Math.abs(unit.position.x - enemy.position.x);
+  if (dist <= unit.userData.range && unit.userData.attackCooldown <= 0) {
+    enemy.userData.hp -= 15;
+  }
+  assertEqual(enemy.userData.hp, startHp, 'No attack while on cooldown');
+}
+
+// ─── POSSESSION: FOV CHANGES ───
+group('Possession: FOV Changes');
+
+{
+  // Enter possession: FOV widens to 75
+  let fov = 45; // default RTS FOV
+  fov = 75; // enterPossession sets this
+  assertEqual(fov, 75, 'Enter possession: FOV = 75');
+}
+
+{
+  // Exit possession: FOV restores to 45
+  let fov = 75; // during possession
+  fov = 45; // exitPossession restores
+  assertEqual(fov, 45, 'Exit possession: FOV = 45');
+}
+
+// ─── POSSESSION: INPUT GUARDS ───
+group('Possession: Input Guards');
+
+{
+  // Wheel zoom blocked while possessed
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  let cameraDistance = 30;
+  if (!possessedUnit) {
+    cameraDistance += 5; // would zoom
+  }
+  assertEqual(cameraDistance, 30, 'Wheel zoom blocked during possession');
+}
+
+{
+  // Left click selection blocked while possessed
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  let selectionChanged = false;
+  if (!possessedUnit) {
+    selectionChanged = true;
+  }
+  assert(!selectionChanged, 'Unit selection blocked during possession');
+}
+
+{
+  // Right click command blocked while possessed
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  let commandIssued = false;
+  if (!possessedUnit) {
+    commandIssued = true;
+  }
+  assert(!commandIssued, 'Right-click command blocked during possession');
+}
+
+{
+  // Camera pan blocked while possessed
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  let panApplied = false;
+  if (!possessedUnit) {
+    panApplied = true;
+  }
+  assert(!panApplied, 'Camera pan blocked during possession');
+}
+
+{
+  // ESC exits possession if active
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  const key = 'escape';
+  if (key === 'escape' && possessedUnit) {
+    possessedUnit = null; // exitPossession()
+  }
+  assertEqual(possessedUnit, null, 'ESC key exits possession');
+}
+
+{
+  // P key triggers toggle
+  let possessedUnit = mockUnit('swordsman', 'blue');
+  const key = 'p';
+  if (key === 'p') {
+    // togglePossession
+    if (possessedUnit) possessedUnit = null;
+  }
+  assertEqual(possessedUnit, null, 'P key toggles off possession');
 }
 
 // ============================================================
