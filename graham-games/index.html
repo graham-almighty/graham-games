@@ -634,20 +634,28 @@ for (let i = 0; i < 30; i++) {
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1628" stroke="#4a9eff" stroke-width="2"/>
-          <!-- biplane silhouette -->
-          <path d="M12,28 L38,28" stroke="#4a9eff" stroke-width="1.5"/>
-          <path d="M12,22 L38,22" stroke="#4a9eff" stroke-width="1.5"/>
-          <path d="M22,22 L22,28" stroke="#4a9eff" stroke-width="1"/>
-          <path d="M28,22 L28,28" stroke="#4a9eff" stroke-width="1"/>
-          <!-- fuselage -->
-          <ellipse cx="25" cy="25" rx="10" ry="3" fill="#4a9eff" opacity="0.3"/>
-          <path d="M35,25 L40,22 L40,28 Z" fill="#4a9eff" opacity="0.4"/>
-          <!-- propeller -->
-          <line x1="15" y1="21" x2="15" y2="29" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
-          <!-- stars -->
-          <circle cx="12" cy="14" r="1" fill="#fff" opacity="0.4"/>
-          <circle cx="35" cy="12" r="0.8" fill="#fff" opacity="0.3"/>
-          <circle cx="20" cy="38" r="0.8" fill="#fff" opacity="0.3"/>
+          <!-- plane diving nose-down (~60°) -->
+          <g transform="translate(25,24) rotate(55)">
+            <!-- fuselage -->
+            <rect x="-12" y="-2" width="24" height="4" rx="2" fill="#4a9eff" opacity="0.4"/>
+            <!-- wings -->
+            <line x1="-3" y1="-2" x2="-3" y2="-10" stroke="#4a9eff" stroke-width="2" stroke-linecap="round"/>
+            <line x1="-3" y1="2" x2="-3" y2="10" stroke="#4a9eff" stroke-width="2" stroke-linecap="round"/>
+            <!-- tail fins -->
+            <line x1="-12" y1="-2" x2="-14" y2="-6" stroke="#4a9eff" stroke-width="1.5" stroke-linecap="round"/>
+            <line x1="-12" y1="2" x2="-14" y2="6" stroke="#4a9eff" stroke-width="1.5" stroke-linecap="round"/>
+            <!-- nose -->
+            <path d="M12,-2 L16,0 L12,2" fill="#4a9eff" opacity="0.6"/>
+            <!-- propeller blur -->
+            <circle cx="15" cy="0" r="3" fill="none" stroke="#fff" stroke-width="0.8" opacity="0.4"/>
+          </g>
+          <!-- smoke trail -->
+          <circle cx="12" cy="11" r="2.5" fill="#fff" opacity="0.15"/>
+          <circle cx="9" cy="9" r="2" fill="#fff" opacity="0.1"/>
+          <circle cx="14" cy="14" r="1.5" fill="#fff" opacity="0.12"/>
+          <!-- ground -->
+          <line x1="8" y1="42" x2="42" y2="42" stroke="#4a9eff" stroke-width="1" opacity="0.3"/>
+          <line x1="10" y1="43" x2="40" y2="43" stroke="#4a9eff" stroke-width="0.5" opacity="0.15"/>
         </svg>
       </div>
       <div class="game-info">
@@ -741,16 +749,20 @@ for (let i = 0; i < 30; i++) {
     <a href="../ancient-warfare/index.html" class="game-card ancient-warfare">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
-          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a1008" stroke="#cd7f32" stroke-width="2"/>
-          <!-- crossed swords -->
-          <line x1="14" y1="38" x2="36" y2="12" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
-          <line x1="36" y1="38" x2="14" y2="12" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
-          <!-- sword hilts -->
-          <line x1="12" y1="36" x2="18" y2="40" stroke="#cd7f32" stroke-width="1.5" stroke-linecap="round"/>
-          <line x1="34" y1="36" x2="40" y2="40" stroke="#cd7f32" stroke-width="1.5" stroke-linecap="round"/>
-          <!-- shield center -->
-          <circle cx="25" cy="25" r="6" fill="#cd7f32" opacity="0.2" stroke="#cd7f32" stroke-width="1"/>
-          <circle cx="25" cy="25" r="3" fill="#cd7f32" opacity="0.3"/>
+          <!-- shield shape -->
+          <path d="M25 5 L42 12 L42 26 C42 36 34 44 25 47 C16 44 8 36 8 26 L8 12 Z"
+                fill="#1a1008" stroke="#cd7f32" stroke-width="2" stroke-linejoin="round"/>
+          <!-- shield trim -->
+          <path d="M25 10 L38 15.5 L38 26 C38 33.5 32 40 25 42.5 C18 40 12 33.5 12 26 L12 15.5 Z"
+                fill="none" stroke="#cd7f32" stroke-width="1" opacity="0.5"/>
+          <!-- center cross emblem -->
+          <line x1="25" y1="16" x2="25" y2="36" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="24" x2="34" y2="24" stroke="#cd7f32" stroke-width="2" stroke-linecap="round"/>
+          <!-- corner rivets -->
+          <circle cx="25" cy="13" r="1.5" fill="#cd7f32" opacity="0.6"/>
+          <circle cx="14" cy="20" r="1.5" fill="#cd7f32" opacity="0.6"/>
+          <circle cx="36" cy="20" r="1.5" fill="#cd7f32" opacity="0.6"/>
+          <circle cx="25" cy="39" r="1.5" fill="#cd7f32" opacity="0.6"/>
         </svg>
       </div>
       <div class="game-info">
