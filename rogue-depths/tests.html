@@ -974,6 +974,266 @@ group('Weapon Generation');
   }
 }
 
+// ─── SAVE/LOAD SYSTEM ───
+group('Save/Load System');
+
+// Mock save/load functions (extracted from game)
+const RD_SAVE_KEY = 'rd-save';
+function hasSave() { return localStorage.getItem(RD_SAVE_KEY) !== null; }
+function deleteSave() { localStorage.removeItem(RD_SAVE_KEY); }
+
+function buildSaveData(player, dungeon, enemies, groundItems, revealed, projectiles, runStats) {
+  const liveEnemies = enemies.filter(e => !e.dead);
+  const savedProjectiles = projectiles.map(p => {
+    const obj = {};
+    for (const k in p) { if (k === 'hitEnemies') continue; obj[k] = p[k]; }
+    obj.hitEnemiesIndices = [...p.hitEnemies].map(e => liveEnemies.indexOf(e)).filter(i => i >= 0);
+    return obj;
+  });
+  const stairsRoomIndex = dungeon.rooms.indexOf(dungeon.stairsRoom);
+  const startRoomIndex = dungeon.rooms.indexOf(dungeon.startRoom);
+  const floorElapsed = 12.5; // mock elapsed
+  const savedPlayer = {};
+  for (const k in player) { if (k === 'floorStartTime') continue; savedPlayer[k] = player[k]; }
+  savedPlayer.weapon = { ...player.weapon };
+  savedPlayer.inventory = player.inventory.map(item => item ? { ...item } : null);
+  return {
+    version: 1, player: savedPlayer, floorElapsed,
+    dungeon: {
+      tiles: dungeon.tiles.map(row => [...row]),
+      rooms: dungeon.rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, cx: r.cx, cy: r.cy, type: r.type, revealed: r.revealed })),
+      stairsRoomIndex, startRoomIndex, isBossFloor: dungeon.isBossFloor, floor: dungeon.floor,
+    },
+    revealed: revealed.map(row => [...row]),
+    enemies: liveEnemies.map(e => { const obj = {}; for (const k in e) obj[k] = e[k]; if (e.chargeDir) obj.chargeDir = { ...e.chargeDir }; return obj; }),
+    groundItems: groundItems.map(gi => ({ x: gi.x, y: gi.y, item: { ...gi.item } })),
+    projectiles: savedProjectiles,
+    runStats: { ...runStats },
+  };
+}
+
+function restoreFromSave(save) {
+  const p = save.player;
+  const d = {
+    tiles: save.dungeon.tiles, rooms: save.dungeon.rooms,
+    stairsRoom: save.dungeon.rooms[save.dungeon.stairsRoomIndex],
+    startRoom: save.dungeon.rooms[save.dungeon.startRoomIndex],
+    isBossFloor: save.dungeon.isBossFloor, floor: save.dungeon.floor,
+  };
+  const projs = (save.projectiles || []).map(pr => {
+    pr.hitEnemies = new Set((pr.hitEnemiesIndices || []).map(i => save.enemies[i]).filter(Boolean));
+    delete pr.hitEnemiesIndices;
+    return pr;
+  });
+  return { player: p, dungeon: d, enemies: save.enemies, groundItems: save.groundItems, projectiles: projs, revealed: save.revealed, runStats: save.runStats, floorElapsed: save.floorElapsed };
+}
+
+localStorage.clear();
+
+{
+  assertEqual(hasSave(), false, 'hasSave() = false when no save exists');
+}
+
+{
+  localStorage.setItem(RD_SAVE_KEY, '{}');
+  assertEqual(hasSave(), true, 'hasSave() = true after writing save');
+  deleteSave();
+  assertEqual(hasSave(), false, 'hasSave() = false after deleteSave()');
+}
+
+{
+  // Full round-trip test
+  const mockPlayer = {
+    x: 150.5, y: 200.3, hp: 85, maxHp: 150, defense: 10, speed: 2.5,
+    className: 'warrior', color: '#4488ff', radius: 8,
+    weapon: { base: 'sword', rarity: 1, type: 'weapon', damage: 16, name: 'Uncommon Sword', color: '#44cc44' },
+    inventory: [
+      { type: 'potion', name: 'Small Potion', heal: 25, color: '#ff4444', icon: '\uD83E\uDDEA' },
+      null,
+      { type: 'armor', name: 'Armor +10%', defense: 10, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' },
+      null, null
+    ],
+    attackTimer: 0, invulnTimer: 0, gold: 123, floor: 3, kills: 15, bossKills: 0,
+    damageTakenThisBoss: 0, floorStartTime: 99999, facingAngle: 1.2,
+    swingTimer: 0, swingDuration: 0, swingDir: 1,
+  };
+
+  const mockDungeon = generateDungeon(3);
+  const mockRevealed = [];
+  for (let y = 0; y < MAP_H; y++) { mockRevealed[y] = []; for (let x = 0; x < MAP_W; x++) mockRevealed[y][x] = (x + y) % 3 === 0; }
+
+  const mockEnemies = [
+    { type: 'rat', x: 100, y: 100, hp: 10, maxHp: 15, damage: 5, speed: 2.5, radius: 6, color: '#8d6e63', ai: 'chase', atkCd: 1.0, atkTimer: 0.3, splits: false, range: 0, facingX: 1, facingY: 0, zigzagTimer: 0, zigzagDir: 1, isBoss: false },
+    { type: 'skeleton', x: 200, y: 200, hp: 25, maxHp: 30, damage: 10, speed: 1.5, radius: 8, color: '#e0e0e0', ai: 'chase', atkCd: 1.2, atkTimer: 0, splits: false, range: 0, facingX: 0, facingY: 1, zigzagTimer: 0, zigzagDir: -1, isBoss: false },
+    { type: 'rat', x: 0, y: 0, hp: 0, maxHp: 15, damage: 5, speed: 2.5, radius: 6, color: '#8d6e63', ai: 'chase', atkCd: 1.0, atkTimer: 0, splits: false, range: 0, facingX: 0, facingY: 0, zigzagTimer: 0, zigzagDir: 1, isBoss: false, dead: true },
+  ];
+
+  const mockGroundItems = [
+    { x: 120, y: 130, item: { type: 'weapon', base: 'axe', rarity: 2, damage: 32, name: 'Rare Axe', color: '#4488ff' } },
+    { x: 250, y: 260, item: { type: 'gold', name: '25 Gold', amount: 25, color: '#c9a84c', icon: '\u2B50' } },
+  ];
+
+  const mockProjectiles = [
+    { x: 50, y: 50, vx: 100, vy: 0, damage: 10, range: 256, traveled: 30, radius: 4, color: '#886633', owner: 'player', pierce: false, hitEnemies: new Set([mockEnemies[0]]) },
+  ];
+
+  const mockRunStats = { startTime: Date.now() - 60000 };
+
+  const saveData = buildSaveData(mockPlayer, mockDungeon, mockEnemies, mockGroundItems, mockRevealed, mockProjectiles, mockRunStats);
+
+  // Write and read back
+  localStorage.setItem(RD_SAVE_KEY, JSON.stringify(saveData));
+  const loaded = JSON.parse(localStorage.getItem(RD_SAVE_KEY));
+  const restored = restoreFromSave(loaded);
+
+  // Player round-trip
+  assertEqual(restored.player.x, 150.5, 'Player x round-trips');
+  assertEqual(restored.player.y, 200.3, 'Player y round-trips');
+  assertEqual(restored.player.hp, 85, 'Player hp round-trips');
+  assertEqual(restored.player.maxHp, 150, 'Player maxHp round-trips');
+  assertEqual(restored.player.defense, 10, 'Player defense round-trips');
+  assertEqual(restored.player.className, 'warrior', 'Player className round-trips');
+  assertEqual(restored.player.gold, 123, 'Player gold round-trips');
+  assertEqual(restored.player.floor, 3, 'Player floor round-trips');
+  assertEqual(restored.player.kills, 15, 'Player kills round-trips');
+  assertApprox(restored.player.facingAngle, 1.2, 0.001, 'Player facingAngle round-trips');
+
+  // Weapon round-trip
+  assertEqual(restored.player.weapon.base, 'sword', 'Weapon base round-trips');
+  assertEqual(restored.player.weapon.rarity, 1, 'Weapon rarity round-trips');
+  assertEqual(restored.player.weapon.damage, 16, 'Weapon damage round-trips');
+  assertEqual(restored.player.weapon.name, 'Uncommon Sword', 'Weapon name round-trips');
+
+  // Inventory round-trip
+  assert(restored.player.inventory[0] !== null, 'Inventory slot 0 has item');
+  assertEqual(restored.player.inventory[0].type, 'potion', 'Inventory potion type round-trips');
+  assertEqual(restored.player.inventory[0].heal, 25, 'Inventory potion heal round-trips');
+  assertEqual(restored.player.inventory[1], null, 'Inventory slot 1 is null');
+  assertEqual(restored.player.inventory[2].type, 'armor', 'Inventory armor type round-trips');
+  assertEqual(restored.player.inventory[3], null, 'Inventory slot 3 is null');
+
+  // Dungeon round-trip
+  assertEqual(restored.dungeon.tiles.length, MAP_H, 'Dungeon tiles height round-trips');
+  assertEqual(restored.dungeon.tiles[0].length, MAP_W, 'Dungeon tiles width round-trips');
+  assertEqual(restored.dungeon.floor, 3, 'Dungeon floor round-trips');
+  assertEqual(restored.dungeon.isBossFloor, false, 'Dungeon isBossFloor round-trips');
+
+  // Tiles match exactly
+  let tilesMatch = true;
+  for (let y = 0; y < MAP_H && tilesMatch; y++)
+    for (let x = 0; x < MAP_W && tilesMatch; x++)
+      if (restored.dungeon.tiles[y][x] !== mockDungeon.tiles[y][x]) tilesMatch = false;
+  assert(tilesMatch, 'Dungeon tiles match exactly');
+
+  // Rooms round-trip
+  assertEqual(restored.dungeon.rooms.length, mockDungeon.rooms.length, 'Room count matches');
+  for (let i = 0; i < mockDungeon.rooms.length; i++) {
+    assertEqual(restored.dungeon.rooms[i].x, mockDungeon.rooms[i].x, 'Room ' + i + ' x matches');
+    assertEqual(restored.dungeon.rooms[i].type, mockDungeon.rooms[i].type, 'Room ' + i + ' type matches');
+    assertEqual(restored.dungeon.rooms[i].revealed, mockDungeon.rooms[i].revealed, 'Room ' + i + ' revealed matches');
+  }
+
+  // stairsRoom/startRoom references
+  const stairsIdx = mockDungeon.rooms.indexOf(mockDungeon.stairsRoom);
+  assertEqual(restored.dungeon.stairsRoom, restored.dungeon.rooms[stairsIdx], 'stairsRoom is correct room reference');
+  const startIdx = mockDungeon.rooms.indexOf(mockDungeon.startRoom);
+  assertEqual(restored.dungeon.startRoom, restored.dungeon.rooms[startIdx], 'startRoom is correct room reference');
+  assertEqual(restored.dungeon.stairsRoom.type, 'stairs', 'stairsRoom has stairs type');
+  assertEqual(restored.dungeon.startRoom.type, 'start', 'startRoom has start type');
+
+  // Fog of war round-trip
+  let fogMatch = true;
+  for (let y = 0; y < MAP_H && fogMatch; y++)
+    for (let x = 0; x < MAP_W && fogMatch; x++)
+      if (restored.revealed[y][x] !== mockRevealed[y][x]) fogMatch = false;
+  assert(fogMatch, 'Fog of war round-trips exactly');
+
+  // Enemies: dead filtered out
+  assertEqual(restored.enemies.length, 2, 'Dead enemies filtered (3 → 2)');
+  assertEqual(restored.enemies[0].type, 'rat', 'Enemy 0 type round-trips');
+  assertEqual(restored.enemies[0].hp, 10, 'Enemy 0 hp round-trips');
+  assertApprox(restored.enemies[0].atkTimer, 0.3, 0.01, 'Enemy 0 atkTimer round-trips');
+  assertEqual(restored.enemies[1].type, 'skeleton', 'Enemy 1 type round-trips');
+  assertEqual(restored.enemies[1].zigzagDir, -1, 'Enemy 1 zigzagDir round-trips');
+
+  // Ground items round-trip
+  assertEqual(restored.groundItems.length, 2, 'Ground items count round-trips');
+  assertEqual(restored.groundItems[0].item.base, 'axe', 'Ground item 0 weapon base round-trips');
+  assertEqual(restored.groundItems[0].item.damage, 32, 'Ground item 0 damage round-trips');
+  assertEqual(restored.groundItems[1].item.type, 'gold', 'Ground item 1 gold type round-trips');
+  assertEqual(restored.groundItems[1].item.amount, 25, 'Ground item 1 gold amount round-trips');
+
+  // Projectiles hitEnemies Set round-trip
+  assertEqual(restored.projectiles.length, 1, 'Projectile count round-trips');
+  assert(restored.projectiles[0].hitEnemies instanceof Set, 'hitEnemies restored as Set');
+  assertEqual(restored.projectiles[0].hitEnemies.size, 1, 'hitEnemies has 1 entry');
+  assert(restored.projectiles[0].hitEnemies.has(restored.enemies[0]), 'hitEnemies contains correct enemy');
+  assertEqual(restored.projectiles[0].damage, 10, 'Projectile damage round-trips');
+
+  // floorElapsed round-trip
+  assertEqual(loaded.floorElapsed, 12.5, 'floorElapsed saved correctly');
+
+  // runStats round-trip
+  assertEqual(restored.runStats.startTime, mockRunStats.startTime, 'runStats.startTime round-trips');
+
+  // Save version
+  assertEqual(loaded.version, 1, 'Save has version: 1');
+
+  localStorage.clear();
+}
+
+{
+  // Boss enemy round-trip
+  const mockDungeon2 = generateDungeon(5);
+  const bossEnemy = {
+    type: 'spiderQueen', x: 300, y: 300, hp: 350, maxHp: 400,
+    damage: 15, speed: 1.0, radius: 16, color: '#442244',
+    ai: 'boss', ability: 'spawn', interval: 4, abilityTimer: 2.5,
+    atkCd: 1.5, atkTimer: 0.7, isBoss: true, name: 'Spider Queen',
+    gold: 50, facingX: 0, facingY: 1, splits: false, range: 0,
+    zigzagTimer: 0, zigzagDir: 1, charging: false, chargeTimer: 0,
+    chargeDir: { x: 0, y: 0 }, breathActive: false, breathTimer: 0,
+    breathAngle: 0, summonCount: 2,
+  };
+  const mockRev2 = [];
+  for (let y = 0; y < MAP_H; y++) { mockRev2[y] = []; for (let x = 0; x < MAP_W; x++) mockRev2[y][x] = false; }
+
+  const mockPlayer2 = {
+    x: 100, y: 100, hp: 80, maxHp: 100, defense: 0, speed: 3.0,
+    className: 'archer', color: '#44bb44', radius: 8,
+    weapon: { base: 'bow', rarity: 0, type: 'weapon', damage: 10, name: 'Common Bow', color: '#886633' },
+    inventory: [null, null, null, null, null],
+    attackTimer: 0, invulnTimer: 0, gold: 50, floor: 5, kills: 30, bossKills: 0,
+    damageTakenThisBoss: 0, floorStartTime: 0, facingAngle: 0,
+    swingTimer: 0, swingDuration: 0, swingDir: 1,
+  };
+
+  const save2 = buildSaveData(mockPlayer2, mockDungeon2, [bossEnemy], [], mockRev2, [], { startTime: Date.now() });
+  localStorage.setItem(RD_SAVE_KEY, JSON.stringify(save2));
+  const loaded2 = JSON.parse(localStorage.getItem(RD_SAVE_KEY));
+  const restored2 = restoreFromSave(loaded2);
+
+  assertEqual(restored2.enemies.length, 1, 'Boss saved');
+  assertEqual(restored2.enemies[0].type, 'spiderQueen', 'Boss type round-trips');
+  assertEqual(restored2.enemies[0].hp, 350, 'Boss hp round-trips');
+  assertEqual(restored2.enemies[0].isBoss, true, 'Boss isBoss round-trips');
+  assertEqual(restored2.enemies[0].ability, 'spawn', 'Boss ability round-trips');
+  assertApprox(restored2.enemies[0].abilityTimer, 2.5, 0.01, 'Boss abilityTimer round-trips');
+  assertEqual(restored2.enemies[0].summonCount, 2, 'Boss summonCount round-trips');
+  assertEqual(restored2.enemies[0].name, 'Spider Queen', 'Boss name round-trips');
+  assertEqual(restored2.enemies[0].gold, 50, 'Boss gold round-trips');
+
+  localStorage.clear();
+}
+
+{
+  // Save deleted on death/victory/new game (simulated)
+  localStorage.setItem(RD_SAVE_KEY, '{"test":true}');
+  assertEqual(hasSave(), true, 'Save exists before delete');
+  deleteSave(); // simulates what showDeathScreen/showVictoryScreen/startGame calls
+  assertEqual(hasSave(), false, 'Save deleted (simulating death/victory/new game)');
+}
+
 // ============================================================
 showSummary();
 </script>

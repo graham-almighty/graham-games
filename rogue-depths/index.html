@@ -160,6 +160,7 @@
   <div class="title-logo">ROGUE DEPTHS</div>
   <div class="title-sub">A DUNGEON CRAWLER ROGUELIKE</div>
   <button class="title-btn" onclick="showScreen('class-screen')">PLAY</button>
+  <button class="title-btn" id="continue-btn" onclick="continueSave()" style="display:none">CONTINUE</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
 </div>
 
@@ -192,6 +193,7 @@
     <div class="pause-overlay" id="pause-overlay">
       <div class="pause-title">PAUSED</div>
       <button class="pause-btn" onclick="togglePause()">RESUME</button>
+      <button class="pause-btn" onclick="saveAndQuit()">SAVE & QUIT</button>
       <button class="pause-btn" onclick="quitToTitle()">QUIT</button>
     </div>
   </div>
@@ -1260,6 +1262,7 @@ function canMove(x, y, r) {
 // GAME FLOW
 // ═══════════════════════════════════════════
 function startGame(className) {
+  deleteSave();
   initPlayer(className);
   enterFloor(1);
   showScreen('game-screen');
@@ -1405,6 +1408,7 @@ function openChest(tx, ty) {
 }
 
 function showDeathScreen() {
+  deleteSave();
   cancelAnimationFrame(animFrame);
   const el = document.getElementById('death-stats');
   el.innerHTML =
@@ -1416,6 +1420,7 @@ function showDeathScreen() {
 }
 
 function showVictoryScreen() {
+  deleteSave();
   cancelAnimationFrame(animFrame);
   const el = document.getElementById('victory-stats');
   el.innerHTML =
@@ -1444,6 +1449,161 @@ function quitToTitle() {
   cancelAnimationFrame(animFrame);
   document.getElementById('pause-overlay').classList.remove('active');
   showScreen('title-screen');
+  updateContinueButton();
+}
+
+// ═══════════════════════════════════════════
+// SAVE / LOAD
+// ═══════════════════════════════════════════
+const RD_SAVE_KEY = 'rd-save';
+
+function hasSave() {
+  return localStorage.getItem(RD_SAVE_KEY) !== null;
+}
+
+function deleteSave() {
+  localStorage.removeItem(RD_SAVE_KEY);
+}
+
+function buildSaveData() {
+  // Filter out dead enemies
+  const liveEnemies = enemies.filter(e => !e.dead);
+
+  // Convert projectile hitEnemies Sets to index arrays
+  const savedProjectiles = projectiles.map(p => {
+    const obj = {};
+    for (const k in p) {
+      if (k === 'hitEnemies') continue;
+      obj[k] = p[k];
+    }
+    obj.hitEnemiesIndices = [...p.hitEnemies].map(e => liveEnemies.indexOf(e)).filter(i => i >= 0);
+    return obj;
+  });
+
+  // Save stairsRoom/startRoom as indices
+  const stairsRoomIndex = dungeon.rooms.indexOf(dungeon.stairsRoom);
+  const startRoomIndex = dungeon.rooms.indexOf(dungeon.startRoom);
+
+  // Rebase floorStartTime to elapsed seconds
+  const floorElapsed = (performance.now() - player.floorStartTime) / 1000;
+
+  // Clone player without floorStartTime (rebase on load)
+  const savedPlayer = {};
+  for (const k in player) {
+    if (k === 'floorStartTime') continue;
+    savedPlayer[k] = player[k];
+  }
+  // Deep copy weapon and inventory
+  savedPlayer.weapon = { ...player.weapon };
+  savedPlayer.inventory = player.inventory.map(item => item ? { ...item } : null);
+
+  return {
+    version: 1,
+    player: savedPlayer,
+    floorElapsed,
+    dungeon: {
+      tiles: dungeon.tiles.map(row => [...row]),
+      rooms: dungeon.rooms.map(r => ({ x: r.x, y: r.y, w: r.w, h: r.h, cx: r.cx, cy: r.cy, type: r.type, revealed: r.revealed })),
+      stairsRoomIndex,
+      startRoomIndex,
+      isBossFloor: dungeon.isBossFloor,
+      floor: dungeon.floor,
+    },
+    revealed: revealed.map(row => [...row]),
+    enemies: liveEnemies.map(e => {
+      const obj = {};
+      for (const k in e) obj[k] = e[k];
+      // Deep copy chargeDir if present
+      if (e.chargeDir) obj.chargeDir = { ...e.chargeDir };
+      return obj;
+    }),
+    groundItems: groundItems.map(gi => ({
+      x: gi.x, y: gi.y,
+      item: { ...gi.item },
+    })),
+    projectiles: savedProjectiles,
+    runStats: { ...runStats },
+  };
+}
+
+function writeSave() {
+  if (gameState !== 'playing' && gameState !== 'paused') return;
+  const data = buildSaveData();
+  localStorage.setItem(RD_SAVE_KEY, JSON.stringify(data));
+}
+
+function loadSave() {
+  const raw = localStorage.getItem(RD_SAVE_KEY);
+  if (!raw) return false;
+
+  const save = JSON.parse(raw);
+
+  // Restore player
+  player = save.player;
+  player.floorStartTime = performance.now() - save.floorElapsed * 1000;
+
+  // Restore dungeon
+  dungeon = {
+    tiles: save.dungeon.tiles,
+    rooms: save.dungeon.rooms,
+    stairsRoom: save.dungeon.rooms[save.dungeon.stairsRoomIndex],
+    startRoom: save.dungeon.rooms[save.dungeon.startRoomIndex],
+    isBossFloor: save.dungeon.isBossFloor,
+    floor: save.dungeon.floor,
+  };
+
+  // Restore fog of war
+  revealed = save.revealed;
+
+  // Restore enemies
+  enemies = save.enemies;
+
+  // Restore ground items
+  groundItems = save.groundItems;
+
+  // Restore projectiles (convert hitEnemiesIndices back to Sets)
+  projectiles = (save.projectiles || []).map(p => {
+    p.hitEnemies = new Set((p.hitEnemiesIndices || []).map(i => enemies[i]).filter(Boolean));
+    delete p.hitEnemiesIndices;
+    return p;
+  });
+
+  // Clear transient state
+  effects = [];
+
+  // Restore run stats
+  runStats = save.runStats || { startTime: Date.now() };
+
+  // Init canvas and start
+  initCanvas();
+  showScreen('game-screen');
+  gameState = 'playing';
+  lastTime = performance.now();
+  updateHUD();
+  animFrame = requestAnimationFrame(gameLoop);
+  return true;
+}
+
+function saveAndQuit() {
+  // Unpause first so buildSaveData can work
+  const wasPaused = gameState === 'paused';
+  if (wasPaused) gameState = 'playing';
+  writeSave();
+  gameState = 'title';
+  cancelAnimationFrame(animFrame);
+  document.getElementById('pause-overlay').classList.remove('active');
+  showScreen('title-screen');
+  updateContinueButton();
+}
+
+function continueSave() {
+  if (!hasSave()) return;
+  loadSave();
+}
+
+function updateContinueButton() {
+  const btn = document.getElementById('continue-btn');
+  if (btn) btn.style.display = hasSave() ? 'block' : 'none';
 }
 
 // ═══════════════════════════════════════════
@@ -2283,6 +2443,7 @@ document.addEventListener('contextmenu', e => {
 // INIT
 // ═══════════════════════════════════════════
 showScreen('title-screen');
+updateContinueButton();
 </script>
 
 </body>
