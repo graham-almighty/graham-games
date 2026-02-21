@@ -24,7 +24,7 @@
 
 ```
 /home/graham/src/
-  graham-games/index.html     — Main launcher (dark/gold theme, G Bux system)
+  index.html                    — Main launcher (dark/gold theme, G Bux system)
   mini-life/game.html          — 3D first-person life simulator (Three.js r128)
   hurgvibbit/index.html        — Punk/metal patty-cake rhythm game
   tower-defense/index.html     — 2D canvas tower defense game
@@ -59,11 +59,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 
 **Achievements must be registered in TWO places:**
 1. The game file itself (e.g., `ML_ACH` in mini-life, `HURV_ACH` in hurgvibbit)
-2. The launcher file (`graham-games/index.html`, achievement arrays starting ~line 723)
+2. The launcher file (`index.html`, achievement arrays starting ~line 723)
 
 ---
 
-## Launcher — `graham-games/index.html`
+## Launcher — `index.html`
 
 - Dark/gold serpent double-G SVG logo
 - 6 game cards with color-coded borders
@@ -481,6 +481,7 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 - **HUD:** Glass-blur panels (#00000088 + backdrop-filter: blur(4px))
 - **Toolbar:** 42px fixed height, gradient background, GG serpent logo, EXIT TO LAUNCHER button
 - **Toast notifications:** Achievement unlock toasts with queue system
+- **Mobile responsive:** All pages must include `<meta name="viewport" ...>` and a `@media (max-width: 600px)` breakpoint. Scale down logos/titles, allow natural scrolling, adjust padding/font sizes for small screens. Test that pages are usable on phone-sized viewports.
 
 ---
 

@@ -48,7 +48,7 @@ All games share a cross-game achievement and currency system:
 
 ## How to Play
 
-1. Open `graham-games/index.html` in a browser — this is the launcher
+1. Open `index.html` in a browser — this is the launcher
 2. Click any game card to play
 3. Earn G Bux by completing achievements
 4. Spend G Bux in the shop to unlock content across games
@@ -58,7 +58,7 @@ All files are self-contained HTML. No server, no install, no build step needed. 
 ## File Structure
 
 ```
-graham-games/index.html   — Launcher with G Bux system
+index.html                 — Launcher with G Bux system
 mini-life/game.html        — Mini Life (Three.js, ~6000 lines)
 hurgvibbit/index.html      — Hurgvibbit rhythm game
 flying-ace/index.html      — Flying Ace iframe wrapper
