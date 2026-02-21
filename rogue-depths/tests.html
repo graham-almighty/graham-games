@@ -126,13 +126,13 @@ const CLASS_DEFS = {
   warrior: { name: 'Warrior', hp: 150, speed: 2.5, color: '#4488ff', startWeapon: 'sword', desc: 'High HP, melee specialist', icon: '\u2694\uFE0F' },
   archer:  { name: 'Archer',  hp: 100, speed: 3.0, color: '#44bb44', startWeapon: 'bow',   desc: 'Ranged attacks, moderate HP', icon: '\uD83C\uDFF9' },
   mage:    { name: 'Mage',    hp: 80,  speed: 2.8, color: '#aa44ff', startWeapon: 'staff', desc: 'Magic projectiles, low HP', icon: '\uD83E\uDE84' },
-  rogue:   { name: 'Rogue',   hp: 90,  speed: 3.5, color: '#ff8844', startWeapon: 'dagger', desc: 'Fast, backstab bonus', icon: '\uD83D\uDDE1\uFE0F', shopUnlock: 'rd_shadow_class' },
+  rogue:   { name: 'Rogue',   hp: 90,  speed: 3.5, color: '#ff8844', startWeapon: 'scythe', desc: 'Fast, backstab bonus', icon: '\uD83D\uDDE1\uFE0F', shopUnlock: 'rd_shadow_class' },
 };
 
 const WEAPON_DEFS = {
   sword:  { name: 'Sword',  type: 'melee',  baseDmg: 12, range: 1.5, cooldown: 0.5,  arc: 90,  color: '#cccccc' },
   axe:    { name: 'Axe',    type: 'melee',  baseDmg: 20, range: 1.3, cooldown: 0.9,  arc: 120, color: '#888888' },
-  dagger: { name: 'Dagger', type: 'melee',  baseDmg: 7,  range: 1.0, cooldown: 0.25, arc: 60,  color: '#aaaacc' },
+  scythe: { name: 'Scythe', type: 'melee',  baseDmg: 9,  range: 2.8, cooldown: 0.4,  arc: 110, color: '#b0b0cc' },
   spear:  { name: 'Spear',  type: 'melee',  baseDmg: 14, range: 2.0, cooldown: 0.65, arc: 45,  color: '#bbaa77' },
   bow:    { name: 'Bow',    type: 'ranged', baseDmg: 10, range: 8,   cooldown: 0.6,  projSpeed: 8, color: '#886633' },
   staff:  { name: 'Staff',  type: 'ranged', baseDmg: 14, range: 7,   cooldown: 0.8,  projSpeed: 6, color: '#9944ff', pierce: true },
@@ -436,7 +436,7 @@ group('Weapon Definitions');
 {
   assertEqual(WEAPON_DEFS.sword.baseDmg, 12, 'Sword baseDmg = 12');
   assertEqual(WEAPON_DEFS.axe.baseDmg, 20, 'Axe baseDmg = 20');
-  assertEqual(WEAPON_DEFS.dagger.baseDmg, 7, 'Dagger baseDmg = 7');
+  assertEqual(WEAPON_DEFS.scythe.baseDmg, 9, 'Scythe baseDmg = 9');
   assertEqual(WEAPON_DEFS.bow.range, 8, 'Bow range = 8');
   assertEqual(WEAPON_DEFS.staff.pierce, true, 'Staff has pierce');
 }
