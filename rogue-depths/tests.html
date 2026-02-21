@@ -111,8 +111,8 @@ const RD_ACH = {
 function ggTry(id) { const a = RD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 
 const TILE = 32;
-const MAP_W = 50;
-const MAP_H = 50;
+const MAP_W = 30;
+const MAP_H = 30;
 const MAX_FLOORS = 15;
 const BOSS_FLOORS = [5, 10, 15];
 
@@ -228,12 +228,12 @@ function generateDungeon(floor) {
     for (let x = 0; x < MAP_W; x++) tiles[y][x] = TILE_WALL;
   }
   const rooms = [];
-  const numRooms = 5 + Math.min(Math.floor(floor * 0.3), 5);
+  const numRooms = 4 + Math.min(Math.floor(floor * 0.2), 3);
   let attempts = 0;
   while (rooms.length < numRooms && attempts < 200) {
     attempts++;
-    const w = 5 + Math.floor(Math.random() * 7);
-    const h = 5 + Math.floor(Math.random() * 5);
+    const w = 4 + Math.floor(Math.random() * 5);
+    const h = 4 + Math.floor(Math.random() * 4);
     const rx = 1 + Math.floor(Math.random() * (MAP_W - w - 2));
     const ry = 1 + Math.floor(Math.random() * (MAP_H - h - 2));
     let overlap = false;
@@ -570,14 +570,14 @@ group('Dungeon Generation');
 
 {
   const d = generateDungeon(1);
-  assertEqual(d.tiles.length, MAP_H, 'Map height = 50');
-  assertEqual(d.tiles[0].length, MAP_W, 'Map width = 50');
+  assertEqual(d.tiles.length, MAP_H, 'Map height = 30');
+  assertEqual(d.tiles[0].length, MAP_W, 'Map width = 30');
 }
 
 {
   const d = generateDungeon(1);
   assert(d.rooms.length >= 3, 'At least 3 rooms generated (got ' + d.rooms.length + ')');
-  assert(d.rooms.length <= 15, 'No more than 15 rooms (got ' + d.rooms.length + ')');
+  assert(d.rooms.length <= 10, 'No more than 10 rooms (got ' + d.rooms.length + ')');
 }
 
 {
@@ -856,8 +856,8 @@ group('Tile Constants');
 
 {
   assertEqual(TILE, 32, 'Tile size = 32px');
-  assertEqual(MAP_W, 50, 'Map width = 50 tiles');
-  assertEqual(MAP_H, 50, 'Map height = 50 tiles');
+  assertEqual(MAP_W, 30, 'Map width = 30 tiles');
+  assertEqual(MAP_H, 30, 'Map height = 30 tiles');
   assertEqual(MAX_FLOORS, 15, 'Max floors = 15');
 }
 
