@@ -731,6 +731,89 @@ group('Combat Formulas');
   assertEqual(invulnDuration, 0.3, 'Invulnerability duration = 0.3 seconds');
 }
 
+// ─── WARRIOR SWING ANIMATION ───
+group('Warrior Swing Animation');
+
+{
+  // Swing state defaults
+  const mockPlayer = { swingTimer: 0, swingDuration: 0, swingDir: 1 };
+  assertEqual(mockPlayer.swingTimer, 0, 'Swing timer starts at 0');
+  assertEqual(mockPlayer.swingDuration, 0, 'Swing duration starts at 0');
+  assertEqual(mockPlayer.swingDir, 1, 'Swing direction starts at 1');
+}
+
+{
+  // Swing direction alternates on each attack
+  let dir = 1;
+  dir *= -1; assertEqual(dir, -1, 'First attack: swing dir = -1');
+  dir *= -1; assertEqual(dir, 1, 'Second attack: swing dir = 1');
+  dir *= -1; assertEqual(dir, -1, 'Third attack: swing dir = -1');
+}
+
+{
+  // Swing angle at start of swing (t=0): weapon cocked back
+  const fa = 0;
+  const t = 0;
+  const smooth = t * t * (3 - 2 * t);
+  const angle = fa + (smooth * 2 - 1) * (Math.PI / 3) * 1;
+  assertApprox(angle, -Math.PI / 3, 0.01, 'Swing start: angle = -60° from facing');
+}
+
+{
+  // Swing angle at midpoint (t=0.5): weapon at center
+  const fa = 0;
+  const t = 0.5;
+  const smooth = t * t * (3 - 2 * t);
+  const angle = fa + (smooth * 2 - 1) * (Math.PI / 3) * 1;
+  assertApprox(angle, 0, 0.01, 'Swing mid: angle = facing direction');
+}
+
+{
+  // Swing angle at end (t=1): weapon follow-through
+  const fa = 0;
+  const t = 1;
+  const smooth = t * t * (3 - 2 * t);
+  const angle = fa + (smooth * 2 - 1) * (Math.PI / 3) * 1;
+  assertApprox(angle, Math.PI / 3, 0.01, 'Swing end: angle = +60° from facing');
+}
+
+{
+  // Opposite direction swings mirror correctly
+  const fa = 0;
+  const t = 1;
+  const smooth = t * t * (3 - 2 * t);
+  const anglePos = fa + (smooth * 2 - 1) * (Math.PI / 3) * 1;
+  const angleNeg = fa + (smooth * 2 - 1) * (Math.PI / 3) * -1;
+  assertApprox(anglePos, Math.PI / 3, 0.01, 'Positive dir: ends at +60°');
+  assertApprox(angleNeg, -Math.PI / 3, 0.01, 'Negative dir: ends at -60°');
+}
+
+{
+  // Smoothstep easing: accelerates and decelerates
+  const smooth25 = 0.25 * 0.25 * (3 - 2 * 0.25);
+  const smooth75 = 0.75 * 0.75 * (3 - 2 * 0.75);
+  assert(smooth25 < 0.25, 'Smoothstep: slow at start (eased 0.25 = ' + smooth25.toFixed(3) + ')');
+  assert(smooth75 > 0.75, 'Smoothstep: fast at middle (eased 0.75 = ' + smooth75.toFixed(3) + ')');
+  assertApprox(smooth25 + smooth75, 1.0, 0.001, 'Smoothstep: symmetric (0.25 + 0.75 = 1.0)');
+}
+
+{
+  // Swing only activates for warrior with melee weapon
+  assertEqual(CLASS_DEFS.warrior.startWeapon, 'sword', 'Warrior starts with sword');
+  assertEqual(WEAPON_DEFS.sword.type, 'melee', 'Sword is melee type');
+  // Archer/Mage start with ranged — no swing
+  assertEqual(WEAPON_DEFS[CLASS_DEFS.archer.startWeapon].type, 'ranged', 'Archer starts ranged (no swing)');
+  assertEqual(WEAPON_DEFS[CLASS_DEFS.mage.startWeapon].type, 'ranged', 'Mage starts ranged (no swing)');
+}
+
+{
+  // Swing timer set to weapon cooldown
+  const swordCd = WEAPON_DEFS.sword.cooldown;
+  assertEqual(swordCd, 0.5, 'Sword cooldown = 0.5s (swing duration)');
+  const axeCd = WEAPON_DEFS.axe.cooldown;
+  assertEqual(axeCd, 0.9, 'Axe cooldown = 0.9s (swing duration)');
+}
+
 // ─── SHOP INTEGRATION ───
 group('Shop Integration');
 

@@ -704,6 +704,7 @@ function initPlayer(className) {
     gold: 0, floor: 1, kills: 0, bossKills: 0,
     damageTakenThisBoss: 0, floorStartTime: 0,
     facingAngle: 0,
+    swingTimer: 0, swingDuration: 0, swingDir: 1,
   };
   // Force starting weapon to match class
   const wDef = WEAPON_DEFS[def.startWeapon];
@@ -743,6 +744,13 @@ function playerAttack() {
   const wep = player.weapon;
   const def = WEAPON_DEFS[wep.base];
   player.attackTimer = def.cooldown;
+
+  // Warrior swing animation
+  if (player.className === 'warrior' && def.type === 'melee') {
+    player.swingTimer = def.cooldown;
+    player.swingDuration = def.cooldown;
+    player.swingDir *= -1;
+  }
 
   if (def.type === 'melee') {
     SFX.slash();
@@ -1231,6 +1239,7 @@ function updatePlayerMovement(dt) {
   // Update attack timer
   player.attackTimer = Math.max(0, player.attackTimer - dt);
   player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+  player.swingTimer = Math.max(0, player.swingTimer - dt);
 }
 
 function canMove(x, y, r) {
@@ -1639,9 +1648,18 @@ function drawCartoonPlayer(sx, sy) {
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(baX, baY);
   ctx.lineTo(baX - fx * armLen * 0.4 - px * armLen * 0.3, baY - fy * armLen * 0.4 - py * armLen * 0.3); ctx.stroke();
+  // Weapon swing angle (warrior swing animation)
+  let wAngle = fa;
+  if (cls === 'warrior' && player.swingTimer > 0) {
+    const t = 1 - player.swingTimer / player.swingDuration;
+    const smooth = t * t * (3 - 2 * t);
+    wAngle = fa + (smooth * 2 - 1) * (Math.PI / 3) * player.swingDir;
+  }
+  const wfx = Math.cos(wAngle), wfy = Math.sin(wAngle);
+
   // Front arm (weapon arm)
   const waX = sx + px * r * 0.7, waY = sy + py * r * 0.7;
-  const wpX = sx + fx * (r + 9), wpY = sy + fy * (r + 9);
+  const wpX = sx + wfx * (r + 9), wpY = sy + wfy * (r + 9);
   ctx.strokeStyle = skin; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(waX, waY); ctx.lineTo(wpX, wpY); ctx.stroke();
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
@@ -1650,14 +1668,29 @@ function drawCartoonPlayer(sx, sy) {
   // ── Weapon ──
   if (wDef.type === 'melee') {
     const wLen = wDef.range * TILE * 0.35;
-    const wtX = wpX + fx * wLen, wtY = wpY + fy * wLen;
+    const wtX = wpX + wfx * wLen, wtY = wpY + wfy * wLen;
+    // Swing trail for warrior
+    if (cls === 'warrior' && player.swingTimer > 0) {
+      const t = 1 - player.swingTimer / player.swingDuration;
+      if (t > 0.05) {
+        const trailArc = (Math.PI / 3) * t;
+        ctx.globalAlpha = 0.25 * (1 - t);
+        ctx.strokeStyle = wc;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(wpX, wpY, wLen, wAngle - trailArc * player.swingDir, wAngle, player.swingDir > 0);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+      }
+    }
     ctx.strokeStyle = wc; ctx.lineWidth = 3;
     ctx.beginPath(); ctx.moveTo(wpX, wpY); ctx.lineTo(wtX, wtY); ctx.stroke();
     ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(wpX, wpY); ctx.lineTo(wtX, wtY); ctx.stroke();
     // Hilt
+    const wperpX = -wfy, wperpY = wfx;
     ctx.strokeStyle = '#8b5e3c'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(wpX - px * 3, wpY - py * 3); ctx.lineTo(wpX + px * 3, wpY + py * 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(wpX - wperpX * 3, wpY - wperpY * 3); ctx.lineTo(wpX + wperpX * 3, wpY + wperpY * 3); ctx.stroke();
     // Blade tip shine
     ctx.fillStyle = '#fff'; ctx.globalAlpha = 0.5;
     ctx.beginPath(); ctx.arc(wtX, wtY, 1.5, 0, Math.PI * 2); ctx.fill();
