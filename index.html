@@ -443,6 +443,23 @@
     border-radius: 8px;
   }
 
+  /* Rogue Depths card */
+  .game-card.rogue-depths {
+    border-left-color: #8b5e3c;
+  }
+  .game-card.rogue-depths:hover {
+    border-color: #8b5e3c;
+    box-shadow: 0 0 30px #8b5e3c15, -5px 0 20px #8b5e3c10;
+  }
+  .game-card.rogue-depths::before {
+    background: linear-gradient(90deg, #8b5e3c08 0%, transparent 50%);
+  }
+  .game-card.rogue-depths .game-icon {
+    background: linear-gradient(135deg, #1a1008, #2a1a0a);
+    border: 1px solid #8b5e3c44;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -1118,6 +1135,33 @@ for (let i = 0; i < 30; i++) {
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
+
+    <!-- ROGUE DEPTHS -->
+    <a href="rogue-depths/index.html" class="game-card rogue-depths">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <!-- dungeon archway -->
+          <rect x="10" y="10" width="30" height="35" rx="2" fill="#1a1008" stroke="#8b5e3c" stroke-width="1.5"/>
+          <path d="M14 10 Q25 4 36 10" fill="none" stroke="#8b5e3c" stroke-width="1.5"/>
+          <!-- skull -->
+          <circle cx="25" cy="23" r="6" fill="none" stroke="#8b5e3c" stroke-width="1.2" opacity="0.7"/>
+          <circle cx="23" cy="22" r="1.5" fill="#8b5e3c" opacity="0.5"/>
+          <circle cx="27" cy="22" r="1.5" fill="#8b5e3c" opacity="0.5"/>
+          <rect x="24" y="26" width="2" height="2" rx="0.3" fill="#8b5e3c" opacity="0.4"/>
+          <!-- crossed swords -->
+          <line x1="16" y1="38" x2="34" y2="32" stroke="#8b5e3c" stroke-width="1.2" opacity="0.4"/>
+          <line x1="16" y1="32" x2="34" y2="38" stroke="#8b5e3c" stroke-width="1.2" opacity="0.4"/>
+          <!-- steps -->
+          <rect x="18" y="40" width="14" height="2" fill="#8b5e3c" opacity="0.3"/>
+          <rect x="20" y="42" width="10" height="2" fill="#8b5e3c" opacity="0.2"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">ROGUE DEPTHS</div>
+        <div class="game-desc">Dungeon crawler roguelike</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1244,6 +1288,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'aw_commander',      name: 'Commander',            desc: 'Win 5 battles',                   reward: 25 },
     { id: 'aw_warlord',        name: 'Warlord',              desc: 'Win 10 battles',                  reward: 50 },
   ]},
+  { group: 'ROGUE DEPTHS', items: [
+    { id: 'rd_first_blood',   name: 'First Blood',     desc: 'Kill your first enemy',              reward: 5 },
+    { id: 'rd_floor_5',       name: 'Into the Deep',    desc: 'Reach floor 5',                      reward: 10 },
+    { id: 'rd_floor_10',      name: 'Halfway There',    desc: 'Reach floor 10',                     reward: 20 },
+    { id: 'rd_floor_15',      name: 'Rock Bottom',       desc: 'Reach floor 15',                     reward: 30 },
+    { id: 'rd_boss_slayer',   name: 'Boss Slayer',       desc: 'Defeat any boss',                    reward: 15 },
+    { id: 'rd_dragon_slayer', name: 'Dragon Slayer',     desc: 'Defeat the Ancient Dragon',          reward: 50 },
+    { id: 'rd_rare_find',     name: 'Rare Find',         desc: 'Find a rare or better weapon',       reward: 10 },
+    { id: 'rd_hoarder',       name: 'Gold Hoarder',      desc: 'Collect 500+ gold in one run',       reward: 15 },
+    { id: 'rd_speedrun',      name: 'Speed Runner',      desc: 'Clear a floor in under 30 seconds',  reward: 20 },
+    { id: 'rd_no_hit_boss',   name: 'Untouchable',       desc: 'Beat a boss without taking damage',  reward: 25 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1256,6 +1312,8 @@ const SHOP_ITEMS = [
   { id: 'td_double_gold', name: 'War Bonds',       desc: 'Start each game with $200 instead of $100', cost: 50, icon: '&#128176;', game: 'Tower Defense' },
   { id: 'aw_war_elephant', name: 'War Elephant',   desc: 'Unlocks the War Elephant unit type',      cost: 75,  icon: '&#128024;', game: 'Ancient Warfare' },
   { id: 'aw_battle_horn',  name: 'Battle Horn',     desc: '+10% damage for first 10s of battle',     cost: 50,  icon: '&#128739;', game: 'Ancient Warfare' },
+  { id: 'rd_shadow_class',    name: 'Shadow Class',      desc: 'Unlocks the Rogue class (fast, backstab)',     cost: 75, icon: '&#128065;', game: 'Rogue Depths' },
+  { id: 'rd_enchanted_start', name: 'Enchanted Start',   desc: 'Start each run with an uncommon weapon',       cost: 50, icon: '&#10024;',  game: 'Rogue Depths' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══

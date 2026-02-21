@@ -1353,6 +1353,7 @@ let deployedUnits = [];
 let survivorUnits = []; // campaign survivors (not removed by clearDeployment)
 let budget = 200;
 const MAX_BUDGET = 200;
+let initialBudget = 200; // tracks starting budget for clear-all reset
 let selectedUnitType = null;
 let deployRaycaster = new THREE.Raycaster();
 let deployMouse = new THREE.Vector2();
@@ -1360,6 +1361,7 @@ let deployMouse = new THREE.Vector2();
 function initDeployment() {
   const stats = loadStats();
   budget = MAX_BUDGET + stats.bonusGold;
+  initialBudget = budget;
   deployedUnits = [];
   survivorUnits = [];
   selectedUnitType = null;
@@ -1540,7 +1542,7 @@ function clearDeployment() {
   } else {
     for (const u of deployedUnits) { scene.remove(u); }
     deployedUnits = [];
-    budget = MAX_BUDGET;
+    budget = initialBudget;
   }
   updateBudgetDisplay();
   updateDeployCount();
@@ -2003,9 +2005,9 @@ function startBattle() {
     // Update campaign gold to reflect what's left after deployment
     campaignState.gold = budget;
   } else {
-    // Skirmish: generate enemy army with same budget as player spent
+    // Skirmish: generate enemy army with extra budget for more challenge
     const spent = MAX_BUDGET - budget;
-    generateEnemyArmy(spent);
+    generateEnemyArmy(spent + 50);
   }
 
   initialBlueCount = deployedUnits.length;

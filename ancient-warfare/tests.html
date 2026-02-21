@@ -1314,16 +1314,31 @@ group('Campaign: Budget Display Modes');
 group('Campaign: Clear Deployment Behavior');
 
 {
-  // Skirmish: clear removes ALL units, resets to MAX_BUDGET
+  // Skirmish: clear removes ALL units, resets to initialBudget
   const isCampaignMode = false;
   let deployedUnits = ['unit1', 'unit2', 'unit3'];
   let budget = 150;
+  const initialBudget = MAX_BUDGET; // no bonus gold
   if (!isCampaignMode) {
     deployedUnits = [];
-    budget = MAX_BUDGET;
+    budget = initialBudget;
   }
   assertEqual(deployedUnits.length, 0, 'Skirmish clear: all units removed');
   assertEqual(budget, 200, 'Skirmish clear: budget reset to 200');
+}
+
+{
+  // Skirmish with bonus gold: clear resets to initialBudget (MAX_BUDGET + bonusGold)
+  const isCampaignMode = false;
+  let deployedUnits = ['unit1', 'unit2'];
+  let budget = 250; // had 300, spent 50
+  const initialBudget = MAX_BUDGET + 100; // 100 bonus gold
+  if (!isCampaignMode) {
+    deployedUnits = [];
+    budget = initialBudget;
+  }
+  assertEqual(deployedUnits.length, 0, 'Skirmish+bonus clear: all units removed');
+  assertEqual(budget, 300, 'Skirmish+bonus clear: budget reset to 300 (200+100 bonus)');
 }
 
 {
@@ -2121,6 +2136,62 @@ group('Possession: Input Guards');
     if (possessedUnit) possessedUnit = null;
   }
   assertEqual(possessedUnit, null, 'P key toggles off possession');
+}
+
+// ─── SKIRMISH ENEMY BUDGET BONUS ───
+group('Skirmish Enemy Budget Bonus');
+
+{
+  // In skirmish mode, enemy gets player's spent gold + 50 bonus
+  const MAX_BUDGET_TEST = 200;
+  const playerSpent = 20; // e.g. 2 swordsmen
+  const budget = MAX_BUDGET_TEST - playerSpent;
+  const spent = MAX_BUDGET_TEST - budget;
+  const enemyBudget = spent + 50;
+  assertEqual(enemyBudget, 70, 'Enemy budget = 20 spent + 50 bonus = 70');
+}
+
+{
+  // Full budget deployment: enemy gets 250
+  const MAX_BUDGET_TEST = 200;
+  const playerSpent = 200;
+  const budget = MAX_BUDGET_TEST - playerSpent;
+  const spent = MAX_BUDGET_TEST - budget;
+  const enemyBudget = spent + 50;
+  assertEqual(enemyBudget, 250, 'Enemy budget = 200 spent + 50 bonus = 250');
+}
+
+{
+  // Enemy army generated with bonus budget spends correctly
+  resetStorage();
+  const bonusBudget = 70; // e.g. 20 spent + 50 bonus
+  let enemyBudget = bonusBudget;
+  const ggData = ggLoad();
+  const available = Object.entries(UNIT_DEFS).filter(([k, d]) => !d.shopRequired || ggData.shopPurchases[d.shopRequired]);
+  const units = [];
+
+  while (enemyBudget > 0) {
+    const affordable = available.filter(([k, d]) => d.cost <= enemyBudget);
+    if (affordable.length === 0) break;
+    const [key, def] = affordable[Math.floor(Math.random() * affordable.length)];
+    units.push({ type: key, cost: def.cost });
+    enemyBudget -= def.cost;
+  }
+
+  const totalSpent = units.reduce((s, u) => s + u.cost, 0);
+  assert(totalSpent <= bonusBudget, 'AI army with bonus does not exceed budget (' + totalSpent + ' <= ' + bonusBudget + ')');
+  assert(totalSpent > 20, 'AI army with bonus spends more than original 20 gold (' + totalSpent + ' > 20)');
+  assert(units.length > 0, 'AI army with bonus has at least 1 unit');
+  assert(enemyBudget >= 0, 'Remaining enemy budget is non-negative after bonus');
+}
+
+{
+  // Bonus is always +50 regardless of player spend amount
+  const testCases = [10, 50, 100, 150, 200];
+  for (const spent of testCases) {
+    const enemyBudget = spent + 50;
+    assertEqual(enemyBudget, spent + 50, 'Spent ' + spent + ': enemy gets ' + enemyBudget);
+  }
 }
 
 // ============================================================

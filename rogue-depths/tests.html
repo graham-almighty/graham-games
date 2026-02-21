@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Rogue Depths - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #8b5e3c; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #8b5e3c; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Rogue Depths - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0;
+const _results = document.getElementById('results');
+
+function group(name) {
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ' (±' + tolerance + '), got ' + actual);
+}
+
+function showSummary() {
+  const el = document.getElementById('summary');
+  el.innerHTML = '<span class="pass">' + _passed + ' passed</span> · <span class="' + (_failed ? 'fail' : 'pass') + '">' + _failed + ' failed</span>';
+}
+
+// ============================================================
+// MOCK LOCALSTORAGE
+// ============================================================
+const localStorage = {
+  _data: {},
+  getItem(k) { return this._data[k] || null; },
+  setItem(k, v) { this._data[k] = String(v); },
+  removeItem(k) { delete this._data[k]; },
+  clear() { this._data = {}; },
+};
+
+// ============================================================
+// EXTRACTED SOURCE CODE (Constants & Functions)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const RD_ACH = {
+  rd_first_blood:   { name: 'First Blood',     reward: 5 },
+  rd_floor_5:       { name: 'Into the Deep',    reward: 10 },
+  rd_floor_10:      { name: 'Halfway There',    reward: 20 },
+  rd_floor_15:      { name: 'Rock Bottom',      reward: 30 },
+  rd_boss_slayer:   { name: 'Boss Slayer',       reward: 15 },
+  rd_dragon_slayer: { name: 'Dragon Slayer',     reward: 50 },
+  rd_rare_find:     { name: 'Rare Find',         reward: 10 },
+  rd_hoarder:       { name: 'Gold Hoarder',      reward: 15 },
+  rd_speedrun:      { name: 'Speed Runner',      reward: 20 },
+  rd_no_hit_boss:   { name: 'Untouchable',       reward: 25 },
+};
+function ggTry(id) { const a = RD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const TILE = 32;
+const MAP_W = 50;
+const MAP_H = 50;
+const MAX_FLOORS = 15;
+const BOSS_FLOORS = [5, 10, 15];
+
+const TILE_WALL = 0;
+const TILE_FLOOR = 1;
+const TILE_CORRIDOR = 2;
+const TILE_STAIRS = 3;
+const TILE_CHEST = 4;
+
+const CLASS_DEFS = {
+  warrior: { name: 'Warrior', hp: 150, speed: 2.5, color: '#4488ff', startWeapon: 'sword', desc: 'High HP, melee specialist', icon: '\u2694\uFE0F' },
+  archer:  { name: 'Archer',  hp: 100, speed: 3.0, color: '#44bb44', startWeapon: 'bow',   desc: 'Ranged attacks, moderate HP', icon: '\uD83C\uDFF9' },
+  mage:    { name: 'Mage',    hp: 80,  speed: 2.8, color: '#aa44ff', startWeapon: 'staff', desc: 'Magic projectiles, low HP', icon: '\uD83E\uDE84' },
+  rogue:   { name: 'Rogue',   hp: 90,  speed: 3.5, color: '#ff8844', startWeapon: 'dagger', desc: 'Fast, backstab bonus', icon: '\uD83D\uDDE1\uFE0F', shopUnlock: 'rd_shadow_class' },
+};
+
+const WEAPON_DEFS = {
+  sword:  { name: 'Sword',  type: 'melee',  baseDmg: 12, range: 1.5, cooldown: 0.5,  arc: 90,  color: '#cccccc' },
+  axe:    { name: 'Axe',    type: 'melee',  baseDmg: 20, range: 1.3, cooldown: 0.9,  arc: 120, color: '#888888' },
+  dagger: { name: 'Dagger', type: 'melee',  baseDmg: 7,  range: 1.0, cooldown: 0.25, arc: 60,  color: '#aaaacc' },
+  spear:  { name: 'Spear',  type: 'melee',  baseDmg: 14, range: 2.0, cooldown: 0.65, arc: 45,  color: '#bbaa77' },
+  bow:    { name: 'Bow',    type: 'ranged', baseDmg: 10, range: 8,   cooldown: 0.6,  projSpeed: 8, color: '#886633' },
+  staff:  { name: 'Staff',  type: 'ranged', baseDmg: 14, range: 7,   cooldown: 0.8,  projSpeed: 6, color: '#9944ff', pierce: true },
+};
+
+const RARITIES = [
+  { name: 'Common',   color: '#aaaaaa', multiplier: 1.0 },
+  { name: 'Uncommon', color: '#44cc44', multiplier: 1.3 },
+  { name: 'Rare',     color: '#4488ff', multiplier: 1.6 },
+  { name: 'Epic',     color: '#aa44ff', multiplier: 2.0 },
+];
+
+const ENEMY_DEFS = {
+  rat:          { name: 'Rat',           hp: 15,  speed: 2.5, damage: 5,   gold: 3,  minFloor: 1,  radius: 6,  color: '#8d6e63', ai: 'chase', atkCd: 1.0 },
+  skeleton:     { name: 'Skeleton',      hp: 30,  speed: 1.5, damage: 10,  gold: 5,  minFloor: 1,  radius: 8,  color: '#e0e0e0', ai: 'chase', atkCd: 1.2 },
+  bat:          { name: 'Bat',           hp: 20,  speed: 3.0, damage: 7,   gold: 4,  minFloor: 2,  radius: 5,  color: '#555577', ai: 'zigzag', atkCd: 0.8 },
+  slime:        { name: 'Slime',         hp: 60,  speed: 0.8, damage: 8,   gold: 6,  minFloor: 3,  radius: 10, color: '#44cc44', ai: 'chase', atkCd: 1.5, splits: true },
+  goblinArcher: { name: 'Goblin Archer', hp: 25,  speed: 1.2, damage: 12,  gold: 7,  minFloor: 4,  radius: 7,  color: '#669933', ai: 'ranged', atkCd: 1.8, range: 6 },
+  darkKnight:   { name: 'Dark Knight',   hp: 100, speed: 0.7, damage: 20,  gold: 12, minFloor: 7,  radius: 10, color: '#333355', ai: 'chase', atkCd: 1.4 },
+  wraith:       { name: 'Wraith',        hp: 40,  speed: 1.8, damage: 15,  gold: 10, minFloor: 9,  radius: 8,  color: '#8866aa', ai: 'phase', atkCd: 1.0 },
+  fireImp:      { name: 'Fire Imp',      hp: 35,  speed: 1.5, damage: 18,  gold: 9,  minFloor: 11, radius: 7,  color: '#ff4400', ai: 'ranged', atkCd: 2.0, range: 5 },
+};
+
+const BOSS_DEFS = {
+  spiderQueen: { name: 'Spider Queen',  floor: 5,  hp: 400,  speed: 1.0, damage: 15, gold: 50,  radius: 16, color: '#442244', ability: 'spawn', interval: 4 },
+  lich:        { name: 'The Lich',      floor: 10, hp: 600,  speed: 0.8, damage: 20, gold: 80,  radius: 14, color: '#6644aa', ability: 'lich', interval: 5 },
+  dragon:      { name: 'Ancient Dragon', floor: 15, hp: 1000, speed: 1.2, damage: 30, gold: 150, radius: 20, color: '#cc2200', ability: 'dragon', interval: 6 },
+};
+
+const POTION_DEFS = [
+  { name: 'Small Potion',  heal: 25,  color: '#ff4444', icon: '\uD83E\uDDEA', weight: 10 },
+  { name: 'Medium Potion', heal: 50,  color: '#ff6644', icon: '\uD83E\uDDEA', weight: 5 },
+  { name: 'Large Potion',  heal: 100, color: '#ff8844', icon: '\uD83E\uDDEA', weight: 2 },
+];
+
+// Extracted functions
+function getFloorEnemyTypes(floor) {
+  return Object.entries(ENEMY_DEFS).filter(([k, v]) => floor >= v.minFloor).map(([k]) => k);
+}
+function getFloorEnemyCount(floor) {
+  return 8 + Math.floor(floor * 1.5);
+}
+function getFloorHPScale(floor) {
+  return 1 + (floor - 1) * 0.15;
+}
+function getFloorDmgScale(floor) {
+  return 1 + (floor - 1) * 0.1;
+}
+
+function makeWeapon(floor, forceRarity) {
+  const types = Object.keys(WEAPON_DEFS);
+  const base = types[Math.floor(Math.random() * types.length)];
+  const def = WEAPON_DEFS[base];
+  let rarity;
+  if (forceRarity !== undefined) {
+    rarity = forceRarity;
+  } else {
+    const r = Math.random() * 100;
+    const rareBonus = floor * 2;
+    if (r < 2 + rareBonus * 0.3) rarity = 3;
+    else if (r < 10 + rareBonus) rarity = 2;
+    else if (r < 35 + rareBonus * 1.5) rarity = 1;
+    else rarity = 0;
+  }
+  const rar = RARITIES[rarity];
+  return {
+    base, rarity, type: 'weapon',
+    damage: Math.round(def.baseDmg * rar.multiplier),
+    name: rar.name + ' ' + def.name, color: rar.color,
+  };
+}
+
+function makePotion() {
+  const totalWeight = POTION_DEFS.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const p of POTION_DEFS) {
+    r -= p.weight;
+    if (r <= 0) return { type: 'potion', name: p.name, heal: p.heal, color: p.color, icon: p.icon };
+  }
+  return { type: 'potion', ...POTION_DEFS[0] };
+}
+
+function makeArmor(floor) {
+  const defense = 5 + Math.floor(Math.random() * Math.min(floor, 5)) * 2;
+  return { type: 'armor', name: 'Armor +' + defense + '%', defense, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' };
+}
+
+// Dungeon generation (extracted)
+function generateDungeon(floor) {
+  const tiles = [];
+  for (let y = 0; y < MAP_H; y++) {
+    tiles[y] = [];
+    for (let x = 0; x < MAP_W; x++) tiles[y][x] = TILE_WALL;
+  }
+  const rooms = [];
+  const numRooms = 5 + Math.min(Math.floor(floor * 0.3), 5);
+  let attempts = 0;
+  while (rooms.length < numRooms && attempts < 200) {
+    attempts++;
+    const w = 5 + Math.floor(Math.random() * 7);
+    const h = 5 + Math.floor(Math.random() * 5);
+    const rx = 1 + Math.floor(Math.random() * (MAP_W - w - 2));
+    const ry = 1 + Math.floor(Math.random() * (MAP_H - h - 2));
+    let overlap = false;
+    for (const r of rooms) {
+      if (rx - 1 < r.x + r.w && rx + w + 1 > r.x && ry - 1 < r.y + r.h && ry + h + 1 > r.y) {
+        overlap = true; break;
+      }
+    }
+    if (overlap) continue;
+    for (let y = ry; y < ry + h; y++)
+      for (let x = rx; x < rx + w; x++)
+        tiles[y][x] = TILE_FLOOR;
+    rooms.push({ x: rx, y: ry, w, h, cx: Math.floor(rx + w / 2), cy: Math.floor(ry + h / 2), revealed: false });
+  }
+  if (rooms.length < 3) return generateDungeon(floor);
+
+  for (let i = 1; i < rooms.length; i++) {
+    const a = rooms[i - 1], b = rooms[i];
+    carveCorridor(tiles, a.cx, a.cy, b.cx, b.cy);
+  }
+  if (rooms.length > 2) {
+    const first = rooms[0], last = rooms[rooms.length - 1];
+    carveCorridor(tiles, last.cx, last.cy, first.cx, first.cy);
+  }
+
+  rooms[0].type = 'start';
+  let maxDist = 0, stairsIdx = 1;
+  for (let i = 1; i < rooms.length; i++) {
+    const d = Math.abs(rooms[i].cx - rooms[0].cx) + Math.abs(rooms[i].cy - rooms[0].cy);
+    if (d > maxDist) { maxDist = d; stairsIdx = i; }
+  }
+  rooms[stairsIdx].type = 'stairs';
+  for (let i = 1; i < rooms.length; i++) {
+    if (rooms[i].type) continue;
+    const r = Math.random();
+    rooms[i].type = r < 0.6 ? 'enemy' : (r < 0.8 ? 'treasure' : 'empty');
+  }
+  const sr = rooms[stairsIdx];
+  const isBossFloor = BOSS_FLOORS.includes(floor);
+  if (!isBossFloor) tiles[sr.cy][sr.cx] = TILE_STAIRS;
+  for (const room of rooms) {
+    if (room.type === 'treasure') {
+      const cx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
+      const cy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
+      tiles[cy][cx] = TILE_CHEST;
+    }
+  }
+  return { tiles, rooms, stairsRoom: sr, startRoom: rooms[0], isBossFloor, floor };
+}
+
+function carveCorridor(tiles, x1, y1, x2, y2) {
+  if (Math.random() < 0.5) { carveH(tiles, x1, x2, y1); carveV(tiles, y1, y2, x2); }
+  else { carveV(tiles, y1, y2, x1); carveH(tiles, x1, x2, y2); }
+}
+function carveH(tiles, x1, x2, y) {
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  for (let x = minX; x <= maxX; x++) {
+    if (y >= 0 && y < MAP_H && x >= 0 && x < MAP_W && tiles[y][x] === TILE_WALL) tiles[y][x] = TILE_CORRIDOR;
+  }
+}
+function carveV(tiles, y1, y2, x) {
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  for (let y = minY; y <= maxY; y++) {
+    if (y >= 0 && y < MAP_H && x >= 0 && x < MAP_W && tiles[y][x] === TILE_WALL) tiles[y][x] = TILE_CORRIDOR;
+  }
+}
+
+// Damage formula
+function calcDamage(rawDmg, defense) {
+  return Math.max(1, rawDmg - Math.floor(rawDmg * defense / 100));
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// ─── ACHIEVEMENT REGISTRY ───
+group('Achievement Registry');
+
+{
+  const keys = Object.keys(RD_ACH);
+  assertEqual(keys.length, 10, 'RD_ACH has 10 achievements');
+}
+
+{
+  let total = 0;
+  for (const a of Object.values(RD_ACH)) total += a.reward;
+  assertEqual(total, 200, 'Total achievement rewards = 200 G Bux');
+}
+
+{
+  for (const [id, a] of Object.entries(RD_ACH)) {
+    assert(a.name && a.name.length > 0, 'Achievement ' + id + ' has a name');
+    assert(a.reward > 0, 'Achievement ' + id + ' has positive reward (' + a.reward + ')');
+  }
+}
+
+{
+  // Specific rewards
+  assertEqual(RD_ACH.rd_first_blood.reward, 5, 'First Blood = 5G');
+  assertEqual(RD_ACH.rd_floor_5.reward, 10, 'Into the Deep = 10G');
+  assertEqual(RD_ACH.rd_floor_10.reward, 20, 'Halfway There = 20G');
+  assertEqual(RD_ACH.rd_floor_15.reward, 30, 'Rock Bottom = 30G');
+  assertEqual(RD_ACH.rd_boss_slayer.reward, 15, 'Boss Slayer = 15G');
+  assertEqual(RD_ACH.rd_dragon_slayer.reward, 50, 'Dragon Slayer = 50G');
+  assertEqual(RD_ACH.rd_rare_find.reward, 10, 'Rare Find = 10G');
+  assertEqual(RD_ACH.rd_hoarder.reward, 15, 'Gold Hoarder = 15G');
+  assertEqual(RD_ACH.rd_speedrun.reward, 20, 'Speed Runner = 20G');
+  assertEqual(RD_ACH.rd_no_hit_boss.reward, 25, 'Untouchable = 25G');
+}
+
+localStorage.clear();
+{
+  // Unlock awards correct G Bux
+  ggTry('rd_first_blood');
+  const data = ggLoad();
+  assertEqual(data.gBux, 5, 'Unlocking First Blood awards 5 G Bux');
+  assertEqual(data.achievements.rd_first_blood, true, 'Achievement marked as earned');
+}
+
+{
+  // Duplicate prevention
+  ggTry('rd_first_blood');
+  const data = ggLoad();
+  assertEqual(data.gBux, 5, 'Duplicate unlock does not award extra G Bux');
+}
+
+localStorage.clear();
+{
+  // Unlock all = 200G
+  for (const id of Object.keys(RD_ACH)) ggTry(id);
+  const data = ggLoad();
+  assertEqual(data.gBux, 200, 'Unlocking all achievements = 200 G Bux');
+}
+
+// ─── CLASS DEFINITIONS ───
+group('Class Definitions');
+
+{
+  const keys = Object.keys(CLASS_DEFS);
+  assertEqual(keys.length, 4, '4 classes defined');
+  assert(keys.includes('warrior'), 'Warrior class exists');
+  assert(keys.includes('archer'), 'Archer class exists');
+  assert(keys.includes('mage'), 'Mage class exists');
+  assert(keys.includes('rogue'), 'Rogue class exists');
+}
+
+{
+  for (const [key, def] of Object.entries(CLASS_DEFS)) {
+    assert(def.name, key + ' has name');
+    assert(def.hp > 0, key + ' has positive HP');
+    assert(def.speed > 0, key + ' has positive speed');
+    assert(def.color, key + ' has color');
+    assert(def.startWeapon, key + ' has startWeapon');
+    assert(WEAPON_DEFS[def.startWeapon], key + ' startWeapon "' + def.startWeapon + '" exists in WEAPON_DEFS');
+    assert(def.desc, key + ' has description');
+  }
+}
+
+{
+  assertEqual(CLASS_DEFS.warrior.hp, 150, 'Warrior HP = 150');
+  assertEqual(CLASS_DEFS.archer.hp, 100, 'Archer HP = 100');
+  assertEqual(CLASS_DEFS.mage.hp, 80, 'Mage HP = 80');
+  assertEqual(CLASS_DEFS.rogue.hp, 90, 'Rogue HP = 90');
+}
+
+{
+  assert(CLASS_DEFS.warrior.speed < CLASS_DEFS.archer.speed, 'Warrior slower than Archer');
+  assert(CLASS_DEFS.archer.speed < CLASS_DEFS.rogue.speed, 'Archer slower than Rogue');
+}
+
+{
+  assertEqual(CLASS_DEFS.rogue.shopUnlock, 'rd_shadow_class', 'Rogue requires rd_shadow_class shop unlock');
+  assert(!CLASS_DEFS.warrior.shopUnlock, 'Warrior has no shop unlock requirement');
+  assert(!CLASS_DEFS.archer.shopUnlock, 'Archer has no shop unlock requirement');
+  assert(!CLASS_DEFS.mage.shopUnlock, 'Mage has no shop unlock requirement');
+}
+
+// ─── WEAPON DEFINITIONS ───
+group('Weapon Definitions');
+
+{
+  const keys = Object.keys(WEAPON_DEFS);
+  assertEqual(keys.length, 6, '6 weapon types defined');
+}
+
+{
+  for (const [key, def] of Object.entries(WEAPON_DEFS)) {
+    assert(def.name, key + ' has name');
+    assert(def.type === 'melee' || def.type === 'ranged', key + ' type is melee or ranged');
+    assert(def.baseDmg > 0, key + ' has positive baseDmg');
+    assert(def.range > 0, key + ' has positive range');
+    assert(def.cooldown > 0, key + ' has positive cooldown');
+    assert(def.color, key + ' has color');
+    if (def.type === 'melee') assert(def.arc > 0, key + ' (melee) has arc');
+    if (def.type === 'ranged') assert(def.projSpeed > 0, key + ' (ranged) has projSpeed');
+  }
+}
+
+{
+  assertEqual(WEAPON_DEFS.sword.baseDmg, 12, 'Sword baseDmg = 12');
+  assertEqual(WEAPON_DEFS.axe.baseDmg, 20, 'Axe baseDmg = 20');
+  assertEqual(WEAPON_DEFS.dagger.baseDmg, 7, 'Dagger baseDmg = 7');
+  assertEqual(WEAPON_DEFS.bow.range, 8, 'Bow range = 8');
+  assertEqual(WEAPON_DEFS.staff.pierce, true, 'Staff has pierce');
+}
+
+{
+  assertEqual(RARITIES.length, 4, '4 rarities defined');
+  assertEqual(RARITIES[0].multiplier, 1.0, 'Common multiplier = 1.0');
+  assertEqual(RARITIES[1].multiplier, 1.3, 'Uncommon multiplier = 1.3');
+  assertEqual(RARITIES[2].multiplier, 1.6, 'Rare multiplier = 1.6');
+  assertEqual(RARITIES[3].multiplier, 2.0, 'Epic multiplier = 2.0');
+  // Ascending
+  for (let i = 1; i < RARITIES.length; i++) {
+    assert(RARITIES[i].multiplier > RARITIES[i-1].multiplier, 'Rarity multiplier ascending at index ' + i);
+  }
+}
+
+{
+  // Damage computation
+  const swordCommon = Math.round(WEAPON_DEFS.sword.baseDmg * RARITIES[0].multiplier);
+  assertEqual(swordCommon, 12, 'Common Sword damage = 12');
+  const swordEpic = Math.round(WEAPON_DEFS.sword.baseDmg * RARITIES[3].multiplier);
+  assertEqual(swordEpic, 24, 'Epic Sword damage = 24');
+  const axeRare = Math.round(WEAPON_DEFS.axe.baseDmg * RARITIES[2].multiplier);
+  assertEqual(axeRare, 32, 'Rare Axe damage = 32');
+}
+
+// ─── ENEMY DEFINITIONS ───
+group('Enemy Definitions');
+
+{
+  const keys = Object.keys(ENEMY_DEFS);
+  assertEqual(keys.length, 8, '8 enemy types defined');
+}
+
+{
+  for (const [key, def] of Object.entries(ENEMY_DEFS)) {
+    assert(def.name, key + ' has name');
+    assert(def.hp > 0, key + ' has positive HP');
+    assert(def.speed > 0, key + ' has positive speed');
+    assert(def.damage > 0, key + ' has positive damage');
+    assert(def.gold > 0, key + ' has positive gold');
+    assert(def.minFloor >= 1, key + ' minFloor >= 1');
+    assert(def.radius > 0, key + ' has positive radius');
+    assert(def.color, key + ' has color');
+    assert(def.ai, key + ' has AI type');
+    assert(def.atkCd > 0, key + ' has positive attack cooldown');
+  }
+}
+
+{
+  assertEqual(ENEMY_DEFS.slime.splits, true, 'Slime has splits flag');
+  assertEqual(ENEMY_DEFS.wraith.ai, 'phase', 'Wraith has phase AI');
+  assertEqual(ENEMY_DEFS.goblinArcher.ai, 'ranged', 'Goblin Archer has ranged AI');
+  assertEqual(ENEMY_DEFS.fireImp.ai, 'ranged', 'Fire Imp has ranged AI');
+  assert(ENEMY_DEFS.goblinArcher.range > 0, 'Goblin Archer has range property');
+  assert(ENEMY_DEFS.fireImp.range > 0, 'Fire Imp has range property');
+}
+
+{
+  const bossKeys = Object.keys(BOSS_DEFS);
+  assertEqual(bossKeys.length, 3, '3 boss types defined');
+  assertEqual(BOSS_DEFS.spiderQueen.floor, 5, 'Spider Queen on floor 5');
+  assertEqual(BOSS_DEFS.lich.floor, 10, 'Lich on floor 10');
+  assertEqual(BOSS_DEFS.dragon.floor, 15, 'Dragon on floor 15');
+}
+
+{
+  for (const [key, def] of Object.entries(BOSS_DEFS)) {
+    assert(def.name, key + ' has name');
+    assert(def.hp > 0, key + ' has positive HP');
+    assert(def.speed > 0, key + ' has positive speed');
+    assert(def.damage > 0, key + ' has positive damage');
+    assert(def.gold > 0, key + ' has positive gold');
+    assert(def.radius > 0, key + ' has positive radius');
+    assert(def.ability, key + ' has ability');
+    assert(def.interval > 0, key + ' has positive ability interval');
+  }
+}
+
+{
+  assertEqual(BOSS_DEFS.spiderQueen.hp, 400, 'Spider Queen HP = 400');
+  assertEqual(BOSS_DEFS.lich.hp, 600, 'Lich HP = 600');
+  assertEqual(BOSS_DEFS.dragon.hp, 1000, 'Dragon HP = 1000');
+  assertEqual(BOSS_DEFS.spiderQueen.interval, 4, 'Spider Queen spawn interval = 4s');
+  assertEqual(BOSS_DEFS.lich.interval, 5, 'Lich teleport interval = 5s');
+  assertEqual(BOSS_DEFS.dragon.interval, 6, 'Dragon ability interval = 6s');
+}
+
+// ─── FLOOR SCALING ───
+group('Floor Scaling');
+
+{
+  assertEqual(getFloorHPScale(1), 1.0, 'Floor 1 HP scale = 1.0');
+  assertApprox(getFloorHPScale(8), 2.05, 0.01, 'Floor 8 HP scale ~ 2.05');
+  assertApprox(getFloorHPScale(15), 3.1, 0.01, 'Floor 15 HP scale ~ 3.1');
+}
+
+{
+  assertEqual(getFloorDmgScale(1), 1.0, 'Floor 1 damage scale = 1.0');
+  assertApprox(getFloorDmgScale(8), 1.7, 0.01, 'Floor 8 damage scale ~ 1.7');
+  assertApprox(getFloorDmgScale(15), 2.4, 0.01, 'Floor 15 damage scale ~ 2.4');
+}
+
+{
+  assertEqual(getFloorEnemyCount(1), 9, 'Floor 1 enemy count = 9');
+  assertEqual(getFloorEnemyCount(10), 23, 'Floor 10 enemy count = 23');
+  assertEqual(getFloorEnemyCount(15), 30, 'Floor 15 enemy count = 30');
+}
+
+{
+  const f1Types = getFloorEnemyTypes(1);
+  assert(f1Types.includes('rat'), 'Floor 1 has rats');
+  assert(f1Types.includes('skeleton'), 'Floor 1 has skeletons');
+  assert(!f1Types.includes('bat'), 'Floor 1 does NOT have bats');
+  assert(!f1Types.includes('fireImp'), 'Floor 1 does NOT have fire imps');
+}
+
+{
+  const f4Types = getFloorEnemyTypes(4);
+  assert(f4Types.includes('goblinArcher'), 'Floor 4 has goblin archers');
+  assert(!f4Types.includes('darkKnight'), 'Floor 4 does NOT have dark knights');
+}
+
+{
+  const f15Types = getFloorEnemyTypes(15);
+  assertEqual(f15Types.length, 8, 'Floor 15 has all 8 enemy types');
+}
+
+// ─── DUNGEON GENERATION ───
+group('Dungeon Generation');
+
+{
+  const d = generateDungeon(1);
+  assertEqual(d.tiles.length, MAP_H, 'Map height = 50');
+  assertEqual(d.tiles[0].length, MAP_W, 'Map width = 50');
+}
+
+{
+  const d = generateDungeon(1);
+  assert(d.rooms.length >= 3, 'At least 3 rooms generated (got ' + d.rooms.length + ')');
+  assert(d.rooms.length <= 15, 'No more than 15 rooms (got ' + d.rooms.length + ')');
+}
+
+{
+  const d = generateDungeon(1);
+  for (const room of d.rooms) {
+    assert(room.x >= 1, 'Room x >= 1 (got ' + room.x + ')');
+    assert(room.y >= 1, 'Room y >= 1 (got ' + room.y + ')');
+    assert(room.x + room.w < MAP_W, 'Room fits in width (x+w=' + (room.x + room.w) + ')');
+    assert(room.y + room.h < MAP_H, 'Room fits in height (y+h=' + (room.y + room.h) + ')');
+  }
+}
+
+{
+  const d = generateDungeon(1);
+  assertEqual(d.startRoom.type, 'start', 'First room is start type');
+  assertEqual(d.stairsRoom.type, 'stairs', 'Stairs room has stairs type');
+  assert(d.startRoom !== d.stairsRoom, 'Start and stairs are different rooms');
+}
+
+{
+  const d = generateDungeon(1);
+  // All rooms should have a type
+  for (const room of d.rooms) {
+    assert(['start', 'stairs', 'enemy', 'treasure', 'empty'].includes(room.type),
+      'Room type is valid: ' + room.type);
+  }
+}
+
+{
+  // Non-boss floor has stairs tile
+  const d = generateDungeon(1);
+  assertEqual(d.tiles[d.stairsRoom.cy][d.stairsRoom.cx], TILE_STAIRS, 'Floor 1 has stairs tile at stairs room center');
+}
+
+{
+  // Boss floor does NOT have stairs tile initially
+  const d = generateDungeon(5);
+  assert(d.isBossFloor, 'Floor 5 is a boss floor');
+  assert(d.tiles[d.stairsRoom.cy][d.stairsRoom.cx] !== TILE_STAIRS, 'Boss floor stairs room does NOT have stairs initially');
+}
+
+{
+  // Connectivity: BFS from start room should reach stairs room
+  const d = generateDungeon(1);
+  const visited = {};
+  const queue = [d.startRoom.cx + ',' + d.startRoom.cy];
+  visited[queue[0]] = true;
+  while (queue.length > 0) {
+    const [cx, cy] = queue.shift().split(',').map(Number);
+    const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+    for (const [ddx, ddy] of dirs) {
+      const nx = cx + ddx, ny = cy + ddy;
+      const key = nx + ',' + ny;
+      if (nx >= 0 && nx < MAP_W && ny >= 0 && ny < MAP_H && !visited[key] && d.tiles[ny][nx] !== TILE_WALL) {
+        visited[key] = true;
+        queue.push(key);
+      }
+    }
+  }
+  const stairsKey = d.stairsRoom.cx + ',' + d.stairsRoom.cy;
+  assert(visited[stairsKey], 'Stairs room is reachable from start room via BFS');
+}
+
+{
+  // Rooms have revealed=false initially
+  const d = generateDungeon(1);
+  for (const room of d.rooms) {
+    assertEqual(room.revealed, false, 'Room at (' + room.x + ',' + room.y + ') starts unrevealed');
+  }
+}
+
+{
+  // Treasure rooms have at least one chest
+  const d = generateDungeon(3);
+  const treasureRooms = d.rooms.filter(r => r.type === 'treasure');
+  for (const room of treasureRooms) {
+    let hasChest = false;
+    for (let y = room.y; y < room.y + room.h; y++) {
+      for (let x = room.x; x < room.x + room.w; x++) {
+        if (d.tiles[y][x] === TILE_CHEST) hasChest = true;
+      }
+    }
+    assert(hasChest, 'Treasure room at (' + room.x + ',' + room.y + ') has a chest');
+  }
+}
+
+// ─── LOOT SYSTEM ───
+group('Loot System');
+
+{
+  const w = makeWeapon(1, 0); // Force common
+  assertEqual(w.rarity, 0, 'Forced common weapon has rarity 0');
+  assertEqual(w.type, 'weapon', 'makeWeapon returns type=weapon');
+  assert(w.damage > 0, 'Weapon has positive damage');
+  assert(w.name.startsWith('Common'), 'Common weapon name starts with Common');
+}
+
+{
+  const w = makeWeapon(1, 3); // Force epic
+  assertEqual(w.rarity, 3, 'Forced epic weapon has rarity 3');
+  assert(w.name.startsWith('Epic'), 'Epic weapon name starts with Epic');
+  // Epic should have 2x base damage
+  const baseDmg = WEAPON_DEFS[w.base].baseDmg;
+  assertEqual(w.damage, Math.round(baseDmg * 2.0), 'Epic weapon damage = baseDmg * 2.0');
+}
+
+{
+  const p = makePotion();
+  assertEqual(p.type, 'potion', 'makePotion returns type=potion');
+  assert(p.heal > 0, 'Potion has positive heal');
+  assert(p.name, 'Potion has name');
+  assert([25, 50, 100].includes(p.heal), 'Potion heal is 25, 50, or 100');
+}
+
+{
+  const a = makeArmor(1);
+  assertEqual(a.type, 'armor', 'makeArmor returns type=armor');
+  assert(a.defense >= 5, 'Armor defense >= 5');
+}
+
+{
+  // Defense cap
+  let defense = 0;
+  for (let i = 0; i < 20; i++) {
+    defense = Math.min(50, defense + 5);
+  }
+  assertEqual(defense, 50, 'Defense caps at 50%');
+}
+
+// ─── COMBAT FORMULAS ───
+group('Combat Formulas');
+
+{
+  assertEqual(calcDamage(10, 0), 10, '10 dmg with 0 defense = 10');
+  assertEqual(calcDamage(10, 50), 5, '10 dmg with 50% defense = 5');
+  assertEqual(calcDamage(10, 100), 1, '10 dmg with 100% defense = 1 (minimum)');
+  assertEqual(calcDamage(1, 0), 1, '1 dmg with 0 defense = 1');
+  assertEqual(calcDamage(20, 25), 15, '20 dmg with 25% defense = 15');
+}
+
+{
+  // Rogue backstab: 1.5x
+  const baseDmg = 10;
+  const backstab = Math.round(baseDmg * 1.5);
+  assertEqual(backstab, 15, 'Rogue backstab: 10 * 1.5 = 15');
+}
+
+{
+  // Player invulnerability
+  const invulnDuration = 0.3;
+  assertEqual(invulnDuration, 0.3, 'Invulnerability duration = 0.3 seconds');
+}
+
+// ─── SHOP INTEGRATION ───
+group('Shop Integration');
+
+localStorage.clear();
+{
+  // Rogue locked by default
+  const ggData = ggLoad();
+  const rogueDef = CLASS_DEFS.rogue;
+  const locked = rogueDef.shopUnlock && !ggData.shopPurchases[rogueDef.shopUnlock];
+  assertEqual(locked, true, 'Rogue is locked by default');
+}
+
+{
+  // Rogue unlocked with purchase
+  const data = ggLoad();
+  data.shopPurchases['rd_shadow_class'] = true;
+  ggSave(data);
+  const ggData = ggLoad();
+  const locked = CLASS_DEFS.rogue.shopUnlock && !ggData.shopPurchases[CLASS_DEFS.rogue.shopUnlock];
+  assertEqual(locked, false, 'Rogue unlocked after purchasing rd_shadow_class');
+}
+
+localStorage.clear();
+{
+  // Enchanted start: uncommon weapon (rarity 1)
+  const ggData = ggLoad();
+  const hasEnchanted = !!ggData.shopPurchases['rd_enchanted_start'];
+  const startRarity = hasEnchanted ? 1 : 0;
+  assertEqual(startRarity, 0, 'Default start = common weapon (rarity 0)');
+}
+
+{
+  const data = ggLoad();
+  data.shopPurchases['rd_enchanted_start'] = true;
+  ggSave(data);
+  const ggData = ggLoad();
+  const hasEnchanted = !!ggData.shopPurchases['rd_enchanted_start'];
+  const startRarity = hasEnchanted ? 1 : 0;
+  assertEqual(startRarity, 1, 'Enchanted start = uncommon weapon (rarity 1)');
+}
+
+// ─── INVENTORY ───
+group('Inventory');
+
+{
+  const inv = [null, null, null, null, null];
+  assertEqual(inv.length, 5, 'Inventory has 5 slots');
+
+  // Add item to first empty slot
+  function addToInv(inv, item) {
+    for (let i = 0; i < 5; i++) {
+      if (!inv[i]) { inv[i] = item; return true; }
+    }
+    return false;
+  }
+
+  const result = addToInv(inv, { type: 'potion', heal: 25 });
+  assertEqual(result, true, 'Can add item to empty inventory');
+  assert(inv[0] !== null, 'Item placed in slot 0');
+}
+
+{
+  // Potion use
+  const inv = [{ type: 'potion', heal: 25, name: 'Small Potion' }, null, null, null, null];
+  let hp = 80, maxHp = 100;
+  const item = inv[0];
+  if (item && item.type === 'potion') {
+    const healed = Math.min(item.heal, maxHp - hp);
+    hp += healed;
+    inv[0] = null;
+  }
+  assertEqual(hp, 100, 'Potion heals HP (80 + 25 capped at 100)');
+  assertEqual(inv[0], null, 'Potion consumed after use');
+}
+
+{
+  // Full HP: potion does not heal
+  let hp = 100, maxHp = 100;
+  const healed = Math.min(25, maxHp - hp);
+  assertEqual(healed, 0, 'No healing when at full HP');
+}
+
+{
+  // Full inventory
+  const inv = [{ type: 'potion' }, { type: 'potion' }, { type: 'potion' }, { type: 'potion' }, { type: 'potion' }];
+  function addToInv(inv, item) {
+    for (let i = 0; i < 5; i++) { if (!inv[i]) { inv[i] = item; return true; } }
+    return false;
+  }
+  const result = addToInv(inv, { type: 'potion' });
+  assertEqual(result, false, 'Cannot add to full inventory');
+}
+
+// ─── POTION DEFINITIONS ───
+group('Potion Definitions');
+
+{
+  assertEqual(POTION_DEFS.length, 3, '3 potion types defined');
+  assertEqual(POTION_DEFS[0].heal, 25, 'Small Potion heals 25');
+  assertEqual(POTION_DEFS[1].heal, 50, 'Medium Potion heals 50');
+  assertEqual(POTION_DEFS[2].heal, 100, 'Large Potion heals 100');
+}
+
+{
+  // Weights: small most common
+  assert(POTION_DEFS[0].weight > POTION_DEFS[1].weight, 'Small potion more common than medium');
+  assert(POTION_DEFS[1].weight > POTION_DEFS[2].weight, 'Medium potion more common than large');
+}
+
+// ─── BOSS FLOOR DETECTION ───
+group('Boss Floor Detection');
+
+{
+  assert(BOSS_FLOORS.includes(5), 'Floor 5 is a boss floor');
+  assert(BOSS_FLOORS.includes(10), 'Floor 10 is a boss floor');
+  assert(BOSS_FLOORS.includes(15), 'Floor 15 is a boss floor');
+  assert(!BOSS_FLOORS.includes(1), 'Floor 1 is NOT a boss floor');
+  assert(!BOSS_FLOORS.includes(7), 'Floor 7 is NOT a boss floor');
+}
+
+// ─── TILE CONSTANTS ───
+group('Tile Constants');
+
+{
+  assertEqual(TILE, 32, 'Tile size = 32px');
+  assertEqual(MAP_W, 50, 'Map width = 50 tiles');
+  assertEqual(MAP_H, 50, 'Map height = 50 tiles');
+  assertEqual(MAX_FLOORS, 15, 'Max floors = 15');
+}
+
+{
+  assertEqual(TILE_WALL, 0, 'TILE_WALL = 0');
+  assertEqual(TILE_FLOOR, 1, 'TILE_FLOOR = 1');
+  assertEqual(TILE_CORRIDOR, 2, 'TILE_CORRIDOR = 2');
+  assertEqual(TILE_STAIRS, 3, 'TILE_STAIRS = 3');
+  assertEqual(TILE_CHEST, 4, 'TILE_CHEST = 4');
+}
+
+// ─── WEAPON GENERATION ───
+group('Weapon Generation');
+
+{
+  // makeWeapon always returns valid weapon
+  for (let i = 0; i < 20; i++) {
+    const w = makeWeapon(1);
+    assert(w.type === 'weapon', 'Generated weapon has type=weapon');
+    assert(w.rarity >= 0 && w.rarity <= 3, 'Rarity in range 0-3');
+    assert(w.damage > 0, 'Weapon damage > 0');
+    assert(WEAPON_DEFS[w.base], 'Weapon base "' + w.base + '" exists in WEAPON_DEFS');
+  }
+}
+
+{
+  // Forced rarity respects parameter
+  for (let r = 0; r < 4; r++) {
+    const w = makeWeapon(1, r);
+    assertEqual(w.rarity, r, 'Forced rarity ' + r + ' respected');
+  }
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>

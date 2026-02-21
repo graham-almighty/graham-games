@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rogue Depths</title>
+<link rel="icon" href="../favicon.ico">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Cinzel+Decorative:wght@900&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #eee; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; align-items: center; justify-content: center; }
+
+  /* ═══ SCREENS ═══ */
+  .screen { display: none; flex-direction: column; align-items: center; justify-content: center; position: absolute; inset: 0; z-index: 10; }
+  .screen.active { display: flex; }
+
+  #title-screen {
+    background: radial-gradient(ellipse at center, #1a1008 0%, #0a0a0f 70%);
+  }
+  .title-logo { font-family: 'Cinzel Decorative', serif; font-size: 3rem; color: #8b5e3c; text-shadow: 0 0 30px #8b5e3c44, 0 2px 4px #000; margin-bottom: 8px; letter-spacing: 0.05em; }
+  .title-sub { font-family: 'Cinzel', serif; color: #666; font-size: 0.85rem; letter-spacing: 0.15em; margin-bottom: 40px; }
+  .title-btn {
+    font-family: 'Cinzel', serif; font-size: 1rem; padding: 12px 40px;
+    background: transparent; color: #8b5e3c; border: 2px solid #8b5e3c;
+    cursor: pointer; letter-spacing: 0.1em; transition: all 0.2s; margin-bottom: 12px;
+    border-radius: 4px;
+  }
+  .title-btn:hover { background: #8b5e3c22; box-shadow: 0 0 25px #8b5e3c33; }
+  .exit-btn {
+    font-family: 'Cinzel', serif; font-size: 0.7rem; color: #555; text-decoration: none;
+    letter-spacing: 0.1em; margin-top: 20px; transition: color 0.2s;
+  }
+  .exit-btn:hover { color: #8b5e3c; }
+
+  /* ═══ CLASS SELECT ═══ */
+  #class-screen { background: radial-gradient(ellipse at center, #1a1008 0%, #0a0a0f 70%); }
+  .class-title { font-family: 'Cinzel Decorative', serif; font-size: 1.6rem; color: #8b5e3c; margin-bottom: 6px; text-shadow: 0 0 20px #8b5e3c33; }
+  .class-sub { color: #666; font-size: 0.75rem; margin-bottom: 24px; letter-spacing: 0.1em; }
+  .class-cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 700px; }
+  .class-card {
+    width: 150px; padding: 18px 14px; border-radius: 8px;
+    border: 1px solid #333; background: #0a0a0f; text-align: center;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .class-card:hover { border-color: #8b5e3c; box-shadow: 0 0 20px #8b5e3c22; transform: translateY(-2px); }
+  .class-card.locked { opacity: 0.35; cursor: default; }
+  .class-card.locked:hover { border-color: #333; box-shadow: none; transform: none; }
+  .cc-icon { font-size: 2rem; margin-bottom: 6px; }
+  .cc-name { font-family: 'Cinzel', serif; font-size: 0.85rem; margin-bottom: 4px; }
+  .cc-stats { font-size: 0.6rem; color: #888; line-height: 1.5; }
+  .cc-desc { font-size: 0.55rem; color: #666; margin-top: 6px; }
+  .cc-locked { font-size: 0.55rem; color: #8b5e3c; margin-top: 6px; }
+  .class-back { font-family: 'Cinzel', serif; font-size: 0.7rem; color: #555; background: none; border: 1px solid #333; padding: 6px 16px; cursor: pointer; margin-top: 20px; transition: all 0.2s; border-radius: 3px; }
+  .class-back:hover { color: #8b5e3c; border-color: #8b5e3c; }
+
+  /* ═══ GAME SCREEN ═══ */
+  #game-screen { background: #0a0a0f; }
+  .game-wrap { position: relative; }
+  canvas { display: block; background: #0a0a0f; cursor: crosshair; }
+
+  /* ═══ HUD ═══ */
+  .hud { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; padding: 8px 12px; display: flex; align-items: center; gap: 14px; z-index: 5; }
+  .hud-hp { display: flex; align-items: center; gap: 6px; }
+  .hud-hp-label { font-size: 0.65rem; color: #c44; font-family: 'Cinzel', serif; }
+  .hud-hp-bar { width: 140px; height: 14px; background: #1a1a22; border: 1px solid #c4444488; border-radius: 3px; overflow: hidden; }
+  .hud-hp-fill { height: 100%; background: linear-gradient(90deg, #c44, #e66); transition: width 0.15s; }
+  .hud-floor { font-family: 'Cinzel', serif; font-size: 0.7rem; color: #8b5e3c; }
+  .hud-gold { font-size: 0.7rem; color: #c9a84c; }
+  .hud-weapon { font-size: 0.65rem; padding: 3px 8px; border-radius: 3px; border: 1px solid #333; background: #0a0a0f88; }
+  .hud-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .hud-pause { pointer-events: all; font-family: 'Cinzel', serif; font-size: 0.6rem; color: #888; background: none; border: 1px solid #444; padding: 3px 8px; cursor: pointer; border-radius: 3px; }
+  .hud-pause:hover { color: #8b5e3c; border-color: #8b5e3c; }
+
+  /* Inventory bar */
+  .inv-bar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; pointer-events: none; z-index: 5; }
+  .inv-slot {
+    width: 42px; height: 42px; background: #0a0a0f99; border: 1px solid #333;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; position: relative; backdrop-filter: blur(2px);
+  }
+  .inv-slot.active { border-color: #8b5e3c; box-shadow: 0 0 8px #8b5e3c44; }
+  .inv-key { position: absolute; top: 1px; left: 3px; font-size: 0.45rem; color: #555; }
+
+  /* Pickup hint */
+  .pickup-hint {
+    position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; color: #c9a84c; font-family: 'Cinzel', serif;
+    background: #0a0a0fcc; padding: 4px 12px; border-radius: 4px; border: 1px solid #8b5e3c44;
+    pointer-events: none; z-index: 5; display: none;
+  }
+
+  /* ═══ PAUSE OVERLAY ═══ */
+  .pause-overlay {
+    position: absolute; inset: 0; background: #000000cc; z-index: 20;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .pause-overlay.active { display: flex; }
+  .pause-title { font-family: 'Cinzel Decorative', serif; font-size: 1.8rem; color: #8b5e3c; margin-bottom: 20px; }
+  .pause-btn {
+    font-family: 'Cinzel', serif; font-size: 0.8rem; padding: 8px 28px;
+    background: transparent; color: #8b5e3c; border: 1px solid #8b5e3c;
+    cursor: pointer; margin-bottom: 10px; transition: all 0.2s; border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+  .pause-btn:hover { background: #8b5e3c22; }
+
+  /* ═══ DEATH / VICTORY SCREEN ═══ */
+  #death-screen, #victory-screen { background: radial-gradient(ellipse at center, #1a0808 0%, #0a0a0f 70%); }
+  #victory-screen { background: radial-gradient(ellipse at center, #1a1808 0%, #0a0a0f 70%); }
+  .end-title { font-family: 'Cinzel Decorative', serif; font-size: 2.2rem; margin-bottom: 8px; text-shadow: 0 0 30px currentColor; }
+  .end-title.death { color: #c44; }
+  .end-title.victory { color: #c9a84c; }
+  .end-stats { color: #888; font-size: 0.75rem; line-height: 1.8; margin-bottom: 24px; text-align: center; }
+  .end-stat-val { color: #eee; font-family: 'Cinzel', serif; }
+
+  /* ═══ TOAST ═══ */
+  .gg-toast {
+    position: fixed; top: 20px; right: 20px; background: linear-gradient(135deg, #1a1a22, #141418);
+    border: 1px solid #c9a84c; border-radius: 8px; padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px; z-index: 100;
+    transform: translateX(120%); transition: transform 0.4s ease;
+    box-shadow: 0 0 30px #c9a84c22;
+  }
+  .gg-toast.visible { transform: translateX(0); }
+  .gg-toast-icon { font-size: 1.5rem; }
+  .gg-toast-title { font-family: 'Cinzel', serif; color: #c9a84c; font-size: 0.7rem; }
+  .gg-toast-name { color: #eee; font-size: 0.8rem; }
+  .gg-toast-reward { font-family: 'Cinzel', serif; color: #c9a84c; font-size: 0.85rem; margin-left: 8px; }
+
+  /* ═══ MOBILE ═══ */
+  @media (max-width: 600px) {
+    body { overflow: auto; height: auto; }
+    .title-logo { font-size: 1.8rem; }
+    .title-sub { font-size: 0.65rem; }
+    .class-cards { flex-direction: column; align-items: center; }
+    .class-card { width: 80%; max-width: 220px; }
+    canvas { max-width: 100vw; }
+    .hud { flex-wrap: wrap; gap: 6px; padding: 4px 6px; }
+    .hud-hp-bar { width: 90px; height: 10px; }
+    .inv-slot { width: 34px; height: 34px; font-size: 0.9rem; }
+    .end-title { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toast -->
+<div class="gg-toast" id="gg-toast">
+  <div class="gg-toast-icon">&#127942;</div>
+  <div>
+    <div class="gg-toast-title">Achievement Unlocked!</div>
+    <div class="gg-toast-name" id="gg-toast-name"></div>
+  </div>
+  <div class="gg-toast-reward" id="gg-toast-reward"></div>
+</div>
+
+<!-- Title Screen -->
+<div class="screen active" id="title-screen">
+  <div class="title-logo">ROGUE DEPTHS</div>
+  <div class="title-sub">A DUNGEON CRAWLER ROGUELIKE</div>
+  <button class="title-btn" onclick="showScreen('class-screen')">PLAY</button>
+  <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<!-- Class Select -->
+<div class="screen" id="class-screen">
+  <div class="class-title">CHOOSE YOUR CLASS</div>
+  <div class="class-sub">EACH CLASS HAS UNIQUE STRENGTHS</div>
+  <div class="class-cards" id="class-cards"></div>
+  <button class="class-back" onclick="showScreen('title-screen')">BACK</button>
+</div>
+
+<!-- Game Screen -->
+<div class="screen" id="game-screen">
+  <div class="game-wrap" id="game-wrap">
+    <canvas id="game-canvas"></canvas>
+    <div class="hud">
+      <div class="hud-hp">
+        <span class="hud-hp-label">HP</span>
+        <div class="hud-hp-bar"><div class="hud-hp-fill" id="hud-hp-fill"></div></div>
+      </div>
+      <div class="hud-floor" id="hud-floor">FLOOR 1</div>
+      <div class="hud-gold" id="hud-gold">&#9733; 0</div>
+      <div class="hud-weapon" id="hud-weapon">Sword</div>
+      <div class="hud-right">
+        <button class="hud-pause" onclick="togglePause()">ESC</button>
+      </div>
+    </div>
+    <div class="inv-bar" id="inv-bar"></div>
+    <div class="pickup-hint" id="pickup-hint">Press E to pick up</div>
+    <div class="pause-overlay" id="pause-overlay">
+      <div class="pause-title">PAUSED</div>
+      <button class="pause-btn" onclick="togglePause()">RESUME</button>
+      <button class="pause-btn" onclick="quitToTitle()">QUIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- Death Screen -->
+<div class="screen" id="death-screen">
+  <div class="end-title death">YOU DIED</div>
+  <div class="end-stats" id="death-stats"></div>
+  <button class="title-btn" onclick="showScreen('class-screen')">TRY AGAIN</button>
+  <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<!-- Victory Screen -->
+<div class="screen" id="victory-screen">
+  <div class="end-title victory">VICTORY</div>
+  <div class="end-stats" id="victory-stats"></div>
+  <button class="title-btn" onclick="showScreen('class-screen')">PLAY AGAIN</button>
+  <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// G BUX SYSTEM
+// ═══════════════════════════════════════════
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  showAchievementToast(name, reward);
+  return true;
+}
+
+let ggToastQueue = [], ggToastShowing = false;
+function showAchievementToast(name, reward) {
+  ggToastQueue.push({ name, reward });
+  if (!ggToastShowing) processToastQueue();
+}
+function processToastQueue() {
+  if (!ggToastQueue.length) { ggToastShowing = false; return; }
+  ggToastShowing = true;
+  const { name, reward } = ggToastQueue.shift();
+  document.getElementById('gg-toast-name').textContent = name;
+  document.getElementById('gg-toast-reward').textContent = '+' + reward + ' G Bux';
+  document.getElementById('gg-toast').classList.add('visible');
+  setTimeout(() => {
+    document.getElementById('gg-toast').classList.remove('visible');
+    setTimeout(processToastQueue, 400);
+  }, 3000);
+}
+
+// ═══════════════════════════════════════════
+// ACHIEVEMENT REGISTRY
+// ═══════════════════════════════════════════
+const RD_ACH = {
+  rd_first_blood:   { name: 'First Blood',     reward: 5 },
+  rd_floor_5:       { name: 'Into the Deep',    reward: 10 },
+  rd_floor_10:      { name: 'Halfway There',    reward: 20 },
+  rd_floor_15:      { name: 'Rock Bottom',      reward: 30 },
+  rd_boss_slayer:   { name: 'Boss Slayer',       reward: 15 },
+  rd_dragon_slayer: { name: 'Dragon Slayer',     reward: 50 },
+  rd_rare_find:     { name: 'Rare Find',         reward: 10 },
+  rd_hoarder:       { name: 'Gold Hoarder',      reward: 15 },
+  rd_speedrun:      { name: 'Speed Runner',      reward: 20 },
+  rd_no_hit_boss:   { name: 'Untouchable',       reward: 25 },
+};
+function ggTry(id) { const a = RD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+// ═══════════════════════════════════════════
+// GAME CONSTANTS
+// ═══════════════════════════════════════════
+const TILE = 32;
+const MAP_W = 50;
+const MAP_H = 50;
+const VIEWPORT_TILES_X = 25;
+const VIEWPORT_TILES_Y = 19;
+const CANVAS_W = VIEWPORT_TILES_X * TILE; // 800
+const CANVAS_H = VIEWPORT_TILES_Y * TILE; // 608
+
+const TILE_WALL = 0;
+const TILE_FLOOR = 1;
+const TILE_CORRIDOR = 2;
+const TILE_STAIRS = 3;
+const TILE_CHEST = 4;
+
+const CLASS_DEFS = {
+  warrior: { name: 'Warrior', hp: 150, speed: 2.5, color: '#4488ff', startWeapon: 'sword', desc: 'High HP, melee specialist', icon: '\u2694\uFE0F' },
+  archer:  { name: 'Archer',  hp: 100, speed: 3.0, color: '#44bb44', startWeapon: 'bow',   desc: 'Ranged attacks, moderate HP', icon: '\uD83C\uDFF9' },
+  mage:    { name: 'Mage',    hp: 80,  speed: 2.8, color: '#aa44ff', startWeapon: 'staff', desc: 'Magic projectiles, low HP', icon: '\uD83E\uDE84' },
+  rogue:   { name: 'Rogue',   hp: 90,  speed: 3.5, color: '#ff8844', startWeapon: 'dagger', desc: 'Fast, backstab bonus', icon: '\uD83D\uDDE1\uFE0F', shopUnlock: 'rd_shadow_class' },
+};
+
+const WEAPON_DEFS = {
+  sword:  { name: 'Sword',  type: 'melee',  baseDmg: 12, range: 1.5, cooldown: 0.5,  arc: 90,  color: '#cccccc' },
+  axe:    { name: 'Axe',    type: 'melee',  baseDmg: 20, range: 1.3, cooldown: 0.9,  arc: 120, color: '#888888' },
+  dagger: { name: 'Dagger', type: 'melee',  baseDmg: 7,  range: 1.0, cooldown: 0.25, arc: 60,  color: '#aaaacc' },
+  spear:  { name: 'Spear',  type: 'melee',  baseDmg: 14, range: 2.0, cooldown: 0.65, arc: 45,  color: '#bbaa77' },
+  bow:    { name: 'Bow',    type: 'ranged', baseDmg: 10, range: 8,   cooldown: 0.6,  projSpeed: 8, color: '#886633' },
+  staff:  { name: 'Staff',  type: 'ranged', baseDmg: 14, range: 7,   cooldown: 0.8,  projSpeed: 6, color: '#9944ff', pierce: true },
+};
+
+const RARITIES = [
+  { name: 'Common',   color: '#aaaaaa', multiplier: 1.0 },
+  { name: 'Uncommon', color: '#44cc44', multiplier: 1.3 },
+  { name: 'Rare',     color: '#4488ff', multiplier: 1.6 },
+  { name: 'Epic',     color: '#aa44ff', multiplier: 2.0 },
+];
+
+const ENEMY_DEFS = {
+  rat:          { name: 'Rat',           hp: 15,  speed: 2.5, damage: 5,   gold: 3,  minFloor: 1,  radius: 6,  color: '#8d6e63', ai: 'chase', atkCd: 1.0 },
+  skeleton:     { name: 'Skeleton',      hp: 30,  speed: 1.5, damage: 10,  gold: 5,  minFloor: 1,  radius: 8,  color: '#e0e0e0', ai: 'chase', atkCd: 1.2 },
+  bat:          { name: 'Bat',           hp: 20,  speed: 3.0, damage: 7,   gold: 4,  minFloor: 2,  radius: 5,  color: '#555577', ai: 'zigzag', atkCd: 0.8 },
+  slime:        { name: 'Slime',         hp: 60,  speed: 0.8, damage: 8,   gold: 6,  minFloor: 3,  radius: 10, color: '#44cc44', ai: 'chase', atkCd: 1.5, splits: true },
+  goblinArcher: { name: 'Goblin Archer', hp: 25,  speed: 1.2, damage: 12,  gold: 7,  minFloor: 4,  radius: 7,  color: '#669933', ai: 'ranged', atkCd: 1.8, range: 6 },
+  darkKnight:   { name: 'Dark Knight',   hp: 100, speed: 0.7, damage: 20,  gold: 12, minFloor: 7,  radius: 10, color: '#333355', ai: 'chase', atkCd: 1.4 },
+  wraith:       { name: 'Wraith',        hp: 40,  speed: 1.8, damage: 15,  gold: 10, minFloor: 9,  radius: 8,  color: '#8866aa', ai: 'phase', atkCd: 1.0 },
+  fireImp:      { name: 'Fire Imp',      hp: 35,  speed: 1.5, damage: 18,  gold: 9,  minFloor: 11, radius: 7,  color: '#ff4400', ai: 'ranged', atkCd: 2.0, range: 5 },
+};
+
+const BOSS_DEFS = {
+  spiderQueen: { name: 'Spider Queen',  floor: 5,  hp: 400,  speed: 1.0, damage: 15, gold: 50,  radius: 16, color: '#442244', ability: 'spawn', interval: 4 },
+  lich:        { name: 'The Lich',      floor: 10, hp: 600,  speed: 0.8, damage: 20, gold: 80,  radius: 14, color: '#6644aa', ability: 'lich', interval: 5 },
+  dragon:      { name: 'Ancient Dragon', floor: 15, hp: 1000, speed: 1.2, damage: 30, gold: 150, radius: 20, color: '#cc2200', ability: 'dragon', interval: 6 },
+};
+
+const POTION_DEFS = [
+  { name: 'Small Potion',  heal: 25,  color: '#ff4444', icon: '\uD83E\uDDEA', weight: 10 },
+  { name: 'Medium Potion', heal: 50,  color: '#ff6644', icon: '\uD83E\uDDEA', weight: 5 },
+  { name: 'Large Potion',  heal: 100, color: '#ff8844', icon: '\uD83E\uDDEA', weight: 2 },
+];
+
+const MAX_FLOORS = 15;
+const BOSS_FLOORS = [5, 10, 15];
+
+// ═══════════════════════════════════════════
+// SFX (Web Audio API)
+// ═══════════════════════════════════════════
+const SFX = (() => {
+  let ctx;
+  function getCtx() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return ctx;
+  }
+  function noise(duration, vol) {
+    const c = getCtx(), buf = c.createBuffer(1, c.sampleRate * duration, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * vol;
+    const s = c.createBufferSource(); s.buffer = buf;
+    const g = c.createGain(); g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.exponentialValueToTime(0.01, c.currentTime + duration);
+    s.connect(g); g.connect(c.destination); s.start(); s.stop(c.currentTime + duration);
+  }
+  function tone(freq, duration, type, vol) {
+    const c = getCtx(), o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.15, c.currentTime);
+    g.gain.exponentialValueToTime(0.01, c.currentTime + duration);
+    o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + duration);
+  }
+  return {
+    hit:      () => { noise(0.08, 0.2); tone(200, 0.08, 'square', 0.1); },
+    slash:    () => { noise(0.12, 0.15); },
+    shoot:    () => { tone(800, 0.1, 'sine', 0.1); tone(600, 0.1, 'sine', 0.08); },
+    pickup:   () => { tone(600, 0.08, 'sine', 0.12); tone(900, 0.08, 'sine', 0.1); },
+    gold:     () => { tone(1200, 0.06, 'sine', 0.1); tone(1500, 0.08, 'sine', 0.1); },
+    stairs:   () => { tone(400, 0.15, 'triangle', 0.12); tone(600, 0.2, 'triangle', 0.1); },
+    hurt:     () => { tone(150, 0.15, 'sawtooth', 0.12); noise(0.1, 0.15); },
+    die:      () => { tone(200, 0.3, 'sawtooth', 0.15); tone(100, 0.5, 'sawtooth', 0.1); },
+    boss:     () => { tone(100, 0.3, 'square', 0.15); tone(80, 0.4, 'square', 0.12); },
+    victory:  () => { tone(523, 0.15, 'sine', 0.12); setTimeout(() => tone(659, 0.15, 'sine', 0.12), 150); setTimeout(() => tone(784, 0.3, 'sine', 0.15), 300); },
+    potion:   () => { tone(500, 0.1, 'sine', 0.1); tone(700, 0.15, 'sine', 0.1); },
+  };
+})();
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+let canvas, ctx, animFrame;
+let gameState = 'title'; // title, playing, paused, dead, victory
+let lastTime = 0;
+
+// Player
+let player = {};
+let keysDown = new Set();
+let mouseX = 0, mouseY = 0;
+
+// Dungeon
+let dungeon = {};
+let revealed = []; // 2D boolean array for fog of war
+
+// Entities
+let enemies = [];
+let projectiles = [];
+let effects = [];
+let groundItems = [];
+
+// Stats tracking
+let runStats = {};
+
+// ═══════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'class-screen') buildClassSelect();
+}
+
+// ═══════════════════════════════════════════
+// CLASS SELECT
+// ═══════════════════════════════════════════
+function buildClassSelect() {
+  const container = document.getElementById('class-cards');
+  container.innerHTML = '';
+  const ggData = ggLoad();
+  for (const [key, def] of Object.entries(CLASS_DEFS)) {
+    const locked = def.shopUnlock && !ggData.shopPurchases[def.shopUnlock];
+    const card = document.createElement('div');
+    card.className = 'class-card' + (locked ? ' locked' : '');
+    card.innerHTML =
+      '<div class="cc-icon">' + def.icon + '</div>' +
+      '<div class="cc-name" style="color:' + def.color + '">' + def.name + '</div>' +
+      '<div class="cc-stats">HP: ' + def.hp + ' | SPD: ' + def.speed + '</div>' +
+      '<div class="cc-desc">' + def.desc + '</div>' +
+      (locked ? '<div class="cc-locked">Unlock in G Bux Shop</div>' : '');
+    if (!locked) card.addEventListener('click', () => startGame(key));
+    container.appendChild(card);
+  }
+}
+
+// ═══════════════════════════════════════════
+// DUNGEON GENERATION
+// ═══════════════════════════════════════════
+function generateDungeon(floor) {
+  const tiles = [];
+  for (let y = 0; y < MAP_H; y++) {
+    tiles[y] = [];
+    for (let x = 0; x < MAP_W; x++) tiles[y][x] = TILE_WALL;
+  }
+
+  const rooms = [];
+  const numRooms = 5 + Math.min(Math.floor(floor * 0.3), 5); // 5-10 rooms
+  let attempts = 0;
+
+  while (rooms.length < numRooms && attempts < 200) {
+    attempts++;
+    const w = 5 + Math.floor(Math.random() * 7); // 5-11
+    const h = 5 + Math.floor(Math.random() * 5); // 5-9
+    const rx = 1 + Math.floor(Math.random() * (MAP_W - w - 2));
+    const ry = 1 + Math.floor(Math.random() * (MAP_H - h - 2));
+
+    // Check overlap with existing rooms (1 tile gap)
+    let overlap = false;
+    for (const r of rooms) {
+      if (rx - 1 < r.x + r.w && rx + w + 1 > r.x && ry - 1 < r.y + r.h && ry + h + 1 > r.y) {
+        overlap = true; break;
+      }
+    }
+    if (overlap) continue;
+
+    // Carve room
+    for (let y = ry; y < ry + h; y++)
+      for (let x = rx; x < rx + w; x++)
+        tiles[y][x] = TILE_FLOOR;
+
+    rooms.push({ x: rx, y: ry, w, h, cx: Math.floor(rx + w / 2), cy: Math.floor(ry + h / 2), revealed: false });
+  }
+
+  // If too few rooms, just accept what we have (minimum 3)
+  if (rooms.length < 3) return generateDungeon(floor); // retry
+
+  // Connect rooms with L-shaped corridors
+  for (let i = 1; i < rooms.length; i++) {
+    const a = rooms[i - 1], b = rooms[i];
+    carveCorridor(tiles, a.cx, a.cy, b.cx, b.cy);
+  }
+
+  // Connect last to first for loop (ensures better connectivity)
+  if (rooms.length > 2) {
+    const first = rooms[0], last = rooms[rooms.length - 1];
+    carveCorridor(tiles, last.cx, last.cy, first.cx, first.cy);
+  }
+
+  // Determine room types
+  rooms[0].type = 'start';
+
+  // Stairs room = furthest from start
+  let maxDist = 0, stairsIdx = 1;
+  for (let i = 1; i < rooms.length; i++) {
+    const d = Math.abs(rooms[i].cx - rooms[0].cx) + Math.abs(rooms[i].cy - rooms[0].cy);
+    if (d > maxDist) { maxDist = d; stairsIdx = i; }
+  }
+  rooms[stairsIdx].type = 'stairs';
+
+  // Assign other room types
+  for (let i = 1; i < rooms.length; i++) {
+    if (rooms[i].type) continue;
+    const r = Math.random();
+    rooms[i].type = r < 0.6 ? 'enemy' : (r < 0.8 ? 'treasure' : 'empty');
+  }
+
+  // Place stairs tile (or boss marker)
+  const sr = rooms[stairsIdx];
+  const isBossFloor = BOSS_FLOORS.includes(floor);
+  if (!isBossFloor) {
+    tiles[sr.cy][sr.cx] = TILE_STAIRS;
+  }
+  // Boss floors: stairs appear after boss dies
+
+  // Place chests in treasure rooms
+  for (const room of rooms) {
+    if (room.type === 'treasure') {
+      const cx = room.x + 1 + Math.floor(Math.random() * (room.w - 2));
+      const cy = room.y + 1 + Math.floor(Math.random() * (room.h - 2));
+      tiles[cy][cx] = TILE_CHEST;
+    }
+  }
+
+  return { tiles, rooms, stairsRoom: sr, startRoom: rooms[0], isBossFloor, floor };
+}
+
+function carveCorridor(tiles, x1, y1, x2, y2) {
+  // L-shaped: horizontal then vertical (or vice versa randomly)
+  if (Math.random() < 0.5) {
+    carveH(tiles, x1, x2, y1);
+    carveV(tiles, y1, y2, x2);
+  } else {
+    carveV(tiles, y1, y2, x1);
+    carveH(tiles, x1, x2, y2);
+  }
+}
+
+function carveH(tiles, x1, x2, y) {
+  const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+  for (let x = minX; x <= maxX; x++) {
+    if (y >= 0 && y < MAP_H && x >= 0 && x < MAP_W && tiles[y][x] === TILE_WALL)
+      tiles[y][x] = TILE_CORRIDOR;
+  }
+}
+
+function carveV(tiles, y1, y2, x) {
+  const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+  for (let y = minY; y <= maxY; y++) {
+    if (y >= 0 && y < MAP_H && x >= 0 && x < MAP_W && tiles[y][x] === TILE_WALL)
+      tiles[y][x] = TILE_CORRIDOR;
+  }
+}
+
+// ═══════════════════════════════════════════
+// ITEM / LOOT GENERATION
+// ═══════════════════════════════════════════
+function makeWeapon(floor, forceRarity) {
+  const types = Object.keys(WEAPON_DEFS);
+  const base = types[Math.floor(Math.random() * types.length)];
+  const def = WEAPON_DEFS[base];
+
+  let rarity;
+  if (forceRarity !== undefined) {
+    rarity = forceRarity;
+  } else {
+    // Higher floors = better rarity chance
+    const r = Math.random() * 100;
+    const rareBonus = floor * 2;
+    if (r < 2 + rareBonus * 0.3) rarity = 3;       // Epic
+    else if (r < 10 + rareBonus) rarity = 2;         // Rare
+    else if (r < 35 + rareBonus * 1.5) rarity = 1;   // Uncommon
+    else rarity = 0;                                   // Common
+  }
+
+  const rar = RARITIES[rarity];
+  return {
+    base, rarity, type: 'weapon',
+    damage: Math.round(def.baseDmg * rar.multiplier),
+    name: rar.name + ' ' + def.name,
+    color: rar.color,
+  };
+}
+
+function makePotion() {
+  const totalWeight = POTION_DEFS.reduce((s, p) => s + p.weight, 0);
+  let r = Math.random() * totalWeight;
+  for (const p of POTION_DEFS) {
+    r -= p.weight;
+    if (r <= 0) return { type: 'potion', name: p.name, heal: p.heal, color: p.color, icon: p.icon };
+  }
+  return { type: 'potion', ...POTION_DEFS[0] };
+}
+
+function makeArmor(floor) {
+  const defense = 5 + Math.floor(Math.random() * Math.min(floor, 5)) * 2;
+  return { type: 'armor', name: 'Armor +' + defense + '%', defense, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' };
+}
+
+function generateLoot(floor) {
+  const r = Math.random();
+  if (r < 0.4) return makeWeapon(floor);
+  else if (r < 0.75) return makePotion();
+  else return makeArmor(floor);
+}
+
+function generateChestLoot(floor) {
+  const items = [];
+  const count = 1 + Math.floor(Math.random() * 3); // 1-3
+  for (let i = 0; i < count; i++) items.push(generateLoot(floor));
+  return items;
+}
+
+// ═══════════════════════════════════════════
+// SPAWN ENEMIES
+// ═══════════════════════════════════════════
+function getFloorEnemyTypes(floor) {
+  return Object.entries(ENEMY_DEFS).filter(([k, v]) => floor >= v.minFloor).map(([k]) => k);
+}
+
+function getFloorEnemyCount(floor) {
+  return 8 + Math.floor(floor * 1.5);
+}
+
+function getFloorHPScale(floor) {
+  return 1 + (floor - 1) * 0.15;
+}
+
+function getFloorDmgScale(floor) {
+  return 1 + (floor - 1) * 0.1;
+}
+
+function spawnEnemiesForRoom(room, floor) {
+  if (room.type === 'start' || room.type === 'empty') return [];
+  if (room.type === 'treasure') {
+    // Treasure rooms get 1-2 guards
+    return spawnInRoom(room, floor, 1 + Math.floor(Math.random() * 2));
+  }
+  // Enemy rooms
+  const count = 2 + Math.floor(Math.random() * 3) + Math.floor(floor * 0.3);
+  return spawnInRoom(room, floor, Math.min(count, 8));
+}
+
+function spawnInRoom(room, floor, count) {
+  const types = getFloorEnemyTypes(floor);
+  const spawned = [];
+  const hpScale = getFloorHPScale(floor);
+  const dmgScale = getFloorDmgScale(floor);
+
+  for (let i = 0; i < count; i++) {
+    const typeKey = types[Math.floor(Math.random() * types.length)];
+    const def = ENEMY_DEFS[typeKey];
+    const ex = (room.x + 1 + Math.random() * (room.w - 2)) * TILE;
+    const ey = (room.y + 1 + Math.random() * (room.h - 2)) * TILE;
+    spawned.push({
+      type: typeKey, x: ex, y: ey,
+      hp: Math.round(def.hp * hpScale),
+      maxHp: Math.round(def.hp * hpScale),
+      damage: Math.round(def.damage * dmgScale),
+      speed: def.speed, radius: def.radius, color: def.color,
+      ai: def.ai, atkCd: def.atkCd, atkTimer: 0,
+      splits: def.splits || false,
+      range: def.range || 0,
+      facingX: 0, facingY: 1,
+      zigzagTimer: 0, zigzagDir: 1,
+      isBoss: false,
+    });
+  }
+  return spawned;
+}
+
+function spawnBoss(floor, room) {
+  const bossKey = Object.keys(BOSS_DEFS).find(k => BOSS_DEFS[k].floor === floor);
+  if (!bossKey) return null;
+  const def = BOSS_DEFS[bossKey];
+  return {
+    type: bossKey, x: room.cx * TILE, y: room.cy * TILE,
+    hp: def.hp, maxHp: def.hp, damage: def.damage,
+    speed: def.speed, radius: def.radius, color: def.color,
+    ai: 'boss', ability: def.ability, interval: def.interval,
+    abilityTimer: def.interval, atkTimer: 0, atkCd: 1.5,
+    isBoss: true, name: def.name, gold: def.gold,
+    facingX: 0, facingY: 1,
+    // Dragon specifics
+    charging: false, chargeTimer: 0, chargeDir: { x: 0, y: 0 },
+    breathActive: false, breathTimer: 0, breathAngle: 0,
+    // Lich specifics
+    summonCount: 0,
+  };
+}
+
+// ═══════════════════════════════════════════
+// PLAYER SYSTEM
+// ═══════════════════════════════════════════
+function initPlayer(className) {
+  const def = CLASS_DEFS[className];
+  const ggData = ggLoad();
+  const hasEnchanted = !!ggData.shopPurchases['rd_enchanted_start'];
+  const startRarity = hasEnchanted ? 1 : 0;
+
+  player = {
+    x: 0, y: 0, hp: def.hp, maxHp: def.hp,
+    defense: 0, speed: def.speed, className,
+    color: def.color, radius: 8,
+    weapon: makeWeapon(1, startRarity),
+    inventory: [null, null, null, null, null],
+    attackTimer: 0, invulnTimer: 0,
+    gold: 0, floor: 1, kills: 0, bossKills: 0,
+    damageTakenThisBoss: 0, floorStartTime: 0,
+    facingAngle: 0,
+  };
+  // Force starting weapon to match class
+  const wDef = WEAPON_DEFS[def.startWeapon];
+  const rar = RARITIES[startRarity];
+  player.weapon = {
+    base: def.startWeapon, rarity: startRarity, type: 'weapon',
+    damage: Math.round(wDef.baseDmg * rar.multiplier),
+    name: rar.name + ' ' + wDef.name, color: rar.color,
+  };
+}
+
+function addToInventory(item) {
+  for (let i = 0; i < 5; i++) {
+    if (!player.inventory[i]) { player.inventory[i] = item; return true; }
+  }
+  return false; // full
+}
+
+function useInventorySlot(idx) {
+  const item = player.inventory[idx];
+  if (!item) return;
+  if (item.type === 'potion') {
+    const healed = Math.min(item.heal, player.maxHp - player.hp);
+    if (healed <= 0) return; // already full
+    player.hp += healed;
+    player.inventory[idx] = null;
+    SFX.potion();
+    spawnEffect(player.x, player.y, '+' + healed, '#44ff44', 1.0);
+  }
+}
+
+// ═══════════════════════════════════════════
+// COMBAT SYSTEM
+// ═══════════════════════════════════════════
+function playerAttack() {
+  if (player.attackTimer > 0) return;
+  const wep = player.weapon;
+  const def = WEAPON_DEFS[wep.base];
+  player.attackTimer = def.cooldown;
+
+  if (def.type === 'melee') {
+    SFX.slash();
+    // Arc attack in facing direction
+    const angle = player.facingAngle;
+    const rangePx = def.range * TILE;
+    const halfArc = (def.arc / 2) * Math.PI / 180;
+    let hitAny = false;
+
+    // Spawn slash effect
+    spawnSlashEffect(player.x, player.y, angle, rangePx, def.arc);
+
+    for (const e of enemies) {
+      const dx = e.x - player.x, dy = e.y - player.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > rangePx + e.radius) continue;
+
+      const eAngle = Math.atan2(dy, dx);
+      let angleDiff = eAngle - angle;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      if (Math.abs(angleDiff) > halfArc) continue;
+
+      let dmg = wep.damage;
+      // Rogue backstab
+      if (player.className === 'rogue') {
+        const dot = e.facingX * Math.cos(angle) + e.facingY * Math.sin(angle);
+        if (dot > 0.3) dmg = Math.round(dmg * 1.5); // attacking from behind
+      }
+      damageEnemy(e, dmg);
+      hitAny = true;
+    }
+    if (hitAny) SFX.hit();
+  } else {
+    // Ranged
+    SFX.shoot();
+    const angle = player.facingAngle;
+    projectiles.push({
+      x: player.x, y: player.y,
+      vx: Math.cos(angle) * def.projSpeed * TILE,
+      vy: Math.sin(angle) * def.projSpeed * TILE,
+      damage: wep.damage, range: def.range * TILE,
+      traveled: 0, radius: 4, color: def.color,
+      owner: 'player', pierce: def.pierce || false,
+      hitEnemies: new Set(),
+    });
+  }
+}
+
+function damageEnemy(e, dmg) {
+  e.hp -= dmg;
+  spawnEffect(e.x, e.y - e.radius, '-' + dmg, '#ff4444', 0.8);
+  if (e.hp <= 0) killEnemy(e);
+}
+
+function killEnemy(e) {
+  e.dead = true;
+  spawnDeathEffect(e.x, e.y, e.color);
+  player.gold += (e.gold || 5);
+  if (player.gold >= 500) ggTry('rd_hoarder');
+  player.kills++;
+  if (player.kills === 1) ggTry('rd_first_blood');
+
+  // Drop loot
+  if (Math.random() < 0.25 || e.isBoss) {
+    const loot = e.isBoss ? makeWeapon(player.floor, Math.min(3, 1 + Math.floor(Math.random() * 3))) : generateLoot(player.floor);
+    groundItems.push({ x: e.x, y: e.y, item: loot });
+    if (loot.type === 'weapon' && loot.rarity >= 2) ggTry('rd_rare_find');
+  }
+
+  // Slime split
+  if (e.splits && !e.isSplit) {
+    for (let i = 0; i < 2; i++) {
+      const offset = (i === 0 ? -1 : 1) * 15;
+      enemies.push({
+        type: e.type, x: e.x + offset, y: e.y + offset,
+        hp: Math.round(e.maxHp * 0.3), maxHp: Math.round(e.maxHp * 0.3),
+        damage: Math.round(e.damage * 0.6), speed: e.speed * 1.3,
+        radius: Math.round(e.radius * 0.6), color: e.color,
+        ai: e.ai, atkCd: e.atkCd, atkTimer: 0, splits: false, isSplit: true,
+        range: 0, facingX: 0, facingY: 1, zigzagTimer: 0, zigzagDir: 1,
+        isBoss: false,
+      });
+    }
+  }
+
+  // Boss kill
+  if (e.isBoss) {
+    player.bossKills++;
+    ggTry('rd_boss_slayer');
+    if (e.type === 'dragon') ggTry('rd_dragon_slayer');
+    if (player.damageTakenThisBoss === 0) ggTry('rd_no_hit_boss');
+    SFX.boss();
+    // Reveal stairs
+    const sr = dungeon.stairsRoom;
+    dungeon.tiles[sr.cy][sr.cx] = TILE_STAIRS;
+    // Drop big gold
+    spawnEffect(e.x, e.y, '+' + e.gold + ' gold', '#c9a84c', 1.5);
+  }
+}
+
+function damagePlayer(dmg) {
+  if (player.invulnTimer > 0) return;
+  const actual = Math.max(1, dmg - Math.floor(dmg * player.defense / 100));
+  player.hp -= actual;
+  player.invulnTimer = 0.3;
+  player.damageTakenThisBoss += actual;
+  SFX.hurt();
+  spawnEffect(player.x, player.y - player.radius, '-' + actual, '#ff0000', 0.8);
+}
+
+function enemyMeleeAttack(e) {
+  if (e.atkTimer > 0) return;
+  const dx = player.x - e.x, dy = player.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist < e.radius + player.radius + TILE * 0.8) {
+    damagePlayer(e.damage);
+    e.atkTimer = e.atkCd;
+  }
+}
+
+function enemyRangedAttack(e) {
+  if (e.atkTimer > 0) return;
+  const dx = player.x - e.x, dy = player.y - e.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > (e.range || 5) * TILE) return;
+  // Line of sight check (simple: no walls between)
+  if (!hasLineOfSight(e.x, e.y, player.x, player.y)) return;
+
+  const angle = Math.atan2(dy, dx);
+  projectiles.push({
+    x: e.x, y: e.y,
+    vx: Math.cos(angle) * 4 * TILE,
+    vy: Math.sin(angle) * 4 * TILE,
+    damage: e.damage, range: (e.range || 5) * TILE,
+    traveled: 0, radius: 3, color: e.color,
+    owner: 'enemy', pierce: false, hitEnemies: new Set(),
+  });
+  e.atkTimer = e.atkCd;
+}
+
+function hasLineOfSight(x1, y1, x2, y2) {
+  const dx = x2 - x1, dy = y2 - y1;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const steps = Math.ceil(dist / (TILE * 0.5));
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const tx = Math.floor((x1 + dx * t) / TILE);
+    const ty = Math.floor((y1 + dy * t) / TILE);
+    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return false;
+    if (dungeon.tiles[ty][tx] === TILE_WALL) return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════
+// ENEMY AI
+// ═══════════════════════════════════════════
+function updateEnemies(dt) {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const e = enemies[i];
+    if (e.dead) { enemies.splice(i, 1); continue; }
+    e.atkTimer = Math.max(0, e.atkTimer - dt);
+
+    const dx = player.x - e.x, dy = player.y - e.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const nx = dist > 0 ? dx / dist : 0;
+    const ny = dist > 0 ? dy / dist : 0;
+
+    // Only act if room is revealed (enemy is "awake")
+    const eTileX = Math.floor(e.x / TILE), eTileY = Math.floor(e.y / TILE);
+    if (!isRevealed(eTileX, eTileY)) continue;
+
+    switch (e.ai) {
+      case 'chase':
+        moveEnemy(e, nx, ny, dt);
+        enemyMeleeAttack(e);
+        break;
+
+      case 'zigzag':
+        e.zigzagTimer += dt;
+        if (e.zigzagTimer > 0.5) { e.zigzagTimer = 0; e.zigzagDir *= -1; }
+        const perpX = -ny * e.zigzagDir * 0.5;
+        const perpY = nx * e.zigzagDir * 0.5;
+        moveEnemy(e, nx + perpX, ny + perpY, dt);
+        enemyMeleeAttack(e);
+        break;
+
+      case 'ranged':
+        // Keep distance
+        if (dist < 3 * TILE) {
+          moveEnemy(e, -nx, -ny, dt); // retreat
+        } else if (dist > (e.range || 5) * TILE) {
+          moveEnemy(e, nx, ny, dt); // approach
+        }
+        enemyRangedAttack(e);
+        break;
+
+      case 'phase':
+        // Move toward player ignoring walls
+        e.x += nx * e.speed * TILE * dt;
+        e.y += ny * e.speed * TILE * dt;
+        e.facingX = nx; e.facingY = ny;
+        enemyMeleeAttack(e);
+        break;
+
+      case 'boss':
+        updateBoss(e, dt, nx, ny, dist);
+        break;
+    }
+  }
+}
+
+function moveEnemy(e, dirX, dirY, dt) {
+  const len = Math.sqrt(dirX * dirX + dirY * dirY);
+  if (len === 0) return;
+  const ndx = dirX / len, ndy = dirY / len;
+  const newX = e.x + ndx * e.speed * TILE * dt;
+  const newY = e.y + ndy * e.speed * TILE * dt;
+
+  // Wall collision
+  const tileX = Math.floor(newX / TILE), tileY = Math.floor(newY / TILE);
+  if (tileX >= 0 && tileX < MAP_W && tileY >= 0 && tileY < MAP_H && dungeon.tiles[tileY][tileX] !== TILE_WALL) {
+    e.x = newX; e.y = newY;
+  } else {
+    // Try sliding along axes
+    const txOnly = Math.floor(newX / TILE), tyOld = Math.floor(e.y / TILE);
+    if (txOnly >= 0 && txOnly < MAP_W && dungeon.tiles[tyOld][txOnly] !== TILE_WALL) e.x = newX;
+    const tyOnly = Math.floor(newY / TILE), txOld = Math.floor(e.x / TILE);
+    if (tyOnly >= 0 && tyOnly < MAP_H && dungeon.tiles[tyOnly][txOld] !== TILE_WALL) e.y = newY;
+  }
+  e.facingX = ndx; e.facingY = ndy;
+}
+
+function updateBoss(e, dt, nx, ny, dist) {
+  e.abilityTimer -= dt;
+
+  switch (e.ability) {
+    case 'spawn': // Spider Queen
+      moveEnemy(e, nx, ny, dt);
+      enemyMeleeAttack(e);
+      if (e.abilityTimer <= 0) {
+        e.abilityTimer = e.interval;
+        // Spawn 2 small spiders
+        for (let i = 0; i < 2; i++) {
+          enemies.push({
+            type: 'spiderling', x: e.x + (Math.random() - 0.5) * 30, y: e.y + (Math.random() - 0.5) * 30,
+            hp: 10, maxHp: 10, damage: 4, speed: 2.5, radius: 4, color: '#553355',
+            ai: 'chase', atkCd: 0.8, atkTimer: 0, splits: false, range: 0,
+            facingX: 0, facingY: 1, zigzagTimer: 0, zigzagDir: 1, isBoss: false, gold: 2,
+          });
+        }
+      }
+      break;
+
+    case 'lich': // Lich
+      // Teleport + summon
+      if (e.abilityTimer <= 0) {
+        e.abilityTimer = e.interval;
+        if (e.hp / e.maxHp > 0.3 && e.summonCount < 4) {
+          // Summon skeleton
+          enemies.push({
+            type: 'skeleton', x: e.x + (Math.random() - 0.5) * 50, y: e.y + (Math.random() - 0.5) * 50,
+            hp: 30, maxHp: 30, damage: 10, speed: 1.5, radius: 8, color: '#e0e0e0',
+            ai: 'chase', atkCd: 1.2, atkTimer: 0, splits: false, range: 0,
+            facingX: 0, facingY: 1, zigzagTimer: 0, zigzagDir: 1, isBoss: false, gold: 3,
+          });
+          e.summonCount++;
+        }
+        // Teleport to random spot in room
+        const sr = dungeon.stairsRoom;
+        e.x = (sr.x + 1 + Math.random() * (sr.w - 2)) * TILE;
+        e.y = (sr.y + 1 + Math.random() * (sr.h - 2)) * TILE;
+        spawnEffect(e.x, e.y, 'TELEPORT', '#6644aa', 0.6);
+      }
+      // Shoot dark bolt
+      enemyRangedAttack(e);
+      break;
+
+    case 'dragon': // Dragon
+      if (e.charging) {
+        e.chargeTimer -= dt;
+        e.x += e.chargeDir.x * e.speed * 3 * TILE * dt;
+        e.y += e.chargeDir.y * e.speed * 3 * TILE * dt;
+        // Damage on contact during charge
+        const cdx = player.x - e.x, cdy = player.y - e.y;
+        if (Math.sqrt(cdx * cdx + cdy * cdy) < e.radius + player.radius + 5) {
+          damagePlayer(e.damage * 1.5);
+        }
+        if (e.chargeTimer <= 0) e.charging = false;
+      } else if (e.breathActive) {
+        e.breathTimer -= dt;
+        // Cone damage
+        const bAngle = e.breathAngle;
+        const bdx = player.x - e.x, bdy = player.y - e.y;
+        const bDist = Math.sqrt(bdx * bdx + bdy * bdy);
+        if (bDist < 4 * TILE) {
+          const pAngle = Math.atan2(bdy, bdx);
+          let diff = pAngle - bAngle;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          if (Math.abs(diff) < Math.PI / 4) {
+            damagePlayer(Math.round(e.damage * 0.3 * dt / 0.016)); // DPS
+          }
+        }
+        if (e.breathTimer <= 0) e.breathActive = false;
+      } else {
+        moveEnemy(e, nx, ny, dt);
+        enemyMeleeAttack(e);
+        if (e.abilityTimer <= 0) {
+          e.abilityTimer = e.interval;
+          if (Math.random() < 0.5) {
+            // Fire breath
+            e.breathActive = true;
+            e.breathTimer = 2;
+            e.breathAngle = Math.atan2(ny, nx);
+          } else {
+            // Charge
+            e.charging = true;
+            e.chargeTimer = 1.5;
+            e.chargeDir = { x: nx, y: ny };
+          }
+        }
+      }
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════
+// PROJECTILES
+// ═══════════════════════════════════════════
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.traveled += Math.sqrt(p.vx * p.vx + p.vy * p.vy) * dt;
+
+    // Wall collision
+    const tx = Math.floor(p.x / TILE), ty = Math.floor(p.y / TILE);
+    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H || dungeon.tiles[ty][tx] === TILE_WALL) {
+      projectiles.splice(i, 1); continue;
+    }
+
+    // Range exceeded
+    if (p.traveled > p.range) { projectiles.splice(i, 1); continue; }
+
+    if (p.owner === 'player') {
+      // Hit enemies
+      for (const e of enemies) {
+        if (e.dead || p.hitEnemies.has(e)) continue;
+        const dx = e.x - p.x, dy = e.y - p.y;
+        if (Math.sqrt(dx * dx + dy * dy) < e.radius + p.radius) {
+          let dmg = p.damage;
+          if (player.className === 'rogue') {
+            const dot = e.facingX * (p.vx / Math.abs(p.vx || 1)) + e.facingY * (p.vy / Math.abs(p.vy || 1));
+            if (dot > 0.3) dmg = Math.round(dmg * 1.5);
+          }
+          damageEnemy(e, dmg);
+          p.hitEnemies.add(e);
+          if (!p.pierce) { projectiles.splice(i, 1); break; }
+        }
+      }
+    } else {
+      // Hit player
+      const dx = player.x - p.x, dy = player.y - p.y;
+      if (Math.sqrt(dx * dx + dy * dy) < player.radius + p.radius) {
+        damagePlayer(p.damage);
+        projectiles.splice(i, 1);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// EFFECTS
+// ═══════════════════════════════════════════
+function spawnEffect(x, y, text, color, duration) {
+  effects.push({ x, y, text, color, duration, timer: duration, type: 'text' });
+}
+
+function spawnDeathEffect(x, y, color) {
+  for (let i = 0; i < 6; i++) {
+    const angle = (Math.PI * 2 / 6) * i;
+    effects.push({
+      x, y, type: 'particle',
+      vx: Math.cos(angle) * 60, vy: Math.sin(angle) * 60,
+      color, timer: 0.4, duration: 0.4,
+    });
+  }
+}
+
+function spawnSlashEffect(x, y, angle, range, arc) {
+  effects.push({ x, y, type: 'slash', angle, range, arc, timer: 0.15, duration: 0.15, color: '#ffffff' });
+}
+
+function updateEffects(dt) {
+  for (let i = effects.length - 1; i >= 0; i--) {
+    const e = effects[i];
+    e.timer -= dt;
+    if (e.type === 'text') e.y -= 30 * dt;
+    if (e.type === 'particle') { e.x += e.vx * dt; e.y += e.vy * dt; }
+    if (e.timer <= 0) effects.splice(i, 1);
+  }
+}
+
+// ═══════════════════════════════════════════
+// FOG OF WAR
+// ═══════════════════════════════════════════
+function initFog() {
+  revealed = [];
+  for (let y = 0; y < MAP_H; y++) {
+    revealed[y] = [];
+    for (let x = 0; x < MAP_W; x++) revealed[y][x] = false;
+  }
+}
+
+function updateFogOfWar() {
+  const ptx = Math.floor(player.x / TILE), pty = Math.floor(player.y / TILE);
+  const sightRadius = 5;
+
+  // Reveal tiles in radius
+  for (let dy = -sightRadius; dy <= sightRadius; dy++) {
+    for (let dx = -sightRadius; dx <= sightRadius; dx++) {
+      if (dx * dx + dy * dy > sightRadius * sightRadius) continue;
+      const tx = ptx + dx, ty = pty + dy;
+      if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H) revealed[ty][tx] = true;
+    }
+  }
+
+  // Reveal entire room if player is inside it
+  for (const room of dungeon.rooms) {
+    if (!room.revealed && ptx >= room.x && ptx < room.x + room.w && pty >= room.y && pty < room.y + room.h) {
+      room.revealed = true;
+      for (let y = room.y; y < room.y + room.h; y++)
+        for (let x = room.x; x < room.x + room.w; x++)
+          if (y >= 0 && y < MAP_H && x >= 0 && x < MAP_W) revealed[y][x] = true;
+    }
+  }
+}
+
+function isRevealed(tx, ty) {
+  if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return false;
+  return revealed[ty][tx];
+}
+
+// ═══════════════════════════════════════════
+// PLAYER MOVEMENT
+// ═══════════════════════════════════════════
+function updatePlayerMovement(dt) {
+  let dx = 0, dy = 0;
+  if (keysDown.has('w') || keysDown.has('arrowup')) dy -= 1;
+  if (keysDown.has('s') || keysDown.has('arrowdown')) dy += 1;
+  if (keysDown.has('a') || keysDown.has('arrowleft')) dx -= 1;
+  if (keysDown.has('d') || keysDown.has('arrowright')) dx += 1;
+
+  if (dx !== 0 || dy !== 0) {
+    const len = Math.sqrt(dx * dx + dy * dy);
+    dx /= len; dy /= len;
+    const speed = player.speed * TILE;
+    const newX = player.x + dx * speed * dt;
+    const newY = player.y + dy * speed * dt;
+
+    // Wall collision (check corners of player bounding box)
+    const r = player.radius;
+    if (canMove(newX, player.y, r)) player.x = newX;
+    if (canMove(player.x, newY, r)) player.y = newY;
+
+    // Clamp to map
+    player.x = Math.max(r, Math.min(MAP_W * TILE - r, player.x));
+    player.y = Math.max(r, Math.min(MAP_H * TILE - r, player.y));
+  }
+
+  // Update facing angle toward mouse (in world coords)
+  const camX = player.x - CANVAS_W / 2;
+  const camY = player.y - CANVAS_H / 2;
+  const worldMouseX = mouseX + camX;
+  const worldMouseY = mouseY + camY;
+  player.facingAngle = Math.atan2(worldMouseY - player.y, worldMouseX - player.x);
+
+  // Update attack timer
+  player.attackTimer = Math.max(0, player.attackTimer - dt);
+  player.invulnTimer = Math.max(0, player.invulnTimer - dt);
+}
+
+function canMove(x, y, r) {
+  // Check 4 corners
+  const points = [
+    [x - r, y - r], [x + r, y - r],
+    [x - r, y + r], [x + r, y + r],
+  ];
+  for (const [px, py] of points) {
+    const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+    if (tx < 0 || tx >= MAP_W || ty < 0 || ty >= MAP_H) return false;
+    if (dungeon.tiles[ty][tx] === TILE_WALL) return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════
+function startGame(className) {
+  initPlayer(className);
+  enterFloor(1);
+  showScreen('game-screen');
+  initCanvas();
+  gameState = 'playing';
+  lastTime = performance.now();
+  runStats = { startTime: Date.now() };
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+function enterFloor(floor) {
+  player.floor = floor;
+  player.damageTakenThisBoss = 0;
+  player.floorStartTime = performance.now();
+  dungeon = generateDungeon(floor);
+  enemies = [];
+  projectiles = [];
+  effects = [];
+  groundItems = [];
+  initFog();
+
+  // Place player at start room center
+  const sr = dungeon.startRoom;
+  player.x = sr.cx * TILE + TILE / 2;
+  player.y = sr.cy * TILE + TILE / 2;
+
+  // Spawn enemies in rooms
+  for (const room of dungeon.rooms) {
+    const spawned = spawnEnemiesForRoom(room, floor);
+    enemies.push(...spawned);
+  }
+
+  // Spawn boss on boss floors
+  if (dungeon.isBossFloor) {
+    const boss = spawnBoss(floor, dungeon.stairsRoom);
+    if (boss) enemies.push(boss);
+  }
+
+  // Floor achievements
+  if (floor >= 5) ggTry('rd_floor_5');
+  if (floor >= 10) ggTry('rd_floor_10');
+  if (floor >= 15) ggTry('rd_floor_15');
+
+  SFX.stairs();
+  updateHUD();
+}
+
+function checkStairs() {
+  const tx = Math.floor(player.x / TILE), ty = Math.floor(player.y / TILE);
+  if (tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H && dungeon.tiles[ty][tx] === TILE_STAIRS) {
+    // Check speedrun
+    const elapsed = (performance.now() - player.floorStartTime) / 1000;
+    if (elapsed < 30) ggTry('rd_speedrun');
+
+    if (player.floor >= MAX_FLOORS) {
+      // Victory!
+      gameState = 'victory';
+      SFX.victory();
+      showVictoryScreen();
+      return;
+    }
+    enterFloor(player.floor + 1);
+  }
+}
+
+function checkGameOver() {
+  if (player.hp <= 0) {
+    gameState = 'dead';
+    SFX.die();
+    showDeathScreen();
+  }
+}
+
+function checkPickup() {
+  const pickupRange = TILE * 1.2;
+  let nearest = null, nearestDist = Infinity;
+  for (const gi of groundItems) {
+    const dx = gi.x - player.x, dy = gi.y - player.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < pickupRange && dist < nearestDist) {
+      nearest = gi; nearestDist = dist;
+    }
+  }
+
+  const hint = document.getElementById('pickup-hint');
+  if (nearest) {
+    hint.textContent = 'Press E: ' + nearest.item.name;
+    hint.style.display = 'block';
+    hint.style.color = nearest.item.color || '#c9a84c';
+  } else {
+    hint.style.display = 'none';
+  }
+  return nearest;
+}
+
+function doPickup() {
+  const nearest = checkPickup();
+  if (!nearest) return;
+
+  const item = nearest.item;
+  if (item.type === 'weapon') {
+    // Swap weapons - drop current on ground
+    const old = player.weapon;
+    player.weapon = item;
+    groundItems.push({ x: nearest.x + 10, y: nearest.y + 10, item: old });
+    SFX.pickup();
+    if (item.rarity >= 2) ggTry('rd_rare_find');
+  } else if (item.type === 'potion') {
+    if (addToInventory(item)) {
+      SFX.pickup();
+    } else {
+      spawnEffect(player.x, player.y, 'Inventory full!', '#ff4444', 1.0);
+      return;
+    }
+  } else if (item.type === 'armor') {
+    player.defense = Math.min(50, player.defense + item.defense);
+    SFX.pickup();
+    spawnEffect(player.x, player.y, '+' + item.defense + '% DEF', '#8888aa', 1.0);
+  } else if (item.type === 'gold') {
+    player.gold += item.amount;
+    if (player.gold >= 500) ggTry('rd_hoarder');
+    SFX.gold();
+  }
+
+  const idx = groundItems.indexOf(nearest);
+  if (idx >= 0) groundItems.splice(idx, 1);
+  updateHUD();
+}
+
+function openChest(tx, ty) {
+  if (dungeon.tiles[ty][tx] !== TILE_CHEST) return;
+  dungeon.tiles[ty][tx] = TILE_FLOOR;
+  const items = generateChestLoot(player.floor);
+  let ox = 0;
+  for (const item of items) {
+    groundItems.push({ x: tx * TILE + TILE / 2 + ox, y: ty * TILE + TILE / 2, item });
+    ox += 15;
+  }
+  // Also drop gold
+  const goldAmt = 10 + Math.floor(Math.random() * 20) + player.floor * 3;
+  groundItems.push({ x: tx * TILE + TILE / 2, y: ty * TILE + TILE / 2 + 15, item: { type: 'gold', name: goldAmt + ' Gold', amount: goldAmt, color: '#c9a84c', icon: '\u2B50' } });
+  SFX.pickup();
+}
+
+function showDeathScreen() {
+  cancelAnimationFrame(animFrame);
+  const el = document.getElementById('death-stats');
+  el.innerHTML =
+    'Reached <span class="end-stat-val">Floor ' + player.floor + '</span><br>' +
+    'Enemies slain: <span class="end-stat-val">' + player.kills + '</span><br>' +
+    'Bosses defeated: <span class="end-stat-val">' + player.bossKills + '</span><br>' +
+    'Gold collected: <span class="end-stat-val">' + player.gold + '</span>';
+  showScreen('death-screen');
+}
+
+function showVictoryScreen() {
+  cancelAnimationFrame(animFrame);
+  const el = document.getElementById('victory-stats');
+  el.innerHTML =
+    'You conquered all <span class="end-stat-val">' + MAX_FLOORS + ' floors</span>!<br>' +
+    'Enemies slain: <span class="end-stat-val">' + player.kills + '</span><br>' +
+    'Bosses defeated: <span class="end-stat-val">' + player.bossKills + '</span><br>' +
+    'Gold collected: <span class="end-stat-val">' + player.gold + '</span><br>' +
+    'Class: <span class="end-stat-val">' + CLASS_DEFS[player.className].name + '</span>';
+  showScreen('victory-screen');
+}
+
+function togglePause() {
+  if (gameState === 'playing') {
+    gameState = 'paused';
+    document.getElementById('pause-overlay').classList.add('active');
+  } else if (gameState === 'paused') {
+    gameState = 'playing';
+    document.getElementById('pause-overlay').classList.remove('active');
+    lastTime = performance.now();
+    animFrame = requestAnimationFrame(gameLoop);
+  }
+}
+
+function quitToTitle() {
+  gameState = 'title';
+  cancelAnimationFrame(animFrame);
+  document.getElementById('pause-overlay').classList.remove('active');
+  showScreen('title-screen');
+}
+
+// ═══════════════════════════════════════════
+// HUD
+// ═══════════════════════════════════════════
+function updateHUD() {
+  const pct = Math.max(0, player.hp / player.maxHp * 100);
+  document.getElementById('hud-hp-fill').style.width = pct + '%';
+  document.getElementById('hud-floor').textContent = 'FLOOR ' + player.floor;
+  document.getElementById('hud-gold').innerHTML = '&#9733; ' + player.gold;
+  const wep = player.weapon;
+  document.getElementById('hud-weapon').textContent = wep.name + ' (' + wep.damage + ' dmg)';
+  document.getElementById('hud-weapon').style.borderColor = wep.color;
+  document.getElementById('hud-weapon').style.color = wep.color;
+
+  // Inventory bar
+  const bar = document.getElementById('inv-bar');
+  bar.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'inv-slot';
+    const item = player.inventory[i];
+    slot.innerHTML = '<span class="inv-key">' + (i + 1) + '</span>' + (item ? item.icon || '?' : '');
+    if (item) slot.title = item.name;
+    bar.appendChild(slot);
+  }
+}
+
+// ═══════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════
+function initCanvas() {
+  canvas = document.getElementById('game-canvas');
+  canvas.width = CANVAS_W;
+  canvas.height = CANVAS_H;
+  ctx = canvas.getContext('2d');
+}
+
+function render() {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+  // Camera
+  let camX = player.x - CANVAS_W / 2;
+  let camY = player.y - CANVAS_H / 2;
+  camX = Math.max(0, Math.min(MAP_W * TILE - CANVAS_W, camX));
+  camY = Math.max(0, Math.min(MAP_H * TILE - CANVAS_H, camY));
+
+  const startTX = Math.floor(camX / TILE);
+  const startTY = Math.floor(camY / TILE);
+  const endTX = Math.min(MAP_W - 1, startTX + VIEWPORT_TILES_X + 1);
+  const endTY = Math.min(MAP_H - 1, startTY + VIEWPORT_TILES_Y + 1);
+
+  // Draw tiles
+  for (let ty = startTY; ty <= endTY; ty++) {
+    for (let tx = startTX; tx <= endTX; tx++) {
+      const sx = tx * TILE - camX, sy = ty * TILE - camY;
+
+      if (!revealed[ty] || !revealed[ty][tx]) {
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(sx, sy, TILE, TILE);
+        continue;
+      }
+
+      const tile = dungeon.tiles[ty][tx];
+      switch (tile) {
+        case TILE_WALL:
+          ctx.fillStyle = '#1a1a22';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          // Wall top edge highlight
+          if (ty > 0 && dungeon.tiles[ty - 1][tx] !== TILE_WALL) {
+            ctx.fillStyle = '#2a2a35';
+            ctx.fillRect(sx, sy, TILE, 3);
+          }
+          break;
+        case TILE_FLOOR:
+          ctx.fillStyle = '#2a2a35';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.strokeStyle = '#1a1a2211';
+          ctx.strokeRect(sx, sy, TILE, TILE);
+          break;
+        case TILE_CORRIDOR:
+          ctx.fillStyle = '#252530';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          break;
+        case TILE_STAIRS:
+          ctx.fillStyle = '#2a2a35';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.fillStyle = '#c9a84c';
+          ctx.fillRect(sx + 8, sy + 8, TILE - 16, TILE - 16);
+          ctx.fillStyle = '#0a0a0f';
+          ctx.fillRect(sx + 12, sy + 12, TILE - 24, TILE - 24);
+          // Arrow down
+          ctx.fillStyle = '#c9a84c';
+          ctx.font = '14px serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('\u25BC', sx + TILE / 2, sy + TILE / 2 + 5);
+          break;
+        case TILE_CHEST:
+          ctx.fillStyle = '#2a2a35';
+          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.fillStyle = '#c9a84c';
+          ctx.fillRect(sx + 6, sy + 10, TILE - 12, TILE - 16);
+          ctx.fillStyle = '#8b5e3c';
+          ctx.fillRect(sx + 6, sy + 10, TILE - 12, 4);
+          ctx.fillStyle = '#ffdd44';
+          ctx.fillRect(sx + TILE / 2 - 2, sy + 14, 4, 6);
+          break;
+      }
+    }
+  }
+
+  // Draw ground items
+  for (const gi of groundItems) {
+    const sx = gi.x - camX, sy = gi.y - camY;
+    if (sx < -20 || sx > CANVAS_W + 20 || sy < -20 || sy > CANVAS_H + 20) continue;
+    ctx.fillStyle = gi.item.color || '#ffffff';
+    ctx.globalAlpha = 0.7 + Math.sin(performance.now() / 300) * 0.3;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw enemies
+  for (const e of enemies) {
+    if (e.dead) continue;
+    const sx = e.x - camX, sy = e.y - camY;
+    if (sx < -30 || sx > CANVAS_W + 30 || sy < -30 || sy > CANVAS_H + 30) continue;
+    const eTX = Math.floor(e.x / TILE), eTY = Math.floor(e.y / TILE);
+    if (!isRevealed(eTX, eTY)) continue;
+
+    ctx.globalAlpha = e.ai === 'phase' ? 0.5 : 1;
+
+    // Body
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Boss outline
+    if (e.isBoss) {
+      ctx.strokeStyle = '#ffcc00';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // HP bar (if damaged)
+    if (e.hp < e.maxHp) {
+      const barW = e.radius * 2 + 4;
+      const barH = 3;
+      const barX = sx - barW / 2;
+      const barY = sy - e.radius - 8;
+      ctx.fillStyle = '#1a1a22';
+      ctx.fillRect(barX, barY, barW, barH);
+      ctx.fillStyle = '#cc4444';
+      ctx.fillRect(barX, barY, barW * (e.hp / e.maxHp), barH);
+    }
+
+    ctx.globalAlpha = 1;
+  }
+
+  // Dragon fire breath effect
+  for (const e of enemies) {
+    if (e.dead || !e.breathActive) continue;
+    const sx = e.x - camX, sy = e.y - camY;
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#ff4400';
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.arc(sx, sy, 4 * TILE, e.breathAngle - Math.PI / 4, e.breathAngle + Math.PI / 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw projectiles
+  for (const p of projectiles) {
+    const sx = p.x - camX, sy = p.y - camY;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, p.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Draw player
+  {
+    const sx = player.x - camX, sy = player.y - camY;
+    // Invuln flash
+    if (player.invulnTimer > 0 && Math.floor(player.invulnTimer * 20) % 2) {
+      ctx.globalAlpha = 0.3;
+    }
+    ctx.fillStyle = player.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    // Facing indicator
+    const fa = player.facingAngle;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(sx + Math.cos(fa) * player.radius, sy + Math.sin(fa) * player.radius);
+    ctx.lineTo(sx + Math.cos(fa) * (player.radius + 6), sy + Math.sin(fa) * (player.radius + 6));
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // Draw effects
+  for (const e of effects) {
+    const sx = e.x - camX, sy = e.y - camY;
+    const alpha = e.timer / e.duration;
+
+    if (e.type === 'text') {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = e.color;
+      ctx.font = 'bold 12px Segoe UI';
+      ctx.textAlign = 'center';
+      ctx.fillText(e.text, sx, sy);
+      ctx.globalAlpha = 1;
+    } else if (e.type === 'particle') {
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = e.color;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3 * alpha, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (e.type === 'slash') {
+      ctx.globalAlpha = alpha * 0.6;
+      ctx.strokeStyle = e.color;
+      ctx.lineWidth = 3;
+      const halfArc = (e.arc / 2) * Math.PI / 180;
+      ctx.beginPath();
+      ctx.arc(sx, sy, e.range * alpha, e.angle - halfArc, e.angle + halfArc);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Minimap
+  renderMinimap(camX, camY);
+
+  // HUD update
+  updateHUD();
+  checkPickup();
+}
+
+function renderMinimap(camX, camY) {
+  const mmSize = 120;
+  const mmX = CANVAS_W - mmSize - 8;
+  const mmY = 40;
+  const scale = mmSize / MAP_W;
+
+  // Background
+  ctx.fillStyle = '#00000088';
+  ctx.fillRect(mmX - 2, mmY - 2, mmSize + 4, mmSize + 4);
+  ctx.strokeStyle = '#8b5e3c44';
+  ctx.strokeRect(mmX - 2, mmY - 2, mmSize + 4, mmSize + 4);
+
+  for (let ty = 0; ty < MAP_H; ty++) {
+    for (let tx = 0; tx < MAP_W; tx++) {
+      if (!revealed[ty] || !revealed[ty][tx]) continue;
+      const tile = dungeon.tiles[ty][tx];
+      if (tile === TILE_WALL) continue;
+      ctx.fillStyle = tile === TILE_STAIRS ? '#c9a84c' : '#3a3a4a';
+      ctx.fillRect(mmX + tx * scale, mmY + ty * scale, Math.max(1, scale), Math.max(1, scale));
+    }
+  }
+
+  // Enemies (red dots)
+  for (const e of enemies) {
+    if (e.dead) continue;
+    const etx = Math.floor(e.x / TILE), ety = Math.floor(e.y / TILE);
+    if (!isRevealed(etx, ety)) continue;
+    ctx.fillStyle = e.isBoss ? '#ffcc00' : '#ff4444';
+    ctx.fillRect(mmX + (e.x / TILE) * scale - 1, mmY + (e.y / TILE) * scale - 1, e.isBoss ? 3 : 2, e.isBoss ? 3 : 2);
+  }
+
+  // Player (white dot)
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(mmX + (player.x / TILE) * scale - 1, mmY + (player.y / TILE) * scale - 1, 3, 3);
+}
+
+// ═══════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════
+function gameLoop(now) {
+  if (gameState !== 'playing') return;
+
+  let dt = (now - lastTime) / 1000;
+  lastTime = now;
+  dt = Math.min(dt, 0.1);
+
+  updatePlayerMovement(dt);
+  updateEnemies(dt);
+  updateProjectiles(dt);
+  updateEffects(dt);
+  checkStairs();
+  checkGameOver();
+  updateFogOfWar();
+  render();
+
+  animFrame = requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  const key = e.key.toLowerCase();
+  keysDown.add(key);
+
+  if (key === 'escape') {
+    if (gameState === 'playing' || gameState === 'paused') togglePause();
+  }
+
+  if (gameState !== 'playing') return;
+
+  // Inventory keys
+  if (key >= '1' && key <= '5') {
+    useInventorySlot(parseInt(key) - 1);
+  }
+
+  // Pickup
+  if (key === 'e') {
+    // Check for chest first
+    const ptx = Math.floor(player.x / TILE), pty = Math.floor(player.y / TILE);
+    // Check adjacent tiles for chests
+    let openedChest = false;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const cx = ptx + dx, cy = pty + dy;
+        if (cx >= 0 && cx < MAP_W && cy >= 0 && cy < MAP_H && dungeon.tiles[cy][cx] === TILE_CHEST) {
+          openChest(cx, cy);
+          openedChest = true;
+        }
+      }
+    }
+    if (!openedChest) doPickup();
+  }
+});
+
+document.addEventListener('keyup', e => {
+  keysDown.delete(e.key.toLowerCase());
+});
+
+// Mouse
+document.addEventListener('mousemove', e => {
+  if (gameState !== 'playing') return;
+  const rect = canvas.getBoundingClientRect();
+  mouseX = e.clientX - rect.left;
+  mouseY = e.clientY - rect.top;
+});
+
+document.addEventListener('mousedown', e => {
+  if (gameState !== 'playing') return;
+  if (e.button === 0) {
+    playerAttack();
+  }
+});
+
+// Prevent context menu on canvas
+document.addEventListener('contextmenu', e => {
+  if (e.target === canvas) e.preventDefault();
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+showScreen('title-screen');
+</script>
+
+</body>
+</html>
