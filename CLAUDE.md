@@ -488,5 +488,6 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 ## GitHub
 
 - **Repo:** github.com/graham-almighty/graham-games (private)
+- **Pages URL:** https://graham-almighty.github.io/graham-games/
 - **Branch:** master
 - **Remote:** origin (HTTPS)
