@@ -449,6 +449,7 @@ let enemies = [];
 let projectiles = [];
 let effects = [];
 let groundItems = [];
+let selectedSlot = -1;
 
 // Stats tracking
 let runStats = {};
@@ -743,6 +744,7 @@ function spawnBoss(floor, room) {
 // PLAYER SYSTEM
 // ═══════════════════════════════════════════
 function initPlayer(className) {
+  selectedSlot = -1;
   const def = CLASS_DEFS[className];
   const ggData = ggLoad();
   const hasEnchanted = !!ggData.shopPurchases['rd_enchanted_start'];
@@ -794,6 +796,18 @@ function useInventorySlot(idx) {
     player.inventory[idx] = old;
     SFX.pickup();
   }
+}
+
+function dropInventorySlot(idx) {
+  const item = player.inventory[idx];
+  if (!item) return;
+  player.inventory[idx] = null;
+  // Drop at player's feet with slight offset based on facing
+  const ox = Math.cos(player.facingAngle) * 20;
+  const oy = Math.sin(player.facingAngle) * 20;
+  groundItems.push({ x: player.x + ox, y: player.y + oy, item });
+  SFX.pickup();
+  updateHUD();
 }
 
 // ═══════════════════════════════════════════
@@ -1794,7 +1808,7 @@ function updateHUD() {
   bar.innerHTML = '';
   for (let i = 0; i < 5; i++) {
     const slot = document.createElement('div');
-    slot.className = 'inv-slot';
+    slot.className = 'inv-slot' + (i === selectedSlot && player.inventory[i] ? ' active' : '');
     const item = player.inventory[i];
     if (item && item.type === 'weapon') {
       slot.innerHTML = '<span class="inv-key">' + (i + 1) + '</span>\u2694';
@@ -2569,7 +2583,13 @@ document.addEventListener('keydown', e => {
 
   // Inventory keys
   if (key >= '1' && key <= '5') {
-    useInventorySlot(parseInt(key) - 1);
+    selectedSlot = parseInt(key) - 1;
+    useInventorySlot(selectedSlot);
+  }
+
+  // Drop from selected inventory slot
+  if (key === 'r' && selectedSlot >= 0) {
+    dropInventorySlot(selectedSlot);
   }
 
   // Pickup

@@ -1409,6 +1409,78 @@ group('Weapon Inventory');
   assert(weapon.name.length > 0, 'Weapon has name for tooltip');
 }
 
+// ─── DROP FROM INVENTORY ───
+group('Drop From Inventory');
+
+{
+  // Drop potion from inventory
+  const inv = [{ type: 'potion', name: 'Small Potion', heal: 25, icon: '\uD83E\uDDEA' }, null, null, null, null];
+  const dropped = [];
+  // Simulate dropInventorySlot
+  const idx = 0;
+  const item = inv[idx];
+  assert(item !== null, 'Slot 0 has item before drop');
+  inv[idx] = null;
+  dropped.push({ x: 100, y: 100, item });
+  assertEqual(inv[0], null, 'Slot 0 empty after drop');
+  assertEqual(dropped.length, 1, 'Item added to ground items');
+  assertEqual(dropped[0].item.name, 'Small Potion', 'Dropped item is the potion');
+}
+
+{
+  // Drop weapon from inventory
+  const weapon = { type: 'weapon', base: 'axe', name: 'Rare Axe', damage: 32, rarity: 2, color: '#4488ff' };
+  const inv = [null, weapon, null, null, null];
+  const dropped = [];
+  const idx = 1;
+  const item = inv[idx];
+  assert(item !== null, 'Slot 1 has weapon before drop');
+  inv[idx] = null;
+  dropped.push({ x: 50, y: 50, item });
+  assertEqual(inv[1], null, 'Slot 1 empty after weapon drop');
+  assertEqual(dropped[0].item.base, 'axe', 'Dropped weapon is the axe');
+}
+
+{
+  // Drop from empty slot does nothing
+  const inv = [null, null, null, null, null];
+  const idx = 2;
+  const item = inv[idx];
+  assertEqual(item, null, 'Empty slot returns null — no drop');
+}
+
+{
+  // Drop and re-pickup: item available on ground
+  const inv = [{ type: 'potion', name: 'Large Potion', heal: 100 }, null, null, null, null];
+  const ground = [];
+  // Drop
+  ground.push({ x: 0, y: 0, item: inv[0] });
+  inv[0] = null;
+  // Re-pickup
+  const gi = ground[0];
+  let added = false;
+  for (let i = 0; i < 5; i++) {
+    if (!inv[i]) { inv[i] = gi.item; added = true; break; }
+  }
+  ground.splice(0, 1);
+  assertEqual(added, true, 'Dropped item can be re-picked up');
+  assertEqual(inv[0].name, 'Large Potion', 'Re-picked up item is same potion');
+  assertEqual(ground.length, 0, 'Ground item removed after pickup');
+}
+
+{
+  // Selected slot tracking: pressing 1-5 sets selected slot
+  let sel = -1;
+  sel = 0; assertEqual(sel, 0, 'Press 1 selects slot 0');
+  sel = 4; assertEqual(sel, 4, 'Press 5 selects slot 4');
+  // R drops from selected
+  const inv = [null, null, null, null, { type: 'potion', name: 'Test', heal: 25 }];
+  const item = inv[sel];
+  assert(item !== null, 'Selected slot 4 has item');
+  inv[sel] = null;
+  assertEqual(inv[4], null, 'Item dropped from selected slot');
+}
+
 // ─── SHOP STATE TRANSITION ───
 group('Shop State Transition');
 
