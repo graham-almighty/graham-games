@@ -127,6 +127,7 @@ const LASER_SPEED = 80;
 const LASER_DAMAGE = 10;
 const SPACE_DURATION = 35;
 const SHIP_MOVE_RANGE = 8;
+const SHIP_SPEED = 40;
 
 // ============================================================
 // TESTS
@@ -281,6 +282,7 @@ group('Player Constants');
   assertEqual(LASER_DAMAGE, 10, 'Laser damage = 10');
   assertEqual(SPACE_DURATION, 35, 'Space phase = 35s');
   assertEqual(SHIP_MOVE_RANGE, 8, 'Ship move range = 8');
+  assertEqual(SHIP_SPEED, 40, 'Ship speed = 40');
 }
 
 // ─── DAMAGE FORMULA ───
@@ -389,67 +391,47 @@ group('Combat Math');
 group('WASD Ship Movement');
 
 {
-  const SHIP_SPEED = 12;
-
   // Moving right (D key)
   let px = 0;
   px += SHIP_SPEED * 0.016; // ~1 frame at 60fps
-  assertApprox(px, 0.192, 0.001, 'D key moves ship right ~0.192 per frame');
+  assertApprox(px, 0.64, 0.001, 'D key moves ship right ~0.64 per frame');
 
   // Moving left (A key)
   let px2 = 0;
   px2 -= SHIP_SPEED * 0.016;
-  assertApprox(px2, -0.192, 0.001, 'A key moves ship left ~0.192 per frame');
+  assertApprox(px2, -0.64, 0.001, 'A key moves ship left ~0.64 per frame');
 
   // Moving up (W key)
   let py = 0;
   py += SHIP_SPEED * 0.016;
-  assertApprox(py, 0.192, 0.001, 'W key moves ship up ~0.192 per frame');
+  assertApprox(py, 0.64, 0.001, 'W key moves ship up ~0.64 per frame');
 
   // Moving down (S key)
   let py2 = 0;
   py2 -= SHIP_SPEED * 0.016;
-  assertApprox(py2, -0.192, 0.001, 'S key moves ship down ~0.192 per frame');
+  assertApprox(py2, -0.64, 0.001, 'S key moves ship down ~0.64 per frame');
 }
 
 {
-  // Clamping to move range
-  const SHIP_SPEED = 12;
+  // No boundaries — ship can move indefinitely
+  let px = 0;
+  for (let i = 0; i < 1000; i++) px += SHIP_SPEED * 0.016;
+  assert(px > SHIP_MOVE_RANGE, 'Ship can move beyond SHIP_MOVE_RANGE (no clamp): ' + px.toFixed(1));
 
-  // X clamped to SHIP_MOVE_RANGE
-  let px = SHIP_MOVE_RANGE - 0.1;
-  px += SHIP_SPEED * 0.5; // big dt to overshoot
-  px = Math.max(-SHIP_MOVE_RANGE, Math.min(SHIP_MOVE_RANGE, px));
-  assertEqual(px, SHIP_MOVE_RANGE, 'Ship X clamped to +SHIP_MOVE_RANGE');
-
-  let px2 = -SHIP_MOVE_RANGE + 0.1;
-  px2 -= SHIP_SPEED * 0.5;
-  px2 = Math.max(-SHIP_MOVE_RANGE, Math.min(SHIP_MOVE_RANGE, px2));
-  assertEqual(px2, -SHIP_MOVE_RANGE, 'Ship X clamped to -SHIP_MOVE_RANGE');
-
-  // Y clamped to SHIP_MOVE_RANGE * 0.6
-  const yMax = SHIP_MOVE_RANGE * 0.6;
-  let py = yMax - 0.1;
-  py += SHIP_SPEED * 0.5;
-  py = Math.max(-yMax, Math.min(yMax, py));
-  assertApprox(py, yMax, 0.001, 'Ship Y clamped to +SHIP_MOVE_RANGE*0.6');
-
-  let py2 = -yMax + 0.1;
-  py2 -= SHIP_SPEED * 0.5;
-  py2 = Math.max(-yMax, Math.min(yMax, py2));
-  assertApprox(py2, -yMax, 0.001, 'Ship Y clamped to -SHIP_MOVE_RANGE*0.6');
+  let py = 0;
+  for (let i = 0; i < 1000; i++) py += SHIP_SPEED * 0.016;
+  assert(py > SHIP_MOVE_RANGE * 0.6, 'Ship Y can move beyond old Y limit (no clamp): ' + py.toFixed(1));
 }
 
 {
   // Diagonal movement works (both keys at once)
-  const SHIP_SPEED = 12;
   const dt = 0.016;
   let px = 0, py = 0;
   // Simulate W+D pressed
   px += SHIP_SPEED * dt;
   py += SHIP_SPEED * dt;
-  assertApprox(px, 0.192, 0.001, 'Diagonal: X moves with D key');
-  assertApprox(py, 0.192, 0.001, 'Diagonal: Y moves with W key');
+  assertApprox(px, 0.64, 0.001, 'Diagonal: X moves with D key');
+  assertApprox(py, 0.64, 0.001, 'Diagonal: Y moves with W key');
 }
 
 // ─── SPACE PHASE LOGIC ───

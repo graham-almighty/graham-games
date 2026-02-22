@@ -387,7 +387,8 @@ const LASER_COOLDOWN = 0.3;
 const LASER_SPEED = 80;
 const LASER_DAMAGE = 10;
 const SPACE_DURATION = 35; // seconds per space phase
-const SHIP_MOVE_RANGE = 8; // how far ship can move from center
+const SHIP_MOVE_RANGE = 8; // legacy, no longer used for clamping
+const SHIP_SPEED = 40;
 
 // ═══════════════════════════════════════════
 // GAME STATE
@@ -536,8 +537,8 @@ function initThreeJS() {
     explosions = [];
   } else {
     canvas = document.getElementById('game-canvas');
-    const w = Math.min(window.innerWidth, 900);
-    const h = Math.min(window.innerHeight, 640);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
     canvas.width = w;
     canvas.height = h;
 
@@ -841,15 +842,12 @@ function updateSpacePhase(dt) {
   }
 
   // Player ship movement (WASD)
-  const SHIP_SPEED = 12;
   if (keys.a) player.x -= SHIP_SPEED * dt;
   if (keys.d) player.x += SHIP_SPEED * dt;
   if (keys.w) player.y += SHIP_SPEED * dt;
   if (keys.s) player.y -= SHIP_SPEED * dt;
-  player.x = Math.max(-SHIP_MOVE_RANGE, Math.min(SHIP_MOVE_RANGE, player.x));
-  player.y = Math.max(-SHIP_MOVE_RANGE * 0.6, Math.min(SHIP_MOVE_RANGE * 0.6, player.y));
-  camera.position.set(player.x * 0.3, player.y * 0.3, 0);
-  camera.lookAt(player.x * 0.1, player.y * 0.1, -50);
+  camera.position.set(player.x * 0.15, player.y * 0.15, 0);
+  camera.lookAt(player.x * 0.05, player.y * 0.05, -50);
 
   // Shield regen
   if (player.shieldDelay > 0) {
@@ -873,7 +871,7 @@ function firePlayerLaser() {
   geo.rotateX(Math.PI / 2);
   const mat = new THREE.MeshBasicMaterial({ color: 0x44aaff });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set(player.x * 0.3, player.y * 0.3 - 0.3, -3);
+  mesh.position.set(player.x * 0.15, player.y * 0.15 - 0.3, -3);
   scene.add(mesh);
   playerLasers.push({ mesh });
   shotsFired++;
@@ -886,7 +884,7 @@ function fireEnemyLaser(e) {
   const mat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.copy(e.mesh.position);
-  const dir = new THREE.Vector3(player.x * 0.3 - e.mesh.position.x, player.y * 0.3 - e.mesh.position.y, -e.mesh.position.z).normalize();
+  const dir = new THREE.Vector3(player.x * 0.15 - e.mesh.position.x, player.y * 0.15 - e.mesh.position.y, -e.mesh.position.z).normalize();
   scene.add(mesh);
   enemyLasers.push({ mesh, dir, damage: e.damage });
   SFX.enemyShoot();
@@ -1340,8 +1338,8 @@ document.addEventListener('mouseup', e => {
 // Resize handler
 window.addEventListener('resize', () => {
   if (!renderer) return;
-  const w = Math.min(window.innerWidth, 900);
-  const h = Math.min(window.innerHeight, 640);
+  const w = window.innerWidth;
+  const h = window.innerHeight;
   canvas.width = w;
   canvas.height = h;
   renderer.setSize(w, h);
