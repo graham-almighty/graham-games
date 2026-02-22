@@ -99,7 +99,7 @@ function ggUnlockAchievement(id, name, reward) {
 const RD_ACH = {
   rd_first_blood:   { name: 'First Blood',     reward: 5 },
   rd_floor_5:       { name: 'Into the Deep',    reward: 10 },
-  rd_floor_10:      { name: 'Halfway There',    reward: 20 },
+  rd_floor_10:      { name: 'Almost There',     reward: 20 },
   rd_floor_15:      { name: 'Rock Bottom',      reward: 30 },
   rd_boss_slayer:   { name: 'Boss Slayer',       reward: 15 },
   rd_dragon_slayer: { name: 'Dragon Slayer',     reward: 50 },
@@ -340,7 +340,7 @@ group('Achievement Registry');
   // Specific rewards
   assertEqual(RD_ACH.rd_first_blood.reward, 5, 'First Blood = 5G');
   assertEqual(RD_ACH.rd_floor_5.reward, 10, 'Into the Deep = 10G');
-  assertEqual(RD_ACH.rd_floor_10.reward, 20, 'Halfway There = 20G');
+  assertEqual(RD_ACH.rd_floor_10.reward, 20, 'Almost There = 20G');
   assertEqual(RD_ACH.rd_floor_15.reward, 30, 'Rock Bottom = 30G');
   assertEqual(RD_ACH.rd_boss_slayer.reward, 15, 'Boss Slayer = 15G');
   assertEqual(RD_ACH.rd_dragon_slayer.reward, 50, 'Dragon Slayer = 50G');
