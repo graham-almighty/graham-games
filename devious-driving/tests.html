@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Devious Driving - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #e91e63; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #e91e63; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Devious Driving - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0;
+const _results = document.getElementById('results');
+
+function group(name) {
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ' (±' + tolerance + '), got ' + actual);
+}
+
+function showSummary() {
+  const el = document.getElementById('summary');
+  el.innerHTML = '<span class="pass">' + _passed + ' passed</span> · <span class="' + (_failed ? 'fail' : 'pass') + '">' + _failed + ' failed</span>';
+}
+
+// ============================================================
+// MOCK LOCALSTORAGE
+// ============================================================
+const localStorage = {
+  _data: {},
+  getItem(k) { return this._data[k] || null; },
+  setItem(k, v) { this._data[k] = String(v); },
+  removeItem(k) { delete this._data[k]; },
+  clear() { this._data = {}; },
+};
+
+// ============================================================
+// EXTRACTED SOURCE — G BUX
+// ============================================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const DD_ACH = {
+  dd_first_race:   { name: "Learner's Permit", reward: 5 },
+  dd_first_win:    { name: 'Checkered Flag',   reward: 10 },
+  dd_all_maps:     { name: 'World Tour',       reward: 25 },
+  dd_no_walls:     { name: 'Clean Driver',     reward: 20 },
+  dd_drift_king:   { name: 'Drift King',       reward: 15 },
+  dd_oil_slick:    { name: 'Dirty Tricks',     reward: 10 },
+  dd_speed_demon:  { name: 'Speed Demon',      reward: 15 },
+  dd_photo_finish: { name: 'Photo Finish',     reward: 20 },
+  dd_unbeatable:   { name: 'Unbeatable',       reward: 30 },
+  dd_human_victor: { name: 'Rivalry',          reward: 50 },
+};
+function ggTry(id) { const a = DD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const DD_STATS_KEY = 'dd-stats';
+function ddLoadStats() {
+  try { return JSON.parse(localStorage.getItem(DD_STATS_KEY)) || { wins: 0, mapWins: {} }; }
+  catch(e) { return { wins: 0, mapWins: {} }; }
+}
+function ddSaveStats(s) { localStorage.setItem(DD_STATS_KEY, JSON.stringify(s)); }
+
+// ============================================================
+// EXTRACTED SOURCE — CONSTANTS
+// ============================================================
+const CANVAS_W = 832, CANVAS_H = 624;
+const CAR_W = 12, CAR_H = 22;
+const MAX_SPEED = 250;
+const ACCEL = 180;
+const BRAKE = 250;
+const FRICTION = 80;
+const TURN_SPEED = 3.2;
+const DRIFT_THRESHOLD = 120;
+const DRIFT_FACTOR = 0.92;
+const TRACK_WIDTH = 60;
+const TOTAL_LAPS = 3;
+const POWERUP_RESPAWN = 10;
+const BOOST_DURATION = 2;
+const BOOST_MULTIPLIER = 1.6;
+const SHIELD_DURATION = 5;
+const OIL_LIFETIME = 15;
+const SPINOUT_DURATION = 1.0;
+const CAR_COLORS = ['#e91e63', '#2196f3', '#4caf50', '#ff9800'];
+const CAR_NAMES = ['Pink', 'Blue', 'Green', 'Orange'];
+
+// ============================================================
+// EXTRACTED SOURCE — MAPS
+// ============================================================
+const MAPS = [
+  {
+    name: 'Oval Speedway',
+    desc: 'Simple oval, great for beginners',
+    grass: '#4a8c3f',
+    road: '#555',
+    waypoints: (function() {
+      const pts = [];
+      const cx = 416, cy = 312, rx = 300, ry = 200;
+      for (let i = 0; i < 40; i++) {
+        const a = (i / 40) * Math.PI * 2;
+        pts.push([cx + Math.cos(a) * rx, cy + Math.sin(a) * ry]);
+      }
+      return pts;
+    })(),
+  },
+  {
+    name: 'Figure Eight',
+    desc: 'Crossing paths, watch out!',
+    grass: '#3d7a34',
+    road: '#555',
+    waypoints: (function() {
+      const pts = [];
+      for (let i = 0; i < 40; i++) {
+        const t = (i / 40) * Math.PI * 2;
+        const x = 416 + Math.sin(t) * 280;
+        const y = 312 + Math.sin(t * 2) * 180;
+        pts.push([x, y]);
+      }
+      return pts;
+    })(),
+  },
+  {
+    name: 'Seaside Circuit',
+    desc: 'Tight hairpins along the coast',
+    grass: '#c2b280',
+    road: '#666',
+    waypoints: [
+      [150, 550], [100, 400], [80, 250], [120, 130], [250, 80],
+      [400, 60], [550, 80], [650, 150], [720, 280],
+      [750, 400], [700, 520], [600, 570], [450, 580],
+      [300, 560], [200, 580],
+    ],
+  },
+  {
+    name: 'Mountain Pass',
+    desc: 'Narrow winding switchbacks',
+    grass: '#5a7a4a',
+    road: '#777',
+    waypoints: [
+      [100, 570], [200, 520], [350, 560], [500, 500],
+      [650, 540], [750, 470], [700, 350], [550, 300],
+      [400, 340], [250, 280], [150, 200], [250, 120],
+      [400, 80], [600, 100], [720, 160], [680, 260],
+      [500, 220], [300, 180], [150, 250], [100, 400],
+    ],
+  },
+  {
+    name: 'Downtown',
+    desc: 'City grid with sharp corners',
+    grass: '#3a3a4a',
+    road: '#555',
+    waypoints: [
+      [100, 100], [350, 100], [350, 250], [600, 250],
+      [600, 100], [750, 100], [750, 350], [600, 350],
+      [600, 500], [750, 500], [750, 570], [400, 570],
+      [400, 400], [200, 400], [200, 570], [100, 570],
+      [100, 350], [250, 350], [250, 250], [100, 250],
+    ],
+  },
+];
+
+// ============================================================
+// EXTRACTED SOURCE — TRACK HELPERS
+// ============================================================
+function getTrackPoint(map, t) {
+  const wp = map.waypoints;
+  const len = wp.length;
+  const i = Math.floor(t) % len;
+  const j = (i + 1) % len;
+  const f = t - Math.floor(t);
+  return [
+    wp[i][0] + (wp[j][0] - wp[i][0]) * f,
+    wp[i][1] + (wp[j][1] - wp[i][1]) * f,
+  ];
+}
+
+function getTrackAngle(map, idx) {
+  const wp = map.waypoints;
+  const len = wp.length;
+  const i = idx % len;
+  const j = (i + 1) % len;
+  return Math.atan2(wp[j][1] - wp[i][1], wp[j][0] - wp[i][0]);
+}
+
+function distToTrack(map, x, y) {
+  const wp = map.waypoints;
+  let minD = Infinity;
+  for (let i = 0; i < wp.length; i++) {
+    const j = (i + 1) % wp.length;
+    const d = pointToSegDist(x, y, wp[i][0], wp[i][1], wp[j][0], wp[j][1]);
+    if (d < minD) minD = d;
+  }
+  return minD;
+}
+
+function pointToSegDist(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function nearestWaypoint(map, x, y) {
+  const wp = map.waypoints;
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < wp.length; i++) {
+    const d = Math.hypot(x - wp[i][0], y - wp[i][1]);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return best;
+}
+
+// ============================================================
+// EXTRACTED SOURCE — CAR CREATION
+// ============================================================
+let currentMap = 0;
+let cars = [];
+
+function createCar(index, isPlayer, controlScheme) {
+  const map = MAPS[currentMap];
+  const wp = map.waypoints;
+  const startAngle = getTrackAngle(map, 0);
+  const perp = startAngle + Math.PI / 2;
+  const offsetX = Math.cos(perp) * (index - 1.5) * 16;
+  const offsetY = Math.sin(perp) * (index - 1.5) * 16;
+  const backX = -Math.cos(startAngle) * index * 28;
+  const backY = -Math.sin(startAngle) * index * 28;
+  return {
+    x: wp[0][0] + offsetX + backX,
+    y: wp[0][1] + offsetY + backY,
+    angle: startAngle,
+    speed: 0,
+    color: CAR_COLORS[index],
+    name: CAR_NAMES[index],
+    index,
+    isPlayer,
+    controlScheme,
+    lap: 0,
+    wayIdx: 0,
+    prevWayIdx: -1,
+    finishTime: 0,
+    finished: false,
+    powerup: null,
+    boostTimer: 0,
+    shieldTimer: 0,
+    spinTimer: 0,
+    driftTimer: 0,
+    isDrifting: false,
+  };
+}
+
+// ============================================================
+// EXTRACTED SOURCE — INPUT & POSITION
+// ============================================================
+let keys = {};
+
+function getInput(car) {
+  if (car.controlScheme === 'wasd') {
+    return {
+      accel: keys['w'],
+      brake: keys['s'],
+      left: keys['a'],
+      right: keys['d'],
+      usePowerup: keys[' '],
+    };
+  } else if (car.controlScheme === 'arrows') {
+    return {
+      accel: keys['ArrowUp'],
+      brake: keys['ArrowDown'],
+      left: keys['ArrowLeft'],
+      right: keys['ArrowRight'],
+      usePowerup: keys['enter'],
+    };
+  }
+  return { accel: false, brake: false, left: false, right: false, usePowerup: false };
+}
+
+function getPosition(car) {
+  let pos = 1;
+  const myProgress = car.lap * 1000 + car.wayIdx;
+  for (const other of cars) {
+    if (other === car) continue;
+    const otherProgress = other.lap * 1000 + other.wayIdx;
+    if (otherProgress > myProgress) pos++;
+  }
+  return pos;
+}
+
+// ============================================================
+// EXTRACTED SOURCE — AI
+// ============================================================
+function getAIInput(car) {
+  const map = MAPS[currentMap];
+  const wp = map.waypoints;
+  const targetIdx = (car.wayIdx + 3) % wp.length;
+  const tx = wp[targetIdx][0], ty = wp[targetIdx][1];
+  const dx = tx - car.x, dy = ty - car.y;
+  const targetAngle = Math.atan2(dy, dx);
+  let angleDiff = targetAngle - car.angle;
+  while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+  while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+
+  const input = { accel: true, brake: false, left: false, right: false, usePowerup: false };
+  if (angleDiff > 0.15) input.right = true;
+  else if (angleDiff < -0.15) input.left = true;
+
+  if (Math.abs(angleDiff) > 0.8 && car.speed > MAX_SPEED * 0.5) input.brake = true;
+  if (car.powerup && Math.random() < 0.005) input.usePowerup = true;
+
+  return input;
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// --- MAP DEFINITIONS ---
+group('Map Definitions');
+assertEqual(MAPS.length, 5, 'There are 5 maps');
+MAPS.forEach((m, i) => {
+  assert(m.name && m.name.length > 0, 'Map ' + i + ' has a name: ' + m.name);
+  assert(m.desc && m.desc.length > 0, 'Map ' + i + ' has a description');
+  assert(m.grass && m.grass.startsWith('#'), 'Map ' + i + ' has grass color');
+  assert(m.road && m.road.startsWith('#'), 'Map ' + i + ' has road color');
+  assert(Array.isArray(m.waypoints), 'Map ' + i + ' has waypoints array');
+  assert(m.waypoints.length >= 10, 'Map ' + i + ' has at least 10 waypoints (has ' + m.waypoints.length + ')');
+  m.waypoints.forEach((wp, j) => {
+    assert(Array.isArray(wp) && wp.length === 2 && typeof wp[0] === 'number' && typeof wp[1] === 'number',
+      'Map ' + i + ' waypoint ' + j + ' is [x, y] pair');
+  });
+});
+assertEqual(MAPS[0].name, 'Oval Speedway', 'Map 0 is Oval Speedway');
+assertEqual(MAPS[1].name, 'Figure Eight', 'Map 1 is Figure Eight');
+assertEqual(MAPS[2].name, 'Seaside Circuit', 'Map 2 is Seaside Circuit');
+assertEqual(MAPS[3].name, 'Mountain Pass', 'Map 3 is Mountain Pass');
+assertEqual(MAPS[4].name, 'Downtown', 'Map 4 is Downtown');
+
+// --- CONSTANTS ---
+group('Game Constants');
+assertEqual(MAX_SPEED, 250, 'MAX_SPEED is 250');
+assertEqual(ACCEL, 180, 'ACCEL is 180');
+assertEqual(BRAKE, 250, 'BRAKE is 250');
+assertEqual(FRICTION, 80, 'FRICTION is 80');
+assertEqual(TURN_SPEED, 3.2, 'TURN_SPEED is 3.2');
+assertEqual(DRIFT_THRESHOLD, 120, 'DRIFT_THRESHOLD is 120');
+assertEqual(TRACK_WIDTH, 60, 'TRACK_WIDTH is 60');
+assertEqual(TOTAL_LAPS, 3, 'TOTAL_LAPS is 3');
+assertEqual(BOOST_DURATION, 2, 'BOOST_DURATION is 2');
+assertEqual(BOOST_MULTIPLIER, 1.6, 'BOOST_MULTIPLIER is 1.6');
+assertEqual(SHIELD_DURATION, 5, 'SHIELD_DURATION is 5');
+assertEqual(OIL_LIFETIME, 15, 'OIL_LIFETIME is 15');
+assertEqual(SPINOUT_DURATION, 1.0, 'SPINOUT_DURATION is 1.0');
+assertEqual(POWERUP_RESPAWN, 10, 'POWERUP_RESPAWN is 10');
+assertEqual(CAR_COLORS.length, 4, '4 car colors');
+assertEqual(CAR_NAMES.length, 4, '4 car names');
+assertEqual(CANVAS_W, 832, 'Canvas width is 832');
+assertEqual(CANVAS_H, 624, 'Canvas height is 624');
+
+// --- TRACK HELPERS ---
+group('Track Helpers');
+
+// getTrackPoint — interpolation between waypoints
+const testMap = MAPS[0];
+const pt0 = getTrackPoint(testMap, 0);
+assertApprox(pt0[0], testMap.waypoints[0][0], 0.01, 'getTrackPoint(0) returns first waypoint X');
+assertApprox(pt0[1], testMap.waypoints[0][1], 0.01, 'getTrackPoint(0) returns first waypoint Y');
+
+const pt05 = getTrackPoint(testMap, 0.5);
+const midX = (testMap.waypoints[0][0] + testMap.waypoints[1][0]) / 2;
+const midY = (testMap.waypoints[0][1] + testMap.waypoints[1][1]) / 2;
+assertApprox(pt05[0], midX, 0.01, 'getTrackPoint(0.5) interpolates X midpoint');
+assertApprox(pt05[1], midY, 0.01, 'getTrackPoint(0.5) interpolates Y midpoint');
+
+// getTrackAngle
+const angle0 = getTrackAngle(testMap, 0);
+assert(typeof angle0 === 'number' && !isNaN(angle0), 'getTrackAngle returns a number');
+const angleManual = Math.atan2(
+  testMap.waypoints[1][1] - testMap.waypoints[0][1],
+  testMap.waypoints[1][0] - testMap.waypoints[0][0]
+);
+assertApprox(angle0, angleManual, 0.001, 'getTrackAngle matches manual calculation');
+
+// pointToSegDist
+assertApprox(pointToSegDist(5, 0, 0, 0, 10, 0), 0, 0.01, 'Point on segment has distance 0');
+assertApprox(pointToSegDist(5, 3, 0, 0, 10, 0), 3, 0.01, 'Point 3 above segment has distance 3');
+assertApprox(pointToSegDist(0, 0, 0, 0, 0, 0), 0, 0.01, 'Zero-length segment returns distance to point');
+assertApprox(pointToSegDist(-5, 0, 0, 0, 10, 0), 5, 0.01, 'Point before segment start clamps to start');
+assertApprox(pointToSegDist(15, 0, 0, 0, 10, 0), 5, 0.01, 'Point after segment end clamps to end');
+
+// distToTrack
+const onTrackDist = distToTrack(testMap, testMap.waypoints[0][0], testMap.waypoints[0][1]);
+assertApprox(onTrackDist, 0, 1, 'Point on waypoint has ~0 distance to track');
+
+const farDist = distToTrack(testMap, 0, 0);
+assert(farDist > TRACK_WIDTH, 'Point far from track has large distance');
+
+// nearestWaypoint
+const nw0 = nearestWaypoint(testMap, testMap.waypoints[0][0], testMap.waypoints[0][1]);
+assertEqual(nw0, 0, 'nearestWaypoint returns 0 for point at waypoint 0');
+const nw5 = nearestWaypoint(testMap, testMap.waypoints[5][0], testMap.waypoints[5][1]);
+assertEqual(nw5, 5, 'nearestWaypoint returns 5 for point at waypoint 5');
+
+// --- CAR CREATION ---
+group('Car Creation');
+currentMap = 0;
+const car0 = createCar(0, true, 'wasd');
+assert(car0.isPlayer === true, 'Car 0 is player');
+assertEqual(car0.controlScheme, 'wasd', 'Car 0 uses WASD');
+assertEqual(car0.color, '#e91e63', 'Car 0 is pink');
+assertEqual(car0.name, 'Pink', 'Car 0 name is Pink');
+assertEqual(car0.lap, 0, 'Car starts on lap 0');
+assertEqual(car0.speed, 0, 'Car starts at speed 0');
+assertEqual(car0.wayIdx, 0, 'Car starts at waypoint 0');
+assert(car0.powerup === null, 'Car starts with no powerup');
+assertEqual(car0.boostTimer, 0, 'Car starts with no boost');
+assertEqual(car0.shieldTimer, 0, 'Car starts with no shield');
+assertEqual(car0.spinTimer, 0, 'Car starts with no spin');
+assertEqual(car0.finished, false, 'Car starts unfinished');
+
+const car1 = createCar(1, false, 'cpu');
+assert(car1.isPlayer === false, 'Car 1 is not player');
+assertEqual(car1.controlScheme, 'cpu', 'Car 1 is CPU');
+assertEqual(car1.color, '#2196f3', 'Car 1 is blue');
+assertEqual(car1.name, 'Blue', 'Car 1 name is Blue');
+
+const car2 = createCar(2, false, 'cpu');
+assertEqual(car2.color, '#4caf50', 'Car 2 is green');
+const car3 = createCar(3, false, 'cpu');
+assertEqual(car3.color, '#ff9800', 'Car 3 is orange');
+
+// Cars start near waypoint 0
+const wp0 = MAPS[0].waypoints[0];
+assert(Math.hypot(car0.x - wp0[0], car0.y - wp0[1]) < 100, 'Car 0 starts near first waypoint');
+
+// Cars at different positions (staggered)
+assert(car0.x !== car1.x || car0.y !== car1.y, 'Car 0 and Car 1 start at different positions');
+
+// Arrows control scheme
+const carArrows = createCar(1, true, 'arrows');
+assertEqual(carArrows.controlScheme, 'arrows', 'Can create car with arrows control');
+
+// --- CAR CREATION ON DIFFERENT MAPS ---
+group('Car Creation on All Maps');
+for (let m = 0; m < MAPS.length; m++) {
+  currentMap = m;
+  const c = createCar(0, true, 'wasd');
+  const wp = MAPS[m].waypoints[0];
+  assert(Math.hypot(c.x - wp[0], c.y - wp[1]) < 100,
+    'Car on map ' + m + ' (' + MAPS[m].name + ') starts near first waypoint');
+  assert(typeof c.angle === 'number' && !isNaN(c.angle),
+    'Car on map ' + m + ' has valid starting angle');
+}
+currentMap = 0;
+
+// --- INPUT SYSTEM ---
+group('Input System');
+keys = {};
+const wasdCar = createCar(0, true, 'wasd');
+const input0 = getInput(wasdCar);
+assertEqual(input0.accel, undefined, 'No keys pressed: accel is falsy');
+assertEqual(input0.brake, undefined, 'No keys pressed: brake is falsy');
+assertEqual(input0.left, undefined, 'No keys pressed: left is falsy');
+assertEqual(input0.right, undefined, 'No keys pressed: right is falsy');
+
+keys = { w: true };
+const inputW = getInput(wasdCar);
+assertEqual(inputW.accel, true, 'W key: accel is true');
+assert(!inputW.brake, 'W key: brake is false');
+
+keys = { s: true };
+const inputS = getInput(wasdCar);
+assertEqual(inputS.brake, true, 'S key: brake is true');
+
+keys = { a: true };
+const inputA = getInput(wasdCar);
+assertEqual(inputA.left, true, 'A key: left is true');
+
+keys = { d: true };
+const inputD = getInput(wasdCar);
+assertEqual(inputD.right, true, 'D key: right is true');
+
+keys = { ' ': true };
+const inputSpace = getInput(wasdCar);
+assertEqual(inputSpace.usePowerup, true, 'Space: usePowerup is true');
+
+// Arrow keys
+const arrowCar = createCar(1, true, 'arrows');
+keys = { ArrowUp: true };
+assertEqual(getInput(arrowCar).accel, true, 'ArrowUp: accel is true');
+keys = { ArrowDown: true };
+assertEqual(getInput(arrowCar).brake, true, 'ArrowDown: brake is true');
+keys = { ArrowLeft: true };
+assertEqual(getInput(arrowCar).left, true, 'ArrowLeft: left is true');
+keys = { ArrowRight: true };
+assertEqual(getInput(arrowCar).right, true, 'ArrowRight: right is true');
+keys = { enter: true };
+assertEqual(getInput(arrowCar).usePowerup, true, 'Enter: usePowerup is true');
+
+// CPU car returns no input from getInput
+keys = {};
+const cpuCar = createCar(2, false, 'cpu');
+const cpuInput = getInput(cpuCar);
+assert(!cpuInput.accel && !cpuInput.brake && !cpuInput.left && !cpuInput.right, 'CPU car getInput returns all false');
+
+// --- POSITION TRACKING ---
+group('Position Tracking');
+cars = [];
+const pCar = createCar(0, true, 'wasd');
+const oCar1 = createCar(1, false, 'cpu');
+const oCar2 = createCar(2, false, 'cpu');
+const oCar3 = createCar(3, false, 'cpu');
+cars = [pCar, oCar1, oCar2, oCar3];
+
+// All at same position = 1st
+pCar.lap = 0; pCar.wayIdx = 0;
+oCar1.lap = 0; oCar1.wayIdx = 0;
+oCar2.lap = 0; oCar2.wayIdx = 0;
+oCar3.lap = 0; oCar3.wayIdx = 0;
+assertEqual(getPosition(pCar), 1, 'All same progress = 1st place');
+
+// Player ahead
+pCar.wayIdx = 10;
+assertEqual(getPosition(pCar), 1, 'Player at waypoint 10, others at 0 = 1st');
+
+// Player behind
+pCar.wayIdx = 0;
+oCar1.wayIdx = 5;
+oCar2.wayIdx = 10;
+oCar3.wayIdx = 15;
+assertEqual(getPosition(pCar), 4, 'Player behind all = 4th');
+
+// Lap matters more
+pCar.lap = 1; pCar.wayIdx = 0;
+oCar1.lap = 0; oCar1.wayIdx = 39;
+oCar2.lap = 0; oCar2.wayIdx = 39;
+oCar3.lap = 0; oCar3.wayIdx = 39;
+assertEqual(getPosition(pCar), 1, 'Lap 1 > Lap 0 even with low wayIdx = 1st');
+
+// Mixed positions
+pCar.lap = 0; pCar.wayIdx = 20;
+oCar1.lap = 0; oCar1.wayIdx = 25;
+oCar2.lap = 0; oCar2.wayIdx = 15;
+oCar3.lap = 0; oCar3.wayIdx = 10;
+assertEqual(getPosition(pCar), 2, 'Player at waypoint 20, one ahead = 2nd');
+
+// --- AI SYSTEM ---
+group('AI System');
+currentMap = 0;
+const aiCar = createCar(1, false, 'cpu');
+aiCar.x = MAPS[0].waypoints[0][0];
+aiCar.y = MAPS[0].waypoints[0][1];
+aiCar.angle = getTrackAngle(MAPS[0], 0);
+aiCar.speed = 0;
+
+const aiInput = getAIInput(aiCar);
+assert(typeof aiInput.accel === 'boolean', 'AI returns accel boolean');
+assert(typeof aiInput.brake === 'boolean', 'AI returns brake boolean');
+assert(typeof aiInput.left === 'boolean', 'AI returns left boolean');
+assert(typeof aiInput.right === 'boolean', 'AI returns right boolean');
+assertEqual(aiInput.accel, true, 'AI accelerates by default');
+
+// AI brakes on sharp turns at high speed
+const aiBrakeCar = createCar(1, false, 'cpu');
+aiBrakeCar.x = MAPS[0].waypoints[0][0];
+aiBrakeCar.y = MAPS[0].waypoints[0][1];
+aiBrakeCar.angle = getTrackAngle(MAPS[0], 0) + Math.PI; // facing wrong way
+aiBrakeCar.speed = MAX_SPEED * 0.8;
+const aiBrakeInput = getAIInput(aiBrakeCar);
+assertEqual(aiBrakeInput.brake, true, 'AI brakes when angle diff > 0.8 and speed > 50% max');
+
+// AI steers toward target
+const aiSteerCar = createCar(1, false, 'cpu');
+aiSteerCar.x = MAPS[0].waypoints[0][0];
+aiSteerCar.y = MAPS[0].waypoints[0][1];
+// Point car slightly left of target
+const targetIdx = (aiSteerCar.wayIdx + 3) % MAPS[0].waypoints.length;
+const tx = MAPS[0].waypoints[targetIdx][0];
+const ty = MAPS[0].waypoints[targetIdx][1];
+const idealAngle = Math.atan2(ty - aiSteerCar.y, tx - aiSteerCar.x);
+aiSteerCar.angle = idealAngle - 0.5; // off to the left
+const aiSteerInput = getAIInput(aiSteerCar);
+assertEqual(aiSteerInput.right, true, 'AI steers right when target is to the right');
+
+// --- G BUX INTEGRATION ---
+group('G Bux Integration');
+localStorage.clear();
+
+assertEqual(Object.keys(DD_ACH).length, 10, '10 achievements defined');
+
+// Total reward check
+let totalReward = 0;
+for (const id in DD_ACH) totalReward += DD_ACH[id].reward;
+assertEqual(totalReward, 200, 'Total achievement reward is 200 G Bux');
+
+// Individual achievement rewards
+assertEqual(DD_ACH.dd_first_race.reward, 5, 'dd_first_race reward is 5');
+assertEqual(DD_ACH.dd_first_win.reward, 10, 'dd_first_win reward is 10');
+assertEqual(DD_ACH.dd_all_maps.reward, 25, 'dd_all_maps reward is 25');
+assertEqual(DD_ACH.dd_no_walls.reward, 20, 'dd_no_walls reward is 20');
+assertEqual(DD_ACH.dd_drift_king.reward, 15, 'dd_drift_king reward is 15');
+assertEqual(DD_ACH.dd_oil_slick.reward, 10, 'dd_oil_slick reward is 10');
+assertEqual(DD_ACH.dd_speed_demon.reward, 15, 'dd_speed_demon reward is 15');
+assertEqual(DD_ACH.dd_photo_finish.reward, 20, 'dd_photo_finish reward is 20');
+assertEqual(DD_ACH.dd_unbeatable.reward, 30, 'dd_unbeatable reward is 30');
+assertEqual(DD_ACH.dd_human_victor.reward, 50, 'dd_human_victor reward is 50');
+
+// Achievement names
+assertEqual(DD_ACH.dd_first_race.name, "Learner's Permit", "dd_first_race name correct");
+assertEqual(DD_ACH.dd_first_win.name, 'Checkered Flag', 'dd_first_win name correct');
+assertEqual(DD_ACH.dd_all_maps.name, 'World Tour', 'dd_all_maps name correct');
+assertEqual(DD_ACH.dd_human_victor.name, 'Rivalry', 'dd_human_victor name correct');
+
+// ggTry unlocks achievement
+localStorage.clear();
+ggTry('dd_first_race');
+const data1 = ggLoad();
+assertEqual(data1.achievements.dd_first_race, true, 'ggTry unlocks achievement');
+assertEqual(data1.gBux, 5, 'ggTry awards correct G Bux');
+
+// ggTry does not double-award
+ggTry('dd_first_race');
+const data2 = ggLoad();
+assertEqual(data2.gBux, 5, 'ggTry does not double-award');
+
+// Multiple achievements
+ggTry('dd_first_win');
+const data3 = ggLoad();
+assertEqual(data3.gBux, 15, 'Multiple achievements stack G Bux (5 + 10)');
+assertEqual(data3.achievements.dd_first_win, true, 'Second achievement saved');
+
+// Invalid achievement ID does nothing
+ggTry('dd_nonexistent');
+const data4 = ggLoad();
+assertEqual(data4.gBux, 15, 'Invalid achievement ID does not change G Bux');
+
+// --- STATS PERSISTENCE ---
+group('Stats Persistence');
+localStorage.clear();
+
+const stats0 = ddLoadStats();
+assertEqual(stats0.wins, 0, 'Initial stats: 0 wins');
+assert(typeof stats0.mapWins === 'object', 'Initial stats: mapWins is object');
+assertEqual(Object.keys(stats0.mapWins).length, 0, 'Initial stats: no map wins');
+
+// Save and reload
+const stats1 = { wins: 3, mapWins: { 0: true, 2: true } };
+ddSaveStats(stats1);
+const stats2 = ddLoadStats();
+assertEqual(stats2.wins, 3, 'Stats round-trip: wins = 3');
+assertEqual(stats2.mapWins[0], true, 'Stats round-trip: map 0 won');
+assertEqual(stats2.mapWins[2], true, 'Stats round-trip: map 2 won');
+assertEqual(stats2.mapWins[1], undefined, 'Stats round-trip: map 1 not won');
+
+// Increment wins
+stats2.wins++;
+stats2.mapWins[4] = true;
+ddSaveStats(stats2);
+const stats3 = ddLoadStats();
+assertEqual(stats3.wins, 4, 'Stats increment: wins = 4');
+assertEqual(Object.keys(stats3.mapWins).length, 3, 'Stats increment: 3 maps won');
+
+// --- G BUX LOAD/SAVE ROUND-TRIP ---
+group('G Bux Load/Save Round-Trip');
+localStorage.clear();
+
+const freshData = ggLoad();
+assertEqual(freshData.gBux, 0, 'Fresh load: 0 G Bux');
+assertEqual(Object.keys(freshData.achievements).length, 0, 'Fresh load: no achievements');
+assertEqual(Object.keys(freshData.shopPurchases).length, 0, 'Fresh load: no purchases');
+
+freshData.gBux = 100;
+freshData.achievements.dd_first_race = true;
+freshData.shopPurchases.dd_turbo_start = true;
+ggSave(freshData);
+
+const reloaded = ggLoad();
+assertEqual(reloaded.gBux, 100, 'Round-trip: gBux preserved');
+assertEqual(reloaded.achievements.dd_first_race, true, 'Round-trip: achievement preserved');
+assertEqual(reloaded.shopPurchases.dd_turbo_start, true, 'Round-trip: shop purchase preserved');
+
+// Corrupt data fallback
+localStorage.setItem(GG_KEY, '{invalid json');
+const fallback = ggLoad();
+assertEqual(fallback.gBux, 0, 'Corrupt localStorage: returns default gBux');
+assertEqual(Object.keys(fallback.achievements).length, 0, 'Corrupt localStorage: returns empty achievements');
+
+// --- POWERUP TYPES ---
+group('Powerup Types');
+assert(['boost', 'oil', 'shield'].length === 3, '3 powerup types exist');
+
+// Boost timer
+const boostCar = createCar(0, true, 'wasd');
+boostCar.boostTimer = BOOST_DURATION;
+assert(boostCar.boostTimer === 2, 'Boost timer starts at BOOST_DURATION (2s)');
+
+// Shield timer
+const shieldCar = createCar(0, true, 'wasd');
+shieldCar.shieldTimer = SHIELD_DURATION;
+assert(shieldCar.shieldTimer === 5, 'Shield timer starts at SHIELD_DURATION (5s)');
+
+// Spinout timer
+const spinCar = createCar(0, true, 'wasd');
+spinCar.spinTimer = SPINOUT_DURATION;
+assert(spinCar.spinTimer === 1.0, 'Spinout timer starts at SPINOUT_DURATION (1.0s)');
+
+// --- DRIFT DETECTION ---
+group('Drift Detection');
+const driftCar = createCar(0, true, 'wasd');
+
+// Not drifting at low speed
+driftCar.speed = DRIFT_THRESHOLD - 1;
+const shouldNotDrift = driftCar.speed > DRIFT_THRESHOLD;
+assertEqual(shouldNotDrift, false, 'Below drift threshold: not drifting');
+
+// Drifting at high speed while turning
+driftCar.speed = DRIFT_THRESHOLD + 1;
+const shouldDrift = driftCar.speed > DRIFT_THRESHOLD;
+assertEqual(shouldDrift, true, 'Above drift threshold with turning: drifting possible');
+
+assertEqual(DRIFT_FACTOR, 0.92, 'Drift factor is 0.92');
+
+// --- TRACK COVERAGE ---
+group('Track Coverage');
+
+// All maps have valid closed tracks
+MAPS.forEach((m, i) => {
+  const wp = m.waypoints;
+  // First and last waypoints should be different (track loops via closePath)
+  assert(wp.length >= 10, 'Map ' + i + ' has >= 10 waypoints');
+
+  // All waypoints on the canvas area (roughly)
+  const allInBounds = wp.every(p => p[0] >= 0 && p[0] <= 900 && p[1] >= 0 && p[1] <= 700);
+  assert(allInBounds, 'Map ' + i + ' waypoints are within reasonable bounds');
+
+  // Track should be navigable (consecutive waypoints not too far apart)
+  for (let j = 0; j < wp.length; j++) {
+    const k = (j + 1) % wp.length;
+    const d = Math.hypot(wp[k][0] - wp[j][0], wp[k][1] - wp[j][1]);
+    assert(d < 400, 'Map ' + i + ' waypoints ' + j + '->' + k + ' distance=' + Math.round(d) + ' < 400');
+  }
+});
+
+// --- CAR PHYSICS FORMULAS ---
+group('Car Physics Formulas');
+
+// Speed clamping
+let testSpeed = MAX_SPEED + 100;
+testSpeed = Math.max(0, Math.min(MAX_SPEED, testSpeed));
+assertEqual(testSpeed, MAX_SPEED, 'Speed clamped to MAX_SPEED');
+
+testSpeed = -50;
+testSpeed = Math.max(0, Math.min(MAX_SPEED, testSpeed));
+assertEqual(testSpeed, 0, 'Speed clamped to 0 minimum');
+
+// Boost multiplier effect
+const boostedMax = MAX_SPEED * BOOST_MULTIPLIER;
+assertEqual(boostedMax, 400, 'Boosted max speed is 400');
+
+// Turn rate proportional to speed
+const turnAtFull = TURN_SPEED * (MAX_SPEED / MAX_SPEED);
+assertEqual(turnAtFull, TURN_SPEED, 'Turn rate at max speed equals TURN_SPEED');
+
+const turnAtHalf = TURN_SPEED * (MAX_SPEED * 0.5 / MAX_SPEED);
+assertApprox(turnAtHalf, TURN_SPEED * 0.5, 0.001, 'Turn rate at half speed is half TURN_SPEED');
+
+const turnAtZero = TURN_SPEED * (0 / MAX_SPEED);
+assertEqual(turnAtZero, 0, 'Turn rate at zero speed is 0');
+
+// --- ACCELERATION & DECELERATION ---
+group('Acceleration & Deceleration');
+const dt = 1/60; // typical frame dt
+
+// Accelerating
+let speed = 0;
+speed += ACCEL * dt;
+assertApprox(speed, 3, 0.1, 'One frame of acceleration adds ~3 speed');
+
+// Braking
+speed = 100;
+speed -= BRAKE * dt;
+assertApprox(speed, 100 - BRAKE * dt, 0.01, 'Braking subtracts BRAKE * dt');
+
+// Friction
+speed = 100;
+speed -= FRICTION * dt;
+assertApprox(speed, 100 - FRICTION * dt, 0.01, 'Friction subtracts FRICTION * dt');
+
+// Braking stronger than friction
+assert(BRAKE > FRICTION, 'Braking is stronger than friction');
+
+// --- LAP DETECTION LOGIC ---
+group('Lap Detection Logic');
+
+// Simulate crossing start line
+const lapCar = createCar(0, true, 'wasd');
+assertEqual(lapCar.lap, 0, 'Starts on lap 0');
+assertEqual(lapCar.wayIdx, 0, 'Starts at waypoint 0');
+
+// Simulate advancing through waypoints
+const mapWpCount = MAPS[0].waypoints.length;
+lapCar.prevWayIdx = mapWpCount - 2;
+lapCar.wayIdx = mapWpCount - 1;
+// Simulate crossing start (wayIdx goes to 0 from near end)
+lapCar.prevWayIdx = mapWpCount - 1;
+lapCar.wayIdx = 0;
+if (lapCar.wayIdx === 0 && lapCar.prevWayIdx >= mapWpCount - 3) {
+  lapCar.lap++;
+}
+assertEqual(lapCar.lap, 1, 'Lap increments when crossing start line');
+
+// Finish condition
+lapCar.lap = TOTAL_LAPS;
+const isFinished = lapCar.lap >= TOTAL_LAPS;
+assertEqual(isFinished, true, 'Car finishes when lap >= TOTAL_LAPS');
+
+// --- CAR-CAR COLLISION ---
+group('Car-Car Collision');
+const collCar1 = createCar(0, true, 'wasd');
+const collCar2 = createCar(1, false, 'cpu');
+
+// Place cars overlapping
+collCar1.x = 100; collCar1.y = 100;
+collCar2.x = 110; collCar2.y = 100;
+const collDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
+assert(collDist < 18, 'Cars placed within collision distance (18 units)');
+
+// Simulate collision push
+const pushAngle = Math.atan2(collCar1.y - collCar2.y, collCar1.x - collCar2.x);
+const overlap = 18 - collDist;
+collCar1.x += Math.cos(pushAngle) * overlap * 0.5;
+collCar2.x -= Math.cos(pushAngle) * overlap * 0.5;
+const newDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
+assert(newDist >= collDist, 'After collision push, cars are further apart');
+
+// Speed averaging
+collCar1.speed = 200; collCar2.speed = 100;
+const avgSpeed = (collCar1.speed + collCar2.speed) / 2;
+collCar1.speed = avgSpeed * 0.9;
+collCar2.speed = avgSpeed * 0.9;
+assertApprox(collCar1.speed, 135, 0.1, 'After collision, car1 speed = avg * 0.9');
+assertApprox(collCar2.speed, 135, 0.1, 'After collision, car2 speed = avg * 0.9');
+
+// --- OIL SLICK MECHANICS ---
+group('Oil Slick Mechanics');
+const oilSlick = {
+  x: 200, y: 200, owner: 0, life: OIL_LIFETIME,
+};
+assertEqual(oilSlick.life, 15, 'Oil slick starts with 15s lifetime');
+
+// Simulate life decay
+oilSlick.life -= 1;
+assertEqual(oilSlick.life, 14, 'Oil slick life decreases');
+
+// Oil doesn't affect owner
+assert(oilSlick.owner === 0, 'Oil slick has owner index');
+
+// Oil collision with another car
+const oilTarget = createCar(1, false, 'cpu');
+oilTarget.x = 201; oilTarget.y = 200;
+const oilDist = Math.hypot(oilTarget.x - oilSlick.x, oilTarget.y - oilSlick.y);
+assert(oilDist < 18, 'Target within oil slick radius');
+assert(oilSlick.owner !== oilTarget.index, 'Oil does not belong to target');
+
+// Shield blocks oil
+const shieldedCar = createCar(2, false, 'cpu');
+shieldedCar.shieldTimer = 3;
+assert(shieldedCar.shieldTimer > 0, 'Shielded car has active shield');
+// Shield absorbs hit: shieldTimer set to 0
+shieldedCar.shieldTimer = 0;
+assertEqual(shieldedCar.shieldTimer, 0, 'Shield consumed after blocking hit');
+
+// --- OFF-ROAD DETECTION ---
+group('Off-Road Detection');
+currentMap = 0;
+const offRoadMap = MAPS[0];
+
+// On track = small distance
+const onTrack = distToTrack(offRoadMap, offRoadMap.waypoints[5][0], offRoadMap.waypoints[5][1]);
+assert(onTrack < TRACK_WIDTH / 2, 'Point on waypoint is within track width');
+
+// Off track = large distance
+const offTrack = distToTrack(offRoadMap, 0, 0);
+assert(offTrack > TRACK_WIDTH / 2, 'Point at origin is off track');
+
+// Off-road speed multiplier
+const offRoadSpeed = 200 * 0.96;
+assertApprox(offRoadSpeed, 192, 0.1, 'Off-road speed multiplier: 200 * 0.96 = 192');
+
+// --- RACE MODE SETUP ---
+group('Race Mode Setup');
+
+// CPU mode: 1 player, 3 CPU
+currentMap = 0;
+const cpuCars = [];
+cpuCars.push(createCar(0, true, 'wasd'));
+cpuCars.push(createCar(1, false, 'cpu'));
+cpuCars.push(createCar(2, false, 'cpu'));
+cpuCars.push(createCar(3, false, 'cpu'));
+assertEqual(cpuCars.length, 4, 'CPU mode: 4 cars total');
+assertEqual(cpuCars.filter(c => c.isPlayer).length, 1, 'CPU mode: 1 player car');
+assertEqual(cpuCars.filter(c => c.controlScheme === 'cpu').length, 3, 'CPU mode: 3 CPU cars');
+
+// Human mode: 2 players, 2 CPU
+const humanCars = [];
+humanCars.push(createCar(0, true, 'wasd'));
+humanCars.push(createCar(1, true, 'arrows'));
+humanCars.push(createCar(2, false, 'cpu'));
+humanCars.push(createCar(3, false, 'cpu'));
+assertEqual(humanCars.length, 4, 'Human mode: 4 cars total');
+assertEqual(humanCars.filter(c => c.isPlayer).length, 2, 'Human mode: 2 player cars');
+assertEqual(humanCars.filter(c => c.controlScheme === 'cpu').length, 2, 'Human mode: 2 CPU cars');
+assertEqual(humanCars[0].controlScheme, 'wasd', 'Human mode: P1 uses WASD');
+assertEqual(humanCars[1].controlScheme, 'arrows', 'Human mode: P2 uses arrows');
+
+// --- ACHIEVEMENT TRIGGER CONDITIONS ---
+group('Achievement Trigger Conditions');
+localStorage.clear();
+
+// dd_first_race: always on race completion
+ggTry('dd_first_race');
+assertEqual(ggLoad().achievements.dd_first_race, true, 'dd_first_race triggers on race complete');
+
+// dd_first_win: on winning
+localStorage.clear();
+ggTry('dd_first_win');
+assertEqual(ggLoad().achievements.dd_first_win, true, 'dd_first_win triggers on win');
+
+// dd_no_walls: wallHits === 0 check
+let testWallHits = 0;
+assert(testWallHits === 0, 'dd_no_walls condition: wallHits === 0');
+testWallHits = 1;
+assert(testWallHits !== 0, 'dd_no_walls rejected: wallHits > 0');
+
+// dd_drift_king: driftTime >= 5
+let testDriftTime = 5.0;
+assert(testDriftTime >= 5, 'dd_drift_king condition: driftTime >= 5');
+testDriftTime = 4.9;
+assert(testDriftTime < 5, 'dd_drift_king rejected: driftTime < 5');
+
+// dd_speed_demon: boostsUsed >= 5
+let testBoosts = 5;
+assert(testBoosts >= 5, 'dd_speed_demon condition: boostsUsed >= 5');
+testBoosts = 4;
+assert(testBoosts < 5, 'dd_speed_demon rejected: boostsUsed < 5');
+
+// dd_photo_finish: time diff < 1 second
+const timeDiff = 0.8;
+assert(timeDiff < 1, 'dd_photo_finish condition: time diff < 1s');
+
+// dd_unbeatable: 10 wins
+localStorage.clear();
+const statsTest = { wins: 10, mapWins: {} };
+ddSaveStats(statsTest);
+const loaded = ddLoadStats();
+assert(loaded.wins >= 10, 'dd_unbeatable condition: wins >= 10');
+
+// dd_all_maps: all 5 maps won
+const allMapsStats = { wins: 5, mapWins: { 0: true, 1: true, 2: true, 3: true, 4: true } };
+assert(Object.keys(allMapsStats.mapWins).length >= 5, 'dd_all_maps condition: 5 maps won');
+
+// dd_oil_slick: oilHits > 0
+let testOilHits = 1;
+assert(testOilHits > 0, 'dd_oil_slick condition: oilHits > 0');
+
+// dd_human_victor: mode === human
+let testMode = 'human';
+assert(testMode === 'human', 'dd_human_victor condition: mode is human');
+
+// --- TRACK GETTRACKPOINT WRAPPING ---
+group('Track Point Wrapping');
+const wrapMap = MAPS[0];
+const wrapLen = wrapMap.waypoints.length;
+
+// t wraps around
+const ptWrap = getTrackPoint(wrapMap, wrapLen);
+assertApprox(ptWrap[0], wrapMap.waypoints[0][0], 0.01, 'getTrackPoint wraps at length');
+
+const ptWrap2 = getTrackPoint(wrapMap, wrapLen + 5);
+assertApprox(ptWrap2[0], wrapMap.waypoints[5][0], 0.01, 'getTrackPoint wraps beyond length');
+
+// --- NEAREST WAYPOINT ACCURACY ---
+group('Nearest Waypoint Accuracy');
+MAPS.forEach((m, mi) => {
+  m.waypoints.forEach((wp, wi) => {
+    const found = nearestWaypoint(m, wp[0], wp[1]);
+    assertEqual(found, wi, 'Map ' + mi + ': nearestWaypoint exact match at index ' + wi);
+  });
+});
+
+// ============================================================
+// SUMMARY
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>

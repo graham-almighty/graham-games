@@ -460,22 +460,23 @@
     border-radius: 8px;
   }
 
-  /* Planet Brawl card */
-  .game-card.planet-brawl {
-    border-left-color: #1a66cc;
+  /* Devious Driving card */
+  .game-card.devious-driving {
+    border-left-color: #e91e63;
   }
-  .game-card.planet-brawl:hover {
-    border-color: #1a66cc;
-    box-shadow: 0 0 30px #1a66cc15, -5px 0 20px #1a66cc10;
+  .game-card.devious-driving:hover {
+    border-color: #e91e63;
+    box-shadow: 0 0 30px #e91e6315, -5px 0 20px #e91e6310;
   }
-  .game-card.planet-brawl::before {
-    background: linear-gradient(90deg, #1a66cc08 0%, transparent 50%);
+  .game-card.devious-driving::before {
+    background: linear-gradient(90deg, #e91e6308 0%, transparent 50%);
   }
-  .game-card.planet-brawl .game-icon {
-    background: linear-gradient(135deg, #08102a, #0a1a3a);
-    border: 1px solid #1a66cc44;
+  .game-card.devious-driving .game-icon {
+    background: linear-gradient(135deg, #1a080e, #2a0a14);
+    border: 1px solid #e91e6344;
     border-radius: 8px;
   }
+
 
   /* Coming soon cards */
   .game-card.coming-soon {
@@ -1180,33 +1181,36 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
-    <a href="planet-brawl/index.html" class="game-card planet-brawl">
+    <!-- DEVIOUS DRIVING -->
+    <a href="devious-driving/index.html" class="game-card devious-driving">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
-          <!-- rocket ship -->
-          <path d="M25 8 L30 28 L27 32 L23 32 L20 28 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="1"/>
-          <ellipse cx="25" cy="14" rx="3" ry="4" fill="#4488ff" opacity="0.5"/>
-          <!-- cockpit window -->
-          <ellipse cx="25" cy="16" rx="2" ry="2.5" fill="#88bbff" opacity="0.6"/>
-          <!-- fins -->
-          <path d="M20 28 L15 34 L20 32 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="0.8"/>
-          <path d="M30 28 L35 34 L30 32 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="0.8"/>
-          <!-- flame -->
-          <path d="M23 32 L25 40 L27 32" fill="#ff6622" opacity="0.7"/>
-          <path d="M24 32 L25 37 L26 32" fill="#ffcc44" opacity="0.8"/>
-          <!-- stars -->
-          <circle cx="10" cy="12" r="1" fill="#4488ff" opacity="0.4"/>
-          <circle cx="40" cy="20" r="0.8" fill="#4488ff" opacity="0.3"/>
-          <circle cx="8" cy="35" r="0.6" fill="#4488ff" opacity="0.3"/>
-          <circle cx="42" cy="10" r="0.7" fill="#4488ff" opacity="0.35"/>
+          <!-- car body -->
+          <rect x="15" y="18" width="20" height="24" rx="4" fill="#1a080e" stroke="#e91e63" stroke-width="1.5"/>
+          <!-- windshield -->
+          <rect x="19" y="21" width="12" height="5" rx="1" fill="#e91e63" opacity="0.4"/>
+          <!-- eyes on windshield -->
+          <circle cx="22" cy="23" r="1.5" fill="#fff" opacity="0.8"/>
+          <circle cx="28" cy="23" r="1.5" fill="#fff" opacity="0.8"/>
+          <!-- wheels -->
+          <rect x="12" y="22" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
+          <rect x="34" y="22" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
+          <rect x="12" y="33" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
+          <rect x="34" y="33" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
+          <!-- speed lines -->
+          <line x1="10" y1="12" x2="18" y2="12" stroke="#e91e63" stroke-width="1.2" opacity="0.3"/>
+          <line x1="8" y1="15" x2="14" y2="15" stroke="#e91e63" stroke-width="1" opacity="0.2"/>
+          <line x1="32" y1="10" x2="40" y2="10" stroke="#e91e63" stroke-width="1.2" opacity="0.3"/>
+          <line x1="36" y1="14" x2="42" y2="14" stroke="#e91e63" stroke-width="1" opacity="0.2"/>
         </svg>
       </div>
       <div class="game-info">
-        <div class="game-title">PLANET BRAWL</div>
-        <div class="game-desc">3D space combat shooter</div>
+        <div class="game-title">DEVIOUS DRIVING</div>
+        <div class="game-desc">Top-down kart racing</div>
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
+
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1345,17 +1349,17 @@ const ALL_ACHIEVEMENTS = [
     { id: 'rd_speedrun',      name: 'Speed Runner',      desc: 'Clear a floor in under 30 seconds',  reward: 20 },
     { id: 'rd_no_hit_boss',   name: 'Untouchable',       desc: 'Beat a boss without taking damage',  reward: 25 },
   ]},
-  { group: 'PLANET BRAWL', items: [
-    { id: 'pb_first_kill',    name: 'First Contact',     desc: 'Kill your first enemy',                reward: 5 },
-    { id: 'pb_planet_1',      name: 'Zortotie Saved',    desc: 'Liberate the first planet',            reward: 10 },
-    { id: 'pb_planet_3',      name: 'Halfway Home',       desc: 'Liberate three planets',               reward: 15 },
-    { id: 'pb_planet_6',      name: 'Galaxy Savior',      desc: 'Liberate all six planets',              reward: 50 },
-    { id: 'pb_ace',           name: 'Space Ace',          desc: 'Kill 10+ enemies in one space phase',   reward: 20 },
-    { id: 'pb_no_hit_space',  name: 'Untouchable',        desc: 'Complete a space phase with no damage', reward: 25 },
-    { id: 'pb_boss_slayer',   name: 'Boss Slayer',         desc: 'Defeat the Wintot boss',               reward: 30 },
-    { id: 'pb_speed_clear',   name: 'Speed Demon',        desc: 'Clear a planet phase in under 20s',    reward: 15 },
-    { id: 'pb_sharpshooter',  name: 'Sharpshooter',       desc: '80%+ accuracy in a space phase',       reward: 15 },
-    { id: 'pb_survivor',      name: 'Iron Hull',           desc: 'Finish a planet with full HP',         reward: 15 },
+  { group: 'DEVIOUS DRIVING', items: [
+    { id: 'dd_first_race',   name: "Learner's Permit",  desc: 'Complete a race',                     reward: 5 },
+    { id: 'dd_first_win',    name: 'Checkered Flag',    desc: 'Win a race',                          reward: 10 },
+    { id: 'dd_all_maps',     name: 'World Tour',        desc: 'Win on all 5 maps',                   reward: 25 },
+    { id: 'dd_no_walls',     name: 'Clean Driver',      desc: 'Win without hitting walls',            reward: 20 },
+    { id: 'dd_drift_king',   name: 'Drift King',        desc: 'Drift for 5+ cumulative seconds',     reward: 15 },
+    { id: 'dd_oil_slick',    name: 'Dirty Tricks',      desc: 'Hit an opponent with oil slick',       reward: 10 },
+    { id: 'dd_speed_demon',  name: 'Speed Demon',       desc: 'Use 5+ boosts in one race',            reward: 15 },
+    { id: 'dd_photo_finish', name: 'Photo Finish',      desc: 'Win by less than 1 second',            reward: 20 },
+    { id: 'dd_unbeatable',   name: 'Unbeatable',        desc: 'Win 10 races total',                   reward: 30 },
+    { id: 'dd_human_victor', name: 'Rivalry',           desc: 'Win a human vs human race',            reward: 50 },
   ]},
 ];
 
@@ -1371,6 +1375,8 @@ const SHOP_ITEMS = [
   { id: 'aw_battle_horn',  name: 'Battle Horn',     desc: '+10% damage for first 10s of battle',     cost: 50,  icon: '&#128239;', game: 'Ancient Warfare' },
   { id: 'rd_shadow_class',    name: 'Rogue Class',       desc: 'Unlocks the Rogue class (fast, backstab)',     cost: 75, icon: '&#128065;', game: 'Rogue Depths' },
   { id: 'rd_enchanted_start', name: 'Enchanted Start',   desc: 'Start each run with an uncommon weapon',       cost: 50, icon: '&#10024;',  game: 'Rogue Depths' },
+  { id: 'dd_turbo_start',    name: 'Turbo Start',       desc: 'Timed boost at race start (hit Space at GO)',   cost: 50, icon: '&#128640;', game: 'Devious Driving' },
+  { id: 'dd_monster_truck',  name: 'Monster Truck',     desc: 'Bigger car with more knockback',                cost: 75, icon: '&#128663;', game: 'Devious Driving' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══
