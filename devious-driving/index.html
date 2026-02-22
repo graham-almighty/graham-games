@@ -373,6 +373,24 @@ const MAPS = [
       [100, 350], [250, 350], [250, 250], [100, 250],
     ],
   },
+  {
+    name: 'Highway',
+    desc: 'Long open road with gentle sweeps',
+    grass: '#3a7a2a',
+    road: '#666',
+    waypoints: (function() {
+      const pts = [];
+      const segments = 80;
+      for (let i = 0; i < segments; i++) {
+        const t = (i / segments) * Math.PI * 2;
+        // Large elongated loop with gentle sine curves
+        const x = 800 + Math.cos(t) * 700 + Math.sin(t * 2) * 150;
+        const y = 500 + Math.sin(t) * 400 + Math.cos(t * 3) * 80;
+        pts.push([x, y]);
+      }
+      return pts;
+    })(),
+  },
 ];
 
 // ═══════════════════════════════════════════
@@ -567,6 +585,8 @@ function createCar(index, isPlayer, controlScheme) {
     spinTimer: 0,
     driftTimer: 0,
     isDrifting: false,
+    skidVX: 0,
+    skidVY: 0,
   };
 }
 
@@ -754,21 +774,39 @@ function updateCar(car, dt) {
   car.x += Math.cos(moveAngle) * car.speed * dt;
   car.y += Math.sin(moveAngle) * car.speed * dt;
 
-  // Track collision (off-road slowdown)
+  // Apply skid velocity
+  if (car.skidVX !== 0 || car.skidVY !== 0) {
+    car.x += car.skidVX * dt;
+    car.y += car.skidVY * dt;
+    car.skidVX *= 0.92;
+    car.skidVY *= 0.92;
+    if (Math.abs(car.skidVX) < 1 && Math.abs(car.skidVY) < 1) { car.skidVX = 0; car.skidVY = 0; }
+    // Tire marks while skidding
+    if (Math.random() < 0.5) {
+      particles.push({ x: car.x, y: car.y, life: 1.5, type: 'tire', size: 3, color: '#33333388' });
+    }
+  }
+
+  // Track collision — bounce off edges back onto track
   const dist = distToTrack(map, car.x, car.y);
   if (dist > TRACK_WIDTH / 2) {
-    car.speed *= 0.96;
-    if (dist > TRACK_WIDTH / 2 + 10) {
-      // Push back toward track
-      const nwi = nearestWaypoint(map, car.x, car.y);
-      const wp = map.waypoints[nwi];
-      const pushAngle = Math.atan2(wp[1] - car.y, wp[0] - car.x);
-      car.x += Math.cos(pushAngle) * 2;
-      car.y += Math.sin(pushAngle) * 2;
-      if (car.isPlayer && car.controlScheme === 'wasd') wallHits++;
-      if (Math.random() < 0.3) {
-        particles.push({ x: car.x, y: car.y, life: 0.5, type: 'spark', size: 2, color: '#ffaa00' });
-      }
+    // Find nearest track point and bounce car back toward it
+    const nwi = nearestWaypoint(map, car.x, car.y);
+    const wp = map.waypoints[nwi];
+    const bounceAngle = Math.atan2(wp[1] - car.y, wp[0] - car.x);
+    const bounceForce = Math.min(car.speed, 200) * 0.6 + 80;
+    car.skidVX = Math.cos(bounceAngle) * bounceForce;
+    car.skidVY = Math.sin(bounceAngle) * bounceForce;
+    car.speed *= 0.5;
+    // Push car back onto edge
+    const overshoot = dist - TRACK_WIDTH / 2;
+    car.x += Math.cos(bounceAngle) * overshoot;
+    car.y += Math.sin(bounceAngle) * overshoot;
+    if (car.isPlayer && car.controlScheme === 'wasd') wallHits++;
+    SFX.crash();
+    // Sparks on wall hit
+    for (let i = 0; i < 3; i++) {
+      particles.push({ x: car.x, y: car.y, life: 0.5, type: 'spark', size: 2 + Math.random() * 2, color: '#ffaa00' });
     }
   }
 
@@ -854,16 +892,26 @@ function updateCar(car, dt) {
     if (other === car || other.finished) continue;
     const d = Math.hypot(car.x - other.x, car.y - other.y);
     if (d < 18) {
-      const pushAngle = Math.atan2(car.y - other.y, car.x - other.x);
+      const pushAngle = Math.atan2(other.y - car.y, other.x - car.x);
       const overlap = 18 - d;
-      car.x += Math.cos(pushAngle) * overlap * 0.5;
-      car.y += Math.sin(pushAngle) * overlap * 0.5;
-      other.x -= Math.cos(pushAngle) * overlap * 0.5;
-      other.y -= Math.sin(pushAngle) * overlap * 0.5;
-      // Transfer some speed
-      const avgSpeed = (car.speed + other.speed) / 2;
-      car.speed = avgSpeed * 0.9;
-      other.speed = avgSpeed * 0.9;
+      // Separate cars
+      car.x -= Math.cos(pushAngle) * overlap * 0.5;
+      car.y -= Math.sin(pushAngle) * overlap * 0.5;
+      other.x += Math.cos(pushAngle) * overlap * 0.5;
+      other.y += Math.sin(pushAngle) * overlap * 0.5;
+      // The faster car sends the slower one skidding
+      const skidForce = 300;
+      if (car.speed >= other.speed) {
+        other.skidVX = Math.cos(pushAngle) * skidForce * (car.speed / MAX_SPEED + 0.3);
+        other.skidVY = Math.sin(pushAngle) * skidForce * (car.speed / MAX_SPEED + 0.3);
+        other.speed *= 0.5;
+        car.speed *= 0.85;
+      } else {
+        car.skidVX = -Math.cos(pushAngle) * skidForce * (other.speed / MAX_SPEED + 0.3);
+        car.skidVY = -Math.sin(pushAngle) * skidForce * (other.speed / MAX_SPEED + 0.3);
+        car.speed *= 0.5;
+        other.speed *= 0.85;
+      }
       SFX.crash();
     }
   }
@@ -1304,7 +1352,7 @@ function endRace() {
     ddSaveStats(stats);
 
     if (stats.wins >= 10) ggTry('dd_unbeatable');
-    if (Object.keys(stats.mapWins).length >= 5) ggTry('dd_all_maps');
+    if (Object.keys(stats.mapWins).length >= MAPS.length) ggTry('dd_all_maps');
   }
   if (oilHits > 0) ggTry('dd_oil_slick');
 

@@ -213,6 +213,23 @@ const MAPS = [
       [100, 350], [250, 350], [250, 250], [100, 250],
     ],
   },
+  {
+    name: 'Highway',
+    desc: 'Long open road with gentle sweeps',
+    grass: '#3a7a2a',
+    road: '#666',
+    waypoints: (function() {
+      const pts = [];
+      const segments = 80;
+      for (let i = 0; i < segments; i++) {
+        const t = (i / segments) * Math.PI * 2;
+        const x = 800 + Math.cos(t) * 700 + Math.sin(t * 2) * 150;
+        const y = 500 + Math.sin(t) * 400 + Math.cos(t * 3) * 80;
+        pts.push([x, y]);
+      }
+      return pts;
+    })(),
+  },
 ];
 
 // ============================================================
@@ -304,6 +321,8 @@ function createCar(index, isPlayer, controlScheme) {
     spinTimer: 0,
     driftTimer: 0,
     isDrifting: false,
+    skidVX: 0,
+    skidVY: 0,
   };
 }
 
@@ -374,7 +393,7 @@ function getAIInput(car) {
 
 // --- MAP DEFINITIONS ---
 group('Map Definitions');
-assertEqual(MAPS.length, 5, 'There are 5 maps');
+assertEqual(MAPS.length, 6, 'There are 6 maps');
 MAPS.forEach((m, i) => {
   assert(m.name && m.name.length > 0, 'Map ' + i + ' has a name: ' + m.name);
   assert(m.desc && m.desc.length > 0, 'Map ' + i + ' has a description');
@@ -392,6 +411,7 @@ assertEqual(MAPS[1].name, 'Figure Eight', 'Map 1 is Figure Eight');
 assertEqual(MAPS[2].name, 'Seaside Circuit', 'Map 2 is Seaside Circuit');
 assertEqual(MAPS[3].name, 'Mountain Pass', 'Map 3 is Mountain Pass');
 assertEqual(MAPS[4].name, 'Downtown', 'Map 4 is Downtown');
+assertEqual(MAPS[5].name, 'Highway', 'Map 5 is Highway');
 
 // --- CONSTANTS ---
 group('Game Constants');
@@ -787,7 +807,7 @@ MAPS.forEach((m, i) => {
   assert(wp.length >= 10, 'Map ' + i + ' has >= 10 waypoints');
 
   // All waypoints on the canvas area (roughly)
-  const allInBounds = wp.every(p => p[0] >= 0 && p[0] <= 900 && p[1] >= 0 && p[1] <= 700);
+  const allInBounds = wp.every(p => p[0] >= -100 && p[0] <= 1700 && p[1] >= -100 && p[1] <= 1100);
   assert(allInBounds, 'Map ' + i + ' waypoints are within reasonable bounds');
 
   // Track should be navigable (consecutive waypoints not too far apart)
@@ -883,20 +903,41 @@ const collDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
 assert(collDist < 18, 'Cars placed within collision distance (18 units)');
 
 // Simulate collision push
-const pushAngle = Math.atan2(collCar1.y - collCar2.y, collCar1.x - collCar2.x);
+const pushAngle = Math.atan2(collCar2.y - collCar1.y, collCar2.x - collCar1.x);
 const overlap = 18 - collDist;
-collCar1.x += Math.cos(pushAngle) * overlap * 0.5;
-collCar2.x -= Math.cos(pushAngle) * overlap * 0.5;
+collCar1.x -= Math.cos(pushAngle) * overlap * 0.5;
+collCar2.x += Math.cos(pushAngle) * overlap * 0.5;
 const newDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
 assert(newDist >= collDist, 'After collision push, cars are further apart');
 
-// Speed averaging
+// Faster car sends slower one skidding
 collCar1.speed = 200; collCar2.speed = 100;
-const avgSpeed = (collCar1.speed + collCar2.speed) / 2;
-collCar1.speed = avgSpeed * 0.9;
-collCar2.speed = avgSpeed * 0.9;
-assertApprox(collCar1.speed, 135, 0.1, 'After collision, car1 speed = avg * 0.9');
-assertApprox(collCar2.speed, 135, 0.1, 'After collision, car2 speed = avg * 0.9');
+collCar1.skidVX = 0; collCar1.skidVY = 0;
+collCar2.skidVX = 0; collCar2.skidVY = 0;
+const skidForce = 300;
+// car1 is faster, so car2 gets skidded
+collCar2.skidVX = Math.cos(pushAngle) * skidForce * (collCar1.speed / MAX_SPEED + 0.3);
+collCar2.skidVY = Math.sin(pushAngle) * skidForce * (collCar1.speed / MAX_SPEED + 0.3);
+collCar2.speed *= 0.5;
+collCar1.speed *= 0.85;
+assert(Math.abs(collCar2.skidVX) > 0, 'Slower car gets skid velocity from collision');
+assertApprox(collCar1.speed, 170, 0.1, 'Faster car loses 15% speed on impact');
+assertApprox(collCar2.speed, 50, 0.1, 'Slower car loses 50% speed on impact');
+
+// Skid decays
+collCar2.skidVX *= 0.92;
+collCar2.skidVY *= 0.92;
+assert(Math.abs(collCar2.skidVX) > 0, 'Skid velocity decays but persists');
+
+// Skid stops at low velocity
+collCar2.skidVX = 0.5; collCar2.skidVY = 0.5;
+if (Math.abs(collCar2.skidVX) < 1 && Math.abs(collCar2.skidVY) < 1) { collCar2.skidVX = 0; collCar2.skidVY = 0; }
+assertEqual(collCar2.skidVX, 0, 'Skid stops when velocity below threshold');
+
+// Car starts with no skid
+const freshCar = createCar(0, true, 'wasd');
+assertEqual(freshCar.skidVX, 0, 'New car has no skid X velocity');
+assertEqual(freshCar.skidVY, 0, 'New car has no skid Y velocity');
 
 // --- OIL SLICK MECHANICS ---
 group('Oil Slick Mechanics');
@@ -1012,9 +1053,9 @@ ddSaveStats(statsTest);
 const loaded = ddLoadStats();
 assert(loaded.wins >= 10, 'dd_unbeatable condition: wins >= 10');
 
-// dd_all_maps: all 5 maps won
-const allMapsStats = { wins: 5, mapWins: { 0: true, 1: true, 2: true, 3: true, 4: true } };
-assert(Object.keys(allMapsStats.mapWins).length >= 5, 'dd_all_maps condition: 5 maps won');
+// dd_all_maps: all 6 maps won
+const allMapsStats = { wins: 6, mapWins: { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true } };
+assert(Object.keys(allMapsStats.mapWins).length >= MAPS.length, 'dd_all_maps condition: all maps won');
 
 // dd_oil_slick: oilHits > 0
 let testOilHits = 1;
