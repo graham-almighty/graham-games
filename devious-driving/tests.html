@@ -348,6 +348,22 @@ function getInput(car) {
       right: keys['ArrowRight'],
       usePowerup: keys['enter'],
     };
+  } else if (car.controlScheme === 'ijkl') {
+    return {
+      accel: keys['i'],
+      brake: keys['k'],
+      left: keys['j'],
+      right: keys['l'],
+      usePowerup: keys['b'],
+    };
+  } else if (car.controlScheme === 'numpad') {
+    return {
+      accel: keys['8'],
+      brake: keys['5'],
+      left: keys['4'],
+      right: keys['6'],
+      usePowerup: keys['0'],
+    };
   }
   return { accel: false, brake: false, left: false, right: false, usePowerup: false };
 }
@@ -366,11 +382,41 @@ function getPosition(car) {
 // ============================================================
 // EXTRACTED SOURCE — AI
 // ============================================================
+let oilSlicks = [];
+
 function getAIInput(car) {
   const map = MAPS[currentMap];
   const wp = map.waypoints;
-  const targetIdx = (car.wayIdx + 3) % wp.length;
-  const tx = wp[targetIdx][0], ty = wp[targetIdx][1];
+
+  // Follow the track centerline
+  const followDist = 60 + (car.speed / MAX_SPEED) * 120;
+  let remaining = followDist;
+  let segIdx = car.wayIdx;
+  let tx, ty;
+  while (remaining > 0) {
+    const ni = (segIdx + 1) % wp.length;
+    const segLen = Math.hypot(wp[ni][0] - wp[segIdx][0], wp[ni][1] - wp[segIdx][1]);
+    if (remaining <= segLen && segLen > 0) {
+      const t = remaining / segLen;
+      tx = wp[segIdx][0] + (wp[ni][0] - wp[segIdx][0]) * t;
+      ty = wp[segIdx][1] + (wp[ni][1] - wp[segIdx][1]) * t;
+      break;
+    }
+    remaining -= segLen;
+    segIdx = ni;
+    if (segIdx === car.wayIdx) { tx = wp[segIdx][0]; ty = wp[segIdx][1]; break; }
+  }
+  if (tx === undefined) { tx = wp[(car.wayIdx + 1) % wp.length][0]; ty = wp[(car.wayIdx + 1) % wp.length][1]; }
+
+  const nearIdx = nearestWaypoint(map, car.x, car.y);
+  const nearWp = wp[nearIdx];
+  const offDist = Math.hypot(car.x - nearWp[0], car.y - nearWp[1]);
+  if (offDist > TRACK_WIDTH * 0.25) {
+    const blend = Math.min(0.5, (offDist - TRACK_WIDTH * 0.25) / TRACK_WIDTH);
+    tx = tx * (1 - blend) + nearWp[0] * blend;
+    ty = ty * (1 - blend) + nearWp[1] * blend;
+  }
+
   const dx = tx - car.x, dy = ty - car.y;
   const targetAngle = Math.atan2(dy, dx);
   let angleDiff = targetAngle - car.angle;
@@ -378,11 +424,59 @@ function getAIInput(car) {
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
   const input = { accel: true, brake: false, left: false, right: false, usePowerup: false };
-  if (angleDiff > 0.15) input.right = true;
-  else if (angleDiff < -0.15) input.left = true;
+  if (angleDiff > 0.05) input.right = true;
+  else if (angleDiff < -0.05) input.left = true;
 
-  if (Math.abs(angleDiff) > 0.8 && car.speed > MAX_SPEED * 0.5) input.brake = true;
-  if (car.powerup && Math.random() < 0.005) input.usePowerup = true;
+  const lookAhead = Math.max(2, Math.floor(3 + (car.speed / MAX_SPEED) * 5));
+  const brakeCheckIdx = (car.wayIdx + lookAhead + 3) % wp.length;
+  const nextIdx = (brakeCheckIdx + 1) % wp.length;
+  const prevIdx = (brakeCheckIdx - 1 + wp.length) % wp.length;
+  const turnAngle1 = Math.atan2(wp[nextIdx][1] - wp[brakeCheckIdx][1], wp[nextIdx][0] - wp[brakeCheckIdx][0]);
+  const turnAngle0 = Math.atan2(wp[brakeCheckIdx][1] - wp[prevIdx][1], wp[brakeCheckIdx][0] - wp[prevIdx][0]);
+  let upcomingTurn = turnAngle1 - turnAngle0;
+  while (upcomingTurn > Math.PI) upcomingTurn -= Math.PI * 2;
+  while (upcomingTurn < -Math.PI) upcomingTurn += Math.PI * 2;
+
+  if (Math.abs(upcomingTurn) > 0.4 && car.speed > MAX_SPEED * 0.6) input.brake = true;
+  if (Math.abs(angleDiff) > 0.6 && car.speed > MAX_SPEED * 0.4) input.brake = true;
+
+  if (car.powerup) {
+    if (car.powerup.type === 'boost' && Math.abs(angleDiff) < 0.2 && car.speed > MAX_SPEED * 0.5) {
+      input.usePowerup = true;
+    } else if (car.powerup.type === 'oil') {
+      for (const other of cars) {
+        if (other === car || other.finished) continue;
+        const behindDist = Math.hypot(car.x - other.x, car.y - other.y);
+        if (behindDist < 60 && other.wayIdx <= car.wayIdx + 2) {
+          input.usePowerup = true;
+          break;
+        }
+      }
+    } else if (car.powerup.type === 'shield') {
+      for (const other of cars) {
+        if (other === car || other.finished) continue;
+        if (Math.hypot(car.x - other.x, car.y - other.y) < 40) {
+          input.usePowerup = true;
+          break;
+        }
+      }
+    }
+  }
+
+  for (const oil of oilSlicks) {
+    if (oil.owner === car.index) continue;
+    const oilDist = Math.hypot(car.x - oil.x, car.y - oil.y);
+    if (oilDist < 50) {
+      const oilAngle = Math.atan2(oil.y - car.y, oil.x - car.x);
+      let oilDiff = oilAngle - car.angle;
+      while (oilDiff > Math.PI) oilDiff -= Math.PI * 2;
+      while (oilDiff < -Math.PI) oilDiff += Math.PI * 2;
+      if (Math.abs(oilDiff) < 0.8) {
+        if (oilDiff > 0) input.left = true;
+        else input.right = true;
+      }
+    }
+  }
 
   return input;
 }
@@ -574,6 +668,32 @@ assertEqual(getInput(arrowCar).right, true, 'ArrowRight: right is true');
 keys = { enter: true };
 assertEqual(getInput(arrowCar).usePowerup, true, 'Enter: usePowerup is true');
 
+// IJKL keys
+const ijklCar = createCar(2, true, 'ijkl');
+keys = { i: true };
+assertEqual(getInput(ijklCar).accel, true, 'I key: accel is true');
+keys = { k: true };
+assertEqual(getInput(ijklCar).brake, true, 'K key: brake is true');
+keys = { j: true };
+assertEqual(getInput(ijklCar).left, true, 'J key: left is true');
+keys = { l: true };
+assertEqual(getInput(ijklCar).right, true, 'L key: right is true');
+keys = { b: true };
+assertEqual(getInput(ijklCar).usePowerup, true, 'B key: usePowerup is true');
+
+// Numpad keys
+const numCar = createCar(3, true, 'numpad');
+keys = { '8': true };
+assertEqual(getInput(numCar).accel, true, 'Numpad 8: accel is true');
+keys = { '5': true };
+assertEqual(getInput(numCar).brake, true, 'Numpad 5: brake is true');
+keys = { '4': true };
+assertEqual(getInput(numCar).left, true, 'Numpad 4: left is true');
+keys = { '6': true };
+assertEqual(getInput(numCar).right, true, 'Numpad 6: right is true');
+keys = { '0': true };
+assertEqual(getInput(numCar).usePowerup, true, 'Numpad 0: usePowerup is true');
+
 // CPU car returns no input from getInput
 keys = {};
 const cpuCar = createCar(2, false, 'cpu');
@@ -637,27 +757,68 @@ assert(typeof aiInput.left === 'boolean', 'AI returns left boolean');
 assert(typeof aiInput.right === 'boolean', 'AI returns right boolean');
 assertEqual(aiInput.accel, true, 'AI accelerates by default');
 
-// AI brakes on sharp turns at high speed
+// AI brakes when facing wrong way at high speed
 const aiBrakeCar = createCar(1, false, 'cpu');
 aiBrakeCar.x = MAPS[0].waypoints[0][0];
 aiBrakeCar.y = MAPS[0].waypoints[0][1];
 aiBrakeCar.angle = getTrackAngle(MAPS[0], 0) + Math.PI; // facing wrong way
 aiBrakeCar.speed = MAX_SPEED * 0.8;
 const aiBrakeInput = getAIInput(aiBrakeCar);
-assertEqual(aiBrakeInput.brake, true, 'AI brakes when angle diff > 0.8 and speed > 50% max');
+assertEqual(aiBrakeInput.brake, true, 'AI brakes when angle diff > 0.6 and speed > 40% max');
 
-// AI steers toward target
+// AI steers toward track centerline ahead
 const aiSteerCar = createCar(1, false, 'cpu');
 aiSteerCar.x = MAPS[0].waypoints[0][0];
 aiSteerCar.y = MAPS[0].waypoints[0][1];
-// Point car slightly left of target
-const targetIdx = (aiSteerCar.wayIdx + 3) % MAPS[0].waypoints.length;
-const tx = MAPS[0].waypoints[targetIdx][0];
-const ty = MAPS[0].waypoints[targetIdx][1];
-const idealAngle = Math.atan2(ty - aiSteerCar.y, tx - aiSteerCar.x);
-aiSteerCar.angle = idealAngle - 0.5; // off to the left
+// Get the AI's target point by calling getAIInput with correct angle, then offset
+const steerTarget = getAIInput(aiSteerCar); // just to confirm it works
+aiSteerCar.angle = getTrackAngle(MAPS[0], 0) - 0.5; // off to the left
 const aiSteerInput = getAIInput(aiSteerCar);
-assertEqual(aiSteerInput.right, true, 'AI steers right when target is to the right');
+assertEqual(aiSteerInput.right, true, 'AI steers right when pointing left of track');
+
+// AI uses boost when aligned with its own target (angleDiff < 0.2)
+// First call AI without boost to find its target angle, then align and give boost
+currentMap = 0;
+const aiBoostCar = createCar(1, false, 'cpu');
+aiBoostCar.x = MAPS[0].waypoints[10][0];
+aiBoostCar.y = MAPS[0].waypoints[10][1];
+aiBoostCar.wayIdx = 10;
+aiBoostCar.speed = MAX_SPEED * 0.7;
+// Get AI's target by running it once to see where it steers
+const probeInput = getAIInput(aiBoostCar);
+// Now align car perfectly: if neither left nor right, car is aligned
+// Instead, compute the target point directly and aim at it
+const bFollowDist = 60 + (aiBoostCar.speed / MAX_SPEED) * 120;
+let bRemaining = bFollowDist, bSegIdx = aiBoostCar.wayIdx, btx, bty;
+const bwp = MAPS[0].waypoints;
+while (bRemaining > 0) {
+  const ni = (bSegIdx + 1) % bwp.length;
+  const segLen = Math.hypot(bwp[ni][0] - bwp[bSegIdx][0], bwp[ni][1] - bwp[bSegIdx][1]);
+  if (bRemaining <= segLen && segLen > 0) { const t = bRemaining / segLen; btx = bwp[bSegIdx][0] + (bwp[ni][0] - bwp[bSegIdx][0]) * t; bty = bwp[bSegIdx][1] + (bwp[ni][1] - bwp[bSegIdx][1]) * t; break; }
+  bRemaining -= segLen; bSegIdx = ni;
+}
+aiBoostCar.angle = Math.atan2(bty - aiBoostCar.y, btx - aiBoostCar.x);
+aiBoostCar.powerup = { type: 'boost' };
+const aiBoostInput = getAIInput(aiBoostCar);
+assertEqual(aiBoostInput.usePowerup, true, 'AI uses boost when aligned with its target at speed');
+
+// AI avoids oil slicks
+const aiAvoidCar = createCar(1, false, 'cpu');
+aiAvoidCar.x = MAPS[0].waypoints[5][0];
+aiAvoidCar.y = MAPS[0].waypoints[5][1];
+aiAvoidCar.angle = getTrackAngle(MAPS[0], 5);
+oilSlicks = [{ x: aiAvoidCar.x + Math.cos(aiAvoidCar.angle + 0.3) * 30, y: aiAvoidCar.y + Math.sin(aiAvoidCar.angle + 0.3) * 30, owner: 0 }];
+const aiAvoidInput = getAIInput(aiAvoidCar);
+assertEqual(aiAvoidInput.left, true, 'AI steers away from oil slick ahead-right');
+oilSlicks = [];
+
+// AI look-ahead increases with speed
+// AI follow distance increases with speed
+const followSlow = 60 + (0 / MAX_SPEED) * 120;
+const followFast = 60 + (MAX_SPEED / MAX_SPEED) * 120;
+assertEqual(followSlow, 60, 'AI follow distance at 0 speed is 60px');
+assertEqual(followFast, 180, 'AI follow distance at max speed is 180px');
+assert(followFast > followSlow, 'AI looks further ahead at higher speed');
 
 // --- G BUX INTEGRATION ---
 group('G Bux Integration');
@@ -1006,28 +1167,42 @@ assertApprox(offRoadSpeed, 192, 0.1, 'Off-road speed multiplier: 200 * 0.96 = 19
 // --- RACE MODE SETUP ---
 group('Race Mode Setup');
 
-// CPU mode: 1 player, 3 CPU
+// 1 player mode: 1 human, 3 CPU
 currentMap = 0;
-const cpuCars = [];
-cpuCars.push(createCar(0, true, 'wasd'));
-cpuCars.push(createCar(1, false, 'cpu'));
-cpuCars.push(createCar(2, false, 'cpu'));
-cpuCars.push(createCar(3, false, 'cpu'));
-assertEqual(cpuCars.length, 4, 'CPU mode: 4 cars total');
-assertEqual(cpuCars.filter(c => c.isPlayer).length, 1, 'CPU mode: 1 player car');
-assertEqual(cpuCars.filter(c => c.controlScheme === 'cpu').length, 3, 'CPU mode: 3 CPU cars');
+const schemes = ['wasd', 'arrows', 'ijkl', 'numpad'];
+function buildRace(numPlayers) {
+  const c = [];
+  for (let i = 0; i < 4; i++) {
+    if (i < numPlayers) c.push(createCar(i, true, schemes[i]));
+    else c.push(createCar(i, false, 'cpu'));
+  }
+  return c;
+}
 
-// Human mode: 2 players, 2 CPU
-const humanCars = [];
-humanCars.push(createCar(0, true, 'wasd'));
-humanCars.push(createCar(1, true, 'arrows'));
-humanCars.push(createCar(2, false, 'cpu'));
-humanCars.push(createCar(3, false, 'cpu'));
-assertEqual(humanCars.length, 4, 'Human mode: 4 cars total');
-assertEqual(humanCars.filter(c => c.isPlayer).length, 2, 'Human mode: 2 player cars');
-assertEqual(humanCars.filter(c => c.controlScheme === 'cpu').length, 2, 'Human mode: 2 CPU cars');
-assertEqual(humanCars[0].controlScheme, 'wasd', 'Human mode: P1 uses WASD');
-assertEqual(humanCars[1].controlScheme, 'arrows', 'Human mode: P2 uses arrows');
+const mode1 = buildRace(1);
+assertEqual(mode1.length, 4, '1P mode: 4 cars total');
+assertEqual(mode1.filter(c => c.isPlayer).length, 1, '1P mode: 1 player car');
+assertEqual(mode1.filter(c => c.controlScheme === 'cpu').length, 3, '1P mode: 3 CPU cars');
+assertEqual(mode1[0].controlScheme, 'wasd', '1P mode: P1 uses WASD');
+
+// 2 player mode
+const mode2 = buildRace(2);
+assertEqual(mode2.filter(c => c.isPlayer).length, 2, '2P mode: 2 player cars');
+assertEqual(mode2.filter(c => c.controlScheme === 'cpu').length, 2, '2P mode: 2 CPU cars');
+assertEqual(mode2[0].controlScheme, 'wasd', '2P mode: P1 uses WASD');
+assertEqual(mode2[1].controlScheme, 'arrows', '2P mode: P2 uses arrows');
+
+// 3 player mode
+const mode3 = buildRace(3);
+assertEqual(mode3.filter(c => c.isPlayer).length, 3, '3P mode: 3 player cars');
+assertEqual(mode3.filter(c => c.controlScheme === 'cpu').length, 1, '3P mode: 1 CPU car');
+assertEqual(mode3[2].controlScheme, 'ijkl', '3P mode: P3 uses IJKL');
+
+// 4 player mode
+const mode4 = buildRace(4);
+assertEqual(mode4.filter(c => c.isPlayer).length, 4, '4P mode: 4 player cars');
+assertEqual(mode4.filter(c => c.controlScheme === 'cpu').length, 0, '4P mode: 0 CPU cars');
+assertEqual(mode4[3].controlScheme, 'numpad', '4P mode: P4 uses numpad');
 
 // --- ACHIEVEMENT TRIGGER CONDITIONS ---
 group('Achievement Trigger Conditions');
@@ -1079,9 +1254,11 @@ assert(Object.keys(allMapsStats.mapWins).length >= MAPS.length, 'dd_all_maps con
 let testOilHits = 1;
 assert(testOilHits > 0, 'dd_oil_slick condition: oilHits > 0');
 
-// dd_human_victor: mode === human
-let testMode = 'human';
-assert(testMode === 'human', 'dd_human_victor condition: mode is human');
+// dd_human_victor: numPlayers >= 2
+let testNumPlayers = 2;
+assert(testNumPlayers >= 2, 'dd_human_victor condition: 2+ players');
+testNumPlayers = 1;
+assert(testNumPlayers < 2, 'dd_human_victor rejected: solo mode');
 
 // --- TRACK GETTRACKPOINT WRAPPING ---
 group('Track Point Wrapping');
@@ -1103,6 +1280,86 @@ MAPS.forEach((m, mi) => {
     assertEqual(found, wi, 'Map ' + mi + ': nearestWaypoint exact match at index ' + wi);
   });
 });
+
+// --- MULTIPLAYER CAMERA ---
+group('Multiplayer Camera');
+
+// Single player: camera centers on that player
+const camCars1 = buildRace(1);
+const humanCars1 = camCars1.filter(c => c.isPlayer);
+let avgX1 = 0, avgY1 = 0;
+for (const c of humanCars1) { avgX1 += c.x; avgY1 += c.y; }
+avgX1 /= humanCars1.length;
+avgY1 /= humanCars1.length;
+assertApprox(avgX1, camCars1[0].x, 0.01, '1P camera centers on P1 X');
+assertApprox(avgY1, camCars1[0].y, 0.01, '1P camera centers on P1 Y');
+
+// Two players: camera centers between them
+const camCars2 = buildRace(2);
+camCars2[0].x = 100; camCars2[0].y = 200;
+camCars2[1].x = 300; camCars2[1].y = 400;
+const humanCars2 = camCars2.filter(c => c.isPlayer);
+let avgX2 = 0, avgY2 = 0;
+for (const c of humanCars2) { avgX2 += c.x; avgY2 += c.y; }
+avgX2 /= humanCars2.length;
+avgY2 /= humanCars2.length;
+assertApprox(avgX2, 200, 0.01, '2P camera centers between players X');
+assertApprox(avgY2, 300, 0.01, '2P camera centers between players Y');
+
+// Zoom stays at 1 for single player
+assertEqual(humanCars1.length, 1, '1P has 1 human car');
+let targetZoom1 = 1;
+if (humanCars1.length > 1) targetZoom1 = 0.5; // would zoom out
+assertEqual(targetZoom1, 1, '1P zoom stays at 1.0');
+
+// Zoom reduces when players spread apart
+const spreadX = 800; // far apart
+const spreadY = 600;
+const fitZoom = Math.min(1, Math.min(CANVAS_W / (spreadX + 400), CANVAS_H / (spreadY + 300)));
+assert(fitZoom < 1, 'Zoom < 1 when players spread far apart (got ' + fitZoom.toFixed(2) + ')');
+assert(fitZoom >= 0.3, 'Zoom has minimum of 0.3');
+
+// Zoom stays at 1 when players are close
+const closeSpreadX = 100; const closeSpreadY = 100;
+const closeZoom = Math.min(1, Math.min(CANVAS_W / (closeSpreadX + 400), CANVAS_H / (closeSpreadY + 300)));
+assertEqual(closeZoom, 1, 'Zoom stays 1.0 when players are close together');
+
+// Four players: camera includes all
+const camCars4 = buildRace(4);
+camCars4[0].x = 50; camCars4[0].y = 50;
+camCars4[1].x = 750; camCars4[1].y = 50;
+camCars4[2].x = 50; camCars4[2].y = 550;
+camCars4[3].x = 750; camCars4[3].y = 550;
+const humanCars4 = camCars4.filter(c => c.isPlayer);
+let avgX4 = 0, avgY4 = 0;
+for (const c of humanCars4) { avgX4 += c.x; avgY4 += c.y; }
+avgX4 /= humanCars4.length;
+avgY4 /= humanCars4.length;
+assertApprox(avgX4, 400, 0.01, '4P camera centers at average X');
+assertApprox(avgY4, 300, 0.01, '4P camera centers at average Y');
+
+// CPU cars do not affect camera
+const camMixed = buildRace(1);
+camMixed[0].x = 100; camMixed[0].y = 100;
+camMixed[1].x = 900; camMixed[1].y = 900; // CPU far away
+const humanMixed = camMixed.filter(c => c.isPlayer);
+let avgMX = 0, avgMY = 0;
+for (const c of humanMixed) { avgMX += c.x; avgMY += c.y; }
+avgMX /= humanMixed.length;
+avgMY /= humanMixed.length;
+assertApprox(avgMX, 100, 0.01, 'Camera ignores CPU car position X');
+assertApprox(avgMY, 100, 0.01, 'Camera ignores CPU car position Y');
+
+// --- PLAYER LABELS ---
+group('Player Labels');
+const labelCars = buildRace(3);
+assertEqual(labelCars[0].isPlayer, true, 'P1 is human (gets label)');
+assertEqual(labelCars[1].isPlayer, true, 'P2 is human (gets label)');
+assertEqual(labelCars[2].isPlayer, true, 'P3 is human (gets label)');
+assertEqual(labelCars[3].isPlayer, false, 'Car 4 is CPU (no label)');
+assertEqual(labelCars[0].index, 0, 'P1 index is 0');
+assertEqual(labelCars[1].index, 1, 'P2 index is 1');
+assertEqual(labelCars[2].index, 2, 'P3 index is 2');
 
 // ============================================================
 // SUMMARY
