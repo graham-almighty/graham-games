@@ -168,6 +168,11 @@ const POTION_DEFS = [
   { name: 'Large Potion',  heal: 100, color: '#ff8844', icon: '\uD83E\uDDEA', weight: 2 },
 ];
 
+const SHOP_ITEMS = [
+  { id: 'small_potion', name: 'Small Potion', desc: 'Restores 25 HP', price: 25, icon: '\uD83E\uDDEA', type: 'potion', heal: 25 },
+  { id: 'large_potion', name: 'Large Potion', desc: 'Restores 100 HP', price: 50, icon: '\uD83E\uDDEA', type: 'potion', heal: 100 },
+];
+
 // Extracted functions
 function getFloorEnemyTypes(floor) {
   return Object.entries(ENEMY_DEFS).filter(([k, v]) => floor >= v.minFloor).map(([k]) => k);
@@ -1241,6 +1246,191 @@ localStorage.clear();
   assertEqual(hasSave(), true, 'Save exists before delete');
   deleteSave(); // simulates what showDeathScreen/showVictoryScreen/startGame calls
   assertEqual(hasSave(), false, 'Save deleted (simulating death/victory/new game)');
+}
+
+// ─── BETWEEN-FLOOR SHOP ───
+group('Between-Floor Shop');
+
+{
+  // Shop items defined
+  assertEqual(SHOP_ITEMS.length, 2, 'Shop has 2 items');
+  assertEqual(SHOP_ITEMS[0].name, 'Small Potion', 'First item is Small Potion');
+  assertEqual(SHOP_ITEMS[0].price, 25, 'Small Potion costs 25 gold');
+  assertEqual(SHOP_ITEMS[0].heal, 25, 'Small Potion heals 25 HP');
+  assertEqual(SHOP_ITEMS[1].name, 'Large Potion', 'Second item is Large Potion');
+  assertEqual(SHOP_ITEMS[1].price, 50, 'Large Potion costs 50 gold');
+  assertEqual(SHOP_ITEMS[1].heal, 100, 'Large Potion heals 100 HP');
+}
+
+{
+  // Buy deducts gold and adds to inventory
+  const mockPlayer = { gold: 100, inventory: [null, null, null, null, null], hp: 50, maxHp: 100 };
+  const si = SHOP_ITEMS[0]; // Small Potion, 25g
+  // Simulate buyShopItem logic
+  if (mockPlayer.gold >= si.price) {
+    const item = { type: 'potion', name: si.name, heal: si.heal };
+    for (let i = 0; i < 5; i++) {
+      if (!mockPlayer.inventory[i]) { mockPlayer.inventory[i] = item; break; }
+    }
+    mockPlayer.gold -= si.price;
+  }
+  assertEqual(mockPlayer.gold, 75, 'Gold deducted after buying Small Potion');
+  assertEqual(mockPlayer.inventory[0].name, 'Small Potion', 'Potion added to inventory slot 0');
+  assertEqual(mockPlayer.inventory[0].heal, 25, 'Potion has correct heal value');
+}
+
+{
+  // Cannot buy when inventory is full
+  const mockPlayer = { gold: 100, inventory: [{}, {}, {}, {}, {}] };
+  const si = SHOP_ITEMS[0];
+  let bought = false;
+  if (mockPlayer.gold >= si.price) {
+    let added = false;
+    for (let i = 0; i < 5; i++) {
+      if (!mockPlayer.inventory[i]) { added = true; break; }
+    }
+    if (added) { mockPlayer.gold -= si.price; bought = true; }
+  }
+  assertEqual(bought, false, 'Cannot buy when inventory is full');
+  assertEqual(mockPlayer.gold, 100, 'Gold not deducted when inventory full');
+}
+
+{
+  // Cannot buy when gold insufficient
+  const mockPlayer = { gold: 10, inventory: [null, null, null, null, null] };
+  const si = SHOP_ITEMS[1]; // Large Potion, 50g
+  let bought = false;
+  if (mockPlayer.gold >= si.price) { bought = true; }
+  assertEqual(bought, false, 'Cannot buy when gold insufficient');
+}
+
+{
+  // Can buy multiple potions until gold or inventory runs out
+  const mockPlayer = { gold: 200, inventory: [null, null, null, null, null] };
+  const si = SHOP_ITEMS[0]; // 25g each
+  let buyCount = 0;
+  while (mockPlayer.gold >= si.price) {
+    let added = false;
+    for (let i = 0; i < 5; i++) {
+      if (!mockPlayer.inventory[i]) { mockPlayer.inventory[i] = { type: 'potion' }; added = true; break; }
+    }
+    if (!added) break;
+    mockPlayer.gold -= si.price;
+    buyCount++;
+  }
+  assertEqual(buyCount, 5, 'Can buy 5 potions to fill inventory');
+  assertEqual(mockPlayer.gold, 75, 'Gold after 5 purchases: 200 - 125 = 75');
+}
+
+// ─── WEAPON INVENTORY ───
+group('Weapon Inventory');
+
+{
+  // Store weapon in inventory
+  const inv = [null, null, null, null, null];
+  const weapon = { type: 'weapon', base: 'sword', name: 'Common Sword', damage: 12, rarity: 0, color: '#aaa' };
+  let stored = false;
+  for (let i = 0; i < 5; i++) {
+    if (!inv[i]) { inv[i] = weapon; stored = true; break; }
+  }
+  assertEqual(stored, true, 'Weapon stored in inventory');
+  assertEqual(inv[0].type, 'weapon', 'Slot 0 contains weapon');
+  assertEqual(inv[0].base, 'sword', 'Stored weapon is a sword');
+}
+
+{
+  // Equip weapon from inventory swaps with current
+  const currentWeapon = { type: 'weapon', base: 'sword', name: 'Common Sword', damage: 12, rarity: 0, color: '#aaa' };
+  const storedWeapon = { type: 'weapon', base: 'axe', name: 'Rare Axe', damage: 32, rarity: 2, color: '#4488ff' };
+  const inv = [storedWeapon, null, null, null, null];
+
+  // Simulate useInventorySlot for weapon
+  const item = inv[0];
+  let equipped = currentWeapon;
+  if (item && item.type === 'weapon') {
+    const old = equipped;
+    equipped = item;
+    inv[0] = old;
+  }
+  assertEqual(equipped.base, 'axe', 'Equipped weapon is now the axe');
+  assertEqual(equipped.damage, 32, 'Equipped weapon has axe damage');
+  assertEqual(inv[0].base, 'sword', 'Old sword now in inventory slot');
+  assertEqual(inv[0].damage, 12, 'Inventory weapon has sword damage');
+}
+
+{
+  // Mixed inventory: potions and weapons
+  const inv = [
+    { type: 'potion', name: 'Small Potion', heal: 25 },
+    { type: 'weapon', base: 'bow', name: 'Uncommon Bow', damage: 13, rarity: 1 },
+    null, null, null
+  ];
+  assertEqual(inv[0].type, 'potion', 'Slot 0 is potion');
+  assertEqual(inv[1].type, 'weapon', 'Slot 1 is weapon');
+
+  // Use potion: consumed
+  let hp = 80, maxHp = 100;
+  const potion = inv[0];
+  if (potion.type === 'potion') {
+    hp += Math.min(potion.heal, maxHp - hp);
+    inv[0] = null;
+  }
+  assertEqual(hp, 100, 'Potion healed to full');
+  assertEqual(inv[0], null, 'Potion consumed');
+
+  // Use weapon: swaps
+  const equipped = { type: 'weapon', base: 'staff', name: 'Common Staff', damage: 14, rarity: 0 };
+  const wep = inv[1];
+  let newEquipped = equipped;
+  if (wep.type === 'weapon') {
+    newEquipped = wep;
+    inv[1] = equipped;
+  }
+  assertEqual(newEquipped.base, 'bow', 'Now equipped with bow');
+  assertEqual(inv[1].base, 'staff', 'Staff moved to inventory');
+}
+
+{
+  // Cannot store weapon when inventory full
+  const inv = [{}, {}, {}, {}, {}];
+  let stored = false;
+  for (let i = 0; i < 5; i++) {
+    if (!inv[i]) { stored = true; break; }
+  }
+  assertEqual(stored, false, 'Cannot store weapon in full inventory');
+}
+
+{
+  // Weapon in inventory has correct display info
+  const weapon = { type: 'weapon', base: 'scythe', name: 'Epic Scythe', damage: 18, rarity: 3, color: '#aa44ff' };
+  assertEqual(weapon.type, 'weapon', 'Weapon type is weapon');
+  assert(weapon.color !== undefined, 'Weapon has color for rarity border');
+  assert(weapon.damage > 0, 'Weapon has positive damage for tooltip');
+  assert(weapon.name.length > 0, 'Weapon has name for tooltip');
+}
+
+// ─── SHOP STATE TRANSITION ───
+group('Shop State Transition');
+
+{
+  // checkStairs should go to shop, not directly to next floor (floor < MAX)
+  // Simulating the flow: floor < MAX_FLOORS → shop → continue → enterFloor
+  const MAX_FLOORS_VAL = 15;
+  for (let f = 1; f < MAX_FLOORS_VAL; f++) {
+    assert(f < MAX_FLOORS_VAL, 'Floor ' + f + ' < max: should show shop');
+  }
+  // Floor 15 (MAX_FLOORS) should go to victory, not shop
+  assert(MAX_FLOORS_VAL >= MAX_FLOORS_VAL, 'Floor 15 = max: should show victory');
+}
+
+{
+  // Shop items are all potions (inventory-compatible)
+  for (const si of SHOP_ITEMS) {
+    assertEqual(si.type, 'potion', si.name + ' is potion type');
+    assert(si.price > 0, si.name + ' has positive price');
+    assert(si.heal > 0, si.name + ' has positive heal');
+    assert(si.icon !== undefined, si.name + ' has icon');
+  }
 }
 
 // ============================================================

@@ -128,6 +128,41 @@
   .gg-toast-name { color: #eee; font-size: 0.8rem; }
   .gg-toast-reward { font-family: 'Cinzel', serif; color: #c9a84c; font-size: 0.85rem; margin-left: 8px; }
 
+  /* ═══ SHOP SCREEN ═══ */
+  #shop-screen { background: radial-gradient(ellipse at center, #1a1808 0%, #0a0a0f 70%); }
+  .shop-title { font-family: 'Cinzel Decorative', serif; font-size: 1.6rem; color: #8b5e3c; margin-bottom: 4px; text-shadow: 0 0 20px #8b5e3c33; }
+  .shop-sub { font-family: 'Cinzel', serif; font-size: 0.75rem; color: #666; letter-spacing: 0.1em; margin-bottom: 6px; }
+  .shop-gold { font-size: 0.9rem; color: #c9a84c; margin-bottom: 20px; font-family: 'Cinzel', serif; }
+  .shop-items { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 24px; }
+  .shop-item {
+    width: 180px; padding: 16px; border-radius: 8px;
+    border: 1px solid #333; background: #0a0a0f; text-align: center;
+    transition: all 0.2s;
+  }
+  .shop-item:hover { border-color: #8b5e3c44; }
+  .shop-item.disabled { opacity: 0.35; }
+  .shop-item-icon { font-size: 1.8rem; margin-bottom: 6px; }
+  .shop-item-name { font-family: 'Cinzel', serif; font-size: 0.8rem; color: #eee; margin-bottom: 4px; }
+  .shop-item-desc { font-size: 0.6rem; color: #888; margin-bottom: 8px; }
+  .shop-item-price { font-family: 'Cinzel', serif; font-size: 0.75rem; color: #c9a84c; margin-bottom: 10px; }
+  .shop-buy {
+    font-family: 'Cinzel', serif; font-size: 0.7rem; padding: 6px 20px;
+    background: transparent; color: #8b5e3c; border: 1px solid #8b5e3c;
+    cursor: pointer; border-radius: 3px; transition: all 0.2s; letter-spacing: 0.05em;
+  }
+  .shop-buy:hover:not(:disabled) { background: #8b5e3c22; }
+  .shop-buy:disabled { opacity: 0.35; cursor: default; }
+  .shop-hp { margin-top: 12px; margin-bottom: 16px; }
+  .shop-hp-label { font-size: 0.65rem; color: #c44; font-family: 'Cinzel', serif; margin-right: 6px; }
+  .shop-hp-bar { display: inline-block; width: 140px; height: 14px; background: #1a1a22; border: 1px solid #c4444488; border-radius: 3px; overflow: hidden; vertical-align: middle; }
+  .shop-hp-fill { height: 100%; background: linear-gradient(90deg, #c44, #e66); transition: width 0.15s; }
+  .shop-inv { display: flex; gap: 4px; justify-content: center; margin-bottom: 20px; }
+  .shop-inv-slot {
+    width: 36px; height: 36px; background: #0a0a0f99; border: 1px solid #333;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+  }
+
   /* ═══ MOBILE ═══ */
   @media (max-width: 600px) {
     body { overflow: auto; height: auto; }
@@ -140,6 +175,8 @@
     .hud-hp-bar { width: 90px; height: 10px; }
     .inv-slot { width: 34px; height: 34px; font-size: 0.9rem; }
     .end-title { font-size: 1.6rem; }
+    .shop-items { flex-direction: column; align-items: center; }
+    .shop-item { width: 80%; max-width: 220px; }
   }
 </style>
 </head>
@@ -213,6 +250,21 @@
   <div class="end-stats" id="victory-stats"></div>
   <button class="title-btn" onclick="showScreen('class-screen')">PLAY AGAIN</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<!-- Shop Screen -->
+<div class="screen" id="shop-screen">
+  <div class="shop-title">FLOOR COMPLETE</div>
+  <div class="shop-sub" id="shop-floor-label">FLOOR 1 CLEARED</div>
+  <div class="shop-gold" id="shop-gold">&#9733; 0</div>
+  <div class="shop-hp" id="shop-hp">
+    <span class="shop-hp-label">HP</span>
+    <span class="shop-hp-bar"><span class="shop-hp-fill" id="shop-hp-fill"></span></span>
+    <span id="shop-hp-text" style="font-size:0.6rem;color:#c44;margin-left:6px;"></span>
+  </div>
+  <div class="shop-inv" id="shop-inv"></div>
+  <div class="shop-items" id="shop-items"></div>
+  <button class="title-btn" onclick="continueFromShop()">CONTINUE</button>
 </div>
 
 <script>
@@ -735,6 +787,12 @@ function useInventorySlot(idx) {
     player.inventory[idx] = null;
     SFX.potion();
     spawnEffect(player.x, player.y, '+' + healed, '#44ff44', 1.0);
+  } else if (item.type === 'weapon') {
+    // Swap with equipped weapon
+    const old = player.weapon;
+    player.weapon = item;
+    player.inventory[idx] = old;
+    SFX.pickup();
   }
 }
 
@@ -1324,7 +1382,7 @@ function checkStairs() {
       showVictoryScreen();
       return;
     }
-    enterFloor(player.floor + 1);
+    showShopScreen();
   }
 }
 
@@ -1349,7 +1407,11 @@ function checkPickup() {
 
   const hint = document.getElementById('pickup-hint');
   if (nearest) {
-    hint.textContent = 'Press E: ' + nearest.item.name;
+    if (nearest.item.type === 'weapon') {
+      hint.textContent = 'E: Equip ' + nearest.item.name + '  Q: Store';
+    } else {
+      hint.textContent = 'Press E: ' + nearest.item.name;
+    }
     hint.style.display = 'block';
     hint.style.color = nearest.item.color || '#c9a84c';
   } else {
@@ -1385,6 +1447,30 @@ function doPickup() {
     player.gold += item.amount;
     if (player.gold >= 500) ggTry('rd_hoarder');
     SFX.gold();
+  }
+
+  const idx = groundItems.indexOf(nearest);
+  if (idx >= 0) groundItems.splice(idx, 1);
+  updateHUD();
+}
+
+function doStorePickup() {
+  const nearest = checkPickup();
+  if (!nearest) return;
+
+  const item = nearest.item;
+  if (item.type === 'weapon' || item.type === 'potion') {
+    if (addToInventory(item)) {
+      SFX.pickup();
+      if (item.type === 'weapon' && item.rarity >= 2) ggTry('rd_rare_find');
+    } else {
+      spawnEffect(player.x, player.y, 'Inventory full!', '#ff4444', 1.0);
+      return;
+    }
+  } else {
+    // Armor and gold: just use normal pickup
+    doPickup();
+    return;
   }
 
   const idx = groundItems.indexOf(nearest);
@@ -1450,6 +1536,90 @@ function quitToTitle() {
   document.getElementById('pause-overlay').classList.remove('active');
   showScreen('title-screen');
   updateContinueButton();
+}
+
+// ═══════════════════════════════════════════
+// BETWEEN-FLOOR SHOP
+// ═══════════════════════════════════════════
+const SHOP_ITEMS = [
+  { id: 'small_potion', name: 'Small Potion', desc: 'Restores 25 HP', price: 25, icon: '\uD83E\uDDEA', type: 'potion', heal: 25 },
+  { id: 'large_potion', name: 'Large Potion', desc: 'Restores 100 HP', price: 50, icon: '\uD83E\uDDEA', type: 'potion', heal: 100 },
+];
+
+function showShopScreen() {
+  gameState = 'shop';
+  cancelAnimationFrame(animFrame);
+  SFX.stairs();
+  showScreen('shop-screen');
+  renderShop();
+}
+
+function renderShop() {
+  document.getElementById('shop-floor-label').textContent = 'FLOOR ' + player.floor + ' CLEARED';
+  document.getElementById('shop-gold').innerHTML = '&#9733; ' + player.gold;
+
+  // HP display
+  const hpPct = Math.max(0, player.hp / player.maxHp * 100);
+  document.getElementById('shop-hp-fill').style.width = hpPct + '%';
+  document.getElementById('shop-hp-text').textContent = player.hp + ' / ' + player.maxHp;
+
+  // Inventory preview
+  const invEl = document.getElementById('shop-inv');
+  invEl.innerHTML = '';
+  for (let i = 0; i < 5; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'shop-inv-slot';
+    const item = player.inventory[i];
+    if (item) {
+      slot.textContent = item.icon || (item.type === 'weapon' ? '\u2694' : '?');
+      slot.title = item.name;
+      if (item.type === 'weapon') slot.style.borderColor = item.color;
+    }
+    invEl.appendChild(slot);
+  }
+
+  // Shop items
+  const container = document.getElementById('shop-items');
+  container.innerHTML = '';
+  const invFull = player.inventory.every(s => s !== null);
+
+  for (const si of SHOP_ITEMS) {
+    const cantAfford = player.gold < si.price;
+    const disabled = cantAfford || invFull;
+    const div = document.createElement('div');
+    div.className = 'shop-item' + (disabled ? ' disabled' : '');
+    div.innerHTML =
+      '<div class="shop-item-icon">' + si.icon + '</div>' +
+      '<div class="shop-item-name">' + si.name + '</div>' +
+      '<div class="shop-item-desc">' + si.desc + '</div>' +
+      '<div class="shop-item-price">&#9733; ' + si.price + '</div>';
+    const btn = document.createElement('button');
+    btn.className = 'shop-buy';
+    btn.textContent = cantAfford ? 'CAN\'T AFFORD' : invFull ? 'INVENTORY FULL' : 'BUY';
+    btn.disabled = disabled;
+    if (!disabled) {
+      btn.onclick = () => buyShopItem(si);
+    }
+    div.appendChild(btn);
+    container.appendChild(div);
+  }
+}
+
+function buyShopItem(si) {
+  if (player.gold < si.price) return;
+  const item = { type: 'potion', name: si.name, heal: si.heal, color: si.heal >= 100 ? '#ff8844' : '#ff4444', icon: si.icon };
+  if (!addToInventory(item)) return;
+  player.gold -= si.price;
+  SFX.pickup();
+  renderShop();
+}
+
+function continueFromShop() {
+  enterFloor(player.floor + 1);
+  gameState = 'playing';
+  showScreen('game-screen');
+  lastTime = performance.now();
+  animFrame = requestAnimationFrame(gameLoop);
 }
 
 // ═══════════════════════════════════════════
@@ -1626,8 +1796,14 @@ function updateHUD() {
     const slot = document.createElement('div');
     slot.className = 'inv-slot';
     const item = player.inventory[i];
-    slot.innerHTML = '<span class="inv-key">' + (i + 1) + '</span>' + (item ? item.icon || '?' : '');
-    if (item) slot.title = item.name;
+    if (item && item.type === 'weapon') {
+      slot.innerHTML = '<span class="inv-key">' + (i + 1) + '</span>\u2694';
+      slot.style.borderColor = item.color;
+      slot.style.color = item.color;
+    } else {
+      slot.innerHTML = '<span class="inv-key">' + (i + 1) + '</span>' + (item ? item.icon || '?' : '');
+    }
+    if (item) slot.title = item.name + (item.type === 'weapon' ? ' (' + item.damage + ' dmg)' : '');
     bar.appendChild(slot);
   }
 }
@@ -2412,6 +2588,11 @@ document.addEventListener('keydown', e => {
       }
     }
     if (!openedChest) doPickup();
+  }
+
+  // Store in inventory
+  if (key === 'q') {
+    doStorePickup();
   }
 });
 
