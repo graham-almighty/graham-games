@@ -127,7 +127,7 @@ const LASER_SPEED = 80;
 const LASER_DAMAGE = 10;
 const SPACE_DURATION = 35;
 const SHIP_MOVE_RANGE = 8;
-const SHIP_SPEED = 40;
+const SHIP_SPEED = 60;
 
 // ============================================================
 // TESTS
@@ -282,7 +282,7 @@ group('Player Constants');
   assertEqual(LASER_DAMAGE, 10, 'Laser damage = 10');
   assertEqual(SPACE_DURATION, 35, 'Space phase = 35s');
   assertEqual(SHIP_MOVE_RANGE, 8, 'Ship move range = 8');
-  assertEqual(SHIP_SPEED, 40, 'Ship speed = 40');
+  assertEqual(SHIP_SPEED, 60, 'Ship speed = 60');
 }
 
 // ─── DAMAGE FORMULA ───
@@ -394,22 +394,22 @@ group('WASD Ship Movement');
   // Moving right (D key)
   let px = 0;
   px += SHIP_SPEED * 0.016; // ~1 frame at 60fps
-  assertApprox(px, 0.64, 0.001, 'D key moves ship right ~0.64 per frame');
+  assertApprox(px, 0.96, 0.001, 'D key moves ship right ~0.64 per frame');
 
   // Moving left (A key)
   let px2 = 0;
   px2 -= SHIP_SPEED * 0.016;
-  assertApprox(px2, -0.64, 0.001, 'A key moves ship left ~0.64 per frame');
+  assertApprox(px2, -0.96, 0.001, 'A key moves ship left ~0.64 per frame');
 
   // Moving up (W key)
   let py = 0;
   py += SHIP_SPEED * 0.016;
-  assertApprox(py, 0.64, 0.001, 'W key moves ship up ~0.64 per frame');
+  assertApprox(py, 0.96, 0.001, 'W key moves ship up ~0.64 per frame');
 
   // Moving down (S key)
   let py2 = 0;
   py2 -= SHIP_SPEED * 0.016;
-  assertApprox(py2, -0.64, 0.001, 'S key moves ship down ~0.64 per frame');
+  assertApprox(py2, -0.96, 0.001, 'S key moves ship down ~0.64 per frame');
 }
 
 {
@@ -430,8 +430,8 @@ group('WASD Ship Movement');
   // Simulate W+D pressed
   px += SHIP_SPEED * dt;
   py += SHIP_SPEED * dt;
-  assertApprox(px, 0.64, 0.001, 'Diagonal: X moves with D key');
-  assertApprox(py, 0.64, 0.001, 'Diagonal: Y moves with W key');
+  assertApprox(px, 0.96, 0.001, 'Diagonal: X moves with D key');
+  assertApprox(py, 0.96, 0.001, 'Diagonal: Y moves with W key');
 }
 
 // ─── SPACE PHASE LOGIC ───
