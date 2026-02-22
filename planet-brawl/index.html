@@ -783,8 +783,8 @@ function updateSpacePhase(dt) {
   // Update player lasers
   for (let i = playerLasers.length - 1; i >= 0; i--) {
     const l = playerLasers[i];
-    l.mesh.position.z -= LASER_SPEED * dt;
-    if (l.mesh.position.z < -120) {
+    l.mesh.position.add(l.dir.clone().multiplyScalar(LASER_SPEED * dt));
+    if (l.mesh.position.length() > 120) {
       scene.remove(l.mesh);
       playerLasers.splice(i, 1);
       continue;
@@ -872,8 +872,13 @@ function firePlayerLaser() {
   const mat = new THREE.MeshBasicMaterial({ color: 0x44aaff });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set(player.x * 0.15, player.y * 0.15 - 0.3, -3);
+  // Aim toward crosshair (mouse position projected into 3D)
+  const ndcX = (mouseX / canvas.width) * 2 - 1;
+  const ndcY = -(mouseY / canvas.height) * 2 + 1;
+  const target = new THREE.Vector3(ndcX, ndcY, -1).unproject(camera);
+  const dir = target.sub(camera.position).normalize();
   scene.add(mesh);
-  playerLasers.push({ mesh });
+  playerLasers.push({ mesh, dir });
   shotsFired++;
   SFX.laser();
 }
