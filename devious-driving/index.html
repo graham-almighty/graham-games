@@ -51,7 +51,15 @@
 
   /* Game */
   #game-screen { background: #2d6b24; }
-  canvas#race-canvas { display: block; }
+  canvas#race-canvas { display: block; width: 100%; height: 100%; }
+
+  /* Fullscreen button */
+  .fs-btn {
+    font-family: 'Bangers', cursive; font-size: 0.7rem; color: #666; background: none;
+    border: 1px solid #444; border-radius: 6px; padding: 4px 14px; cursor: pointer;
+    letter-spacing: 0.08em; margin-top: 10px; transition: all 0.2s;
+  }
+  .fs-btn:hover { color: #e91e63; border-color: #e91e63; }
 
   /* HUD */
   .hud { position: absolute; top: 0; left: 0; right: 0; pointer-events: none; z-index: 6; padding: 10px 16px; display: flex; justify-content: space-between; }
@@ -112,6 +120,7 @@
   <div class="title-logo">DEVIOUS DRIVING</div>
   <div class="title-sub">RACE DIRTY OR GO HOME</div>
   <button class="btn" onclick="showMapSelect()">PLAY</button>
+  <button class="fs-btn" onclick="toggleFullscreen()">FULLSCREEN</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
 </div>
 
@@ -660,6 +669,7 @@ function spawnPowerups() {
 document.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(e.key.toLowerCase())) e.preventDefault();
+  if (e.key.toLowerCase() === 'f') toggleFullscreen();
   if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     keys[e.key] = true;
     e.preventDefault();
@@ -742,18 +752,25 @@ function updateCar(car, dt) {
   if (car.boostTimer > 0) car.boostTimer -= dt;
   if (car.shieldTimer > 0) car.shieldTimer -= dt;
 
-  // Acceleration / braking
+  // Acceleration / braking / reverse
   if (input.accel) {
     car.speed += ACCEL * dt;
   } else if (input.brake) {
-    car.speed -= BRAKE * dt;
+    if (car.speed > 0) {
+      car.speed -= BRAKE * dt;
+    } else {
+      car.speed -= ACCEL * 0.4 * dt;
+    }
   } else {
-    car.speed -= FRICTION * dt;
+    if (car.speed > 0) car.speed -= FRICTION * dt;
+    else if (car.speed < 0) car.speed += FRICTION * dt;
+    if (Math.abs(car.speed) < FRICTION * dt) car.speed = 0;
   }
-  car.speed = Math.max(0, Math.min(MAX_SPEED * speedMult, car.speed));
+  const REVERSE_MAX = MAX_SPEED * 0.35;
+  car.speed = Math.max(-REVERSE_MAX, Math.min(MAX_SPEED * speedMult, car.speed));
 
   // Steering
-  const turnRate = TURN_SPEED * (car.speed / MAX_SPEED);
+  const turnRate = TURN_SPEED * (Math.abs(car.speed) / MAX_SPEED);
   if (input.left) car.angle -= turnRate * dt;
   if (input.right) car.angle += turnRate * dt;
 
@@ -1376,11 +1393,15 @@ function endRace() {
 }
 
 // ═══════════════════════════════════════════
-// RESIZE
+// FULLSCREEN
 // ═══════════════════════════════════════════
-window.addEventListener('resize', () => {
-  // Canvas stays fixed size, CSS handles scaling
-});
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
 
 </script>
 </body>

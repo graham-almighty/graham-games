@@ -822,27 +822,34 @@ MAPS.forEach((m, i) => {
 group('Car Physics Formulas');
 
 // Speed clamping
+const REVERSE_MAX = MAX_SPEED * 0.35;
 let testSpeed = MAX_SPEED + 100;
-testSpeed = Math.max(0, Math.min(MAX_SPEED, testSpeed));
+testSpeed = Math.max(-REVERSE_MAX, Math.min(MAX_SPEED, testSpeed));
 assertEqual(testSpeed, MAX_SPEED, 'Speed clamped to MAX_SPEED');
 
-testSpeed = -50;
-testSpeed = Math.max(0, Math.min(MAX_SPEED, testSpeed));
-assertEqual(testSpeed, 0, 'Speed clamped to 0 minimum');
+testSpeed = -200;
+testSpeed = Math.max(-REVERSE_MAX, Math.min(MAX_SPEED, testSpeed));
+assertEqual(testSpeed, -REVERSE_MAX, 'Speed clamped to -REVERSE_MAX');
+
+assertApprox(REVERSE_MAX, 87.5, 0.1, 'Reverse max is 35% of MAX_SPEED');
 
 // Boost multiplier effect
 const boostedMax = MAX_SPEED * BOOST_MULTIPLIER;
 assertEqual(boostedMax, 400, 'Boosted max speed is 400');
 
-// Turn rate proportional to speed
-const turnAtFull = TURN_SPEED * (MAX_SPEED / MAX_SPEED);
+// Turn rate proportional to absolute speed
+const turnAtFull = TURN_SPEED * (Math.abs(MAX_SPEED) / MAX_SPEED);
 assertEqual(turnAtFull, TURN_SPEED, 'Turn rate at max speed equals TURN_SPEED');
 
-const turnAtHalf = TURN_SPEED * (MAX_SPEED * 0.5 / MAX_SPEED);
+const turnAtHalf = TURN_SPEED * (Math.abs(MAX_SPEED * 0.5) / MAX_SPEED);
 assertApprox(turnAtHalf, TURN_SPEED * 0.5, 0.001, 'Turn rate at half speed is half TURN_SPEED');
 
-const turnAtZero = TURN_SPEED * (0 / MAX_SPEED);
+const turnAtZero = TURN_SPEED * (Math.abs(0) / MAX_SPEED);
 assertEqual(turnAtZero, 0, 'Turn rate at zero speed is 0');
+
+// Turn rate works in reverse too
+const turnAtReverse = TURN_SPEED * (Math.abs(-REVERSE_MAX) / MAX_SPEED);
+assert(turnAtReverse > 0, 'Turn rate is positive when reversing');
 
 // --- ACCELERATION & DECELERATION ---
 group('Acceleration & Deceleration');
@@ -865,6 +872,17 @@ assertApprox(speed, 100 - FRICTION * dt, 0.01, 'Friction subtracts FRICTION * dt
 
 // Braking stronger than friction
 assert(BRAKE > FRICTION, 'Braking is stronger than friction');
+
+// Reverse: braking at 0 speed goes negative
+speed = 0;
+speed -= ACCEL * 0.4 * dt;
+assert(speed < 0, 'Braking from standstill goes into reverse');
+assertApprox(speed, -ACCEL * 0.4 * dt, 0.01, 'Reverse acceleration is 40% of forward');
+
+// Reverse speed is capped
+speed = -REVERSE_MAX - 50;
+speed = Math.max(-REVERSE_MAX, speed);
+assertEqual(speed, -REVERSE_MAX, 'Reverse speed capped at REVERSE_MAX');
 
 // --- LAP DETECTION LOGIC ---
 group('Lap Detection Logic');
