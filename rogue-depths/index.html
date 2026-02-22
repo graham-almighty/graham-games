@@ -747,8 +747,8 @@ function playerAttack() {
   const def = WEAPON_DEFS[wep.base];
   player.attackTimer = def.cooldown;
 
-  // Warrior swing animation
-  if (player.className === 'warrior' && def.type === 'melee') {
+  // Melee swing animation
+  if (def.type === 'melee') {
     player.swingTimer = def.cooldown;
     player.swingDuration = def.cooldown;
     player.swingDir *= -1;
@@ -1808,9 +1808,9 @@ function drawCartoonPlayer(sx, sy) {
   ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(baX, baY);
   ctx.lineTo(baX - fx * armLen * 0.4 - px * armLen * 0.3, baY - fy * armLen * 0.4 - py * armLen * 0.3); ctx.stroke();
-  // Weapon swing angle (warrior swing animation)
+  // Weapon swing angle (melee swing animation)
   let wAngle = fa;
-  if (cls === 'warrior' && player.swingTimer > 0) {
+  if (wDef.type === 'melee' && player.swingTimer > 0) {
     const t = 1 - player.swingTimer / player.swingDuration;
     const smooth = t * t * (3 - 2 * t);
     wAngle = fa + (smooth * 2 - 1) * (Math.PI / 3) * player.swingDir;
@@ -1829,8 +1829,8 @@ function drawCartoonPlayer(sx, sy) {
   if (wDef.type === 'melee') {
     const wLen = wDef.range * TILE * 0.35;
     const wtX = wpX + wfx * wLen, wtY = wpY + wfy * wLen;
-    // Swing trail for warrior
-    if (cls === 'warrior' && player.swingTimer > 0) {
+    // Swing trail for melee weapons
+    if (wDef.type === 'melee' && player.swingTimer > 0) {
       const t = 1 - player.swingTimer / player.swingDuration;
       if (t > 0.05) {
         const trailArc = (Math.PI / 3) * t;

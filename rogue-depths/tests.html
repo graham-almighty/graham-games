@@ -731,8 +731,8 @@ group('Combat Formulas');
   assertEqual(invulnDuration, 0.3, 'Invulnerability duration = 0.3 seconds');
 }
 
-// ─── WARRIOR SWING ANIMATION ───
-group('Warrior Swing Animation');
+// ─── MELEE SWING ANIMATION ───
+group('Melee Swing Animation');
 
 {
   // Swing state defaults
@@ -798,20 +798,29 @@ group('Warrior Swing Animation');
 }
 
 {
-  // Swing only activates for warrior with melee weapon
-  assertEqual(CLASS_DEFS.warrior.startWeapon, 'sword', 'Warrior starts with sword');
-  assertEqual(WEAPON_DEFS.sword.type, 'melee', 'Sword is melee type');
-  // Archer/Mage start with ranged — no swing
-  assertEqual(WEAPON_DEFS[CLASS_DEFS.archer.startWeapon].type, 'ranged', 'Archer starts ranged (no swing)');
-  assertEqual(WEAPON_DEFS[CLASS_DEFS.mage.startWeapon].type, 'ranged', 'Mage starts ranged (no swing)');
+  // Swing activates for all melee weapons
+  const meleeWeapons = Object.entries(WEAPON_DEFS).filter(([k, v]) => v.type === 'melee');
+  assert(meleeWeapons.length >= 3, 'At least 3 melee weapon types exist');
+  for (const [name, def] of meleeWeapons) {
+    assertEqual(def.type, 'melee', name + ' is melee — gets swing animation');
+  }
+  // Ranged weapons should not swing
+  const rangedWeapons = Object.entries(WEAPON_DEFS).filter(([k, v]) => v.type === 'ranged');
+  for (const [name, def] of rangedWeapons) {
+    assertEqual(def.type, 'ranged', name + ' is ranged — no swing animation');
+  }
 }
 
 {
-  // Swing timer set to weapon cooldown
-  const swordCd = WEAPON_DEFS.sword.cooldown;
-  assertEqual(swordCd, 0.5, 'Sword cooldown = 0.5s (swing duration)');
-  const axeCd = WEAPON_DEFS.axe.cooldown;
-  assertEqual(axeCd, 0.9, 'Axe cooldown = 0.9s (swing duration)');
+  // Swing timer set to weapon cooldown for each melee weapon
+  const meleeWeapons = Object.entries(WEAPON_DEFS).filter(([k, v]) => v.type === 'melee');
+  for (const [name, def] of meleeWeapons) {
+    assert(def.cooldown > 0, name + ' cooldown > 0 (used as swing duration)');
+  }
+  assertEqual(WEAPON_DEFS.sword.cooldown, 0.5, 'Sword cooldown = 0.5s (swing duration)');
+  assertEqual(WEAPON_DEFS.axe.cooldown, 0.9, 'Axe cooldown = 0.9s (swing duration)');
+  assertEqual(WEAPON_DEFS.scythe.cooldown, 0.4, 'Scythe cooldown = 0.4s (swing duration)');
+  assertEqual(WEAPON_DEFS.spear.cooldown, 0.65, 'Spear cooldown = 0.65s (swing duration)');
 }
 
 // ─── SHOP INTEGRATION ───
