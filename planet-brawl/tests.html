@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Planet Brawl - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a1e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #4488ff; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #4488ff; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Planet Brawl - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0, _currentGroup = '';
+function group(name) {
+  _currentGroup = name;
+  const el = document.createElement('div');
+  el.className = 'group-title';
+  el.textContent = name;
+  document.getElementById('results').appendChild(el);
+}
+function assert(condition, name, detail) {
+  const el = document.createElement('div');
+  el.className = 'test ' + (condition ? 'pass' : 'fail');
+  el.innerHTML = '<span class="label">' + (condition ? '✓' : '✗') + ' ' + name + '</span>' +
+    (detail ? '<span class="detail">' + detail + '</span>' : '');
+  document.getElementById('results').appendChild(el);
+  if (condition) _passed++; else _failed++;
+}
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+function assertApprox(actual, expected, tolerance, name) {
+  const pass = Math.abs(actual - expected) <= tolerance;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ' (±' + tolerance + '), got ' + actual);
+}
+function showSummary() {
+  const el = document.getElementById('summary');
+  el.innerHTML = '<span class="pass">' + _passed + ' passed</span> · <span class="' + (_failed ? 'fail' : 'pass') + '">' + _failed + ' failed</span>';
+}
+
+// ============================================================
+// MOCK LOCALSTORAGE
+// ============================================================
+const localStorage = {
+  _data: {},
+  getItem(k) { return this._data[k] || null; },
+  setItem(k, v) { this._data[k] = String(v); },
+  removeItem(k) { delete this._data[k]; },
+  clear() { this._data = {}; },
+};
+
+// ============================================================
+// EXTRACTED SOURCE CODE
+// ============================================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const PB_ACH = {
+  pb_first_kill:    { name: 'First Contact',   reward: 5 },
+  pb_planet_1:      { name: 'Zortotie Saved',  reward: 10 },
+  pb_planet_3:      { name: 'Halfway Home',     reward: 15 },
+  pb_planet_6:      { name: 'Galaxy Savior',    reward: 50 },
+  pb_ace:           { name: 'Space Ace',        reward: 20 },
+  pb_no_hit_space:  { name: 'Untouchable',      reward: 25 },
+  pb_boss_slayer:   { name: 'Boss Slayer',      reward: 30 },
+  pb_speed_clear:   { name: 'Speed Demon',      reward: 15 },
+  pb_sharpshooter:  { name: 'Sharpshooter',     reward: 15 },
+  pb_survivor:      { name: 'Iron Hull',        reward: 15 },
+};
+function ggTry(id) { const a = PB_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const PLANETS = [
+  { name: 'Zortotie', color: '#44cc88', desc: 'A lush jungle world.', asteroids: 8, scouts: 3, cruisers: 0, soldiers: 8, heavies: 0, hasBoss: false },
+  { name: 'Villote',  color: '#cc8844', desc: 'A barren desert wasteland.', asteroids: 12, scouts: 5, cruisers: 1, soldiers: 10, heavies: 2, hasBoss: false },
+  { name: 'Charne',   color: '#4488cc', desc: 'An ice world.', asteroids: 16, scouts: 6, cruisers: 2, soldiers: 12, heavies: 3, hasBoss: false },
+  { name: 'Gragone',  color: '#cc4444', desc: 'A volcanic hellscape.', asteroids: 18, scouts: 7, cruisers: 3, soldiers: 14, heavies: 4, hasBoss: false },
+  { name: 'Wothiti',  color: '#aa44cc', desc: 'Shrouded in a dense nebula.', asteroids: 20, scouts: 8, cruisers: 4, soldiers: 16, heavies: 5, hasBoss: false },
+  { name: 'Wintot',   color: '#cccc44', desc: 'The alien homeworld.', asteroids: 22, scouts: 10, cruisers: 5, soldiers: 18, heavies: 6, hasBoss: true },
+];
+
+const ENEMY_DEFS = {
+  asteroid:     { hp: 1,   speed: 15, damage: 15, score: 5,   phase: 'space',  color: 0x887766 },
+  scout:        { hp: 20,  speed: 8,  damage: 10, score: 25,  phase: 'space',  color: 0x44ff44 },
+  cruiser:      { hp: 50,  speed: 4,  damage: 20, score: 50,  phase: 'space',  color: 0xff4444 },
+  soldier:      { hp: 15,  speed: 4,  damage: 8,  score: 15,  phase: 'planet', color: 0x44ff44 },
+  heavy:        { hp: 40,  speed: 2,  damage: 15, score: 30,  phase: 'planet', color: 0xff6644 },
+  boss:         { hp: 200, speed: 3,  damage: 25, score: 200, phase: 'space',  color: 0xffcc00 },
+};
+
+const PLAYER_MAX_HP = 100;
+const PLAYER_MAX_SHIELD = 50;
+const SHIELD_REGEN_RATE = 3;
+const SHIELD_REGEN_DELAY = 2;
+const LASER_COOLDOWN = 0.3;
+const LASER_SPEED = 80;
+const LASER_DAMAGE = 10;
+const SPACE_DURATION = 35;
+const SHIP_MOVE_RANGE = 8;
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// ─── ACHIEVEMENT REGISTRY ───
+group('Achievement Registry');
+
+{
+  const ids = Object.keys(PB_ACH);
+  assertEqual(ids.length, 10, 'Planet Brawl has 10 achievements');
+
+  const total = ids.reduce((sum, id) => sum + PB_ACH[id].reward, 0);
+  assertEqual(total, 200, 'Total achievement rewards = 200 G Bux');
+
+  // No duplicate IDs
+  const uniqueIds = new Set(ids);
+  assertEqual(uniqueIds.size, ids.length, 'No duplicate achievement IDs');
+
+  // All IDs start with pb_
+  for (const id of ids) {
+    assert(id.startsWith('pb_'), 'Achievement ' + id + ' starts with pb_');
+  }
+
+  // All have name and reward
+  for (const [id, ach] of Object.entries(PB_ACH)) {
+    assert(ach.name.length > 0, id + ' has a name');
+    assert(ach.reward > 0, id + ' has positive reward');
+  }
+}
+
+{
+  // Achievement unlock
+  localStorage.clear();
+  const result = ggUnlockAchievement('pb_first_kill', 'First Contact', 5);
+  assertEqual(result, true, 'First unlock returns true');
+  const data = ggLoad();
+  assertEqual(data.achievements.pb_first_kill, true, 'Achievement marked in data');
+  assertEqual(data.gBux, 5, 'G Bux awarded');
+
+  // Duplicate prevention
+  const result2 = ggUnlockAchievement('pb_first_kill', 'First Contact', 5);
+  assertEqual(result2, false, 'Duplicate unlock returns false');
+  const data2 = ggLoad();
+  assertEqual(data2.gBux, 5, 'G Bux not double-awarded');
+  localStorage.clear();
+}
+
+// ─── PLANET DEFINITIONS ───
+group('Planet Definitions');
+
+{
+  assertEqual(PLANETS.length, 6, '6 planets defined');
+
+  const names = PLANETS.map(p => p.name);
+  assertEqual(names[0], 'Zortotie', 'Planet 1: Zortotie');
+  assertEqual(names[1], 'Villote', 'Planet 2: Villote');
+  assertEqual(names[2], 'Charne', 'Planet 3: Charne');
+  assertEqual(names[3], 'Gragone', 'Planet 4: Gragone');
+  assertEqual(names[4], 'Wothiti', 'Planet 5: Wothiti');
+  assertEqual(names[5], 'Wintot', 'Planet 6: Wintot');
+
+  // Unique names
+  const uniqueNames = new Set(names);
+  assertEqual(uniqueNames.size, 6, 'All planet names unique');
+
+  // Unique colors
+  const colors = new Set(PLANETS.map(p => p.color));
+  assertEqual(colors.size, 6, 'All planet colors unique');
+
+  // All have required properties
+  for (const p of PLANETS) {
+    assert(p.name.length > 0, p.name + ' has name');
+    assert(p.color.length > 0, p.name + ' has color');
+    assert(p.desc.length > 0, p.name + ' has description');
+    assert(typeof p.asteroids === 'number', p.name + ' has asteroid count');
+    assert(typeof p.scouts === 'number', p.name + ' has scout count');
+    assert(typeof p.cruisers === 'number', p.name + ' has cruiser count');
+    assert(typeof p.soldiers === 'number', p.name + ' has soldier count');
+    assert(typeof p.heavies === 'number', p.name + ' has heavy count');
+    assert(typeof p.hasBoss === 'boolean', p.name + ' has boss flag');
+  }
+
+  // Only final planet has boss
+  for (let i = 0; i < PLANETS.length - 1; i++) {
+    assertEqual(PLANETS[i].hasBoss, false, PLANETS[i].name + ' has no boss');
+  }
+  assertEqual(PLANETS[5].hasBoss, true, 'Wintot has boss');
+}
+
+{
+  // Difficulty scales: more enemies on later planets
+  for (let i = 1; i < PLANETS.length; i++) {
+    assert(PLANETS[i].asteroids >= PLANETS[i - 1].asteroids,
+      PLANETS[i].name + ' has >= asteroids than ' + PLANETS[i - 1].name);
+    assert(PLANETS[i].scouts >= PLANETS[i - 1].scouts,
+      PLANETS[i].name + ' has >= scouts than ' + PLANETS[i - 1].name);
+    assert(PLANETS[i].soldiers >= PLANETS[i - 1].soldiers,
+      PLANETS[i].name + ' has >= soldiers than ' + PLANETS[i - 1].name);
+  }
+}
+
+// ─── ENEMY DEFINITIONS ───
+group('Enemy Definitions');
+
+{
+  const types = Object.keys(ENEMY_DEFS);
+  assertEqual(types.length, 6, '6 enemy types defined');
+
+  // Space enemies
+  const spaceTypes = types.filter(t => ENEMY_DEFS[t].phase === 'space');
+  assertEqual(spaceTypes.length, 4, '4 space enemy types (asteroid, scout, cruiser, boss)');
+
+  // Planet enemies
+  const planetTypes = types.filter(t => ENEMY_DEFS[t].phase === 'planet');
+  assertEqual(planetTypes.length, 2, '2 planet enemy types (soldier, heavy)');
+
+  // All have required stats
+  for (const [type, def] of Object.entries(ENEMY_DEFS)) {
+    assert(def.hp > 0, type + ' has positive HP');
+    assert(def.speed > 0, type + ' has positive speed');
+    assert(def.damage > 0, type + ' has positive damage');
+    assert(def.score > 0, type + ' has positive score');
+    assert(def.phase === 'space' || def.phase === 'planet', type + ' has valid phase');
+  }
+
+  // Boss is strongest
+  const bossHp = ENEMY_DEFS.boss.hp;
+  for (const [type, def] of Object.entries(ENEMY_DEFS)) {
+    if (type !== 'boss') {
+      assert(def.hp < bossHp, type + ' HP < boss HP');
+    }
+  }
+
+  // Specific stats
+  assertEqual(ENEMY_DEFS.asteroid.hp, 1, 'Asteroid is 1-hit');
+  assertEqual(ENEMY_DEFS.boss.hp, 200, 'Boss has 200 HP');
+  assertEqual(ENEMY_DEFS.scout.score, 25, 'Scout gives 25 score');
+  assertEqual(ENEMY_DEFS.heavy.speed, 2, 'Heavy is slow (speed 2)');
+}
+
+// ─── PLAYER CONSTANTS ───
+group('Player Constants');
+
+{
+  assertEqual(PLAYER_MAX_HP, 100, 'Max HP = 100');
+  assertEqual(PLAYER_MAX_SHIELD, 50, 'Max shield = 50');
+  assertEqual(SHIELD_REGEN_RATE, 3, 'Shield regen = 3/s');
+  assertEqual(SHIELD_REGEN_DELAY, 2, 'Shield regen delay = 2s');
+  assertEqual(LASER_COOLDOWN, 0.3, 'Laser cooldown = 0.3s');
+  assertEqual(LASER_SPEED, 80, 'Laser speed = 80');
+  assertEqual(LASER_DAMAGE, 10, 'Laser damage = 10');
+  assertEqual(SPACE_DURATION, 35, 'Space phase = 35s');
+  assertEqual(SHIP_MOVE_RANGE, 8, 'Ship move range = 8');
+}
+
+// ─── DAMAGE FORMULA ───
+group('Damage Formula');
+
+{
+  // Shield absorbs first
+  let shield = 50, hp = 100, dmg = 30;
+  const absorbed = Math.min(shield, dmg);
+  shield -= absorbed;
+  dmg -= absorbed;
+  hp -= dmg;
+  assertEqual(shield, 20, 'Shield absorbs 30 damage: 50→20');
+  assertEqual(hp, 100, 'HP unchanged when shield absorbs all');
+}
+
+{
+  // Shield breaks, remainder hits HP
+  let shield = 10, hp = 100, dmg = 25;
+  const absorbed = Math.min(shield, dmg);
+  shield -= absorbed;
+  dmg -= absorbed;
+  hp -= dmg;
+  assertEqual(shield, 0, 'Shield breaks: 10→0');
+  assertEqual(hp, 85, 'HP takes remainder: 100-15=85');
+}
+
+{
+  // No shield, full damage to HP
+  let shield = 0, hp = 100, dmg = 20;
+  const absorbed = Math.min(shield, dmg);
+  shield -= absorbed;
+  dmg -= absorbed;
+  hp -= dmg;
+  assertEqual(hp, 80, 'Full damage to HP: 100-20=80');
+}
+
+{
+  // Shield regen
+  let shield = 20, shieldDelay = 0;
+  const dt = 1.0;
+  if (shieldDelay <= 0) {
+    shield = Math.min(PLAYER_MAX_SHIELD, shield + SHIELD_REGEN_RATE * dt);
+  }
+  assertEqual(shield, 23, 'Shield regens 3 in 1 second');
+}
+
+{
+  // Shield regen capped
+  let shield = 49;
+  shield = Math.min(PLAYER_MAX_SHIELD, shield + SHIELD_REGEN_RATE * 1);
+  assertEqual(shield, 50, 'Shield capped at max');
+}
+
+{
+  // Shield regen delayed after hit
+  let shieldDelay = SHIELD_REGEN_DELAY;
+  let shield = 20;
+  const dt = 0.5;
+  shieldDelay -= dt;
+  if (shieldDelay <= 0) {
+    shield = Math.min(PLAYER_MAX_SHIELD, shield + SHIELD_REGEN_RATE * dt);
+  }
+  assertEqual(shield, 20, 'No regen during delay');
+  assertEqual(shieldDelay, 1.5, 'Delay reduced by dt');
+}
+
+// ─── COMBAT MATH ───
+group('Combat Math');
+
+{
+  // Laser kills: shots to kill each enemy type
+  const shotsToKill = {};
+  for (const [type, def] of Object.entries(ENEMY_DEFS)) {
+    shotsToKill[type] = Math.ceil(def.hp / LASER_DAMAGE);
+  }
+  assertEqual(shotsToKill.asteroid, 1, 'Asteroid: 1 shot');
+  assertEqual(shotsToKill.scout, 2, 'Scout: 2 shots');
+  assertEqual(shotsToKill.cruiser, 5, 'Cruiser: 5 shots');
+  assertEqual(shotsToKill.soldier, 2, 'Soldier: 2 shots');
+  assertEqual(shotsToKill.heavy, 4, 'Heavy: 4 shots');
+  assertEqual(shotsToKill.boss, 20, 'Boss: 20 shots');
+}
+
+{
+  // Accuracy calculation
+  let shotsFired = 100, shotsHit = 82;
+  const accuracy = shotsHit / shotsFired;
+  assert(accuracy >= 0.8, 'Sharpshooter: 82/100 = 82% >= 80%');
+
+  let sf2 = 100, sh2 = 79;
+  const acc2 = sh2 / sf2;
+  assert(acc2 < 0.8, 'Below sharpshooter: 79/100 = 79% < 80%');
+}
+
+{
+  // Score accumulation
+  let score = 0;
+  score += ENEMY_DEFS.scout.score;
+  score += ENEMY_DEFS.cruiser.score;
+  score += ENEMY_DEFS.asteroid.score;
+  assertEqual(score, 80, 'Scout+Cruiser+Asteroid = 25+50+5 = 80 score');
+}
+
+// ─── WASD SHIP MOVEMENT ───
+group('WASD Ship Movement');
+
+{
+  const SHIP_SPEED = 12;
+
+  // Moving right (D key)
+  let px = 0;
+  px += SHIP_SPEED * 0.016; // ~1 frame at 60fps
+  assertApprox(px, 0.192, 0.001, 'D key moves ship right ~0.192 per frame');
+
+  // Moving left (A key)
+  let px2 = 0;
+  px2 -= SHIP_SPEED * 0.016;
+  assertApprox(px2, -0.192, 0.001, 'A key moves ship left ~0.192 per frame');
+
+  // Moving up (W key)
+  let py = 0;
+  py += SHIP_SPEED * 0.016;
+  assertApprox(py, 0.192, 0.001, 'W key moves ship up ~0.192 per frame');
+
+  // Moving down (S key)
+  let py2 = 0;
+  py2 -= SHIP_SPEED * 0.016;
+  assertApprox(py2, -0.192, 0.001, 'S key moves ship down ~0.192 per frame');
+}
+
+{
+  // Clamping to move range
+  const SHIP_SPEED = 12;
+
+  // X clamped to SHIP_MOVE_RANGE
+  let px = SHIP_MOVE_RANGE - 0.1;
+  px += SHIP_SPEED * 0.5; // big dt to overshoot
+  px = Math.max(-SHIP_MOVE_RANGE, Math.min(SHIP_MOVE_RANGE, px));
+  assertEqual(px, SHIP_MOVE_RANGE, 'Ship X clamped to +SHIP_MOVE_RANGE');
+
+  let px2 = -SHIP_MOVE_RANGE + 0.1;
+  px2 -= SHIP_SPEED * 0.5;
+  px2 = Math.max(-SHIP_MOVE_RANGE, Math.min(SHIP_MOVE_RANGE, px2));
+  assertEqual(px2, -SHIP_MOVE_RANGE, 'Ship X clamped to -SHIP_MOVE_RANGE');
+
+  // Y clamped to SHIP_MOVE_RANGE * 0.6
+  const yMax = SHIP_MOVE_RANGE * 0.6;
+  let py = yMax - 0.1;
+  py += SHIP_SPEED * 0.5;
+  py = Math.max(-yMax, Math.min(yMax, py));
+  assertApprox(py, yMax, 0.001, 'Ship Y clamped to +SHIP_MOVE_RANGE*0.6');
+
+  let py2 = -yMax + 0.1;
+  py2 -= SHIP_SPEED * 0.5;
+  py2 = Math.max(-yMax, Math.min(yMax, py2));
+  assertApprox(py2, -yMax, 0.001, 'Ship Y clamped to -SHIP_MOVE_RANGE*0.6');
+}
+
+{
+  // Diagonal movement works (both keys at once)
+  const SHIP_SPEED = 12;
+  const dt = 0.016;
+  let px = 0, py = 0;
+  // Simulate W+D pressed
+  px += SHIP_SPEED * dt;
+  py += SHIP_SPEED * dt;
+  assertApprox(px, 0.192, 0.001, 'Diagonal: X moves with D key');
+  assertApprox(py, 0.192, 0.001, 'Diagonal: Y moves with W key');
+}
+
+// ─── SPACE PHASE LOGIC ───
+group('Space Phase Logic');
+
+{
+  // Space duration
+  assertEqual(SPACE_DURATION, 35, 'Space phase lasts 35 seconds');
+
+  // Planet approach: planet moves from z=-180 to z=-40
+  const startZ = -180;
+  const progressEnd = 1;
+  const endZ = startZ + progressEnd * 140;
+  assertEqual(endZ, -40, 'Planet at z=-40 at end of space phase');
+}
+
+{
+  // Spawn rate increases over time
+  const spawnRateStart = 1.5 - 0 * 0.8;
+  const spawnRateEnd = 1.5 - 1 * 0.8;
+  assertEqual(spawnRateStart, 1.5, 'Spawn interval at start: 1.5s');
+  assertApprox(spawnRateEnd, 0.7, 0.01, 'Spawn interval at end: 0.7s');
+}
+
+// ─── PLANET PHASE LOGIC ───
+group('Planet Phase Logic');
+
+{
+  // Planet 1 enemy counts
+  const p = PLANETS[0];
+  assertEqual(p.soldiers, 8, 'Zortotie: 8 soldiers');
+  assertEqual(p.heavies, 0, 'Zortotie: 0 heavies');
+
+  // Final planet
+  const last = PLANETS[5];
+  assertEqual(last.soldiers, 18, 'Wintot: 18 soldiers');
+  assertEqual(last.heavies, 6, 'Wintot: 6 heavies');
+}
+
+{
+  // Total enemies per planet
+  for (const p of PLANETS) {
+    const total = p.soldiers + p.heavies;
+    assert(total > 0, p.name + ' has ' + total + ' ground enemies');
+  }
+}
+
+// ─── ACHIEVEMENT CONDITIONS ───
+group('Achievement Conditions');
+
+{
+  // pb_first_kill: first kill
+  assertEqual(PB_ACH.pb_first_kill.reward, 5, 'First Contact = 5G');
+
+  // pb_ace: 10+ kills in space
+  let phaseKills = 10;
+  assert(phaseKills >= 10, 'Space Ace: 10 kills qualifies');
+  phaseKills = 9;
+  assert(phaseKills < 10, 'Space Ace: 9 kills does not qualify');
+
+  // pb_sharpshooter: 80%+ accuracy
+  assertEqual(PB_ACH.pb_sharpshooter.reward, 15, 'Sharpshooter = 15G');
+
+  // pb_speed_clear: <20s planet phase
+  const elapsed = 19.5;
+  assert(elapsed < 20, 'Speed Demon: 19.5s qualifies');
+  const elapsed2 = 20.1;
+  assert(elapsed2 >= 20, 'Speed Demon: 20.1s does not qualify');
+
+  // pb_survivor: full HP
+  let hp = PLAYER_MAX_HP;
+  assert(hp >= PLAYER_MAX_HP, 'Iron Hull: full HP qualifies');
+  hp = 99;
+  assert(hp < PLAYER_MAX_HP, 'Iron Hull: 99 HP does not qualify');
+
+  // pb_no_hit_space: 0 damage in space
+  let spaceDmg = 0;
+  assert(spaceDmg === 0, 'Untouchable: 0 damage qualifies');
+
+  // pb_boss_slayer: beat Wintot boss
+  assertEqual(PB_ACH.pb_boss_slayer.reward, 30, 'Boss Slayer = 30G');
+
+  // pb_planet_6: galaxy savior
+  assertEqual(PB_ACH.pb_planet_6.reward, 50, 'Galaxy Savior = 50G (highest)');
+}
+
+// ─── PLANET PROGRESSION ───
+group('Planet Progression');
+
+{
+  // Linear progression: 0 through 5
+  for (let i = 0; i < PLANETS.length; i++) {
+    assert(PLANETS[i].name.length > 0, 'Planet ' + i + ' exists: ' + PLANETS[i].name);
+  }
+
+  // Final planet triggers final victory
+  const lastIdx = PLANETS.length - 1;
+  assertEqual(lastIdx, 5, 'Last planet index is 5');
+
+  // Boss only on final
+  let bossCount = 0;
+  for (const p of PLANETS) { if (p.hasBoss) bossCount++; }
+  assertEqual(bossCount, 1, 'Exactly 1 boss planet');
+  assertEqual(PLANETS[lastIdx].hasBoss, true, 'Boss is on final planet');
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>

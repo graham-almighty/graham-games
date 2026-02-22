@@ -460,6 +460,23 @@
     border-radius: 8px;
   }
 
+  /* Planet Brawl card */
+  .game-card.planet-brawl {
+    border-left-color: #1a66cc;
+  }
+  .game-card.planet-brawl:hover {
+    border-color: #1a66cc;
+    box-shadow: 0 0 30px #1a66cc15, -5px 0 20px #1a66cc10;
+  }
+  .game-card.planet-brawl::before {
+    background: linear-gradient(90deg, #1a66cc08 0%, transparent 50%);
+  }
+  .game-card.planet-brawl .game-icon {
+    background: linear-gradient(135deg, #08102a, #0a1a3a);
+    border: 1px solid #1a66cc44;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -1162,6 +1179,34 @@ for (let i = 0; i < 30; i++) {
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
+
+    <a href="planet-brawl/index.html" class="game-card planet-brawl">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <!-- rocket ship -->
+          <path d="M25 8 L30 28 L27 32 L23 32 L20 28 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="1"/>
+          <ellipse cx="25" cy="14" rx="3" ry="4" fill="#4488ff" opacity="0.5"/>
+          <!-- cockpit window -->
+          <ellipse cx="25" cy="16" rx="2" ry="2.5" fill="#88bbff" opacity="0.6"/>
+          <!-- fins -->
+          <path d="M20 28 L15 34 L20 32 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="0.8"/>
+          <path d="M30 28 L35 34 L30 32 Z" fill="#1a66cc" stroke="#4488ff" stroke-width="0.8"/>
+          <!-- flame -->
+          <path d="M23 32 L25 40 L27 32" fill="#ff6622" opacity="0.7"/>
+          <path d="M24 32 L25 37 L26 32" fill="#ffcc44" opacity="0.8"/>
+          <!-- stars -->
+          <circle cx="10" cy="12" r="1" fill="#4488ff" opacity="0.4"/>
+          <circle cx="40" cy="20" r="0.8" fill="#4488ff" opacity="0.3"/>
+          <circle cx="8" cy="35" r="0.6" fill="#4488ff" opacity="0.3"/>
+          <circle cx="42" cy="10" r="0.7" fill="#4488ff" opacity="0.35"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">PLANET BRAWL</div>
+        <div class="game-desc">3D space combat shooter</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1299,6 +1344,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'rd_hoarder',       name: 'Gold Hoarder',      desc: 'Collect 500+ gold in one run',       reward: 15 },
     { id: 'rd_speedrun',      name: 'Speed Runner',      desc: 'Clear a floor in under 30 seconds',  reward: 20 },
     { id: 'rd_no_hit_boss',   name: 'Untouchable',       desc: 'Beat a boss without taking damage',  reward: 25 },
+  ]},
+  { group: 'PLANET BRAWL', items: [
+    { id: 'pb_first_kill',    name: 'First Contact',     desc: 'Kill your first enemy',                reward: 5 },
+    { id: 'pb_planet_1',      name: 'Zortotie Saved',    desc: 'Liberate the first planet',            reward: 10 },
+    { id: 'pb_planet_3',      name: 'Halfway Home',       desc: 'Liberate three planets',               reward: 15 },
+    { id: 'pb_planet_6',      name: 'Galaxy Savior',      desc: 'Liberate all six planets',              reward: 50 },
+    { id: 'pb_ace',           name: 'Space Ace',          desc: 'Kill 10+ enemies in one space phase',   reward: 20 },
+    { id: 'pb_no_hit_space',  name: 'Untouchable',        desc: 'Complete a space phase with no damage', reward: 25 },
+    { id: 'pb_boss_slayer',   name: 'Boss Slayer',         desc: 'Defeat the Wintot boss',               reward: 30 },
+    { id: 'pb_speed_clear',   name: 'Speed Demon',        desc: 'Clear a planet phase in under 20s',    reward: 15 },
+    { id: 'pb_sharpshooter',  name: 'Sharpshooter',       desc: '80%+ accuracy in a space phase',       reward: 15 },
+    { id: 'pb_survivor',      name: 'Iron Hull',           desc: 'Finish a planet with full HP',         reward: 15 },
   ]},
 ];
 
