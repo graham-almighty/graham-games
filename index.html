@@ -478,6 +478,23 @@
   }
 
 
+  /* Brawl Monsters card */
+  .game-card.brawl-monsters {
+    border-left-color: #e040fb;
+  }
+  .game-card.brawl-monsters:hover {
+    border-color: #e040fb;
+    box-shadow: 0 0 30px #e040fb15, -5px 0 20px #e040fb10;
+  }
+  .game-card.brawl-monsters::before {
+    background: linear-gradient(90deg, #e040fb08 0%, transparent 50%);
+  }
+  .game-card.brawl-monsters .game-icon {
+    background: linear-gradient(135deg, #1a081a, #2a0a2a);
+    border: 1px solid #e040fb44;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -1211,6 +1228,27 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- BRAWL MONSTERS -->
+    <a href="brawl-monsters/index.html" class="game-card brawl-monsters">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a081a" stroke="#e040fb" stroke-width="2"/>
+          <circle cx="20" cy="22" r="4" fill="#e040fb" opacity="0.6"/>
+          <circle cx="30" cy="22" r="4" fill="#e040fb" opacity="0.6"/>
+          <circle cx="20" cy="22" r="2" fill="#fff"/>
+          <circle cx="30" cy="22" r="2" fill="#fff"/>
+          <path d="M18 30 L22 36 L26 30 L30 36 L34 30" fill="none" stroke="#e040fb" stroke-width="1.5" opacity="0.8"/>
+          <path d="M16 16 L14 8" stroke="#e040fb" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+          <path d="M34 16 L36 8" stroke="#e040fb" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">BRAWL MONSTERS</div>
+        <div class="game-desc">Monster battler roguelike</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1359,6 +1397,19 @@ const ALL_ACHIEVEMENTS = [
     { id: 'dd_unbeatable',   name: 'Unbeatable',        desc: 'Win 10 races total',                   reward: 30 },
     { id: 'dd_human_victor', name: 'Rivalry',           desc: 'Win a human vs human race',            reward: 50 },
   ]},
+  { group: 'BRAWL MONSTERS', items: [
+    { id: 'bm_first_fight',   name: 'Monster Tamer',       desc: 'Win your first battle',                    reward: 5 },
+    { id: 'bm_floor_4',       name: 'Rising Challenger',   desc: 'Reach floor 4',                            reward: 10 },
+    { id: 'bm_floor_8',       name: 'Champion',             desc: 'Defeat the final boss',                    reward: 50 },
+    { id: 'bm_sweep',         name: 'Clean Sweep',          desc: 'Win a battle without losing a monster',    reward: 25 },
+    { id: 'bm_super_eff_5',   name: 'Type Master',          desc: 'Land 5 super effective hits in one battle', reward: 15 },
+    { id: 'bm_full_team_win', name: 'Untouchable',          desc: 'Beat the boss with all 3 monsters alive',  reward: 30 },
+    { id: 'bm_all_elements',  name: 'Elemental Scholar',    desc: 'Draft all 6 element types across runs',    reward: 20 },
+    { id: 'bm_3_wins',        name: 'Veteran Trainer',      desc: 'Win 3 runs',                               reward: 15 },
+    { id: 'bm_10_wins',       name: 'Monster Master',       desc: 'Win 10 runs',                              reward: 25 },
+    { id: 'bm_no_heal',       name: 'No Mercy',             desc: 'Win a run without choosing any heals',     reward: 20 },
+    { id: 'bm_collect_all',   name: 'Gotta Catch Em All',   desc: 'Collect every monster species',            reward: 30 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1375,6 +1426,8 @@ const SHOP_ITEMS = [
   { id: 'rd_enchanted_start', name: 'Enchanted Start',   desc: 'Start each run with an uncommon weapon',       cost: 50, icon: '&#10024;',  game: 'Rogue Depths' },
   { id: 'dd_turbo_start',    name: 'Turbo Start',       desc: 'Timed boost at race start (hit Space at GO)',   cost: 50, icon: '&#128640;', game: 'Devious Driving' },
   { id: 'dd_monster_truck',  name: 'Monster Truck',     desc: 'Bigger car with more knockback',                cost: 75, icon: '&#128663;', game: 'Devious Driving' },
+  { id: 'bm_drakovex',      name: 'Drakovex',          desc: 'Unlocks the Drakovex monster (Fire/Shadow)', cost: 75, icon: '&#128050;', game: 'Brawl Monsters' },
+  { id: 'bm_stat_scanner',  name: 'Monster Scanner',   desc: 'See enemy stats and move types in battle',   cost: 50, icon: '&#128269;', game: 'Brawl Monsters' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══

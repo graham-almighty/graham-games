@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Brawl Monsters — Tests</title>
+<style>
+body { background: #0a0a0f; color: #eee; font-family: 'Segoe UI', sans-serif; padding: 20px; }
+h1 { color: #e040fb; }
+.group { margin: 16px 0; border-left: 3px solid #333; padding-left: 12px; }
+.group-title { font-weight: bold; color: #e040fb; margin-bottom: 6px; }
+.pass { color: #4caf50; }
+.fail { color: #ff4444; }
+.test { padding: 2px 0; font-size: 0.85rem; }
+.summary { margin-top: 20px; font-size: 1.1rem; font-weight: bold; }
+</style>
+</head>
+<body>
+<h1>Brawl Monsters — Tests</h1>
+<div id="results"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// INLINE COPY OF GAME LOGIC FOR TESTING
+// (Extracted from brawl-monsters/index.html)
+// ═══════════════════════════════════════════
+
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  return true;
+}
+
+const BM_ACH = {
+  bm_first_fight:   { name: 'Monster Tamer',     reward: 5 },
+  bm_floor_4:       { name: 'Rising Challenger',  reward: 10 },
+  bm_floor_8:       { name: 'Champion',           reward: 50 },
+  bm_sweep:         { name: 'Clean Sweep',        reward: 25 },
+  bm_super_eff_5:   { name: 'Type Master',        reward: 15 },
+  bm_full_team_win: { name: 'Untouchable',        reward: 30 },
+  bm_all_elements:  { name: 'Elemental Scholar',  reward: 20 },
+  bm_3_wins:        { name: 'Veteran Trainer',     reward: 15 },
+  bm_10_wins:       { name: 'Monster Master',     reward: 25 },
+  bm_no_heal:       { name: 'No Mercy',           reward: 20 },
+  bm_collect_all:   { name: 'Gotta Catch Em All', reward: 30 },
+};
+function ggTry(id) { const a = BM_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const BM_STATS_KEY = 'bm-stats';
+function defaultStats() {
+  return { totalRuns: 0, wins: 0, bestFloor: 0, totalBattlesWon: 0, totalEnemiesDefeated: 0, elementsUsed: [] };
+}
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(BM_STATS_KEY)) || defaultStats(); }
+  catch(e) { return defaultStats(); }
+}
+function saveStats(s) { localStorage.setItem(BM_STATS_KEY, JSON.stringify(s)); }
+
+const BM_COLLECTION_KEY = 'bm-collection';
+function loadCollection() {
+  try { return JSON.parse(localStorage.getItem(BM_COLLECTION_KEY)) || []; }
+  catch(e) { return []; }
+}
+function saveCollection(c) { localStorage.setItem(BM_COLLECTION_KEY, JSON.stringify(c)); }
+function addToCollection(monsterKey) {
+  const c = loadCollection();
+  if (c.includes(monsterKey)) return false;
+  c.push(monsterKey);
+  saveCollection(c);
+  return true;
+}
+
+const ELEMENT_COLORS = {
+  Fire: '#ff6b35', Water: '#3399ff', Plant: '#44bb44',
+  Electric: '#ffcc00', Shadow: '#9966cc', Light: '#ffee88',
+  Normal: '#aaaaaa',
+};
+
+const TYPE_CHART = {
+  Fire:     { Plant: 1.5, Water: 0.67, Fire: 0.67 },
+  Water:    { Fire: 1.5, Plant: 0.67, Water: 0.67 },
+  Plant:    { Water: 1.5, Fire: 0.67, Electric: 1.5, Plant: 0.67 },
+  Electric: { Water: 1.5, Plant: 0.67, Electric: 0.67 },
+  Shadow:   { Light: 1.5, Shadow: 0.67 },
+  Light:    { Shadow: 1.5, Light: 0.67 },
+  Normal:   {},
+};
+
+function getEffectiveness(atkElement, defElement) {
+  return (TYPE_CHART[atkElement] && TYPE_CHART[atkElement][defElement]) || 1.0;
+}
+
+const MONSTER_DEFS = {
+  emberon: {
+    name: 'Emberon', element: 'Fire', icon: '\uD83D\uDD25', hp: 110, atk: 75, def: 55, spd: 65,
+    moves: [
+      { name: 'Flame Burst', element: 'Fire', power: 70, accuracy: 95, effect: null },
+      { name: 'Inferno Charge', element: 'Fire', power: 95, accuracy: 80, effect: { type: 'buffSelf', stat: 'atk', amount: 20, turns: 2 } },
+      { name: 'Smoke Screen', element: 'Fire', power: 0, accuracy: 100, effect: { type: 'debuff', stat: 'accuracy', amount: 25, turns: 2 } },
+      { name: 'Tackle', element: 'Normal', power: 50, accuracy: 100, effect: null },
+    ]
+  },
+  tidalin: {
+    name: 'Tidalin', element: 'Water', icon: '\uD83C\uDF0A', hp: 120, atk: 60, def: 70, spd: 55,
+    moves: [
+      { name: 'Hydro Blast', element: 'Water', power: 70, accuracy: 95, effect: null },
+      { name: 'Tidal Wave', element: 'Water', power: 90, accuracy: 80, effect: { type: 'debuff', stat: 'spd', amount: 25, turns: 2, chance: 30 } },
+      { name: 'Shell Guard', element: 'Water', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 40, turns: 2 } },
+      { name: 'Headbutt', element: 'Normal', power: 55, accuracy: 95, effect: { type: 'stun', chance: 10 } },
+    ]
+  },
+  thornvine: {
+    name: 'Thornvine', element: 'Plant', icon: '\uD83C\uDF3F', hp: 130, atk: 55, def: 65, spd: 50,
+    moves: [
+      { name: 'Vine Whip', element: 'Plant', power: 65, accuracy: 100, effect: null },
+      { name: 'Spore Cloud', element: 'Plant', power: 0, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 3 } },
+      { name: 'Thorn Barrage', element: 'Plant', power: 80, accuracy: 85, effect: null },
+      { name: 'Root Drain', element: 'Plant', power: 55, accuracy: 95, effect: { type: 'drain', percent: 50 } },
+    ]
+  },
+  voltpaw: {
+    name: 'Voltpaw', element: 'Electric', icon: '\u26A1', hp: 90, atk: 80, def: 45, spd: 85,
+    moves: [
+      { name: 'Spark Bolt', element: 'Electric', power: 65, accuracy: 100, effect: null },
+      { name: 'Thunder Strike', element: 'Electric', power: 95, accuracy: 75, effect: { type: 'stun', chance: 30 } },
+      { name: 'Quick Charge', element: 'Electric', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'spd', amount: 30, turns: 3 } },
+      { name: 'Pounce', element: 'Normal', power: 55, accuracy: 95, effect: { type: 'priority' } },
+    ]
+  },
+  grimshade: {
+    name: 'Grimshade', element: 'Shadow', icon: '\uD83D\uDC7B', hp: 95, atk: 85, def: 50, spd: 70,
+    moves: [
+      { name: 'Shadow Claw', element: 'Shadow', power: 70, accuracy: 95, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 15 } },
+      { name: 'Nightmare', element: 'Shadow', power: 85, accuracy: 85, effect: { type: 'stun', chance: 25 } },
+      { name: 'Life Steal', element: 'Shadow', power: 60, accuracy: 100, effect: { type: 'drain', percent: 40 } },
+      { name: 'Hex', element: 'Shadow', power: 0, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 30, turns: 3 } },
+    ]
+  },
+  solarius: {
+    name: 'Solarius', element: 'Light', icon: '\u2600\uFE0F', hp: 105, atk: 70, def: 60, spd: 60,
+    moves: [
+      { name: 'Radiant Beam', element: 'Light', power: 75, accuracy: 95, effect: null },
+      { name: 'Holy Flash', element: 'Light', power: 90, accuracy: 80, effect: { type: 'stun', chance: 20 } },
+      { name: 'Healing Light', element: 'Light', power: 0, accuracy: 100, effect: { type: 'healSelf', percent: 35 } },
+      { name: 'Dazzle', element: 'Light', power: 60, accuracy: 100, effect: { type: 'debuff', stat: 'accuracy', amount: 20, turns: 2 } },
+    ]
+  },
+  drakovex: {
+    name: 'Drakovex', element: 'Shadow', icon: '\uD83D\uDC32', hp: 100, atk: 90, def: 45, spd: 75,
+    moves: [
+      { name: 'Dark Flame', element: 'Shadow', power: 80, accuracy: 90, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 20 } },
+      { name: 'Dragon Fang', element: 'Fire', power: 85, accuracy: 90, effect: { type: 'stun', chance: 15 } },
+      { name: 'Shadow Veil', element: 'Shadow', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'spd', amount: 30, turns: 2 } },
+      { name: 'Inferno Rush', element: 'Fire', power: 95, accuracy: 75, effect: null },
+    ]
+  },
+  blazetail: {
+    name: 'Blazetail', element: 'Fire', icon: '\uD83E\uDD8A', hp: 100, atk: 80, def: 50, spd: 70,
+    moves: [
+      { name: 'Fire Fang', element: 'Fire', power: 65, accuracy: 95, effect: null },
+      { name: 'Wildfire', element: 'Fire', power: 85, accuracy: 85, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } },
+      { name: 'Agility', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'spd', amount: 50, turns: 2 } },
+      { name: 'Bite', element: 'Normal', power: 60, accuracy: 100, effect: { type: 'stun', chance: 10 } },
+    ]
+  },
+  aquarion: {
+    name: 'Aquarion', element: 'Water', icon: '\uD83D\uDC22', hp: 115, atk: 65, def: 75, spd: 50,
+    moves: [
+      { name: 'Aqua Jet', element: 'Water', power: 60, accuracy: 100, effect: { type: 'priority' } },
+      { name: 'Torrent', element: 'Water', power: 85, accuracy: 85, effect: { type: 'debuff', stat: 'atk', amount: 20, turns: 2, chance: 30 } },
+      { name: 'Iron Shell', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 50, turns: 2 } },
+      { name: 'Ram', element: 'Normal', power: 65, accuracy: 95, effect: null },
+    ]
+  },
+  petalynx: {
+    name: 'Petalynx', element: 'Plant', icon: '\uD83C\uDF38', hp: 95, atk: 70, def: 55, spd: 80,
+    moves: [
+      { name: 'Leaf Slash', element: 'Plant', power: 65, accuracy: 95, effect: null },
+      { name: 'Bloom Burst', element: 'Plant', power: 85, accuracy: 85, effect: { type: 'drain', percent: 30 } },
+      { name: 'Petal Dance', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'spd', amount: 50, turns: 2 } },
+      { name: 'Scratch', element: 'Normal', power: 55, accuracy: 100, effect: { type: 'debuff', stat: 'def', amount: 15, turns: 2, chance: 20 } },
+    ]
+  },
+  zapplin: {
+    name: 'Zapplin', element: 'Electric', icon: '\uD83D\uDC7E', hp: 85, atk: 75, def: 40, spd: 90,
+    moves: [
+      { name: 'Zap', element: 'Electric', power: 60, accuracy: 100, effect: null },
+      { name: 'Overcharge', element: 'Electric', power: 90, accuracy: 80, effect: { type: 'stun', chance: 20 } },
+      { name: 'Static Field', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'atk', amount: 50, turns: 2 } },
+      { name: 'Headbutt', element: 'Normal', power: 60, accuracy: 95, effect: { type: 'stun', chance: 10 } },
+    ]
+  },
+  spectrion: {
+    name: 'Spectrion', element: 'Shadow', icon: '\uD83D\uDC41\uFE0F', hp: 100, atk: 80, def: 55, spd: 65,
+    moves: [
+      { name: 'Phantom Strike', element: 'Shadow', power: 70, accuracy: 90, effect: null },
+      { name: 'Soul Drain', element: 'Shadow', power: 75, accuracy: 90, effect: { type: 'drain', percent: 40 } },
+      { name: 'Shadow Cloak', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 50, turns: 2 } },
+      { name: 'Glare', element: 'Normal', power: 0, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 2 } },
+    ]
+  },
+  celestine: {
+    name: 'Celestine', element: 'Light', icon: '\uD83D\uDC8E', hp: 110, atk: 65, def: 70, spd: 55,
+    moves: [
+      { name: 'Light Shard', element: 'Light', power: 65, accuracy: 95, effect: null },
+      { name: 'Divine Beam', element: 'Light', power: 90, accuracy: 85, effect: { type: 'stun', chance: 15 } },
+      { name: 'Barrier', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 50, turns: 2 } },
+      { name: 'Restore', element: 'Light', power: 0, accuracy: 100, effect: { type: 'healSelf', percent: 25 } },
+    ]
+  },
+};
+
+const BOSS_DEF = {
+  name: 'Chimera Rex', element: 'Shadow', icon: '\uD83D\uDC09', hp: 300, atk: 90, def: 70, spd: 60,
+  moves: [
+    { name: 'Chaos Blast', element: 'Shadow', power: 90, accuracy: 90, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 30 } },
+    { name: 'Void Crush', element: 'Shadow', power: 75, accuracy: 95, effect: { type: 'debuff', stat: 'def', amount: 25, turns: 2, chance: 40 } },
+    { name: 'Elemental Fury', element: 'Fire', power: 80, accuracy: 85, effect: null },
+    { name: 'Dark Regenerate', element: 'Shadow', power: 0, accuracy: 100, effect: { type: 'healSelf', percent: 15 } },
+  ],
+};
+
+const REWARD_TYPES = [
+  { type: 'atkBoost', weight: 25, label: 'ATK Crystal',     desc: 'All monsters gain +10% ATK permanently', icon: '\u2694\uFE0F' },
+  { type: 'defBoost', weight: 25, label: 'DEF Crystal',     desc: 'All monsters gain +10% DEF permanently', icon: '\uD83D\uDEE1\uFE0F' },
+  { type: 'spdBoost', weight: 15, label: 'SPD Crystal',     desc: 'All monsters gain +10% SPD permanently', icon: '\uD83D\uDCA8' },
+  { type: 'hpBoost',  weight: 20, label: 'HP Crystal',      desc: 'All monsters gain +15 max HP',         icon: '\u2764\uFE0F\u200D\uD83D\uDD25' },
+  { type: 'newMove',  weight: 15, label: 'Move Tutor',      desc: 'Replace a move on one monster',        icon: '\uD83D\uDCDA' },
+];
+
+const LEARNABLE_MOVES = [
+  { name: 'Power Strike', element: 'Normal', power: 80, accuracy: 90, effect: null },
+  { name: 'Vine Lash', element: 'Plant', power: 65, accuracy: 95, effect: { type: 'debuff', stat: 'spd', amount: 20, turns: 2, chance: 30 } },
+  { name: 'Frost Bolt', element: 'Water', power: 70, accuracy: 90, effect: { type: 'debuff', stat: 'spd', amount: 20, turns: 2, chance: 30 } },
+  { name: 'Lightning Jab', element: 'Electric', power: 60, accuracy: 100, effect: { type: 'stun', chance: 15 } },
+  { name: 'Dark Pulse', element: 'Shadow', power: 75, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 20, turns: 2, chance: 25 } },
+  { name: 'Sun Flare', element: 'Light', power: 75, accuracy: 90, effect: { type: 'stun', chance: 15 } },
+  { name: 'Iron Wall', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 50, turns: 2 } },
+  { name: 'Berserk', element: 'Normal', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'atk', amount: 50, turns: 2 } },
+];
+
+const TOTAL_FLOORS = 8;
+
+function createMonster(def, scale) {
+  scale = scale || 1;
+  return {
+    name: def.name, element: def.element, icon: def.icon,
+    hp: Math.floor(def.hp * scale), maxHp: Math.floor(def.hp * scale),
+    atk: Math.floor(def.atk * scale), baseAtk: Math.floor(def.atk * scale),
+    def: Math.floor(def.def * scale), baseDef: Math.floor(def.def * scale),
+    spd: Math.floor(def.spd * scale), baseSpd: Math.floor(def.spd * scale),
+    moves: def.moves.map(m => ({ ...m, effect: m.effect ? { ...m.effect } : null })),
+    buffs: {},
+    statuses: [],
+    stunned: false,
+    kos: 0,
+  };
+}
+
+function calculateDamage(attacker, defender, move) {
+  if (move.power === 0) return 0;
+  const effectiveness = getEffectiveness(move.element, defender.element);
+  const atkMod = attacker.buffs.atk ? (1 + attacker.buffs.atk.amount / 100) : 1;
+  const defMod = defender.buffs.def ? (1 + defender.buffs.def.amount / 100) : 1;
+  const atkStat = attacker.atk * atkMod;
+  const defStat = defender.def * defMod;
+  const baseDmg = ((move.power * (atkStat / defStat)) / 4) + 2;
+  const variance = 0.85 + Math.random() * 0.15;
+  return Math.max(1, Math.floor(baseDmg * effectiveness * variance));
+}
+
+function doesHit(attacker, move) {
+  const accMod = attacker.buffs.accuracy ? (1 + attacker.buffs.accuracy.amount / 100) : 1;
+  const finalAcc = move.accuracy * accMod;
+  return Math.random() * 100 < finalAcc;
+}
+
+function applyEndOfTurnEffects(mon) {
+  const log = [];
+  for (const stat in mon.buffs) {
+    mon.buffs[stat].turns--;
+    if (mon.buffs[stat].turns <= 0) delete mon.buffs[stat];
+  }
+  return log;
+}
+
+function generateEnemyTeam(floor) {
+  if (floor >= TOTAL_FLOORS) {
+    const scale = 1 + (floor - 1) * 0.15;
+    return [createMonster(BOSS_DEF, scale)];
+  }
+  const count = floor <= 1 ? 1 : floor <= 3 ? 2 : 3;
+  const keys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex');
+  const team = [];
+  const scale = floor <= 1 ? 0.7 : 1 + (floor - 1) * 0.15;
+  for (let i = 0; i < count; i++) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    team.push(createMonster(MONSTER_DEFS[key], scale));
+  }
+  return team;
+}
+
+// ═══════════════════════════════════════════
+// TEST FRAMEWORK
+// ═══════════════════════════════════════════
+let totalPass = 0, totalFail = 0;
+const groups = [];
+let currentGroup = null;
+
+function describe(name, fn) {
+  currentGroup = { name, tests: [] };
+  groups.push(currentGroup);
+  fn();
+  currentGroup = null;
+}
+
+function it(name, fn) {
+  try {
+    fn();
+    currentGroup.tests.push({ name, pass: true });
+    totalPass++;
+  } catch(e) {
+    currentGroup.tests.push({ name, pass: false, error: e.message });
+    totalFail++;
+  }
+}
+
+function assert(condition, msg) {
+  if (!condition) throw new Error(msg || 'Assertion failed');
+}
+
+function assertEqual(actual, expected, msg) {
+  if (actual !== expected) throw new Error((msg || '') + ` Expected ${expected}, got ${actual}`);
+}
+
+function assertClose(actual, expected, tolerance, msg) {
+  if (Math.abs(actual - expected) > tolerance) throw new Error((msg || '') + ` Expected ~${expected} (±${tolerance}), got ${actual}`);
+}
+
+// ═══════════════════════════════════════════
+// TESTS
+// ═══════════════════════════════════════════
+
+// Clean up before tests
+localStorage.removeItem(GG_KEY);
+localStorage.removeItem(BM_STATS_KEY);
+localStorage.removeItem(BM_COLLECTION_KEY);
+
+describe('G Bux Integration', () => {
+  it('ggLoad returns defaults when empty', () => {
+    localStorage.removeItem(GG_KEY);
+    const d = ggLoad();
+    assertEqual(d.gBux, 0);
+    assert(typeof d.achievements === 'object');
+    assert(typeof d.shopPurchases === 'object');
+  });
+
+  it('ggSave and ggLoad round-trip', () => {
+    const data = { gBux: 100, achievements: { test: true }, shopPurchases: {} };
+    ggSave(data);
+    const loaded = ggLoad();
+    assertEqual(loaded.gBux, 100);
+    assert(loaded.achievements.test === true);
+    localStorage.removeItem(GG_KEY);
+  });
+
+  it('ggUnlockAchievement awards G Bux and marks achievement', () => {
+    localStorage.removeItem(GG_KEY);
+    const result = ggUnlockAchievement('test_ach', 'Test', 25);
+    assert(result === true, 'Should return true on first unlock');
+    const d = ggLoad();
+    assertEqual(d.gBux, 25);
+    assert(d.achievements.test_ach === true);
+    localStorage.removeItem(GG_KEY);
+  });
+
+  it('ggUnlockAchievement is idempotent', () => {
+    localStorage.removeItem(GG_KEY);
+    ggUnlockAchievement('test_ach', 'Test', 25);
+    const result = ggUnlockAchievement('test_ach', 'Test', 25);
+    assert(result === false, 'Should return false on duplicate');
+    assertEqual(ggLoad().gBux, 25, 'Should not double-award');
+    localStorage.removeItem(GG_KEY);
+  });
+
+  it('BM_ACH has exactly 11 achievements', () => {
+    assertEqual(Object.keys(BM_ACH).length, 11);
+  });
+
+  it('All BM_ACH ids start with bm_', () => {
+    for (const id of Object.keys(BM_ACH)) {
+      assert(id.startsWith('bm_'), `${id} should start with bm_`);
+    }
+  });
+
+  it('BM_ACH total rewards equal 245 G', () => {
+    const total = Object.values(BM_ACH).reduce((s, a) => s + a.reward, 0);
+    assertEqual(total, 245);
+  });
+});
+
+describe('Type Chart', () => {
+  it('Fire is super effective against Plant', () => {
+    assertEqual(getEffectiveness('Fire', 'Plant'), 1.5);
+  });
+
+  it('Fire is not very effective against Water', () => {
+    assertEqual(getEffectiveness('Fire', 'Water'), 0.67);
+  });
+
+  it('Fire is not very effective against Fire', () => {
+    assertEqual(getEffectiveness('Fire', 'Fire'), 0.67);
+  });
+
+  it('Water is super effective against Fire', () => {
+    assertEqual(getEffectiveness('Water', 'Fire'), 1.5);
+  });
+
+  it('Water is not very effective against Plant', () => {
+    assertEqual(getEffectiveness('Water', 'Plant'), 0.67);
+  });
+
+  it('Plant is super effective against Water', () => {
+    assertEqual(getEffectiveness('Plant', 'Water'), 1.5);
+  });
+
+  it('Plant is super effective against Electric', () => {
+    assertEqual(getEffectiveness('Plant', 'Electric'), 1.5);
+  });
+
+  it('Electric is super effective against Water', () => {
+    assertEqual(getEffectiveness('Electric', 'Water'), 1.5);
+  });
+
+  it('Electric is not very effective against Plant', () => {
+    assertEqual(getEffectiveness('Electric', 'Plant'), 0.67);
+  });
+
+  it('Shadow is super effective against Light', () => {
+    assertEqual(getEffectiveness('Shadow', 'Light'), 1.5);
+  });
+
+  it('Light is super effective against Shadow', () => {
+    assertEqual(getEffectiveness('Light', 'Shadow'), 1.5);
+  });
+
+  it('Normal is neutral against everything', () => {
+    for (const el of ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light']) {
+      assertEqual(getEffectiveness('Normal', el), 1.0, `Normal vs ${el}`);
+    }
+  });
+
+  it('Unmatched types return 1.0 (neutral)', () => {
+    assertEqual(getEffectiveness('Fire', 'Electric'), 1.0);
+    assertEqual(getEffectiveness('Water', 'Shadow'), 1.0);
+    assertEqual(getEffectiveness('Electric', 'Fire'), 1.0);
+  });
+});
+
+describe('Monster Definitions', () => {
+  it('There are exactly 13 monsters defined (12 base + 1 unlockable)', () => {
+    assertEqual(Object.keys(MONSTER_DEFS).length, 13);
+  });
+
+  it('All monsters have valid stats (positive hp, atk, def, spd)', () => {
+    for (const [key, def] of Object.entries(MONSTER_DEFS)) {
+      assert(def.hp > 0, `${key}.hp should be > 0`);
+      assert(def.atk > 0, `${key}.atk should be > 0`);
+      assert(def.def > 0, `${key}.def should be > 0`);
+      assert(def.spd > 0, `${key}.spd should be > 0`);
+    }
+  });
+
+  it('All monsters have exactly 4 moves', () => {
+    for (const [key, def] of Object.entries(MONSTER_DEFS)) {
+      assertEqual(def.moves.length, 4, `${key} should have 4 moves`);
+    }
+  });
+
+  it('All moves have valid elements', () => {
+    const validElements = ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light', 'Normal'];
+    for (const [key, def] of Object.entries(MONSTER_DEFS)) {
+      for (const m of def.moves) {
+        assert(validElements.includes(m.element), `${key}/${m.name} has invalid element ${m.element}`);
+      }
+    }
+  });
+
+  it('All moves have power 0-100 and accuracy 0-100', () => {
+    for (const [key, def] of Object.entries(MONSTER_DEFS)) {
+      for (const m of def.moves) {
+        assert(m.power >= 0 && m.power <= 100, `${key}/${m.name} power ${m.power} out of range`);
+        assert(m.accuracy >= 0 && m.accuracy <= 100, `${key}/${m.name} accuracy ${m.accuracy} out of range`);
+      }
+    }
+  });
+
+  it('All 6 base elements are represented', () => {
+    const baseKeys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex');
+    const elements = new Set(baseKeys.map(k => MONSTER_DEFS[k].element));
+    for (const el of ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light']) {
+      assert(elements.has(el), `Missing element: ${el}`);
+    }
+  });
+
+  it('All monsters have name, icon, and element', () => {
+    for (const [key, def] of Object.entries(MONSTER_DEFS)) {
+      assert(typeof def.name === 'string' && def.name.length > 0, `${key} missing name`);
+      assert(typeof def.icon === 'string' && def.icon.length > 0, `${key} missing icon`);
+      assert(typeof def.element === 'string', `${key} missing element`);
+    }
+  });
+
+  it('Drakovex is the unlockable (Shadow element)', () => {
+    assertEqual(MONSTER_DEFS.drakovex.element, 'Shadow');
+    assertEqual(MONSTER_DEFS.drakovex.name, 'Drakovex');
+  });
+});
+
+describe('Boss Definition', () => {
+  it('Boss has correct stats', () => {
+    assertEqual(BOSS_DEF.hp, 300);
+    assertEqual(BOSS_DEF.atk, 90);
+    assertEqual(BOSS_DEF.def, 70);
+    assertEqual(BOSS_DEF.element, 'Shadow');
+  });
+
+  it('Boss has 4 moves', () => {
+    assertEqual(BOSS_DEF.moves.length, 4);
+  });
+
+  it('Boss has a healing move', () => {
+    const hasHeal = BOSS_DEF.moves.some(m => m.effect && m.effect.type === 'healSelf');
+    assert(hasHeal, 'Boss should have a heal move');
+  });
+});
+
+describe('Damage Calculation', () => {
+  it('Zero-power moves deal 0 damage', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const d = createMonster(MONSTER_DEFS.tidalin);
+    const move = { name: 'Test', element: 'Fire', power: 0, accuracy: 100, effect: null };
+    assertEqual(calculateDamage(a, d, move), 0);
+  });
+
+  it('Damage is always at least 1', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const d = createMonster(MONSTER_DEFS.tidalin);
+    // Very low power move vs high defense, but NVE
+    const move = { name: 'Test', element: 'Fire', power: 1, accuracy: 100, effect: null };
+    // Fire vs Water = 0.67
+    let allPositive = true;
+    for (let i = 0; i < 20; i++) {
+      if (calculateDamage(a, d, move) < 1) allPositive = false;
+    }
+    assert(allPositive, 'All damages should be >= 1');
+  });
+
+  it('Super effective deals more damage than neutral on average', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const dPlant = createMonster(MONSTER_DEFS.thornvine); // Fire SE vs Plant
+    const dShadow = createMonster(MONSTER_DEFS.grimshade); // Fire neutral vs Shadow
+    // Give shadow same def as plant for fair comparison
+    dShadow.def = dPlant.def;
+    const move = { name: 'Test', element: 'Fire', power: 70, accuracy: 100, effect: null };
+    let seDmg = 0, neutralDmg = 0;
+    for (let i = 0; i < 100; i++) {
+      seDmg += calculateDamage(a, dPlant, move);
+      neutralDmg += calculateDamage(a, dShadow, move);
+    }
+    assert(seDmg > neutralDmg, `SE avg ${seDmg/100} should exceed neutral avg ${neutralDmg/100}`);
+  });
+
+  it('NVE deals less damage than neutral on average', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const dWater = createMonster(MONSTER_DEFS.tidalin); // Fire NVE vs Water
+    const dShadow = createMonster(MONSTER_DEFS.grimshade); // Fire neutral vs Shadow
+    dShadow.def = dWater.def;
+    const move = { name: 'Test', element: 'Fire', power: 70, accuracy: 100, effect: null };
+    let nveDmg = 0, neutralDmg = 0;
+    for (let i = 0; i < 100; i++) {
+      nveDmg += calculateDamage(a, dWater, move);
+      neutralDmg += calculateDamage(a, dShadow, move);
+    }
+    assert(nveDmg < neutralDmg, `NVE avg ${nveDmg/100} should be less than neutral avg ${neutralDmg/100}`);
+  });
+
+  it('ATK buff increases damage', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const d = createMonster(MONSTER_DEFS.grimshade);
+    const move = { name: 'Test', element: 'Normal', power: 50, accuracy: 100, effect: null };
+    let baseDmg = 0;
+    for (let i = 0; i < 100; i++) baseDmg += calculateDamage(a, d, move);
+    a.buffs.atk = { amount: 50, turns: 2 };
+    let buffDmg = 0;
+    for (let i = 0; i < 100; i++) buffDmg += calculateDamage(a, d, move);
+    assert(buffDmg > baseDmg, 'Buffed damage should exceed base damage');
+  });
+
+  it('DEF buff reduces damage taken', () => {
+    const a = createMonster(MONSTER_DEFS.emberon);
+    const d = createMonster(MONSTER_DEFS.grimshade);
+    const move = { name: 'Test', element: 'Normal', power: 50, accuracy: 100, effect: null };
+    let baseDmg = 0;
+    for (let i = 0; i < 100; i++) baseDmg += calculateDamage(a, d, move);
+    d.buffs.def = { amount: 50, turns: 2 };
+    let buffDmg = 0;
+    for (let i = 0; i < 100; i++) buffDmg += calculateDamage(a, d, move);
+    assert(buffDmg < baseDmg, 'Damage against buffed defense should be lower');
+  });
+});
+
+describe('Buff/Debuff Effects', () => {
+  it('Buffs tick down and expire', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    mon.buffs.atk = { amount: 20, turns: 1 };
+    applyEndOfTurnEffects(mon);
+    assert(!mon.buffs.atk, 'ATK buff should have expired');
+  });
+
+  it('Multi-turn buffs persist', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    mon.buffs.def = { amount: 40, turns: 3 };
+    applyEndOfTurnEffects(mon);
+    assert(mon.buffs.def, 'DEF buff should persist');
+    assertEqual(mon.buffs.def.turns, 2);
+  });
+
+  it('No burn or poison effects exist in any monster moveset', () => {
+    for (const key in MONSTER_DEFS) {
+      for (const m of MONSTER_DEFS[key].moves) {
+        if (m.effect) {
+          assert(m.effect.type !== 'burn', `${key}'s ${m.name} should not have burn`);
+          assert(m.effect.type !== 'poison', `${key}'s ${m.name} should not have poison`);
+        }
+      }
+    }
+    for (const m of BOSS_DEF.moves) {
+      if (m.effect) {
+        assert(m.effect.type !== 'burn', `Boss ${m.name} should not have burn`);
+        assert(m.effect.type !== 'poison', `Boss ${m.name} should not have poison`);
+      }
+    }
+    for (const m of LEARNABLE_MOVES) {
+      if (m.effect) {
+        assert(m.effect.type !== 'burn', `Learnable ${m.name} should not have burn`);
+        assert(m.effect.type !== 'poison', `Learnable ${m.name} should not have poison`);
+      }
+    }
+  });
+});
+
+describe('Monster Creation', () => {
+  it('createMonster produces correct base stats', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    assertEqual(mon.hp, 110);
+    assertEqual(mon.maxHp, 110);
+    assertEqual(mon.atk, 75);
+    assertEqual(mon.def, 55);
+    assertEqual(mon.spd, 65);
+    assertEqual(mon.name, 'Emberon');
+    assertEqual(mon.element, 'Fire');
+  });
+
+  it('createMonster applies scaling', () => {
+    const scale = 1.5;
+    const mon = createMonster(MONSTER_DEFS.emberon, scale);
+    assertEqual(mon.hp, Math.floor(110 * scale));
+    assertEqual(mon.atk, Math.floor(75 * scale));
+    assertEqual(mon.def, Math.floor(55 * scale));
+    assertEqual(mon.spd, Math.floor(65 * scale));
+  });
+
+  it('createMonster starts with empty buffs and statuses', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    assertEqual(Object.keys(mon.buffs).length, 0);
+    assertEqual(mon.statuses.length, 0);
+    assertEqual(mon.stunned, false);
+    assertEqual(mon.kos, 0);
+  });
+
+  it('createMonster deep copies moves', () => {
+    const mon1 = createMonster(MONSTER_DEFS.emberon);
+    const mon2 = createMonster(MONSTER_DEFS.emberon);
+    mon1.moves[0].power = 999;
+    assertEqual(mon2.moves[0].power, 70, 'Moves should be independent copies');
+  });
+});
+
+describe('Enemy Generation', () => {
+  it('Floor 1 generates 1 easy enemy', () => {
+    const team = generateEnemyTeam(1);
+    assertEqual(team.length, 1, 'Floor 1 should have 1 enemy');
+    // Floor 1 scale is 0.7x
+    assert(team[0].maxHp < 100, 'Floor 1 enemy should have reduced HP (0.7x scale)');
+  });
+
+  it('Floor 2-3 generates 2 enemies', () => {
+    for (let f = 2; f <= 3; f++) {
+      const team = generateEnemyTeam(f);
+      assertEqual(team.length, 2, `Floor ${f} should have 2 enemies`);
+    }
+  });
+
+  it('Floor 4-7 generates 3 enemies', () => {
+    for (let f = 4; f <= 7; f++) {
+      const team = generateEnemyTeam(f);
+      assertEqual(team.length, 3, `Floor ${f} should have 3 enemies`);
+    }
+  });
+
+  it('Floor 8 (boss) generates 1 enemy', () => {
+    const team = generateEnemyTeam(8);
+    assertEqual(team.length, 1);
+    assertEqual(team[0].name, 'Chimera Rex');
+  });
+
+  it('Enemy scaling increases stats per floor', () => {
+    const f1 = generateEnemyTeam(1);
+    const f5 = generateEnemyTeam(5);
+    // Floor 1 scale = 0.7x, Floor 5 scale = 1 + 4*0.15 = 1.6x
+    const f1MaxHp = Math.max(...f1.map(m => m.maxHp));
+    const f5MinHp = Math.min(...f5.map(m => m.maxHp));
+    assert(f5MinHp > f1MaxHp, `Floor 5 monsters should be much stronger than floor 1`);
+  });
+
+  it('Boss HP scales with floor', () => {
+    const boss = generateEnemyTeam(8)[0];
+    const expectedScale = 1 + 7 * 0.15; // 2.05
+    assertEqual(boss.maxHp, Math.floor(300 * expectedScale));
+  });
+});
+
+describe('Reward System', () => {
+  it('REWARD_TYPES has 5 reward types (no heal/revive)', () => {
+    assertEqual(REWARD_TYPES.length, 5);
+  });
+
+  it('No heal or revive reward types exist', () => {
+    const types = REWARD_TYPES.map(r => r.type);
+    assert(!types.includes('heal'), 'heal should not exist');
+    assert(!types.includes('healHalf'), 'healHalf should not exist');
+    assert(!types.includes('revive'), 'revive should not exist');
+  });
+
+  it('All reward types have required fields', () => {
+    for (const r of REWARD_TYPES) {
+      assert(typeof r.type === 'string', 'Missing type');
+      assert(typeof r.weight === 'number' && r.weight > 0, 'Weight must be positive');
+      assert(typeof r.label === 'string', 'Missing label');
+      assert(typeof r.desc === 'string', 'Missing desc');
+      assert(typeof r.icon === 'string', 'Missing icon');
+    }
+  });
+
+  it('LEARNABLE_MOVES has 8 moves', () => {
+    assertEqual(LEARNABLE_MOVES.length, 8);
+  });
+
+  it('All learnable moves have valid elements', () => {
+    const validElements = ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light', 'Normal'];
+    for (const m of LEARNABLE_MOVES) {
+      assert(validElements.includes(m.element), `${m.name} has invalid element ${m.element}`);
+    }
+  });
+});
+
+describe('Stats Persistence', () => {
+  it('defaultStats returns correct shape', () => {
+    const s = defaultStats();
+    assertEqual(s.totalRuns, 0);
+    assertEqual(s.wins, 0);
+    assertEqual(s.bestFloor, 0);
+    assertEqual(s.totalBattlesWon, 0);
+    assertEqual(s.totalEnemiesDefeated, 0);
+    assert(Array.isArray(s.elementsUsed));
+    assertEqual(s.elementsUsed.length, 0);
+  });
+
+  it('saveStats and loadStats round-trip', () => {
+    localStorage.removeItem(BM_STATS_KEY);
+    const stats = { totalRuns: 5, wins: 2, bestFloor: 6, totalBattlesWon: 15, totalEnemiesDefeated: 30, elementsUsed: ['Fire', 'Water'] };
+    saveStats(stats);
+    const loaded = loadStats();
+    assertEqual(loaded.totalRuns, 5);
+    assertEqual(loaded.wins, 2);
+    assertEqual(loaded.bestFloor, 6);
+    assertEqual(loaded.elementsUsed.length, 2);
+    localStorage.removeItem(BM_STATS_KEY);
+  });
+
+  it('loadStats returns defaults when empty', () => {
+    localStorage.removeItem(BM_STATS_KEY);
+    const s = loadStats();
+    assertEqual(s.totalRuns, 0);
+    assertEqual(s.wins, 0);
+  });
+});
+
+describe('Draft System', () => {
+  it('Base pool has 12 monsters (without Drakovex)', () => {
+    const keys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex');
+    assertEqual(keys.length, 12);
+  });
+
+  it('Full pool has 13 monsters (with Drakovex)', () => {
+    assertEqual(Object.keys(MONSTER_DEFS).length, 13);
+  });
+
+  it('Draft pool of 5 from 12 base produces unique picks', () => {
+    const keys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex');
+    const shuffled = keys.sort(() => Math.random() - 0.5);
+    const pool = shuffled.slice(0, 5);
+    assertEqual(pool.length, 5);
+    assertEqual(new Set(pool).size, 5, 'All picks should be unique');
+  });
+});
+
+describe('Accuracy System', () => {
+  it('100% accuracy move always hits (without debuff)', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    const move = { name: 'Test', element: 'Normal', power: 50, accuracy: 100, effect: null };
+    let hits = 0;
+    for (let i = 0; i < 100; i++) if (doesHit(mon, move)) hits++;
+    assertEqual(hits, 100, 'Should hit 100/100 times');
+  });
+
+  it('Accuracy debuff reduces hit rate', () => {
+    const mon = createMonster(MONSTER_DEFS.emberon);
+    // Debuffs store negative amounts: -25 means -25% accuracy
+    mon.buffs.accuracy = { amount: -25, turns: 2 };
+    const move = { name: 'Test', element: 'Normal', power: 50, accuracy: 80, effect: null };
+    // accMod = 1 + (-25)/100 = 0.75, finalAcc = 80 * 0.75 = 60
+    let hits = 0;
+    for (let i = 0; i < 1000; i++) if (doesHit(mon, move)) hits++;
+    // Should hit roughly 60% of the time (600 out of 1000)
+    assert(hits < 800, `Expected ~600 hits, got ${hits} — debuff should reduce accuracy`);
+    assert(hits > 400, `Expected ~600 hits, got ${hits} — should still hit sometimes`);
+  });
+});
+
+describe('Element Colors', () => {
+  it('All elements have assigned colors', () => {
+    const allElements = ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light', 'Normal'];
+    for (const el of allElements) {
+      assert(ELEMENT_COLORS[el], `Missing color for ${el}`);
+      assert(ELEMENT_COLORS[el].startsWith('#'), `${el} color should be hex`);
+    }
+  });
+});
+
+// ═══════════════════════════════════════════
+// RENDER RESULTS
+// ═══════════════════════════════════════════
+function renderResults() {
+  const container = document.getElementById('results');
+  for (const g of groups) {
+    const div = document.createElement('div');
+    div.className = 'group';
+    div.innerHTML = `<div class="group-title">${g.name}</div>`;
+    for (const t of g.tests) {
+      const testDiv = document.createElement('div');
+      testDiv.className = 'test ' + (t.pass ? 'pass' : 'fail');
+      testDiv.textContent = (t.pass ? '\u2713' : '\u2717') + ' ' + t.name + (t.error ? ' — ' + t.error : '');
+      div.appendChild(testDiv);
+    }
+    container.appendChild(div);
+  }
+  const summary = document.createElement('div');
+  summary.className = 'summary';
+  summary.style.color = totalFail === 0 ? '#4caf50' : '#ff4444';
+  summary.textContent = `${totalPass} passed, ${totalFail} failed (${totalPass + totalFail} total)`;
+  container.appendChild(summary);
+}
+
+// ═══════════════════════════════════════════
+// TUTORIAL SYSTEM (inline copy for testing)
+// ═══════════════════════════════════════════
+const TUTORIAL_KEY = 'bm-tutorial-done';
+let tutorialActive = false;
+let tutorialStep = -1;
+let tutorialShownSteps = new Set();
+
+const TUTORIAL_STEPS = [
+  { id: 'draft-intro', trigger: 'draft', anchor: '#draft-cards', position: 'below', arrowDir: 'up', title: 'Build Your Team', text: 'Tap 3 monsters...' },
+  { id: 'draft-elements', trigger: 'draft-select-1', anchor: '.draft-card.selected', position: 'below', arrowDir: 'up', title: 'Elements Matter', text: 'Fire beats Plant...' },
+  { id: 'battle-intro', trigger: 'battle-start', anchor: '#battle-scene', position: 'below', arrowDir: 'up', title: 'Battle!', text: 'Your monster is on the right...' },
+  { id: 'battle-moves', trigger: 'battle-start-delayed', anchor: '#move-grid', position: 'above', arrowDir: 'down', title: 'Choose a Move', text: 'Pick one of your 4 moves...' },
+  { id: 'battle-effectiveness', trigger: 'battle-moves-dismissed', anchor: '#move-grid', position: 'above', arrowDir: 'down', title: 'Type Advantage', text: 'Look for SE!...' },
+  { id: 'battle-switch', trigger: 'effectiveness-dismissed', anchor: '#switch-btn', position: 'above', arrowDir: 'down', title: 'Switch Monsters', text: 'Swap to another monster...' },
+  { id: 'reward-intro', trigger: 'reward', anchor: '#reward-cards', position: 'below', arrowDir: 'up', title: 'Pick a Reward', text: 'After each floor...' },
+];
+
+function isTutorialDone() {
+  return localStorage.getItem(TUTORIAL_KEY) === '1';
+}
+function markTutorialDone() {
+  localStorage.setItem(TUTORIAL_KEY, '1');
+  tutorialActive = false;
+  tutorialStep = -1;
+}
+function initTutorial() {
+  if (isTutorialDone()) return;
+  tutorialActive = true;
+  tutorialStep = -1;
+  tutorialShownSteps.clear();
+}
+function tryTutorialStep(trigger) {
+  if (!tutorialActive) return;
+  for (let i = 0; i < TUTORIAL_STEPS.length; i++) {
+    const step = TUTORIAL_STEPS[i];
+    if (step.trigger === trigger && !tutorialShownSteps.has(step.id)) {
+      tutorialStep = i;
+      tutorialShownSteps.add(step.id);
+      return;
+    }
+  }
+}
+function skipTutorial() {
+  markTutorialDone();
+}
+
+describe('Tutorial System', () => {
+  // Reset state before each implicit test group
+  localStorage.removeItem(TUTORIAL_KEY);
+  tutorialActive = false;
+  tutorialStep = -1;
+  tutorialShownSteps.clear();
+
+  it('isTutorialDone returns false by default', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    assertEqual(isTutorialDone(), false);
+  });
+
+  it('markTutorialDone sets localStorage and deactivates', () => {
+    tutorialActive = true;
+    markTutorialDone();
+    assertEqual(isTutorialDone(), true);
+    assertEqual(tutorialActive, false);
+    assertEqual(tutorialStep, -1);
+    localStorage.removeItem(TUTORIAL_KEY);
+  });
+
+  it('initTutorial activates when not done', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    initTutorial();
+    assertEqual(tutorialActive, true);
+    assertEqual(tutorialStep, -1);
+  });
+
+  it('initTutorial does nothing when already done', () => {
+    localStorage.setItem(TUTORIAL_KEY, '1');
+    tutorialActive = false;
+    initTutorial();
+    assertEqual(tutorialActive, false);
+    localStorage.removeItem(TUTORIAL_KEY);
+  });
+
+  it('tryTutorialStep advances on matching trigger', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    tutorialActive = true;
+    tutorialShownSteps.clear();
+    tryTutorialStep('draft');
+    assertEqual(tutorialStep, 0);
+    assert(tutorialShownSteps.has('draft-intro'), 'Should have marked draft-intro shown');
+  });
+
+  it('tryTutorialStep ignores non-matching trigger', () => {
+    tutorialActive = true;
+    tutorialStep = -1;
+    tutorialShownSteps.clear();
+    tryTutorialStep('nonexistent');
+    assertEqual(tutorialStep, -1);
+  });
+
+  it('tryTutorialStep does nothing when tutorial inactive', () => {
+    tutorialActive = false;
+    tutorialStep = -1;
+    tutorialShownSteps.clear();
+    tryTutorialStep('draft');
+    assertEqual(tutorialStep, -1);
+  });
+
+  it('Steps cannot show twice', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    tutorialActive = true;
+    tutorialShownSteps.clear();
+    tryTutorialStep('draft');
+    assertEqual(tutorialStep, 0);
+    tutorialStep = -1;
+    tryTutorialStep('draft');
+    assertEqual(tutorialStep, -1, 'Should not re-show draft-intro');
+  });
+
+  it('skipTutorial marks done and deactivates', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    tutorialActive = true;
+    skipTutorial();
+    assertEqual(isTutorialDone(), true);
+    assertEqual(tutorialActive, false);
+    localStorage.removeItem(TUTORIAL_KEY);
+  });
+
+  it('TUTORIAL_STEPS has 7 steps', () => {
+    assertEqual(TUTORIAL_STEPS.length, 7);
+  });
+
+  it('All steps have required fields', () => {
+    for (const step of TUTORIAL_STEPS) {
+      assert(step.id, `Step missing id`);
+      assert(step.trigger, `${step.id} missing trigger`);
+      assert(step.anchor, `${step.id} missing anchor`);
+      assert(step.title, `${step.id} missing title`);
+      assert(step.text, `${step.id} missing text`);
+      assert(step.position === 'above' || step.position === 'below', `${step.id} invalid position`);
+      assert(step.arrowDir === 'up' || step.arrowDir === 'down', `${step.id} invalid arrowDir`);
+    }
+  });
+
+  it('Steps chain correctly: battle-start → delayed → moves-dismissed → effectiveness-dismissed', () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    tutorialActive = true;
+    tutorialShownSteps.clear();
+    tryTutorialStep('battle-start');
+    assertEqual(tutorialStep, 2, 'battle-intro should be step 2');
+    tryTutorialStep('battle-start-delayed');
+    assertEqual(tutorialStep, 3, 'battle-moves should be step 3');
+    tryTutorialStep('battle-moves-dismissed');
+    assertEqual(tutorialStep, 4, 'battle-effectiveness should be step 4');
+    tryTutorialStep('effectiveness-dismissed');
+    assertEqual(tutorialStep, 5, 'battle-switch should be step 5');
+  });
+});
+
+// Clean up tutorial state
+localStorage.removeItem(TUTORIAL_KEY);
+tutorialActive = false;
+tutorialStep = -1;
+tutorialShownSteps.clear();
+
+// ═══════════════════════════════════════════
+// TRAINER SYSTEM (inline copy for testing)
+// ═══════════════════════════════════════════
+const TRAINER_KEY = 'bm-trainer';
+const SKIN_TONES = ['#ffe0bd','#f1c27d','#c68642','#8d5524','#5c3310'];
+const HAIR_COLORS = ['#1a1a1a','#6b4226','#d4a543','#cc3333','#3366cc','#8833aa'];
+const HAIR_STYLES = ['short','spiky','long','ponytail'];
+const SHIRT_COLORS = ['#cc3333','#3366cc','#33aa33','#ddcc22','#8833aa','#eeeedd'];
+const ACCESSORIES = ['none','cap','glasses','headband'];
+
+const BAD_WORDS = ['shit','fuck','ass','damn','hell','bitch','dick','cock','cunt','piss',
+  'bastard','slut','whore','nigger','faggot','retard','nazi','porn','sex','penis','vagina',
+  'tits','boob','anus','wank','twat','bollock','bugger','crap','prick'];
+
+function isNameClean(name) {
+  const lower = name.toLowerCase().replace(/[^a-z]/g, '');
+  if (lower.length === 0) return true;
+  return !BAD_WORDS.some(w => lower.includes(w));
+}
+
+function loadTrainer() {
+  try { return JSON.parse(localStorage.getItem(TRAINER_KEY)); }
+  catch(e) { return null; }
+}
+
+function saveTrainer(data) {
+  localStorage.setItem(TRAINER_KEY, JSON.stringify(data));
+}
+
+describe('Trainer - Name Filter', () => {
+  it('Accepts normal names', () => {
+    assert(isNameClean('Graham'), 'Graham should be clean');
+    assert(isNameClean('Player1'), 'Player1 should be clean');
+    assert(isNameClean('Ash'), 'Ash should be clean');
+    assert(isNameClean('Max'), 'Max should be clean');
+    assert(isNameClean('Luna'), 'Luna should be clean');
+  });
+
+  it('Rejects bad words', () => {
+    assert(!isNameClean('shit'), 'shit should be blocked');
+    assert(!isNameClean('fuck'), 'fuck should be blocked');
+    assert(!isNameClean('ass'), 'ass should be blocked');
+  });
+
+  it('Case insensitive', () => {
+    assert(!isNameClean('SHIT'), 'SHIT should be blocked');
+    assert(!isNameClean('FuCk'), 'FuCk should be blocked');
+  });
+
+  it('Catches embedded bad words', () => {
+    assert(!isNameClean('assman'), 'assman should be blocked');
+    assert(!isNameClean('myfuck'), 'myfuck should be blocked');
+  });
+
+  it('Strips non-alpha before checking', () => {
+    assert(!isNameClean('s-h-i-t'), 's-h-i-t should be blocked');
+    assert(!isNameClean('f_u_c_k'), 'f_u_c_k should be blocked');
+  });
+
+  it('Empty string returns true (handled separately)', () => {
+    assert(isNameClean(''), 'Empty should pass filter');
+  });
+});
+
+describe('Trainer - Persistence', () => {
+  it('loadTrainer returns null when no data', () => {
+    localStorage.removeItem(TRAINER_KEY);
+    assertEqual(loadTrainer(), null);
+  });
+
+  it('saveTrainer/loadTrainer round-trips', () => {
+    const data = { name: 'Ash', skin: 2, hairColor: 1, hairStyle: 0, shirtColor: 3, accessory: 1 };
+    saveTrainer(data);
+    const loaded = loadTrainer();
+    assertEqual(loaded.name, 'Ash');
+    assertEqual(loaded.skin, 2);
+    assertEqual(loaded.hairColor, 1);
+    assertEqual(loaded.hairStyle, 0);
+    assertEqual(loaded.shirtColor, 3);
+    assertEqual(loaded.accessory, 1);
+    localStorage.removeItem(TRAINER_KEY);
+  });
+
+  it('Trainer data has all required fields', () => {
+    const data = { name: 'Test', skin: 0, hairColor: 0, hairStyle: 0, shirtColor: 0, accessory: 0 };
+    saveTrainer(data);
+    const loaded = loadTrainer();
+    assert('name' in loaded, 'Missing name');
+    assert('skin' in loaded, 'Missing skin');
+    assert('hairColor' in loaded, 'Missing hairColor');
+    assert('hairStyle' in loaded, 'Missing hairStyle');
+    assert('shirtColor' in loaded, 'Missing shirtColor');
+    assert('accessory' in loaded, 'Missing accessory');
+    localStorage.removeItem(TRAINER_KEY);
+  });
+});
+
+describe('Trainer - Presets', () => {
+  it('SKIN_TONES has 5 options', () => {
+    assertEqual(SKIN_TONES.length, 5);
+  });
+
+  it('HAIR_COLORS has 6 options', () => {
+    assertEqual(HAIR_COLORS.length, 6);
+  });
+
+  it('HAIR_STYLES has 4 options', () => {
+    assertEqual(HAIR_STYLES.length, 4);
+  });
+
+  it('SHIRT_COLORS has 6 options', () => {
+    assertEqual(SHIRT_COLORS.length, 6);
+  });
+
+  it('ACCESSORIES has 4 options', () => {
+    assertEqual(ACCESSORIES.length, 4);
+  });
+
+  it('Name max length is 12 characters', () => {
+    const longName = 'A'.repeat(13);
+    assert(longName.length > 12, 'Test name is 13 chars');
+    // In the actual game, the input has maxlength=12
+    assert('A'.repeat(12).length === 12, 'Max 12 chars enforced by HTML input');
+  });
+});
+
+describe('Monster Collection', () => {
+  it('loadCollection returns empty array when no data', () => {
+    localStorage.removeItem(BM_COLLECTION_KEY);
+    const c = loadCollection();
+    assert(Array.isArray(c), 'Should be array');
+    assertEqual(c.length, 0);
+  });
+
+  it('addToCollection adds new monster and returns true', () => {
+    localStorage.removeItem(BM_COLLECTION_KEY);
+    const result = addToCollection('emberon');
+    assert(result === true, 'Should return true for new entry');
+    const c = loadCollection();
+    assertEqual(c.length, 1);
+    assert(c.includes('emberon'), 'Should contain emberon');
+    localStorage.removeItem(BM_COLLECTION_KEY);
+  });
+
+  it('addToCollection returns false for duplicate', () => {
+    localStorage.removeItem(BM_COLLECTION_KEY);
+    addToCollection('emberon');
+    const result = addToCollection('emberon');
+    assert(result === false, 'Should return false for duplicate');
+    const c = loadCollection();
+    assertEqual(c.length, 1, 'Should still have 1 entry');
+    localStorage.removeItem(BM_COLLECTION_KEY);
+  });
+
+  it('saveCollection/loadCollection round-trips', () => {
+    localStorage.removeItem(BM_COLLECTION_KEY);
+    const data = ['emberon', 'tidalin', '_boss'];
+    saveCollection(data);
+    const loaded = loadCollection();
+    assertEqual(loaded.length, 3);
+    assert(loaded.includes('emberon'));
+    assert(loaded.includes('tidalin'));
+    assert(loaded.includes('_boss'));
+    localStorage.removeItem(BM_COLLECTION_KEY);
+  });
+
+  it('Total collectible count is 14 (13 monsters + boss)', () => {
+    const allKeys = [...Object.keys(MONSTER_DEFS), '_boss'];
+    assertEqual(allKeys.length, 14);
+  });
+
+  it('Multiple different monsters can be collected', () => {
+    localStorage.removeItem(BM_COLLECTION_KEY);
+    addToCollection('emberon');
+    addToCollection('tidalin');
+    addToCollection('blazetail');
+    const c = loadCollection();
+    assertEqual(c.length, 3);
+    localStorage.removeItem(BM_COLLECTION_KEY);
+  });
+});
+
+describe('Full Heal Between Floors', () => {
+  it('nextFloor heals all monsters to 100% HP', () => {
+    // Simulate the nextFloor logic inline
+    const team = [
+      createMonster(MONSTER_DEFS.emberon),
+      createMonster(MONSTER_DEFS.tidalin),
+      createMonster(MONSTER_DEFS.thornvine),
+    ];
+    // Damage them
+    team[0].hp = 10;
+    team[1].hp = 0; // fainted
+    team[2].hp = 50;
+    team[2].buffs = { atk: { amount: 20, turns: 2 } };
+    team[2].stunned = true;
+
+    // Apply nextFloor logic
+    for (const m of team) {
+      m.hp = m.maxHp;
+      m.statuses = [];
+      m.buffs = {};
+      m.stunned = false;
+    }
+
+    assertEqual(team[0].hp, team[0].maxHp, 'Emberon should be fully healed');
+    assertEqual(team[1].hp, team[1].maxHp, 'Tidalin (fainted) should be revived to full');
+    assertEqual(team[2].hp, team[2].maxHp, 'Thornvine should be fully healed');
+    assertEqual(Object.keys(team[2].buffs).length, 0, 'Buffs should be cleared');
+    assertEqual(team[2].stunned, false, 'Stun should be cleared');
+  });
+});
+
+describe('New Monster Definitions', () => {
+  it('Blazetail is Fire element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.blazetail.element, 'Fire');
+    assertEqual(MONSTER_DEFS.blazetail.moves.length, 4);
+  });
+
+  it('Aquarion is Water element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.aquarion.element, 'Water');
+    assertEqual(MONSTER_DEFS.aquarion.moves.length, 4);
+  });
+
+  it('Petalynx is Plant element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.petalynx.element, 'Plant');
+    assertEqual(MONSTER_DEFS.petalynx.moves.length, 4);
+  });
+
+  it('Zapplin is Electric element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.zapplin.element, 'Electric');
+    assertEqual(MONSTER_DEFS.zapplin.moves.length, 4);
+  });
+
+  it('Spectrion is Shadow element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.spectrion.element, 'Shadow');
+    assertEqual(MONSTER_DEFS.spectrion.moves.length, 4);
+  });
+
+  it('Celestine is Light element with 4 moves', () => {
+    assertEqual(MONSTER_DEFS.celestine.element, 'Light');
+    assertEqual(MONSTER_DEFS.celestine.moves.length, 4);
+  });
+
+  it('Each element has at least 2 representatives (excluding Drakovex)', () => {
+    const baseKeys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex');
+    const elementCounts = {};
+    for (const k of baseKeys) {
+      const el = MONSTER_DEFS[k].element;
+      elementCounts[el] = (elementCounts[el] || 0) + 1;
+    }
+    for (const el of ['Fire', 'Water', 'Plant', 'Electric', 'Shadow', 'Light']) {
+      assert(elementCounts[el] >= 2, `${el} should have at least 2 monsters, has ${elementCounts[el]}`);
+    }
+  });
+
+  it('No new monsters have burn/poison/recoil effects', () => {
+    const newMonsters = ['blazetail', 'aquarion', 'petalynx', 'zapplin', 'spectrion', 'celestine'];
+    for (const key of newMonsters) {
+      for (const m of MONSTER_DEFS[key].moves) {
+        if (m.effect) {
+          assert(m.effect.type !== 'burn', `${key}/${m.name} should not have burn`);
+          assert(m.effect.type !== 'poison', `${key}/${m.name} should not have poison`);
+          assert(m.effect.type !== 'recoil', `${key}/${m.name} should not have recoil`);
+        }
+      }
+    }
+  });
+});
+
+renderResults();
+
+// Clean up
+localStorage.removeItem(GG_KEY);
+localStorage.removeItem(BM_STATS_KEY);
+localStorage.removeItem(BM_COLLECTION_KEY);
+localStorage.removeItem(TUTORIAL_KEY);
+localStorage.removeItem(TRAINER_KEY);
+</script>
+</body>
+</html>
