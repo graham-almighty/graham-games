@@ -136,18 +136,26 @@
   <div class="mode-title" id="mode-map-name"></div>
   <div style="font-family:'Bangers',cursive;color:#ff80ab;font-size:1rem;margin-bottom:14px">HOW MANY PLAYERS?</div>
   <div style="display:flex;gap:10px;justify-content:center">
-    <button class="btn" onclick="startRace(1)">1</button>
-    <button class="btn" onclick="startRace(2)">2</button>
-    <button class="btn" onclick="startRace(3)">3</button>
-    <button class="btn" onclick="startRace(4)">4</button>
+    <button class="btn" onclick="pickPlayers(1)">1</button>
+    <button class="btn" onclick="pickPlayers(2)">2</button>
+    <button class="btn" onclick="pickPlayers(3)">3</button>
+    <button class="btn" onclick="pickPlayers(4)">4</button>
   </div>
   <div style="color:#666;font-size:0.6rem;margin-top:12px;line-height:1.6">
-    P1 = WASD + SPACE<br>
-    P2 = ARROWS + ENTER<br>
-    P3 = IJKL + B<br>
-    P4 = NUMPAD 8456 + 0
+    P1 = WASD<br>
+    P2 = ARROWS<br>
+    P3 = IJKL<br>
+    P4 = NUMPAD 8456
   </div>
   <button class="btn btn-sm" onclick="showMapSelect()" style="margin-top:12px">BACK</button>
+</div>
+
+<!-- Bot Select -->
+<div class="screen" id="bot-screen">
+  <div class="mode-title" id="bot-map-name"></div>
+  <div style="font-family:'Bangers',cursive;color:#ff80ab;font-size:1rem;margin-bottom:14px">HOW MANY BOTS?</div>
+  <div style="display:flex;gap:10px;justify-content:center" id="bot-buttons"></div>
+  <button class="btn btn-sm" onclick="showModeSelect()" style="margin-top:12px">BACK</button>
 </div>
 
 <!-- Game -->
@@ -159,7 +167,6 @@
       <div class="hud-item" id="hud-pos">1ST</div>
     </div>
     <div class="hud-right">
-      <div class="hud-item" id="hud-powerup"></div>
       <div class="hud-item" id="hud-speed"></div>
     </div>
   </div>
@@ -170,7 +177,7 @@
 <div class="screen" id="results-screen">
   <div class="results-title" id="results-title">RACE OVER</div>
   <div class="results-list" id="results-list"></div>
-  <button class="btn" onclick="startRace(lastMode)">RACE AGAIN</button>
+  <button class="btn" onclick="startRace(lastMode, lastBots)">RACE AGAIN</button>
   <button class="btn btn-sm" onclick="showMapSelect()">CHOOSE MAP</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
 </div>
@@ -219,8 +226,6 @@ const DD_ACH = {
   dd_all_maps:     { name: 'World Tour',       reward: 25 },
   dd_no_walls:     { name: 'Clean Driver',     reward: 20 },
   dd_drift_king:   { name: 'Drift King',       reward: 15 },
-  dd_oil_slick:    { name: 'Dirty Tricks',     reward: 10 },
-  dd_speed_demon:  { name: 'Speed Demon',      reward: 15 },
   dd_photo_finish: { name: 'Photo Finish',     reward: 20 },
   dd_unbeatable:   { name: 'Unbeatable',       reward: 30 },
   dd_human_victor: { name: 'Rivalry',          reward: 50 },
@@ -246,20 +251,6 @@ const SFX = {
     o.type = 'sawtooth'; o.frequency.value = 80;
     g.gain.setValueAtTime(0.03, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
     o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.1);
-  },
-  boost() {
-    const ctx = getAudio(), t = ctx.currentTime;
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = 'sawtooth'; o.frequency.setValueAtTime(200, t); o.frequency.exponentialRampToValueAtTime(600, t + 0.3);
-    g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.3);
-  },
-  pickup() {
-    const ctx = getAudio(), t = ctx.currentTime;
-    const o = ctx.createOscillator(), g = ctx.createGain();
-    o.type = 'sine'; o.frequency.setValueAtTime(600, t); o.frequency.exponentialRampToValueAtTime(1200, t + 0.15);
-    g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + 0.15);
   },
   crash() {
     const ctx = getAudio(), t = ctx.currentTime;
@@ -310,12 +301,6 @@ const DRIFT_THRESHOLD = 120;
 const DRIFT_FACTOR = 0.92;
 const TRACK_WIDTH = 120;
 const TOTAL_LAPS = 3;
-const POWERUP_RESPAWN = 10;
-const BOOST_DURATION = 2;
-const BOOST_MULTIPLIER = 1.6;
-const SHIELD_DURATION = 5;
-const OIL_LIFETIME = 15;
-const SPINOUT_DURATION = 1.0;
 const CAR_COLORS = ['#e91e63', '#2196f3', '#4caf50', '#ff9800'];
 const CAR_NAMES = ['Pink', 'Blue', 'Green', 'Orange'];
 
@@ -418,9 +403,8 @@ const MAPS = [
 let gameState = 'title';
 let currentMap = 0;
 let lastMode = 1;
+let lastBots = 3;
 let cars = [];
-let powerups = [];
-let oilSlicks = [];
 let particles = [];
 let raceTime = 0;
 let raceFinished = false;
@@ -435,8 +419,6 @@ let cameraX = 0, cameraY = 0, cameraZoom = 1;
 // Per-race tracking
 let wallHits = 0;
 let driftTime = 0;
-let boostsUsed = 0;
-let oilHits = 0;
 
 const canvas = document.getElementById('race-canvas');
 const ctx = canvas.getContext('2d');
@@ -509,6 +491,28 @@ function drawTrackPreview(pctx, map, w, h) {
   pctx.beginPath();
   pctx.arc(sx0, sy0, 3, 0, Math.PI * 2);
   pctx.fill();
+}
+
+let pendingPlayers = 1;
+
+function pickPlayers(n) {
+  pendingPlayers = n;
+  const maxBots = 4 - n;
+  if (maxBots === 0) {
+    startRace(n, 0);
+    return;
+  }
+  document.getElementById('bot-map-name').textContent = MAPS[currentMap].name;
+  const container = document.getElementById('bot-buttons');
+  container.innerHTML = '';
+  for (let i = 0; i <= maxBots; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = i;
+    btn.onclick = () => startRace(n, i);
+    container.appendChild(btn);
+  }
+  showScreen('bot-screen');
 }
 
 function showModeSelect() {
@@ -598,10 +602,6 @@ function createCar(index, isPlayer, controlScheme) {
     prevWayIdx: -1,
     finishTime: 0,
     finished: false,
-    powerup: null, // { type: 'boost'|'oil'|'shield' }
-    boostTimer: 0,
-    shieldTimer: 0,
-    spinTimer: 0,
     driftTimer: 0,
     isDrifting: false,
     skidVX: 0,
@@ -612,33 +612,28 @@ function createCar(index, isPlayer, controlScheme) {
 // ═══════════════════════════════════════════
 // RACE START
 // ═══════════════════════════════════════════
-function startRace(numPlayers) {
+function startRace(numPlayers, numBots) {
   lastMode = numPlayers;
+  lastBots = numBots;
+  const totalCars = numPlayers + numBots;
   const map = MAPS[currentMap];
   cars = [];
-  powerups = [];
-  oilSlicks = [];
   particles = [];
   raceTime = 0;
   raceFinished = false;
   finishOrder = [];
   wallHits = 0;
   driftTime = 0;
-  boostsUsed = 0;
-  oilHits = 0;
   cameraZoom = 1;
 
   const schemes = ['wasd', 'arrows', 'ijkl', 'numpad'];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < totalCars; i++) {
     if (i < numPlayers) {
       cars.push(createCar(i, true, schemes[i]));
     } else {
       cars.push(createCar(i, false, 'cpu'));
     }
   }
-
-  // Spawn powerups along track
-  spawnPowerups();
 
   // Countdown
   gameState = 'countdown';
@@ -651,23 +646,6 @@ function startRace(numPlayers) {
   lastTime = performance.now();
   if (animFrame) cancelAnimationFrame(animFrame);
   animFrame = requestAnimationFrame(gameLoop);
-}
-
-function spawnPowerups() {
-  const map = MAPS[currentMap];
-  const wp = map.waypoints;
-  const count = Math.floor(wp.length / 3);
-  for (let i = 0; i < count; i++) {
-    const idx = Math.floor((i / count) * wp.length + wp.length * 0.15) % wp.length;
-    const types = ['boost', 'oil', 'shield'];
-    powerups.push({
-      x: wp[idx][0] + (Math.random() - 0.5) * 30,
-      y: wp[idx][1] + (Math.random() - 0.5) * 30,
-      type: types[i % 3],
-      active: true,
-      respawnTimer: 0,
-    });
-  }
 }
 
 // ═══════════════════════════════════════════
@@ -696,7 +674,6 @@ function getInput(car) {
       brake: keys['s'],
       left: keys['a'],
       right: keys['d'],
-      usePowerup: keys[' '],
     };
   } else if (car.controlScheme === 'arrows') {
     return {
@@ -704,7 +681,6 @@ function getInput(car) {
       brake: keys['ArrowDown'],
       left: keys['ArrowLeft'],
       right: keys['ArrowRight'],
-      usePowerup: keys['enter'],
     };
   } else if (car.controlScheme === 'ijkl') {
     return {
@@ -712,7 +688,6 @@ function getInput(car) {
       brake: keys['k'],
       left: keys['j'],
       right: keys['l'],
-      usePowerup: keys['b'],
     };
   } else if (car.controlScheme === 'numpad') {
     return {
@@ -720,10 +695,9 @@ function getInput(car) {
       brake: keys['5'],
       left: keys['4'],
       right: keys['6'],
-      usePowerup: keys['0'],
     };
   }
-  return { accel: false, brake: false, left: false, right: false, usePowerup: false };
+  return { accel: false, brake: false, left: false, right: false };
 }
 
 // ═══════════════════════════════════════════
@@ -772,7 +746,7 @@ function getAIInput(car) {
   while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-  const input = { accel: true, brake: false, left: false, right: false, usePowerup: false };
+  const input = { accel: true, brake: false, left: false, right: false };
 
   // Tight steering — smaller deadzone for precise cornering
   if (angleDiff > 0.05) input.right = true;
@@ -793,50 +767,6 @@ function getAIInput(car) {
   if (Math.abs(upcomingTurn) > 0.4 && car.speed > MAX_SPEED * 0.6) input.brake = true;
   if (Math.abs(angleDiff) > 0.6 && car.speed > MAX_SPEED * 0.4) input.brake = true;
 
-  // Use powerups smartly
-  if (car.powerup) {
-    if (car.powerup.type === 'boost' && Math.abs(angleDiff) < 0.2 && car.speed > MAX_SPEED * 0.5) {
-      // Use boost on straight sections
-      input.usePowerup = true;
-    } else if (car.powerup.type === 'oil') {
-      // Drop oil when another car is close behind
-      for (const other of cars) {
-        if (other === car || other.finished) continue;
-        const behindDist = Math.hypot(car.x - other.x, car.y - other.y);
-        if (behindDist < 60 && other.wayIdx <= car.wayIdx + 2) {
-          input.usePowerup = true;
-          break;
-        }
-      }
-    } else if (car.powerup.type === 'shield') {
-      // Use shield when near other cars
-      for (const other of cars) {
-        if (other === car || other.finished) continue;
-        if (Math.hypot(car.x - other.x, car.y - other.y) < 40) {
-          input.usePowerup = true;
-          break;
-        }
-      }
-    }
-  }
-
-  // Avoid oil slicks
-  for (const oil of oilSlicks) {
-    if (oil.owner === car.index) continue;
-    const oilDist = Math.hypot(car.x - oil.x, car.y - oil.y);
-    if (oilDist < 50) {
-      const oilAngle = Math.atan2(oil.y - car.y, oil.x - car.x);
-      let oilDiff = oilAngle - car.angle;
-      while (oilDiff > Math.PI) oilDiff -= Math.PI * 2;
-      while (oilDiff < -Math.PI) oilDiff += Math.PI * 2;
-      // Steer away from oil
-      if (Math.abs(oilDiff) < 0.8) {
-        if (oilDiff > 0) input.left = true;
-        else input.right = true;
-      }
-    }
-  }
-
   return input;
 }
 
@@ -846,21 +776,8 @@ function getAIInput(car) {
 function updateCar(car, dt) {
   if (car.finished) return;
 
-  // Spinout
-  if (car.spinTimer > 0) {
-    car.spinTimer -= dt;
-    car.angle += 8 * dt;
-    car.speed *= 0.95;
-    return;
-  }
-
   const input = car.controlScheme === 'cpu' ? getAIInput(car) : getInput(car);
   const map = MAPS[currentMap];
-
-  // Boost
-  const speedMult = car.boostTimer > 0 ? BOOST_MULTIPLIER : 1;
-  if (car.boostTimer > 0) car.boostTimer -= dt;
-  if (car.shieldTimer > 0) car.shieldTimer -= dt;
 
   // Acceleration / braking / reverse
   if (input.accel) {
@@ -877,7 +794,7 @@ function updateCar(car, dt) {
     if (Math.abs(car.speed) < FRICTION * dt) car.speed = 0;
   }
   const REVERSE_MAX = MAX_SPEED * 0.35;
-  car.speed = Math.max(-REVERSE_MAX, Math.min(MAX_SPEED * speedMult, car.speed));
+  car.speed = Math.max(-REVERSE_MAX, Math.min(MAX_SPEED, car.speed));
 
   // Steering
   const turnRate = TURN_SPEED * (Math.abs(car.speed) / MAX_SPEED);
@@ -937,33 +854,6 @@ function updateCar(car, dt) {
     }
   }
 
-  // Use powerup
-  if (input.usePowerup && car.powerup) {
-    const pu = car.powerup;
-    car.powerup = null;
-    if (pu.type === 'boost') {
-      car.boostTimer = BOOST_DURATION;
-      if (car.isPlayer && car.controlScheme === 'wasd') boostsUsed++;
-      SFX.boost();
-      // Boost flames
-      for (let i = 0; i < 5; i++) {
-        particles.push({ x: car.x, y: car.y, life: 0.4, type: 'flame', size: 4 + Math.random() * 3,
-          vx: -Math.cos(car.angle) * 100 + (Math.random() - 0.5) * 40,
-          vy: -Math.sin(car.angle) * 100 + (Math.random() - 0.5) * 40,
-          color: '#ff4400' });
-      }
-    } else if (pu.type === 'oil') {
-      oilSlicks.push({
-        x: car.x - Math.cos(car.angle) * 20,
-        y: car.y - Math.sin(car.angle) * 20,
-        owner: car.index,
-        life: OIL_LIFETIME,
-      });
-    } else if (pu.type === 'shield') {
-      car.shieldTimer = SHIELD_DURATION;
-    }
-  }
-
   // Waypoint tracking for laps
   const wp = map.waypoints;
   const nwi = nearestWaypoint(map, car.x, car.y);
@@ -981,36 +871,6 @@ function updateCar(car, dt) {
           finishOrder.push(car);
         }
       }
-    }
-  }
-
-  // Pickup powerups
-  if (!car.powerup) {
-    for (const pu of powerups) {
-      if (!pu.active) continue;
-      if (Math.hypot(car.x - pu.x, car.y - pu.y) < 20) {
-        car.powerup = { type: pu.type };
-        pu.active = false;
-        pu.respawnTimer = POWERUP_RESPAWN;
-        SFX.pickup();
-        break;
-      }
-    }
-  }
-
-  // Oil slick collision
-  for (const oil of oilSlicks) {
-    if (oil.owner === car.index) continue;
-    if (Math.hypot(car.x - oil.x, car.y - oil.y) < 18) {
-      if (car.shieldTimer > 0) {
-        car.shieldTimer = 0;
-      } else {
-        car.spinTimer = SPINOUT_DURATION;
-        if (oil.owner === 0) oilHits++;
-        SFX.crash();
-      }
-      oil.life = 0;
-      break;
     }
   }
 
@@ -1043,14 +903,6 @@ function updateCar(car, dt) {
     }
   }
 
-  // Boost trail
-  if (car.boostTimer > 0 && Math.random() < 0.5) {
-    particles.push({ x: car.x - Math.cos(car.angle) * 12, y: car.y - Math.sin(car.angle) * 12,
-      life: 0.3, type: 'flame', size: 3 + Math.random() * 2,
-      vx: -Math.cos(car.angle) * 60 + (Math.random() - 0.5) * 20,
-      vy: -Math.sin(car.angle) * 60 + (Math.random() - 0.5) * 20,
-      color: Math.random() > 0.5 ? '#ff4400' : '#ffaa00' });
-  }
 }
 
 // ═══════════════════════════════════════════
@@ -1084,20 +936,6 @@ function gameLoop(time) {
 
     // Update cars
     for (const car of cars) updateCar(car, dt);
-
-    // Update powerups
-    for (const pu of powerups) {
-      if (!pu.active) {
-        pu.respawnTimer -= dt;
-        if (pu.respawnTimer <= 0) pu.active = true;
-      }
-    }
-
-    // Update oil slicks
-    for (let i = oilSlicks.length - 1; i >= 0; i--) {
-      oilSlicks[i].life -= dt;
-      if (oilSlicks[i].life <= 0) oilSlicks.splice(i, 1);
-    }
 
     // Update particles
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -1169,46 +1007,6 @@ function render() {
 
   // Draw direction arrows on track
   drawTrackArrows(map);
-
-  // Draw oil slicks
-  for (const oil of oilSlicks) {
-    ctx.fillStyle = '#111';
-    ctx.globalAlpha = 0.7;
-    ctx.beginPath();
-    ctx.ellipse(oil.x, oil.y, 12, 10, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-
-  // Draw powerups
-  for (const pu of powerups) {
-    if (!pu.active) continue;
-    const bob = Math.sin(performance.now() / 300) * 2;
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#222';
-    if (pu.type === 'boost') {
-      ctx.fillStyle = '#4caf50';
-      ctx.beginPath(); ctx.arc(pu.x, pu.y + bob, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px Segoe UI';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('B', pu.x, pu.y + bob);
-    } else if (pu.type === 'oil') {
-      ctx.fillStyle = '#333';
-      ctx.beginPath(); ctx.arc(pu.x, pu.y + bob, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px Segoe UI';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('O', pu.x, pu.y + bob);
-    } else if (pu.type === 'shield') {
-      ctx.fillStyle = '#2196f3';
-      ctx.beginPath(); ctx.arc(pu.x, pu.y + bob, 8, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 10px Segoe UI';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('S', pu.x, pu.y + bob);
-    }
-  }
 
   // Draw particles (behind cars)
   for (const p of particles) {
@@ -1304,24 +1102,25 @@ function drawTrack(map) {
   const angle = getTrackAngle(map, 0);
   const perp = angle + Math.PI / 2;
   const sx = wp[0][0], sy = wp[0][1];
+  const halfW = TRACK_WIDTH * 0.48;
   ctx.strokeStyle = '#fff';
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 6;
   ctx.beginPath();
-  ctx.moveTo(sx + Math.cos(perp) * TRACK_WIDTH * 0.4, sy + Math.sin(perp) * TRACK_WIDTH * 0.4);
-  ctx.lineTo(sx - Math.cos(perp) * TRACK_WIDTH * 0.4, sy - Math.sin(perp) * TRACK_WIDTH * 0.4);
+  ctx.moveTo(sx + Math.cos(perp) * halfW, sy + Math.sin(perp) * halfW);
+  ctx.lineTo(sx - Math.cos(perp) * halfW, sy - Math.sin(perp) * halfW);
   ctx.stroke();
 
   // Checkerboard pattern on start line
-  ctx.fillStyle = '#fff';
-  for (let i = -3; i <= 3; i++) {
-    for (let j = 0; j < 2; j++) {
-      if ((i + j) % 2 === 0) {
-        ctx.fillRect(
-          sx + Math.cos(perp) * i * 5 + Math.cos(angle) * j * 5 - 2.5,
-          sy + Math.sin(perp) * i * 5 + Math.sin(angle) * j * 5 - 2.5,
-          5, 5
-        );
-      }
+  const sqSize = 6;
+  const numSq = Math.floor(halfW * 2 / sqSize);
+  for (let i = 0; i < numSq; i++) {
+    for (let j = 0; j < 3; j++) {
+      const t = (i - numSq / 2 + 0.5) * sqSize;
+      const u = (j - 1) * sqSize;
+      const cx = sx + Math.cos(perp) * t + Math.cos(angle) * u;
+      const cy = sy + Math.sin(perp) * t + Math.sin(angle) * u;
+      ctx.fillStyle = (i + j) % 2 === 0 ? '#fff' : '#222';
+      ctx.fillRect(cx - sqSize / 2, cy - sqSize / 2, sqSize, sqSize);
     }
   }
 }
@@ -1392,25 +1191,6 @@ function drawCar(car) {
   ctx.beginPath(); ctx.arc(-1.5, -CAR_H / 2 + 5, 1, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(2.5, -CAR_H / 2 + 5, 1, 0, Math.PI * 2); ctx.fill();
 
-  // Shield glow
-  if (car.shieldTimer > 0) {
-    ctx.strokeStyle = '#2196f3';
-    ctx.lineWidth = 3;
-    ctx.globalAlpha = 0.5 + Math.sin(performance.now() / 100) * 0.3;
-    ctx.beginPath();
-    ctx.arc(0, 0, 16, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  }
-
-  // Spinout indicator
-  if (car.spinTimer > 0) {
-    ctx.strokeStyle = '#ffaa00';
-    ctx.lineWidth = 2;
-    ctx.font = 'bold 14px Bangers';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-  }
 
   ctx.restore();
 
@@ -1487,16 +1267,6 @@ function updateHUD() {
   document.getElementById('hud-pos').textContent = pos + suffix[Math.min(pos - 1, 3)];
   document.getElementById('hud-pos').style.color = pos === 1 ? '#ffe066' : '#fff';
 
-  // Powerup
-  const puEl = document.getElementById('hud-powerup');
-  if (player.powerup) {
-    const icons = { boost: 'BOOST', oil: 'OIL', shield: 'SHIELD' };
-    const colors = { boost: '#4caf50', oil: '#666', shield: '#2196f3' };
-    puEl.innerHTML = '<span style="color:' + colors[player.powerup.type] + '">[' + icons[player.powerup.type] + ']</span>';
-  } else {
-    puEl.textContent = '';
-  }
-
   // Speed
   document.getElementById('hud-speed').textContent = Math.round(player.speed) + ' km/h';
 
@@ -1535,12 +1305,6 @@ function drawMultiplayerHUD() {
     const pos = getPosition(car);
     ctx.fillStyle = pos === 1 ? '#ffe066' : '#ccc';
     ctx.fillText(pos + suffix[Math.min(pos - 1, 3)], px + 4, py + 28);
-    // Powerup
-    if (car.powerup) {
-      const colors = { boost: '#4caf50', oil: '#666', shield: '#2196f3' };
-      ctx.fillStyle = colors[car.powerup.type];
-      ctx.fillText('[' + car.powerup.type.toUpperCase() + ']', px + 36, py + 28);
-    }
   }
 }
 
@@ -1582,8 +1346,6 @@ function endRace() {
     SFX.win();
     if (wallHits === 0) ggTry('dd_no_walls');
     if (driftTime >= 5) ggTry('dd_drift_king');
-    if (boostsUsed >= 5) ggTry('dd_speed_demon');
-
     // Photo finish
     if (finishOrder.length >= 2 && finishOrder[1].finishTime - finishOrder[0].finishTime < 1) {
       ggTry('dd_photo_finish');
@@ -1601,8 +1363,6 @@ function endRace() {
     if (stats.wins >= 10) ggTry('dd_unbeatable');
     if (Object.keys(stats.mapWins).length >= MAPS.length) ggTry('dd_all_maps');
   }
-  if (oilHits > 0) ggTry('dd_oil_slick');
-
   // Show results
   const title = won ? 'YOU WIN!' : 'RACE OVER';
   document.getElementById('results-title').textContent = title;
