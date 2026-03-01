@@ -111,7 +111,7 @@ function loadStats() {
 }
 function saveStats(s) { localStorage.setItem(BB_STATS_KEY, JSON.stringify(s)); }
 
-const GAME_W = 384, GAME_H = 216, GROUND_Y = 176, GRAVITY = 0.4, JUMP_VEL = -7;
+const GAME_W = 384, GAME_H = 216, GROUND_Y = 176, GRAVITY = 0.15, JUMP_VEL = -3.5;
 const SPRITE_W = 32, SPRITE_H = 40, SPECIAL_COOLDOWN = 240;
 
 function makePalette(skin, hair, pri, sec, acc) {
@@ -119,23 +119,23 @@ function makePalette(skin, hair, pri, sec, acc) {
 }
 
 const FIGHTERS = {
-  blaze: { name: 'Blaze', hp: 100, speed: 2.2, punchDmg: 8,  kickDmg: 12, special: { name: 'Fireball',      damage: 20, type: 'projectile', cooldown: SPECIAL_COOLDOWN } },
-  frost: { name: 'Frost', hp: 100, speed: 2.5, punchDmg: 7,  kickDmg: 10, special: { name: 'Ice Spike',     damage: 18, type: 'dash',       cooldown: SPECIAL_COOLDOWN, extraStun: 15 } },
-  volt:  { name: 'Volt',  hp: 100, speed: 2.8, punchDmg: 6,  kickDmg: 9,  special: { name: 'Thunder Clap',  damage: 22, type: 'aoe',        cooldown: SPECIAL_COOLDOWN } },
-  stone: { name: 'Stone', hp: 100, speed: 1.6, punchDmg: 10, kickDmg: 14, special: { name: 'Ground Pound',  damage: 25, type: 'slam',       cooldown: SPECIAL_COOLDOWN } },
-  shade: { name: 'Shade', hp: 100, speed: 3.0, punchDmg: 7,  kickDmg: 11, special: { name: 'Shadow Step',   damage: 16, type: 'teleport',   cooldown: SPECIAL_COOLDOWN } },
-  gale:  { name: 'Gale',  hp: 100, speed: 2.6, punchDmg: 6,  kickDmg: 10, special: { name: 'Tornado Kick',  damage: 19, type: 'multihit',   cooldown: SPECIAL_COOLDOWN } },
-  fang:  { name: 'Fang',  hp: 100, speed: 2.4, punchDmg: 9,  kickDmg: 13, special: { name: 'Claw Rush',     damage: 21, type: 'dash',       cooldown: SPECIAL_COOLDOWN } },
-  nova:  { name: 'Nova',  hp: 100, speed: 2.2, punchDmg: 8,  kickDmg: 11, special: { name: 'Star Burst',    damage: 24, type: 'charged',    cooldown: SPECIAL_COOLDOWN } },
-  omega: { name: 'Omega', hp: 100, speed: 2.4, punchDmg: 8,  kickDmg: 12, special: { name: 'Omega Beam',    damage: 22, type: 'projectile', cooldown: SPECIAL_COOLDOWN }, hidden: true },
+  blaze: { name: 'Blaze', hp: 100, speed: 0.8,  punchDmg: 8,  kickDmg: 12, special: { name: 'Fireball',      damage: 20, type: 'projectile', cooldown: SPECIAL_COOLDOWN } },
+  frost: { name: 'Frost', hp: 100, speed: 0.9,  punchDmg: 7,  kickDmg: 10, special: { name: 'Ice Spike',     damage: 18, type: 'dash',       cooldown: SPECIAL_COOLDOWN, extraStun: 30 } },
+  volt:  { name: 'Volt',  hp: 100, speed: 1.0,  punchDmg: 6,  kickDmg: 9,  special: { name: 'Thunder Clap',  damage: 22, type: 'aoe',        cooldown: SPECIAL_COOLDOWN } },
+  stone: { name: 'Stone', hp: 100, speed: 0.55, punchDmg: 10, kickDmg: 14, special: { name: 'Ground Pound',  damage: 25, type: 'slam',       cooldown: SPECIAL_COOLDOWN } },
+  shade: { name: 'Shade', hp: 100, speed: 1.1,  punchDmg: 7,  kickDmg: 11, special: { name: 'Shadow Step',   damage: 16, type: 'teleport',   cooldown: SPECIAL_COOLDOWN } },
+  gale:  { name: 'Gale',  hp: 100, speed: 0.95, punchDmg: 6,  kickDmg: 10, special: { name: 'Tornado Kick',  damage: 19, type: 'multihit',   cooldown: SPECIAL_COOLDOWN } },
+  fang:  { name: 'Fang',  hp: 100, speed: 0.85, punchDmg: 9,  kickDmg: 13, special: { name: 'Claw Rush',     damage: 21, type: 'dash',       cooldown: SPECIAL_COOLDOWN } },
+  nova:  { name: 'Nova',  hp: 100, speed: 0.8,  punchDmg: 8,  kickDmg: 11, special: { name: 'Star Burst',    damage: 24, type: 'charged',    cooldown: SPECIAL_COOLDOWN } },
+  omega: { name: 'Omega', hp: 100, speed: 0.85, punchDmg: 8,  kickDmg: 12, special: { name: 'Omega Beam',    damage: 22, type: 'projectile', cooldown: SPECIAL_COOLDOWN }, hidden: true },
 };
 
 const FIGHTER_IDS = Object.keys(FIGHTERS).filter(id => id !== 'omega');
 
 const ATTACK_DATA = {
-  punch:   { startup: 2, active: 3, recovery: 4, hbX: 20, hbY: 6, hbW: 16, hbH: 16, hitstun: 12, knockback: 6 },
-  kick:    { startup: 4, active: 3, recovery: 6, hbX: 22, hbY: 10, hbW: 20, hbH: 12, hitstun: 16, knockback: 10 },
-  special: { startup: 3, active: 4, recovery: 5, hbX: 18, hbY: 4, hbW: 24, hbH: 20, hitstun: 20, knockback: 14 },
+  punch:   { startup: 6, active: 8, recovery: 10, hbX: 20, hbY: 6, hbW: 16, hbH: 16, hitstun: 20, knockback: 4 },
+  kick:    { startup: 10, active: 8, recovery: 14, hbX: 22, hbY: 10, hbW: 20, hbH: 12, hitstun: 28, knockback: 6 },
+  special: { startup: 8, active: 10, recovery: 12, hbX: 18, hbY: 4, hbW: 24, hbH: 20, hitstun: 35, knockback: 8 },
 };
 
 function getHitbox(f, atk) {
@@ -174,7 +174,7 @@ for (const id of FIGHTER_IDS) {
   const f = FIGHTERS[id];
   assert(typeof f.name === 'string' && f.name.length > 0, id + ' has a name');
   assertEqual(f.hp, 100, id + ' has 100 HP');
-  assert(f.speed > 0 && f.speed <= 4, id + ' speed in valid range (0-4): ' + f.speed);
+  assert(f.speed > 0 && f.speed <= 2, id + ' speed in valid range (0-2): ' + f.speed);
   assert(f.punchDmg > 0, id + ' has positive punch damage');
   assert(f.kickDmg > 0, id + ' has positive kick damage');
   assert(f.kickDmg > f.punchDmg, id + ' kick damage > punch damage');
@@ -262,20 +262,20 @@ group('Hitbox Detection');
 group('Knockback & Hitstun');
 
 {
-  assertEqual(ATTACK_DATA.punch.hitstun, 12, 'Punch hitstun is 12 frames');
-  assertEqual(ATTACK_DATA.kick.hitstun, 16, 'Kick hitstun is 16 frames');
-  assertEqual(ATTACK_DATA.special.hitstun, 20, 'Special hitstun is 20 frames');
+  assertEqual(ATTACK_DATA.punch.hitstun, 20, 'Punch hitstun is 20 frames');
+  assertEqual(ATTACK_DATA.kick.hitstun, 28, 'Kick hitstun is 28 frames');
+  assertEqual(ATTACK_DATA.special.hitstun, 35, 'Special hitstun is 35 frames');
 
-  assertEqual(ATTACK_DATA.punch.knockback, 6, 'Punch knockback is 6');
-  assertEqual(ATTACK_DATA.kick.knockback, 10, 'Kick knockback is 10');
-  assertEqual(ATTACK_DATA.special.knockback, 14, 'Special knockback is 14');
+  assertEqual(ATTACK_DATA.punch.knockback, 4, 'Punch knockback is 4');
+  assertEqual(ATTACK_DATA.kick.knockback, 6, 'Kick knockback is 6');
+  assertEqual(ATTACK_DATA.special.knockback, 8, 'Special knockback is 8');
 
   // Hitstun increases with attack type
   assert(ATTACK_DATA.kick.hitstun > ATTACK_DATA.punch.hitstun, 'Kick hitstun > punch hitstun');
   assert(ATTACK_DATA.special.hitstun > ATTACK_DATA.kick.hitstun, 'Special hitstun > kick hitstun');
 
   // Frost extra stun
-  assertEqual(FIGHTERS.frost.special.extraStun, 15, 'Frost has 15 extra hitstun on special');
+  assertEqual(FIGHTERS.frost.special.extraStun, 30, 'Frost has 30 extra hitstun on special');
 }
 
 // ── ATTACK FRAME DATA ──
@@ -484,8 +484,8 @@ group('Game Constants');
   assertEqual(GAME_W, 384, 'Game width is 384');
   assertEqual(GAME_H, 216, 'Game height is 216');
   assertEqual(GROUND_Y, 176, 'Ground Y is 176');
-  assertApprox(GRAVITY, 0.4, 0.01, 'Gravity is 0.4');
-  assertEqual(JUMP_VEL, -7, 'Jump velocity is -7');
+  assertApprox(GRAVITY, 0.15, 0.01, 'Gravity is 0.15');
+  assertEqual(JUMP_VEL, -3.5, 'Jump velocity is -3.5');
   assertEqual(SPRITE_W, 32, 'Sprite width is 32');
   assertEqual(SPRITE_H, 40, 'Sprite height is 40');
 
@@ -574,9 +574,9 @@ group('Balance');
   const speeds = Object.values(FIGHTERS).map(f => f.speed);
   const minSpd = Math.min(...speeds);
   const maxSpd = Math.max(...speeds);
-  assert(minSpd >= 1.0, 'Minimum speed >= 1.0');
-  assert(maxSpd <= 4.0, 'Maximum speed <= 4.0');
-  assert(maxSpd - minSpd >= 1.0, 'Speed spread is at least 1.0');
+  assert(minSpd >= 0.4, 'Minimum speed >= 0.4');
+  assert(maxSpd <= 2.0, 'Maximum speed <= 2.0');
+  assert(maxSpd - minSpd >= 0.4, 'Speed spread is at least 0.4');
 }
 
 // ============================================================

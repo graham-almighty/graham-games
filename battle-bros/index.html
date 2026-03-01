@@ -295,8 +295,8 @@ const SFX = (() => {
 const GAME_W = 384;
 const GAME_H = 216;
 const GROUND_Y = 176;
-const GRAVITY = 0.4;
-const JUMP_VEL = -7;
+const GRAVITY = 0.15;
+const JUMP_VEL = -3.5;
 const SPRITE_W = 32;
 const SPRITE_H = 40;
 const SPECIAL_COOLDOWN = 240; // frames (4 sec at 60fps)
@@ -423,70 +423,70 @@ function koFrames(p) {
 
 function buildAnims(p) {
   return {
-    idle:    { speed: 30, frames: [idleFrame0(p), idleFrame1(p)] },
-    walk:    { speed: 8,  frames: [walkFrame(p,0), walkFrame(p,2), walkFrame(p,0), walkFrame(p,-2)] },
+    idle:    { speed: 40, frames: [idleFrame0(p), idleFrame1(p)] },
+    walk:    { speed: 12, frames: [walkFrame(p,0), walkFrame(p,2), walkFrame(p,0), walkFrame(p,-2)] },
     jump:    { speed: 1,  frames: [jumpFrame(p)] },
-    punch:   { speed: 4,  frames: punchFrames(p) },
-    kick:    { speed: 4,  frames: kickFrames(p) },
-    special: { speed: 4,  frames: punchFrames(p) }, // default, overridden per fighter
-    hit:     { speed: 6,  frames: hitFrames(p) },
+    punch:   { speed: 6,  frames: punchFrames(p) },
+    kick:    { speed: 7,  frames: kickFrames(p) },
+    special: { speed: 7,  frames: punchFrames(p) }, // default, overridden per fighter
+    hit:     { speed: 10, frames: hitFrames(p) },
     block:   { speed: 1,  frames: [blockFrame(p)] },
-    ko:      { speed: 10, frames: koFrames(p) },
+    ko:      { speed: 15, frames: koFrames(p) },
   };
 }
 
 const FIGHTERS = {
   blaze: {
     name: 'Blaze', desc: 'Fire martial artist',
-    hp: 100, speed: 2.2, punchDmg: 8, kickDmg: 12,
+    hp: 100, speed: 0.8, punchDmg: 8, kickDmg: 12,
     special: { name: 'Fireball', damage: 20, type: 'projectile', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#e8b89d','#330000','#cc2200','#ff6600','#ffcc00'),
   },
   frost: {
     name: 'Frost', desc: 'Ice ninja',
-    hp: 100, speed: 2.5, punchDmg: 7, kickDmg: 10,
-    special: { name: 'Ice Spike', damage: 18, type: 'dash', cooldown: SPECIAL_COOLDOWN, extraStun: 15 },
+    hp: 100, speed: 0.9, punchDmg: 7, kickDmg: 10,
+    special: { name: 'Ice Spike', damage: 18, type: 'dash', cooldown: SPECIAL_COOLDOWN, extraStun: 30 },
     palette: makePalette('#c8d8e8','#aaccff','#2266cc','#88bbff','#ffffff'),
   },
   volt: {
     name: 'Volt', desc: 'Electric brawler',
-    hp: 100, speed: 2.8, punchDmg: 6, kickDmg: 9,
+    hp: 100, speed: 1.0, punchDmg: 6, kickDmg: 9,
     special: { name: 'Thunder Clap', damage: 22, type: 'aoe', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#e8b89d','#cccc00','#cccc00','#222222','#ffff44'),
   },
   stone: {
     name: 'Stone', desc: 'Heavyweight wrestler',
-    hp: 100, speed: 1.6, punchDmg: 10, kickDmg: 14,
+    hp: 100, speed: 0.55, punchDmg: 10, kickDmg: 14,
     special: { name: 'Ground Pound', damage: 25, type: 'slam', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#c8a888','#443322','#665544','#887766','#aaaaaa'),
   },
   shade: {
     name: 'Shade', desc: 'Shadow assassin',
-    hp: 100, speed: 3.0, punchDmg: 7, kickDmg: 11,
+    hp: 100, speed: 1.1, punchDmg: 7, kickDmg: 11,
     special: { name: 'Shadow Step', damage: 16, type: 'teleport', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#998888','#222222','#442266','#221144','#aa44ff'),
   },
   gale: {
     name: 'Gale', desc: 'Wind fighter',
-    hp: 100, speed: 2.6, punchDmg: 6, kickDmg: 10,
+    hp: 100, speed: 0.95, punchDmg: 6, kickDmg: 10,
     special: { name: 'Tornado Kick', damage: 19, type: 'multihit', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#e8b89d','#f0f0f0','#22aaaa','#ffffff','#66dddd'),
   },
   fang: {
     name: 'Fang', desc: 'Beast fighter',
-    hp: 100, speed: 2.4, punchDmg: 9, kickDmg: 13,
+    hp: 100, speed: 0.85, punchDmg: 9, kickDmg: 13,
     special: { name: 'Claw Rush', damage: 21, type: 'dash', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#c8a878','#884422','#446622','#665533','#88aa44'),
   },
   nova: {
     name: 'Nova', desc: 'Cosmic fighter',
-    hp: 100, speed: 2.2, punchDmg: 8, kickDmg: 11,
+    hp: 100, speed: 0.8, punchDmg: 8, kickDmg: 11,
     special: { name: 'Star Burst', damage: 24, type: 'charged', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#ffe0e0','#ff88cc','#ff66aa','#ffcc44','#ffffff'),
   },
   omega: {
     name: 'Omega', desc: 'Hidden boss',
-    hp: 100, speed: 2.4, punchDmg: 8, kickDmg: 12,
+    hp: 100, speed: 0.85, punchDmg: 8, kickDmg: 12,
     special: { name: 'Omega Beam', damage: 22, type: 'projectile', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#cccccc','#444444','#333333','#666666','#ff0000'),
     hidden: true,
@@ -499,7 +499,7 @@ for (const id in FIGHTERS) {
   // Special animation override for some types
   const sp = FIGHTERS[id].special;
   if (sp.type === 'slam') {
-    FIGHTERS[id].anims.special = { speed: 5, frames: [jumpFrame(FIGHTERS[id].palette), jumpFrame(FIGHTERS[id].palette), idleFrame0(FIGHTERS[id].palette)] };
+    FIGHTERS[id].anims.special = { speed: 10, frames: [jumpFrame(FIGHTERS[id].palette), jumpFrame(FIGHTERS[id].palette), idleFrame0(FIGHTERS[id].palette)] };
   }
 }
 
@@ -679,9 +679,9 @@ function createFighter(charId, playerNum, x) {
 // COMBAT SYSTEM
 // ═══════════════════════════════════════════
 const ATTACK_DATA = {
-  punch:   { startup: 2, active: 3, recovery: 4, hbX: 20, hbY: 6, hbW: 16, hbH: 16, hitstun: 12, knockback: 6 },
-  kick:    { startup: 4, active: 3, recovery: 6, hbX: 22, hbY: 10, hbW: 20, hbH: 12, hitstun: 16, knockback: 10 },
-  special: { startup: 3, active: 4, recovery: 5, hbX: 18, hbY: 4, hbW: 24, hbH: 20, hitstun: 20, knockback: 14 },
+  punch:   { startup: 6, active: 8, recovery: 10, hbX: 20, hbY: 6, hbW: 16, hbH: 16, hitstun: 20, knockback: 4 },
+  kick:    { startup: 10, active: 8, recovery: 14, hbX: 22, hbY: 10, hbW: 20, hbH: 12, hitstun: 28, knockback: 6 },
+  special: { startup: 8, active: 10, recovery: 12, hbX: 18, hbY: 4, hbW: 24, hbH: 20, hitstun: 35, knockback: 8 },
 };
 
 function getHitbox(f, atk) {
@@ -760,7 +760,7 @@ function spawnHitParticles(x, y) {
 // PROJECTILE SYSTEM
 // ═══════════════════════════════════════════
 function spawnProjectile(f) {
-  const spd = f.facing * 4;
+  const spd = f.facing * 1.5;
   let color = '#ff6600';
   if (f.charId === 'frost') color = '#88bbff';
   else if (f.charId === 'omega') color = '#ff0000';
@@ -1027,7 +1027,7 @@ let aiAction = 'idle';
 
 function updateAI(f, other) {
   aiTimer++;
-  if (aiTimer < 10) {
+  if (aiTimer < 20) {
     executeAIAction(f, other);
     return;
   }
