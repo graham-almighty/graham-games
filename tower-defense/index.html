@@ -572,20 +572,22 @@ let grassTufts = []; // pre-generated random grass details
 
 // Tower definitions
 const TOWER_DEFS = {
-  arrow:     { name: 'Arrow',     cost: 25,  damage: 10,  range: 3,   fireRate: 0.4, color: '#4caf50', symbol: '\u25B3', key: '1', splash: 0, slow: 0, chain: 0, dot: false },
-  cannon:    { name: 'Cannon',    cost: 60,  damage: 40,  range: 2.5, fireRate: 1.2, color: '#ff4444', symbol: '\u25CF', key: '2', splash: 1, slow: 0, chain: 0, dot: false },
-  ice:       { name: 'Ice',       cost: 40,  damage: 5,   range: 3,   fireRate: 0.8, color: '#00bcd4', symbol: '\u25C6', key: '3', splash: 0, slow: 0.5, chain: 0, dot: false },
-  lightning: { name: 'Lightning', cost: 80,  damage: 25,  range: 3.5, fireRate: 1.0, color: '#ffd600', symbol: '\u26A1', key: '4', splash: 0, slow: 0, chain: 3, dot: false },
-  flame:     { name: 'Flame',     cost: 70,  damage: 8,   range: 2,   fireRate: 0.1, color: '#ff6d00', symbol: '\uD83D\uDD25', key: '5', splash: 0, slow: 0, chain: 0, dot: true },
+  arrow:     { name: 'Arrow',     cost: 25,  damage: 10,  range: 3,   fireRate: 0.4, color: '#4caf50', symbol: '\u25B3', key: '1', splash: 0, slow: 0, chain: 0, dot: false, zap: false },
+  cannon:    { name: 'Cannon',    cost: 60,  damage: 40,  range: 2.5, fireRate: 1.2, color: '#ff4444', symbol: '\u25CF', key: '2', splash: 1, slow: 0, chain: 0, dot: false, zap: false },
+  ice:       { name: 'Ice',       cost: 40,  damage: 5,   range: 3,   fireRate: 0.8, color: '#00bcd4', symbol: '\u25C6', key: '3', splash: 0, slow: 0.5, chain: 0, dot: false, zap: false },
+  lightning: { name: 'Lightning', cost: 80,  damage: 25,  range: 3.5, fireRate: 1.0, color: '#ffd600', symbol: '\u26A1', key: '4', splash: 0, slow: 0, chain: 3, dot: false, zap: false },
+  flame:     { name: 'Flame',     cost: 70,  damage: 8,   range: 2,   fireRate: 0.1, color: '#ff6d00', symbol: '\uD83D\uDD25', key: '5', splash: 0, slow: 0, chain: 0, dot: true, zap: false },
+  sniper:    { name: 'Zapper',    cost: 90,  damage: 60,  range: 6,   fireRate: 2.0, color: '#7b1fa2', symbol: '\u2295', key: '6', splash: 0, slow: 0, chain: 0, dot: false, zap: false },
+  tesla:     { name: 'Tesla',     cost: 100, damage: 15,  range: 2.5, fireRate: 1.5, color: '#00e5ff', symbol: '\u26A1', key: '7', splash: 0, slow: 0, chain: 0, dot: false, zap: true },
 };
-const TOWER_ORDER = ['arrow', 'cannon', 'ice', 'lightning', 'flame'];
+const TOWER_ORDER = ['arrow', 'cannon', 'ice', 'lightning', 'flame', 'sniper', 'tesla'];
 
 // Enemy definitions
 const ENEMY_DEFS = {
-  basic:   { hp: 40,  speed: 1.2, gold: 7,  color: '#8d6e63', radius: 6, outline: 0 },
-  fast:    { hp: 25,  speed: 2.4, gold: 9,  color: '#42a5f5', radius: 4, outline: 0 },
-  armored: { hp: 120, speed: 0.7, gold: 13, color: '#9e9e9e', radius: 7, outline: 3 },
-  boss:    { hp: 400, speed: 0.5, gold: 40, color: '#ef5350', radius: 10, outline: 0 },
+  basic:   { hp: 40,  speed: 1.4, gold: 7,  color: '#8d6e63', radius: 6, outline: 0 },
+  fast:    { hp: 25,  speed: 2.8, gold: 9,  color: '#42a5f5', radius: 4, outline: 0 },
+  armored: { hp: 120, speed: 0.85, gold: 13, color: '#9e9e9e', radius: 7, outline: 3 },
+  boss:    { hp: 400, speed: 0.6, gold: 40, color: '#ef5350', radius: 10, outline: 0 },
 };
 
 // ═══ MAP DEFINITIONS ═══
@@ -866,22 +868,22 @@ function startGame() {
 function getWaveComposition(w) {
   const enemies = [];
   if (w >= 1 && w <= 5) {
-    const count = 6 + Math.floor((w - 1) * 2);
+    const count = 8 + Math.floor((w - 1) * 2.5);
     for (let i = 0; i < count; i++) enemies.push('basic');
   } else if (w >= 6 && w <= 10) {
-    const total = 12 + (w - 6) * 3;
+    const total = 16 + (w - 6) * 4;
     for (let i = 0; i < total; i++) {
       enemies.push(i % 3 === 0 ? 'fast' : 'basic');
     }
   } else if (w >= 11 && w <= 15) {
-    const total = 16 + (w - 11) * 3;
+    const total = 21 + (w - 11) * 4;
     for (let i = 0; i < total; i++) {
       if (i % 4 === 0) enemies.push('armored');
       else if (i % 3 === 0) enemies.push('fast');
       else enemies.push('basic');
     }
   } else if (w >= 16 && w <= 29) {
-    const total = 20 + (w - 16) * 3;
+    const total = 26 + (w - 16) * 4;
     for (let i = 0; i < total; i++) {
       if (i % 5 === 0) enemies.push('armored');
       else if (i % 3 === 0) enemies.push('fast');
@@ -891,10 +893,10 @@ function getWaveComposition(w) {
 
   // Boss waves
   if (w === 10 || w === 20 || w === 30) {
-    const bossCount = w === 10 ? 2 : w === 20 ? 3 : 5;
+    const bossCount = w === 10 ? 3 : w === 20 ? 4 : 6;
     for (let i = 0; i < bossCount; i++) enemies.push('boss');
     // Escorts
-    const escortCount = w === 10 ? 8 : w === 20 ? 12 : 18;
+    const escortCount = w === 10 ? 10 : w === 20 ? 16 : 22;
     for (let i = 0; i < escortCount; i++) {
       enemies.push(i % 2 === 0 ? 'fast' : 'armored');
     }
@@ -938,7 +940,7 @@ function launchWave() {
 
 function spawnEnemy(type) {
   const def = ENEMY_DEFS[type];
-  const hpScale = (1 + wave * 0.2) * MAP_DEFS[currentMapIndex].hpMultiplier;
+  const hpScale = (1 + wave * 0.35) * MAP_DEFS[currentMapIndex].hpMultiplier;
   const goldScale = 1 + wave * 0.03;
   enemies.push({
     type,
@@ -1053,6 +1055,26 @@ function towerUpdate(tower, dt) {
     if (hitAny) {
       // Show flame effect
       effects.push({ type: 'flame', x: tower.x, y: tower.y, range: tower.range, timer: 0.1 });
+    }
+    tower.cooldown = def.fireRate;
+    return;
+  }
+
+  // Tesla tower: burst damage to all in range
+  if (def.zap) {
+    let hitAny = false;
+    for (const e of enemies) {
+      if (e.dead) continue;
+      const dx = e.x - tower.x, dy = e.y - tower.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist <= tower.range) {
+        e.hp -= tower.damage;
+        hitAny = true;
+        effects.push({ type: 'teslaBolt', x: tower.x, y: tower.y, tx: e.x, ty: e.y, timer: 0.2 });
+      }
+    }
+    if (hitAny) {
+      effects.push({ type: 'teslaRing', x: tower.x, y: tower.y, range: tower.range, timer: 0.3 });
     }
     tower.cooldown = def.fireRate;
     return;
@@ -1441,6 +1463,52 @@ function drawCartoonTower(t) {
     ctx.quadraticCurveTo(cx, cy - s * (0.9 + Math.sin(ft + 0.5) * 0.15), cx + s * 0.15, cy - s * 0.5);
     ctx.closePath();
     ctx.fill();
+  } else if (t.type === 'sniper') {
+    // Tall dark tower with scope
+    ctx.fillStyle = '#4a1a6b';
+    ctx.fillRect(cx - s * 0.35, cy - s * 0.1, s * 0.7, s * 0.7);
+    ctx.strokeRect(cx - s * 0.35, cy - s * 0.1, s * 0.7, s * 0.7);
+    // Tall spire
+    ctx.fillStyle = '#3a1058';
+    ctx.fillRect(cx - s * 0.2, cy - s * 0.9, s * 0.4, s * 0.9);
+    ctx.strokeRect(cx - s * 0.2, cy - s * 0.9, s * 0.4, s * 0.9);
+    // Scope / crosshair
+    ctx.strokeStyle = '#7b1fa2';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 1.1, s * 0.25, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - s * 0.35, cy - s * 1.1); ctx.lineTo(cx + s * 0.35, cy - s * 1.1);
+    ctx.moveTo(cx, cy - s * 1.1 - s * 0.35); ctx.lineTo(cx, cy - s * 1.1 + s * 0.35);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
+  } else if (t.type === 'tesla') {
+    // Metal base
+    ctx.fillStyle = '#556677';
+    ctx.fillRect(cx - s * 0.5, cy - s * 0.1, s * 1.0, s * 0.7);
+    ctx.strokeRect(cx - s * 0.5, cy - s * 0.1, s * 1.0, s * 0.7);
+    // Coil
+    ctx.fillStyle = '#334455';
+    ctx.fillRect(cx - s * 0.15, cy - s * 0.8, s * 0.3, s * 0.8);
+    ctx.strokeRect(cx - s * 0.15, cy - s * 0.8, s * 0.3, s * 0.8);
+    // Coil rings
+    ctx.strokeStyle = '#00e5ff';
+    ctx.lineWidth = 2;
+    for (let ry = -0.7; ry <= -0.2; ry += 0.2) {
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + s * ry, s * 0.25, s * 0.06, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    // Electric spark on top
+    const et = performance.now() / 150;
+    ctx.beginPath();
+    ctx.arc(cx, cy - s * 0.95, s * 0.12 + Math.sin(et) * s * 0.05, 0, Math.PI * 2);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = '#000';
   }
 
   // Selection glow
@@ -1754,6 +1822,17 @@ function render() {
       ctx.beginPath(); ctx.arc(p.x, p.y, 3.5, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.beginPath(); ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2); ctx.fill();
+    } else if (p.type === 'sniper') {
+      // Fast purple bolt with trail
+      const angle = Math.atan2(p.ty - p.y, p.tx - p.x);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(angle);
+      ctx.fillStyle = '#7b1fa2';
+      ctx.fillRect(-8, -1.5, 16, 3);
+      ctx.fillStyle = '#bb66ff';
+      ctx.fillRect(-4, -1, 8, 2);
+      ctx.restore();
     } else {
       // Fallback dot
       ctx.fillStyle = p.color;
@@ -1813,6 +1892,28 @@ function render() {
       ctx.fill();
       ctx.strokeStyle = '#ff660022';
       ctx.lineWidth = 2;
+      ctx.stroke();
+    } else if (ef.type === 'teslaBolt') {
+      // Electric bolt from tower to enemy
+      ctx.beginPath();
+      ctx.moveTo(ef.x, ef.y);
+      const mx = (ef.x + ef.tx) / 2 + (Math.random() - 0.5) * 15;
+      const my = (ef.y + ef.ty) / 2 + (Math.random() - 0.5) * 15;
+      ctx.lineTo(mx, my);
+      ctx.lineTo(ef.tx, ef.ty);
+      ctx.strokeStyle = '#00e5ff' + Math.round(alpha * 255).toString(16).padStart(2, '0');
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.strokeStyle = '#ffffff' + Math.round(alpha * 180).toString(16).padStart(2, '0');
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (ef.type === 'teslaRing') {
+      // Electric ring burst
+      const expand = 1 - ef.timer / 0.3;
+      ctx.beginPath();
+      ctx.arc(ef.x, ef.y, ef.range * expand, 0, Math.PI * 2);
+      ctx.strokeStyle = '#00e5ff' + Math.round(alpha * 200).toString(16).padStart(2, '0');
+      ctx.lineWidth = 3;
       ctx.stroke();
     }
   }
