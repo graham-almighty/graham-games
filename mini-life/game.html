@@ -1191,6 +1191,7 @@
   <div class="hud-pill shop-btn" onclick="toggleShop()">&#128241; SHOP</div>
   <div class="hud-pill shop-btn" id="pet-menu-btn" style="display:none;" onclick="togglePetMenu()">&#128062; PET</div>
   <div class="hud-pill shop-btn" onclick="saveGame()">&#128190; SAVE</div>
+  <div class="hud-pill shop-btn" onclick="toggleLeaderboard()">&#127942; TOP $</div>
 </div>
 
 <div class="save-toast" id="save-toast">Game saved!</div>
@@ -1234,6 +1235,15 @@
     <h2>&#128241; Phone Shop</h2>
     <div id="shop-items"></div>
     <button class="shop-close" onclick="toggleShop()">Close</button>
+  </div>
+</div>
+
+<!-- Leaderboard -->
+<div class="shop-overlay" id="leaderboard-overlay">
+  <div class="shop-panel">
+    <h2>&#127942; Leaderboard</h2>
+    <div id="leaderboard-list"></div>
+    <button class="shop-close" onclick="toggleLeaderboard()">Close</button>
   </div>
 </div>
 
@@ -1829,12 +1839,20 @@ makeWall(10.3, 3.5, 0.15, 0, 1.75, -5);
 // Left wall
 makeWall(0.15, 3.5, 10, -5, 1.75, 0);
 // Right wall (partial - with gap for door)
-makeWall(0.15, 3.5, 4, 5, 1.75, -3);
-makeWall(0.15, 3.5, 3.5, 5, 1.75, 3.25);
+makeWall(0.15, 3.5, 4.5, 5, 1.75, -2.75);
+makeWall(0.15, 3.5, 3, 5, 1.75, 3.5);
 makeWall(0.15, 1.2, 2.5, 5, 2.9, 0.75); // above door
 
 // Front wall
 makeWall(10.3, 3.5, 0.15, 0, 1.75, 5);
+
+// Roof (removed when second floor is purchased)
+const roofMat = new THREE.MeshLambertMaterial({ color: 0x884422 });
+const homeRoof = new THREE.Mesh(new THREE.BoxGeometry(10.6, 0.3, 10.3), roofMat);
+homeRoof.position.set(0, 3.65, 0);
+homeRoof.castShadow = true;
+homeRoof.receiveShadow = true;
+scene.add(homeRoof);
 
 // Door (pivot group for swing animation, hinge at south edge of gap)
 const doorPivot = new THREE.Group();
@@ -2403,21 +2421,34 @@ function buildPetCat() {
 
 function buildSwimmingPool() {
   const poolGroup = new THREE.Group();
-  // Pool rim
   const rimMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
-  const rim = new THREE.Mesh(new THREE.BoxGeometry(5, 0.3, 3.5), rimMat);
-  rim.position.set(14.5, 0.15, 5.5);
-  poolGroup.add(rim);
-  // Water (inset)
-  const waterMat = new THREE.MeshLambertMaterial({ color: 0x4499dd, transparent: true, opacity: 0.6 });
-  const water = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.2, 2.9), waterMat);
+  const blueMat = new THREE.MeshLambertMaterial({ color: 0x2288dd });
+  // Rim — thin top edge (grey outside)
+  const rimFront = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.3), rimMat);
+  rimFront.position.set(14.5, 0.22, 3.85); poolGroup.add(rimFront);
+  const rimBack = new THREE.Mesh(new THREE.BoxGeometry(5, 0.15, 0.3), rimMat);
+  rimBack.position.set(14.5, 0.22, 7.15); poolGroup.add(rimBack);
+  const rimLeft = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 3.5), rimMat);
+  rimLeft.position.set(12.15, 0.22, 5.5); poolGroup.add(rimLeft);
+  const rimRight = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.15, 3.5), rimMat);
+  rimRight.position.set(16.85, 0.22, 5.5); poolGroup.add(rimRight);
+  // Inner walls (blue — visible from inside)
+  const wallFront = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.0, 0.1), blueMat);
+  wallFront.position.set(14.5, -0.35, 4.0); poolGroup.add(wallFront);
+  const wallBack = new THREE.Mesh(new THREE.BoxGeometry(4.4, 1.0, 0.1), blueMat);
+  wallBack.position.set(14.5, -0.35, 7.0); poolGroup.add(wallBack);
+  const wallLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 2.9), blueMat);
+  wallLeft.position.set(12.35, -0.35, 5.5); poolGroup.add(wallLeft);
+  const wallRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 2.9), blueMat);
+  wallRight.position.set(16.65, -0.35, 5.5); poolGroup.add(wallRight);
+  // Floor (blue)
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.1, 2.9), blueMat);
+  floor.position.set(14.5, -0.85, 5.5); poolGroup.add(floor);
+  // Water surface (translucent)
+  const waterMat = new THREE.MeshLambertMaterial({ color: 0x4499dd, transparent: true, opacity: 0.5 });
+  const water = new THREE.Mesh(new THREE.BoxGeometry(4.4, 0.05, 2.9), waterMat);
   water.position.set(14.5, 0.12, 5.5);
   poolGroup.add(water);
-  // Inner walls (dark blue)
-  const innerMat = new THREE.MeshLambertMaterial({ color: 0x1155aa });
-  const inner = new THREE.Mesh(new THREE.BoxGeometry(4.6, 1.2, 3.1), innerMat);
-  inner.position.set(14.5, -0.5, 5.5);
-  poolGroup.add(inner);
   // Ladder
   const ladderMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
   [-0.5, 0.5].forEach(z => {
@@ -2434,7 +2465,7 @@ function buildSwimmingPool() {
   scene.add(poolGroup);
 
   // Add interactable
-  interactables.push({ mesh: water, group: poolGroup, type: 'pool', label: 'Swim in Pool', need: 'fun', usePos: new THREE.Vector3(12.5, 0.15, 5.5), floor: 0 });
+  interactables.push({ mesh: water, group: poolGroup, type: 'pool', label: 'Swim in Pool', need: 'fun', usePos: new THREE.Vector3(14.5, 0.15, 5.5), floor: 0 });
   actionConfig.pool = { label: 'Swimming...', duration: 6, restore: 35, cost: 0, hygieneBonus: 20 };
   rebuildInteractMeshes();
 }
@@ -4867,6 +4898,11 @@ function beginAction(action) {
   // Start animation overlay
   startActionAnim(action.obj.type, config.duration);
 
+  // Lower player into pool
+  if (action.obj.type === 'pool') {
+    camera.position.y -= 0.7;
+  }
+
   // Start looping sounds
   if (action.obj.type === 'shower' || action.obj.type === 'mansionSpa' || action.obj.type === 'hotTub') SFX.startShower();
   else if (action.obj.type === 'bed' || action.obj.type === 'bed2' || action.obj.type === 'kingBed') SFX.startSleep();
@@ -5556,7 +5592,14 @@ function stopActionAnim(type) {
     if (overlay._mgKeyUp) document.removeEventListener('keyup', overlay._mgKeyUp);
     overlay.classList.remove('visible');
     setTimeout(() => { overlay.innerHTML = ''; }, 500);
-  } else if (type === 'bookshelf' || type === 'bed2' || type === 'lavaLamp' || type === 'fishTank' || type === 'treadmill' || type === 'pool' || type === 'workbench' || type === 'punchingBag') {
+  } else if (type === 'pool') {
+    const overlay = document.getElementById('sleep-overlay');
+    overlay.style.background = '';
+    overlay.classList.remove('visible');
+    setTimeout(() => { overlay.innerHTML = ''; }, 500);
+    // Raise player back out of pool
+    camera.position.y += 0.7;
+  } else if (type === 'bookshelf' || type === 'bed2' || type === 'lavaLamp' || type === 'fishTank' || type === 'treadmill' || type === 'workbench' || type === 'punchingBag') {
     const overlay = document.getElementById('sleep-overlay');
     overlay.style.background = '';
     overlay.classList.remove('visible');
@@ -5569,12 +5612,74 @@ function clearAnimIntervals() {
   animIntervals = [];
 }
 
+// ═══ LEADERBOARD ═══
+let leaderboardOpen = false;
+
+function toggleLeaderboard() {
+  if (gameOver || !gameStarted || currentAction) return;
+  leaderboardOpen = !leaderboardOpen;
+  const overlay = document.getElementById('leaderboard-overlay');
+  if (leaderboardOpen) {
+    if (document.pointerLockElement) document.exitPointerLock();
+    renderLeaderboard();
+    overlay.classList.add('visible');
+  } else {
+    overlay.classList.remove('visible');
+  }
+}
+
+function getLeaderboardData() {
+  try { return JSON.parse(localStorage.getItem('minilife-leaderboard')) || []; }
+  catch(e) { return []; }
+}
+
+function updateLeaderboard(name, money, day) {
+  const board = getLeaderboardData();
+  const existing = board.findIndex(e => e.name === name);
+  if (existing >= 0) {
+    if (money > board[existing].money) {
+      board[existing].money = money;
+      board[existing].day = day;
+    }
+  } else {
+    board.push({ name, money: Math.floor(money), day });
+  }
+  board.sort((a, b) => b.money - a.money);
+  localStorage.setItem('minilife-leaderboard', JSON.stringify(board.slice(0, 10)));
+}
+
+function renderLeaderboard() {
+  const container = document.getElementById('leaderboard-list');
+  const board = getLeaderboardData();
+  if (board.length === 0) {
+    container.innerHTML = '<p style="color:#777;text-align:center;padding:16px 0;">No entries yet. Save your game to record a score!</p>';
+    return;
+  }
+  let html = '<table style="width:100%;border-collapse:collapse;margin-top:8px;">';
+  html += '<tr style="border-bottom:1px solid #333;"><th style="text-align:left;padding:6px 8px;color:#c9a84c;font-size:0.7rem;">#</th><th style="text-align:left;padding:6px 8px;color:#c9a84c;font-size:0.7rem;">NAME</th><th style="text-align:right;padding:6px 8px;color:#c9a84c;font-size:0.7rem;">MONEY</th><th style="text-align:right;padding:6px 8px;color:#c9a84c;font-size:0.7rem;">DAY</th></tr>';
+  for (let i = 0; i < board.length; i++) {
+    const e = board[i];
+    const medal = i === 0 ? '\u{1F947}' : i === 1 ? '\u{1F948}' : i === 2 ? '\u{1F949}' : '';
+    const rowColor = i === 0 ? '#c9a84c' : '#ccc';
+    html += '<tr style="border-bottom:1px solid #222;">';
+    html += '<td style="padding:6px 8px;color:' + rowColor + ';font-size:0.8rem;">' + medal + (i + 1) + '</td>';
+    html += '<td style="padding:6px 8px;color:' + rowColor + ';font-size:0.8rem;">' + e.name + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#4caf50;font-size:0.8rem;">$' + Math.floor(e.money) + '</td>';
+    html += '<td style="text-align:right;padding:6px 8px;color:#777;font-size:0.8rem;">Day ' + e.day + '</td>';
+    html += '</tr>';
+  }
+  html += '</table>';
+  container.innerHTML = html;
+}
+
 // ═══ SHOP ═══
 function toggleShop() {
   if (gameOver || !gameStarted || currentAction) return;
   shopOpen = !shopOpen;
   petMenuOpen = false;
+  leaderboardOpen = false;
   document.getElementById('pet-menu-overlay').classList.remove('visible');
+  document.getElementById('leaderboard-overlay').classList.remove('visible');
   const overlay = document.getElementById('shop-overlay');
   if (shopOpen) {
     if (document.pointerLockElement) document.exitPointerLock();
@@ -5840,6 +5945,9 @@ function purchaseSecondFloor() {
     fridgeObj.group.position.set(-2, 0.15, -4);
     fridgeObj.usePos.set(-1.5, 0.15, -3.5);
   }
+
+  // Remove roof to make room for second floor
+  scene.remove(homeRoof);
 
   secondFloorGroup = buildSecondFloor();
   scene.add(secondFloorGroup);
@@ -6403,6 +6511,8 @@ function restartGame() {
   }
   hasSecondFloor = false;
   currentFloor = 0;
+  // Re-add roof
+  if (!homeRoof.parent) scene.add(homeRoof);
   shopOpen = false;
   petMenuOpen = false;
   document.getElementById('shop-overlay').classList.remove('visible');
@@ -6571,6 +6681,7 @@ function writeSaveToSlot(slotIndex, name) {
   setSlotsMetadata(slots);
   currentSlot = slotIndex;
   currentSlotName = name;
+  updateLeaderboard(name, save.money, save.day);
   SFX.kaChing();
   const toast = document.getElementById('save-toast');
   toast.classList.add('visible');
@@ -6634,6 +6745,7 @@ function loadSlot(index) {
   // Rebuild second floor if owned
   if (save.hasSecondFloor) {
     hasSecondFloor = true;
+    scene.remove(homeRoof);
     // Move fridge out of stairwell zone
     const fridgeObj = interactables.find(i => i.type === 'fridge');
     if (fridgeObj) {
