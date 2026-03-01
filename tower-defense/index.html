@@ -598,6 +598,7 @@ const MAP_DEFS = [
     chapter: 'I',
     desc: 'Hold the first line of defense against the approaching horde.',
     hpMultiplier: 1.0,
+    theme: { grass: '#4a8c3f', grassStroke: '#3d7534', path: '#c4a96a', pathStroke: '#a8904a', tuft1: '#2d6b24', tuft2: '#3a7a30', dot: '#b89858', trees: true },
     buildPath() {
       const p = [];
       for (let c = 0; c <= 14; c++) p.push([c, 1]);
@@ -631,6 +632,7 @@ const MAP_DEFS = [
     chapter: 'II',
     desc: 'Defend the bridge over the River Ashfall before the heartland is exposed.',
     hpMultiplier: 1.15,
+    theme: { grass: '#3a7a5a', grassStroke: '#2d6648', path: '#8899aa', pathStroke: '#667788', tuft1: '#1a5a3a', tuft2: '#2a6a4a', dot: '#99aabb', trees: false, water: true, waterColor: '#2266aa' },
     buildPath() {
       const p = [];
       for (let c = 0; c <= 10; c++) p.push([c, 0]);
@@ -666,6 +668,7 @@ const MAP_DEFS = [
     chapter: 'III',
     desc: 'Use the narrow switchbacks to funnel the enemy into deadly killzones.',
     hpMultiplier: 1.3,
+    theme: { grass: '#7a7a6a', grassStroke: '#6a6a5a', path: '#9a8a7a', pathStroke: '#8a7a6a', tuft1: '#5a5a4a', tuft2: '#6a6a5a', dot: '#aaa090', trees: false, rocks: true },
     buildPath() {
       const p = [];
       for (let c = 0; c <= 14; c++) p.push([c, 0]);
@@ -699,6 +702,7 @@ const MAP_DEFS = [
     chapter: 'IV',
     desc: 'Navigate the twisting labyrinth where enemies lurk at every corner.',
     hpMultiplier: 1.5,
+    theme: { grass: '#2a3a2a', grassStroke: '#1a2a1a', path: '#4a3a2a', pathStroke: '#3a2a1a', tuft1: '#1a2a1a', tuft2: '#2a3a1a', dot: '#5a4a3a', trees: false, swamp: true, fog: true },
     buildPath() {
       const p = [];
       for (let c = 0; c <= 3; c++) p.push([c, 5]);
@@ -738,6 +742,7 @@ const MAP_DEFS = [
     chapter: 'V',
     desc: 'The final stand in an ancient cavern. End the war once and for all.',
     hpMultiplier: 1.75,
+    theme: { grass: '#2a1a1a', grassStroke: '#1a0a0a', path: '#4a3a3a', pathStroke: '#3a2a2a', tuft1: '#1a0a0a', tuft2: '#2a1a0a', dot: '#5a3a2a', trees: false, lava: true, cavern: true },
     buildPath() {
       const p = [];
       for (let r = 0; r <= 3; r++) p.push([0, r]);
@@ -1704,42 +1709,105 @@ function drawCartoonEnemy(e) {
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Draw grid — cartoony grass & dirt path
+  // Draw grid — themed terrain
+  const theme = MAP_DEFS[currentMapIndex].theme;
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const x = c * TILE, y = r * TILE;
       if (pathSet.has(c + ',' + r)) {
-        ctx.fillStyle = '#c4a96a';
+        ctx.fillStyle = theme.path;
         ctx.fillRect(x, y, TILE, TILE);
-        ctx.strokeStyle = '#a8904a';
+        ctx.strokeStyle = theme.pathStroke;
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 1, y + 1, TILE - 2, TILE - 2);
       } else {
-        ctx.fillStyle = '#4a8c3f';
+        ctx.fillStyle = theme.grass;
         ctx.fillRect(x, y, TILE, TILE);
-        ctx.strokeStyle = '#3d7534';
+        ctx.strokeStyle = theme.grassStroke;
         ctx.lineWidth = 0.5;
         ctx.strokeRect(x, y, TILE, TILE);
+        // River tiles
+        if (theme.water && (c === 7 || c === 8)) {
+          ctx.fillStyle = theme.waterColor + '88';
+          ctx.fillRect(x, y, TILE, TILE);
+          ctx.strokeStyle = theme.waterColor + 'aa';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(x, y, TILE, TILE);
+        }
       }
     }
   }
 
-  // Draw grass tufts
+  // Swamp: murky pools scattered on grass
+  if (theme.swamp) {
+    ctx.fillStyle = '#1a3a1a44';
+    for (const g of grassTufts) {
+      if (g.shade > 0.7) {
+        ctx.beginPath(); ctx.arc(g.x, g.y, 5 + g.h, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // Lava: glowing pools on grass
+  if (theme.lava) {
+    for (const g of grassTufts) {
+      if (g.shade > 0.75) {
+        ctx.fillStyle = '#ff220022';
+        ctx.beginPath(); ctx.arc(g.x, g.y, 6 + g.h, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#ff660018';
+        ctx.beginPath(); ctx.arc(g.x, g.y, 3 + g.h * 0.5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
+
+  // Draw terrain details (tufts, rocks, etc)
   for (const g of grassTufts) {
-    ctx.strokeStyle = g.shade > 0.5 ? '#2d6b24' : '#3a7a30';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(g.x, g.y);
-    ctx.lineTo(g.x - 2, g.y - g.h);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(g.x, g.y);
-    ctx.lineTo(g.x + 2, g.y - g.h * 0.8);
-    ctx.stroke();
+    if (theme.rocks) {
+      // Mountain Pass: small rocks instead of grass
+      ctx.fillStyle = g.shade > 0.5 ? '#888' : '#777';
+      ctx.beginPath(); ctx.arc(g.x, g.y, 2 + g.h * 0.3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#999';
+      ctx.beginPath(); ctx.arc(g.x - 1, g.y - 1, 1, 0, Math.PI * 2); ctx.fill();
+    } else if (theme.cavern) {
+      // Dragon's Lair: stalagmites
+      ctx.fillStyle = g.shade > 0.5 ? '#3a2a2a' : '#4a3a2a';
+      ctx.beginPath();
+      ctx.moveTo(g.x - 2, g.y);
+      ctx.lineTo(g.x, g.y - g.h * 1.2);
+      ctx.lineTo(g.x + 2, g.y);
+      ctx.closePath();
+      ctx.fill();
+    } else if (theme.swamp) {
+      // Dark Swamp: dead reeds
+      ctx.strokeStyle = g.shade > 0.5 ? theme.tuft1 : theme.tuft2;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x - 1, g.y - g.h * 0.6); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x + 1, g.y - g.h * 0.5); ctx.stroke();
+    } else {
+      // Default: grass tufts
+      ctx.strokeStyle = g.shade > 0.5 ? theme.tuft1 : theme.tuft2;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x - 2, g.y - g.h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(g.x, g.y); ctx.lineTo(g.x + 2, g.y - g.h * 0.8); ctx.stroke();
+    }
+  }
+
+  // Forest Gate: trees scattered on grass
+  if (theme.trees) {
+    for (const g of grassTufts) {
+      if (g.shade > 0.85 && g.h > 6) {
+        ctx.fillStyle = '#5a3a1a';
+        ctx.fillRect(g.x - 2, g.y - 8, 4, 8);
+        ctx.fillStyle = '#2d6b24';
+        ctx.beginPath(); ctx.arc(g.x, g.y - 12, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#3a7a30';
+        ctx.beginPath(); ctx.arc(g.x - 3, g.y - 10, 5, 0, Math.PI * 2); ctx.fill();
+      }
+    }
   }
 
   // Draw path direction indicators
-  ctx.fillStyle = '#b89858';
+  ctx.fillStyle = theme.dot;
   for (let i = 0; i < PATH.length - 1; i += 3) {
     const [c, r] = PATH[i];
     const [nc, nr] = PATH[i + 1];
@@ -1748,6 +1816,35 @@ function render() {
     ctx.beginPath();
     ctx.arc(pcx + dx * 8, pcy + dy * 8, 2.5, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Dark Swamp: fog overlay
+  if (theme.fog) {
+    ctx.fillStyle = '#1a2a1a33';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ft = performance.now() / 3000;
+    for (let i = 0; i < 5; i++) {
+      const fx = (Math.sin(ft + i * 1.5) * 0.5 + 0.5) * canvas.width;
+      const fy = (Math.cos(ft * 0.7 + i * 2) * 0.5 + 0.5) * canvas.height;
+      ctx.fillStyle = '#3a4a3a18';
+      ctx.beginPath(); ctx.arc(fx, fy, 60 + Math.sin(ft + i) * 20, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // Dragon's Lair: dark ambient overlay
+  if (theme.cavern) {
+    ctx.fillStyle = '#0a000015';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Glowing lava veins at edges
+    const lt = performance.now() / 2000;
+    ctx.strokeStyle = '#ff330011';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.moveTo(0, i * 180 + Math.sin(lt + i) * 20);
+      ctx.quadraticCurveTo(canvas.width / 2, i * 180 + 40 + Math.sin(lt + i + 1) * 30, canvas.width, i * 180 + Math.sin(lt + i + 2) * 20);
+      ctx.stroke();
+    }
   }
 
   // Hover highlight
