@@ -452,7 +452,7 @@ const FIGHTERS = {
     name: 'Volt', desc: 'Electric brawler',
     hp: 100, speed: 1.0, punchDmg: 6, kickDmg: 9,
     special: { name: 'Thunder Clap', damage: 22, type: 'aoe', cooldown: SPECIAL_COOLDOWN },
-    palette: makePalette('#e8b89d','#cccc00','#cccc00','#222222','#ffff44'),
+    palette: makePalette('#e8b89d','#cccc00','#111111','#cc2222','#ffff44'),
   },
   stone: {
     name: 'Stone', desc: 'Heavyweight wrestler',
@@ -1174,12 +1174,8 @@ function drawHUD(ctx) {
   ctx.strokeRect(GAME_W - 156, 8, 140, 10);
 
   // Fighter names
-  ctx.fillStyle = '#fff';
-  ctx.font = '7px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(f1.def.name.toUpperCase(), 16, 6);
-  ctx.textAlign = 'right';
-  ctx.fillText(f2.def.name.toUpperCase(), GAME_W - 16, 6);
+  queueText(f1.def.name.toUpperCase(), 16, 6, 7, '#fff', 'left');
+  queueText(f2.def.name.toUpperCase(), GAME_W - 16, 6, 7, '#fff', 'right');
 
   // Round indicators
   for (let i = 0; i < 2; i++) {
@@ -1199,10 +1195,7 @@ function drawHUD(ctx) {
 
   // Timer
   const secs = Math.max(0, Math.ceil(roundTimer / 60));
-  ctx.fillStyle = '#fff';
-  ctx.font = '10px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(String(secs), GAME_W / 2, 16);
+  queueText(String(secs), GAME_W / 2, 16, 10, '#fff', 'center');
 
   // Special cooldown bars
   const cd1 = 1 - f1.specialCooldown / SPECIAL_COOLDOWN;
@@ -1216,12 +1209,8 @@ function drawHUD(ctx) {
   ctx.fillRect(GAME_W - 66, 29, Math.floor(50 * cd2), 3);
 
   // "SP" label
-  ctx.fillStyle = '#888';
-  ctx.font = '6px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText('SP', 4, 32);
-  ctx.textAlign = 'right';
-  ctx.fillText('SP', GAME_W - 4, 32);
+  queueText('SP', 4, 32, 6, '#888', 'left');
+  queueText('SP', GAME_W - 4, 32, 6, '#888', 'right');
 }
 
 function drawProjectiles(ctx) {
@@ -1249,6 +1238,25 @@ function drawParticles(ctx) {
 }
 
 // ═══════════════════════════════════════════
+// HI-RES TEXT SYSTEM
+// ═══════════════════════════════════════════
+// Text is queued during draw calls, then rendered on the full-res display canvas
+let _textQueue = [];
+function queueText(text, x, y, size, color, align) {
+  _textQueue.push({ text, x, y, size, color, align: align || 'center' });
+}
+function flushText(dCtx, scale, dx, dy) {
+  dCtx.textBaseline = 'alphabetic';
+  for (const t of _textQueue) {
+    dCtx.fillStyle = t.color;
+    dCtx.font = Math.round(t.size * scale) + 'px "Segoe UI", Arial, sans-serif';
+    dCtx.textAlign = t.align;
+    dCtx.fillText(t.text, dx + t.x * scale, dy + t.y * scale);
+  }
+  _textQueue = [];
+}
+
+// ═══════════════════════════════════════════
 // SCREEN RENDERERS
 // ═══════════════════════════════════════════
 function drawTitle(ctx) {
@@ -1256,15 +1264,10 @@ function drawTitle(ctx) {
   ctx.fillRect(0, 0, GAME_W, GAME_H);
 
   // Title text
-  ctx.fillStyle = '#00e5ff';
-  ctx.font = '16px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('BATTLE BROS', GAME_W / 2, 60);
+  queueText('BATTLE BROS', GAME_W / 2, 60, 18, '#00e5ff', 'center');
 
   // Subtitle
-  ctx.fillStyle = '#888';
-  ctx.font = '7px monospace';
-  ctx.fillText('8-BIT FIGHTING', GAME_W / 2, 78);
+  queueText('8-BIT FIGHTING', GAME_W / 2, 78, 8, '#888', 'center');
 
   // Two pixel fighters
   const blazeP = makePalette('#e8b89d','#330000','#cc2200','#ff6600','#ffcc00');
@@ -1273,25 +1276,20 @@ function drawTitle(ctx) {
   drawSpriteFrame(ctx, idleFrame0(frostP), frostP, GAME_W/2 + 28, 90, -1, false);
 
   // VS
-  ctx.fillStyle = '#ffcc00';
-  ctx.font = '10px monospace';
-  ctx.fillText('VS', GAME_W / 2, 118);
+  queueText('VS', GAME_W / 2, 118, 12, '#ffcc00', 'center');
 
   // Menu
   const items = ['VS CPU', '2P LOCAL'];
   for (let i = 0; i < items.length; i++) {
-    ctx.fillStyle = menuSelection === i ? '#00e5ff' : '#666';
-    ctx.font = '8px monospace';
-    ctx.fillText(items[i], GAME_W / 2, 155 + i * 20);
+    const col = menuSelection === i ? '#00e5ff' : '#666';
+    queueText(items[i], GAME_W / 2, 155 + i * 20, 10, col, 'center');
     if (menuSelection === i) {
-      ctx.fillText('>', GAME_W / 2 - 60, 155 + i * 20);
+      queueText('>', GAME_W / 2 - 60, 155 + i * 20, 10, col, 'center');
     }
   }
 
   // Controls hint
-  ctx.fillStyle = '#444';
-  ctx.font = '6px monospace';
-  ctx.fillText('W/S TO SELECT - ENTER TO CONFIRM', GAME_W / 2, GAME_H - 10);
+  queueText('W/S TO SELECT - ENTER TO CONFIRM', GAME_W / 2, GAME_H - 10, 6, '#444', 'center');
 }
 
 function drawCharSelect(ctx) {
@@ -1299,11 +1297,8 @@ function drawCharSelect(ctx) {
   ctx.fillRect(0, 0, GAME_W, GAME_H);
 
   // Header
-  ctx.fillStyle = '#00e5ff';
-  ctx.font = '8px monospace';
-  ctx.textAlign = 'center';
   const picking = charSelectPhase === 1 ? 'P1 SELECT' : (gameMode === '2p' ? 'P2 SELECT' : 'CPU FIGHTER');
-  ctx.fillText(picking, GAME_W / 2, 18);
+  queueText(picking, GAME_W / 2, 18, 10, '#00e5ff', 'center');
 
   // Fighter grid (roster)
   const availableIds = [...FIGHTER_IDS];
@@ -1346,10 +1341,7 @@ function drawCharSelect(ctx) {
     drawSpriteFrame(ctx, frame, p, cx + 8, cy + 6, 1, false);
 
     // Name
-    ctx.fillStyle = isSelected ? '#fff' : '#888';
-    ctx.font = '6px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(def.name.toUpperCase(), cx + cellW / 2, cy + cellH - 4);
+    queueText(def.name.toUpperCase(), cx + cellW / 2, cy + cellH - 4, 6, isSelected ? '#fff' : '#888', 'center');
   }
 
   // Selected fighter info panel
@@ -1362,22 +1354,13 @@ function drawCharSelect(ctx) {
   ctx.strokeStyle = '#333';
   ctx.strokeRect(GAME_W/2 - 100, panelY, 200, 50);
 
-  ctx.fillStyle = '#00e5ff';
-  ctx.font = '7px monospace';
-  ctx.textAlign = 'left';
-  ctx.fillText(selDef.name, GAME_W/2 - 90, panelY + 12);
-
-  ctx.fillStyle = '#888';
-  ctx.font = '6px monospace';
-  ctx.fillText('SPD: ' + selDef.speed + '  PUNCH: ' + selDef.punchDmg + '  KICK: ' + selDef.kickDmg, GAME_W/2 - 90, panelY + 24);
-  ctx.fillText('SPECIAL: ' + selDef.special.name + ' (' + selDef.special.damage + ' DMG)', GAME_W/2 - 90, panelY + 34);
-  ctx.fillText(selDef.desc, GAME_W/2 - 90, panelY + 44);
+  queueText(selDef.name, GAME_W/2 - 90, panelY + 12, 7, '#00e5ff', 'left');
+  queueText('SPD: ' + selDef.speed + '  PUNCH: ' + selDef.punchDmg + '  KICK: ' + selDef.kickDmg, GAME_W/2 - 90, panelY + 24, 6, '#888', 'left');
+  queueText('SPECIAL: ' + selDef.special.name + ' (' + selDef.special.damage + ' DMG)', GAME_W/2 - 90, panelY + 34, 6, '#888', 'left');
+  queueText(selDef.desc, GAME_W/2 - 90, panelY + 44, 6, '#888', 'left');
 
   // Controls hint
-  ctx.fillStyle = '#444';
-  ctx.font = '6px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('A/D TO BROWSE - ENTER TO SELECT - ESC TO GO BACK', GAME_W / 2, GAME_H - 6);
+  queueText('A/D TO BROWSE - ENTER TO SELECT - ESC TO GO BACK', GAME_W / 2, GAME_H - 6, 6, '#444', 'center');
 }
 
 function drawFight(ctx) {
@@ -1412,14 +1395,10 @@ function drawFight(ctx) {
   if (roundStartPhase) {
     ctx.fillStyle = '#000000aa';
     ctx.fillRect(0, GAME_H / 2 - 20, GAME_W, 40);
-    ctx.fillStyle = '#fff';
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
     if (roundStartPhase === 'round') {
-      ctx.fillText('ROUND ' + roundNum, GAME_W / 2, GAME_H / 2 + 5);
+      queueText('ROUND ' + roundNum, GAME_W / 2, GAME_H / 2 + 5, 12, '#fff', 'center');
     } else if (roundStartPhase === 'fight') {
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillText('FIGHT!', GAME_W / 2, GAME_H / 2 + 5);
+      queueText('FIGHT!', GAME_W / 2, GAME_H / 2 + 5, 12, '#ffcc00', 'center');
     }
   }
 }
@@ -1437,34 +1416,26 @@ function drawMatchEnd(ctx) {
   const winnerLabel = p1Won ? 'P1 WINS!' : (gameMode === '2p' ? 'P2 WINS!' : 'CPU WINS!');
   const winnerChar = p1Won ? fighters[0] : fighters[1];
 
-  ctx.fillStyle = p1Won ? '#00e5ff' : '#ff4444';
-  ctx.font = '14px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText(winnerLabel, GAME_W / 2, 50);
+  queueText(winnerLabel, GAME_W / 2, 50, 14, p1Won ? '#00e5ff' : '#ff4444', 'center');
 
   // Winner fighter name
   if (winnerChar) {
-    ctx.fillStyle = '#fff';
-    ctx.font = '8px monospace';
-    ctx.fillText(winnerChar.def.name.toUpperCase(), GAME_W / 2, 72);
+    queueText(winnerChar.def.name.toUpperCase(), GAME_W / 2, 72, 8, '#fff', 'center');
 
     // Draw winner sprite
     drawSpriteFrame(ctx, idleFrame0(winnerChar.def.palette), winnerChar.def.palette, GAME_W/2 - 16, 82, 1, false);
   }
 
   // Score
-  ctx.fillStyle = '#888';
-  ctx.font = '7px monospace';
-  ctx.fillText('ROUNDS: ' + p1Rounds + ' - ' + p2Rounds, GAME_W / 2, 140);
+  queueText('ROUNDS: ' + p1Rounds + ' - ' + p2Rounds, GAME_W / 2, 140, 7, '#888', 'center');
 
   // Menu options
   const items = ['REMATCH', 'CHARACTER SELECT', 'TITLE SCREEN'];
   for (let i = 0; i < items.length; i++) {
-    ctx.fillStyle = menuSelection === i ? '#00e5ff' : '#666';
-    ctx.font = '7px monospace';
-    ctx.fillText(items[i], GAME_W / 2, 162 + i * 14);
+    const col = menuSelection === i ? '#00e5ff' : '#666';
+    queueText(items[i], GAME_W / 2, 162 + i * 14, 7, col, 'center');
     if (menuSelection === i) {
-      ctx.fillText('>', GAME_W / 2 - 80, 162 + i * 14);
+      queueText('>', GAME_W / 2 - 80, 162 + i * 14, 7, col, 'center');
     }
   }
 }
@@ -1840,6 +1811,9 @@ function render() {
   displayCtx.fillStyle = '#000';
   displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
   displayCtx.drawImage(gameCanvas, dx, dy, GAME_W * scale, GAME_H * scale);
+
+  // Render hi-res text overlay
+  flushText(displayCtx, scale, dx, dy);
 }
 
 // ═══════════════════════════════════════════
