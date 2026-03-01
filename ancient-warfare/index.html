@@ -189,6 +189,26 @@
     color: #888;
     padding: 4px;
   }
+  .team-toggle {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .team-toggle button {
+    flex: 1;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    padding: 6px 4px;
+    border: 2px solid #555;
+    background: #ffffff08;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .team-toggle button:hover { opacity: 0.9; }
+  .team-toggle button.active-blue { border-color: #4488ff; color: #4488ff; background: #4488ff18; }
+  .team-toggle button.active-red { border-color: #ff4444; color: #ff4444; background: #ff444418; }
 
   /* Battle Screen */
   #battle-screen {
@@ -481,7 +501,7 @@
   <div class="title-sub">3D Army Battle Simulator</div>
   <button class="punk-btn" id="continue-btn" onclick="continueCampaign()" style="display:none">CONTINUE CAMPAIGN</button>
   <button class="punk-btn" onclick="startCampaignMode()">CAMPAIGN</button>
-  <button class="punk-btn" onclick="startSkirmishMode()">SKIRMISH</button>
+  <button class="punk-btn" onclick="startSandboxMode()">SANDBOX</button>
   <button class="punk-btn secondary" onclick="window.location.href='../index.html'">EXIT</button>
 </div>
 
@@ -771,6 +791,33 @@ const SFX = (() => {
         o.start(); o.stop(c.currentTime + 0.08);
       });
     },
+    ballistaShot() {
+      play(() => {
+        const c = getCtx();
+        const o = c.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(400, c.currentTime);
+        o.frequency.exponentialRampToValueAtTime(100, c.currentTime + 0.2);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.2, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.2);
+        o.connect(g); g.connect(c.destination);
+        o.start(); o.stop(c.currentTime + 0.2);
+      });
+    },
+    ballistaHit() {
+      play(() => {
+        const c = getCtx();
+        const n = noise(0.08, 0.3);
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.3, c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.08);
+        const f = c.createBiquadFilter();
+        f.type = 'lowpass'; f.frequency.value = 800;
+        n.connect(f); f.connect(g); g.connect(c.destination);
+        n.start(); n.stop(c.currentTime + 0.08);
+      });
+    },
   };
 })();
 
@@ -784,6 +831,8 @@ const UNIT_DEFS = {
   cavalry:   { name: 'Cavalry',   cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '&#127943;', special: 'First hit 2x (charge)' },
   catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '&#129516;', special: 'Splash radius 3, very slow', splash: 3 },
   elephant:  { name: 'War Elephant', cost: 50, hp: 300, damage: 30, speed: 0.8, range: 2.0, icon: '&#128024;', special: 'Tank, trample', shopRequired: 'aw_war_elephant' },
+  trebuchet: { name: 'Trebuchet',   cost: 55, hp: 60,  damage: 60, speed: 0.3, range: 15,  icon: '&#9881;',   special: 'Heavy siege, splash 4', splash: 4 },
+  ballista:  { name: 'Ballista',    cost: 30, hp: 70,  damage: 35, speed: 0.5, range: 11,  icon: '&#10016;',  special: 'Precision bolt, long range' },
 };
 
 const FIELD_W = 40, FIELD_D = 30;
@@ -802,6 +851,16 @@ const LEVEL_DEFS = [
   { name: 'The Burning Fields', enemies: [{type:'cavalry',count:6},{type:'catapult',count:4},{type:'swordsman',count:8},{type:'spearman',count:5},{type:'elephant',count:2}], startGold: 90, healPct: 0.3 },
   { name: 'The Iron Fortress', enemies: [{type:'swordsman',count:10},{type:'spearman',count:8},{type:'archer',count:6},{type:'catapult',count:4},{type:'cavalry',count:4},{type:'elephant',count:3}], startGold: 90, healPct: 0.3 },
   { name: 'The Final Battle', enemies: [{type:'swordsman',count:12},{type:'archer',count:8},{type:'spearman',count:8},{type:'cavalry',count:6},{type:'catapult',count:5},{type:'elephant',count:4}], startGold: 80, healPct: 0.25 },
+  { name: 'The Scorched March', enemies: [{type:'swordsman',count:10},{type:'archer',count:6},{type:'cavalry',count:6},{type:'catapult',count:3}], startGold: 80, healPct: 0.25 },
+  { name: 'Valley of Shadows', enemies: [{type:'spearman',count:8},{type:'archer',count:8},{type:'cavalry',count:5},{type:'catapult',count:4},{type:'elephant',count:3}], startGold: 75, healPct: 0.25 },
+  { name: 'The Warlord\'s Gate', enemies: [{type:'swordsman',count:12},{type:'spearman',count:7},{type:'archer',count:6},{type:'cavalry',count:5},{type:'catapult',count:4},{type:'elephant',count:2},{type:'ballista',count:2}], startGold: 75, healPct: 0.2 },
+  { name: 'Blood River Crossing', enemies: [{type:'cavalry',count:8},{type:'spearman',count:8},{type:'swordsman',count:6},{type:'archer',count:5},{type:'elephant',count:4},{type:'ballista',count:3}], startGold: 70, healPct: 0.2 },
+  { name: 'The Dead Marshes', enemies: [{type:'swordsman',count:14},{type:'archer',count:8},{type:'spearman',count:6},{type:'catapult',count:5},{type:'cavalry',count:4},{type:'elephant',count:3},{type:'trebuchet',count:1},{type:'ballista',count:2}], startGold: 70, healPct: 0.2 },
+  { name: 'Siege of Ironhold', enemies: [{type:'spearman',count:10},{type:'swordsman',count:8},{type:'archer',count:7},{type:'catapult',count:6},{type:'cavalry',count:5},{type:'elephant',count:4},{type:'trebuchet',count:3},{type:'ballista',count:2}], startGold: 65, healPct: 0.15 },
+  { name: 'The Dragon\'s Spine', enemies: [{type:'cavalry',count:10},{type:'archer',count:8},{type:'swordsman',count:8},{type:'spearman',count:6},{type:'catapult',count:4},{type:'elephant',count:4},{type:'trebuchet',count:1},{type:'ballista',count:3}], startGold: 65, healPct: 0.15 },
+  { name: 'Empire\'s Last Stand', enemies: [{type:'swordsman',count:12},{type:'spearman',count:10},{type:'archer',count:8},{type:'cavalry',count:6},{type:'catapult',count:5},{type:'elephant',count:5},{type:'trebuchet',count:2},{type:'ballista',count:3}], startGold: 60, healPct: 0.15 },
+  { name: 'The Obsidian Throne', enemies: [{type:'swordsman',count:14},{type:'archer',count:10},{type:'spearman',count:8},{type:'cavalry',count:8},{type:'catapult',count:6},{type:'elephant',count:5},{type:'trebuchet',count:3},{type:'ballista',count:3}], startGold: 60, healPct: 0.1 },
+  { name: 'Armageddon', enemies: [{type:'swordsman',count:16},{type:'spearman',count:12},{type:'archer',count:10},{type:'cavalry',count:8},{type:'catapult',count:7},{type:'elephant',count:7},{type:'trebuchet',count:4},{type:'ballista',count:4}], startGold: 50, healPct: 0.1 },
 ];
 
 // ═══════════════════════════════════════════
@@ -832,6 +891,8 @@ function clearCampaignRun() { localStorage.removeItem(CAMPAIGN_SAVE_KEY); }
 // CAMPAIGN STATE
 // ═══════════════════════════════════════════
 let isCampaignMode = false;
+let isSandboxMode = false;
+let sandboxTeam = 'blue';
 let campaignState = null; // { levelIndex, gold, survivors: [{type,hp,maxHp}], preBattleSnapshot }
 
 function refreshTitleScreen() {
@@ -849,6 +910,7 @@ function continueCampaign() {
   const save = loadCampaignRun();
   if (!save) return;
   isCampaignMode = true;
+  isSandboxMode = false;
   campaignState = {
     levelIndex: save.levelIndex,
     gold: save.gold,
@@ -861,11 +923,14 @@ function continueCampaign() {
 
 function startCampaignMode() {
   isCampaignMode = true;
+  isSandboxMode = false;
   showLevelSelect();
 }
 
-function startSkirmishMode() {
+function startSandboxMode() {
   isCampaignMode = false;
+  isSandboxMode = true;
+  sandboxTeam = 'blue';
   campaignState = null;
   showScreen('deploy-screen');
   initDeployment();
@@ -1089,7 +1154,7 @@ function buildDeployGrid() {
     deployGridOverlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
   }
 
-  // "DEPLOY HERE" label zone border
+  // Blue zone border
   const borderPts = [
     new THREE.Vector3(-FIELD_W / 2, 0.04, -FIELD_D / 2),
     new THREE.Vector3(0, 0.04, -FIELD_D / 2),
@@ -1102,6 +1167,38 @@ function buildDeployGrid() {
     new THREE.LineBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.4 })
   );
   deployGridOverlay.add(borderLine);
+
+  // Red team deploy zone (sandbox only): right half (x > 0)
+  if (isSandboxMode) {
+    const redZoneGeo = new THREE.PlaneGeometry(FIELD_W / 2, FIELD_D);
+    const redZoneMat = new THREE.MeshBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.08 });
+    const redZone = new THREE.Mesh(redZoneGeo, redZoneMat);
+    redZone.rotation.x = -Math.PI / 2;
+    redZone.position.set(FIELD_W / 4, 0.02, 0);
+    deployGridOverlay.add(redZone);
+
+    const redGridMat = new THREE.LineBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.15 });
+    for (let x = 0; x <= FIELD_W / 2; x += 2) {
+      const pts = [new THREE.Vector3(x, 0.03, -FIELD_D / 2), new THREE.Vector3(x, 0.03, FIELD_D / 2)];
+      deployGridOverlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), redGridMat));
+    }
+    for (let z = -FIELD_D / 2; z <= FIELD_D / 2; z += 2) {
+      const pts = [new THREE.Vector3(0, 0.03, z), new THREE.Vector3(FIELD_W / 2, 0.03, z)];
+      deployGridOverlay.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), redGridMat));
+    }
+
+    const redBorderPts = [
+      new THREE.Vector3(0, 0.04, -FIELD_D / 2),
+      new THREE.Vector3(FIELD_W / 2, 0.04, -FIELD_D / 2),
+      new THREE.Vector3(FIELD_W / 2, 0.04, FIELD_D / 2),
+      new THREE.Vector3(0, 0.04, FIELD_D / 2),
+      new THREE.Vector3(0, 0.04, -FIELD_D / 2),
+    ];
+    deployGridOverlay.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(redBorderPts),
+      new THREE.LineBasicMaterial({ color: 0xff4444, transparent: true, opacity: 0.4 })
+    ));
+  }
 
   fieldGroup.add(deployGridOverlay);
 }
@@ -1308,6 +1405,73 @@ function buildUnitModel(type, team) {
     // Team banner on howdah
     const banner = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.4), mat);
     banner.position.set(0, 2.2, -0.3); group.add(banner);
+  } else if (type === 'trebuchet') {
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x6B3A1F });
+    // Large base platform
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 1.0), woodMat);
+    base.position.y = 0.2; base.castShadow = true; group.add(base);
+    // 4 wheels
+    const wheelMat = new THREE.MeshStandardMaterial({ color: 0x4a2a10 });
+    for (const wx of [-0.6, 0.6]) {
+      for (const wz of [-0.55, 0.55]) {
+        const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.05, 6, 12), wheelMat);
+        wheel.position.set(wx, 0.15, wz);
+        wheel.rotation.x = Math.PI / 2;
+        group.add(wheel);
+      }
+    }
+    // A-frame support uprights + crossbar
+    const upright1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08), woodMat);
+    upright1.position.set(0, 0.95, 0.25); group.add(upright1);
+    const upright2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 0.08), woodMat);
+    upright2.position.set(0, 0.95, -0.25); group.add(upright2);
+    const crossbar = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.6), woodMat);
+    crossbar.position.set(0, 1.65, 0); group.add(crossbar);
+    // Long throwing arm
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.8, 0.07), woodMat);
+    arm.position.set(0, 1.5, 0); arm.rotation.z = 0.5; group.add(arm);
+    // Counterweight
+    const cw = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.3, 0.3), metalMat);
+    cw.position.set(0.7, 1.0, 0); group.add(cw);
+    // Sling bucket
+    const sling = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.2), metalMat);
+    sling.position.set(-0.7, 1.9, 0); group.add(sling);
+    // Flaming boulder
+    const flameBoulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.14, 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0xDD6600, emissive: 0x882200, emissiveIntensity: 0.5 })
+    );
+    flameBoulder.position.set(-0.7, 2.05, 0); group.add(flameBoulder);
+  } else if (type === 'ballista') {
+    const woodMat = new THREE.MeshStandardMaterial({ color: 0x7B4B2A });
+    // Base stand
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 0.6), woodMat);
+    base.position.y = 0.15; base.castShadow = true; group.add(base);
+    // Support legs
+    const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), woodMat);
+    leg1.position.set(-0.3, 0.35, 0.2); leg1.rotation.z = 0.15; group.add(leg1);
+    const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.06), woodMat);
+    leg2.position.set(-0.3, 0.35, -0.2); leg2.rotation.z = 0.15; group.add(leg2);
+    // Main rail
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.1), woodMat);
+    rail.position.set(0.1, 0.55, 0); rail.castShadow = true; group.add(rail);
+    // Crossbow arms
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x5a3a1a });
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.04), armMat);
+    armL.position.set(-0.2, 0.55, 0.3); armL.rotation.z = 0.3; armL.rotation.x = -0.4; group.add(armL);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 0.04), armMat);
+    armR.position.set(-0.2, 0.55, -0.3); armR.rotation.z = 0.3; armR.rotation.x = 0.4; group.add(armR);
+    // Bowstring
+    const string = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.008, 0.008, 0.8, 4),
+      new THREE.MeshBasicMaterial({ color: 0xccccaa })
+    );
+    string.position.set(-0.2, 0.85, 0); string.rotation.x = Math.PI / 2; group.add(string);
+    // Bolt on rail
+    const boltShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.7, 4), woodMat);
+    boltShaft.position.set(0.3, 0.6, 0); boltShaft.rotation.z = Math.PI / 2; group.add(boltShaft);
+    const boltTip = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.15, 4), metalMat);
+    boltTip.position.set(0.7, 0.6, 0); boltTip.rotation.z = -Math.PI / 2; group.add(boltTip);
   }
 
   // Health bar (billboard)
@@ -1323,7 +1487,7 @@ function buildUnitModel(type, team) {
   );
   hbFill.position.z = 0.001;
   hbGroup.add(hbFill);
-  const topY = type === 'elephant' ? 2.8 : type === 'cavalry' ? 1.9 : type === 'catapult' ? 1.8 : 1.7;
+  const topY = type === 'elephant' ? 2.8 : type === 'trebuchet' ? 2.3 : type === 'cavalry' ? 1.9 : type === 'catapult' ? 1.8 : type === 'ballista' ? 1.2 : 1.7;
   hbGroup.position.y = topY;
   group.add(hbGroup);
 
@@ -1359,10 +1523,16 @@ let deployRaycaster = new THREE.Raycaster();
 let deployMouse = new THREE.Vector2();
 
 function initDeployment() {
-  const stats = loadStats();
-  budget = MAX_BUDGET + stats.bonusGold;
-  initialBudget = budget;
+  if (isSandboxMode) {
+    budget = Infinity;
+    initialBudget = Infinity;
+  } else {
+    const stats = loadStats();
+    budget = MAX_BUDGET + stats.bonusGold;
+    initialBudget = budget;
+  }
   deployedUnits = [];
+  enemyUnits = [];
   survivorUnits = [];
   selectedUnitType = null;
 
@@ -1375,10 +1545,10 @@ function initDeployment() {
   buildBattlefield();
   buildDeployGrid();
 
-  cameraTarget.set(-FIELD_W / 4, 0, 0);
+  cameraTarget.set(isSandboxMode ? 0 : -FIELD_W / 4, 0, 0);
   cameraAngle = Math.PI / 4;
   cameraPitch = Math.PI / 4;
-  cameraDistance = 25;
+  cameraDistance = isSandboxMode ? 35 : 25;
   updateCamera();
 
   renderDeploySidebar();
@@ -1459,11 +1629,21 @@ function spawnCampaignEnemies(levelDef) {
 
 function renderDeploySidebar() {
   const sidebar = document.getElementById('deploy-sidebar');
-  // Remove any existing campaign info sections
-  sidebar.querySelectorAll('.deploy-level-info, .deploy-enemy-preview').forEach(el => el.remove());
+  // Remove any existing campaign info or team toggle sections
+  sidebar.querySelectorAll('.deploy-level-info, .deploy-enemy-preview, .team-toggle').forEach(el => el.remove());
 
   const h3 = sidebar.querySelector('h3');
-  if (isCampaignMode && campaignState) {
+  if (isSandboxMode) {
+    h3.innerHTML = '&#9876; SANDBOX';
+    // Team toggle
+    const toggle = document.createElement('div');
+    toggle.className = 'team-toggle';
+    toggle.innerHTML =
+      '<button class="' + (sandboxTeam === 'blue' ? 'active-blue' : '') + '" onclick="setSandboxTeam(\'blue\')">BLUE ARMY</button>' +
+      '<button class="' + (sandboxTeam === 'red' ? 'active-red' : '') + '" onclick="setSandboxTeam(\'red\')">RED ARMY</button>';
+    h3.after(toggle);
+  } else if (isCampaignMode && campaignState) {
+    h3.innerHTML = '&#9876; DEPLOY ARMY';
     const levelDef = LEVEL_DEFS[campaignState.levelIndex];
     // Insert level info after h3
     const info = document.createElement('div');
@@ -1481,16 +1661,28 @@ function renderDeploySidebar() {
     }
     preview.innerHTML = '<div class="dep-title">Enemy Forces</div>' + rows;
     info.after(preview);
+  } else {
+    h3.innerHTML = '&#9876; DEPLOY ARMY';
   }
 
   // Update budget display format
   const budgetEl = document.querySelector('.deploy-budget');
-  if (isCampaignMode) {
+  if (isSandboxMode) {
+    budgetEl.innerHTML = 'Gold: <span id="budget-display">&infin;</span>';
+  } else if (isCampaignMode) {
     budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span>';
   } else {
     const totalBudget = MAX_BUDGET + loadStats().bonusGold;
     budgetEl.innerHTML = 'Gold: <span id="budget-display">' + budget + '</span> / ' + totalBudget;
   }
+}
+
+function setSandboxTeam(team) {
+  sandboxTeam = team;
+  selectedUnitType = null;
+  renderDeploySidebar();
+  renderUnitButtons();
+  updateDeployCount();
 }
 
 function renderUnitButtons() {
@@ -1499,14 +1691,15 @@ function renderUnitButtons() {
   const ggData = ggLoad();
 
   for (const [key, def] of Object.entries(UNIT_DEFS)) {
-    if (def.shopRequired && !ggData.shopPurchases[def.shopRequired]) continue;
+    if (!isSandboxMode && def.shopRequired && !ggData.shopPurchases[def.shopRequired]) continue;
+    const canAfford = isSandboxMode || budget >= def.cost;
     const btn = document.createElement('div');
-    btn.className = 'unit-btn' + (budget < def.cost ? ' disabled' : '') + (selectedUnitType === key ? ' selected' : '');
+    btn.className = 'unit-btn' + (!canAfford ? ' disabled' : '') + (selectedUnitType === key ? ' selected' : '');
     btn.innerHTML = '<div class="unit-swatch">' + def.icon + '</div>' +
       '<div><div style="font-weight:bold">' + def.name + '</div><div style="font-size:0.65rem;color:#888">' + def.special + '</div></div>' +
-      '<div class="unit-cost">' + def.cost + 'g</div>';
+      (isSandboxMode ? '' : '<div class="unit-cost">' + def.cost + 'g</div>');
     btn.onclick = () => {
-      if (budget >= def.cost) {
+      if (canAfford) {
         selectedUnitType = key;
         renderUnitButtons();
       }
@@ -1516,18 +1709,33 @@ function renderUnitButtons() {
 }
 
 function updateBudgetDisplay() {
-  const el = document.getElementById('budget-display');
-  if (el) el.textContent = budget;
-  document.getElementById('start-battle-btn').classList.toggle('disabled', deployedUnits.length === 0);
+  if (!isSandboxMode) {
+    const el = document.getElementById('budget-display');
+    if (el) el.textContent = budget;
+  }
+  const needsBothSides = isSandboxMode ? (deployedUnits.length === 0 || enemyUnits.length === 0) : deployedUnits.length === 0;
+  document.getElementById('start-battle-btn').classList.toggle('disabled', needsBothSides);
   renderUnitButtons();
 }
 
 function updateDeployCount() {
-  document.getElementById('deploy-count').textContent = 'Units: ' + deployedUnits.length;
+  if (isSandboxMode) {
+    document.getElementById('deploy-count').textContent = 'Blue: ' + deployedUnits.length + '  |  Red: ' + enemyUnits.length;
+  } else {
+    document.getElementById('deploy-count').textContent = 'Units: ' + deployedUnits.length;
+  }
 }
 
 function clearDeployment() {
-  if (isCampaignMode) {
+  if (isSandboxMode) {
+    if (sandboxTeam === 'blue') {
+      for (const u of deployedUnits) scene.remove(u);
+      deployedUnits = [];
+    } else {
+      for (const u of enemyUnits) scene.remove(u);
+      enemyUnits = [];
+    }
+  } else if (isCampaignMode) {
     // Only remove newly placed units, keep survivors
     for (const u of deployedUnits) {
       if (!survivorUnits.includes(u)) scene.remove(u);
@@ -1551,16 +1759,35 @@ function clearDeployment() {
 function placeUnit(x, z) {
   if (!selectedUnitType) return;
   const def = UNIT_DEFS[selectedUnitType];
-  if (budget < def.cost) return;
-  if (x > 0 || x < -FIELD_W / 2 || z < -FIELD_D / 2 || z > FIELD_D / 2) return;
+  // Bounds check
+  if (z < -FIELD_D / 2 || z > FIELD_D / 2) return;
 
-  const unit = buildUnitModel(selectedUnitType, 'blue');
-  unit.position.set(x, 0, z);
-  // Face right (toward enemy)
-  unit.rotation.y = -Math.PI / 2;
-  scene.add(unit);
-  deployedUnits.push(unit);
-  budget -= def.cost;
+  if (isSandboxMode) {
+    if (sandboxTeam === 'blue') {
+      if (x > 0 || x < -FIELD_W / 2) return;
+      const unit = buildUnitModel(selectedUnitType, 'blue');
+      unit.position.set(x, 0, z);
+      unit.rotation.y = -Math.PI / 2;
+      scene.add(unit);
+      deployedUnits.push(unit);
+    } else {
+      if (x < 0 || x > FIELD_W / 2) return;
+      const unit = buildUnitModel(selectedUnitType, 'red');
+      unit.position.set(x, 0, z);
+      unit.rotation.y = Math.PI / 2;
+      scene.add(unit);
+      enemyUnits.push(unit);
+    }
+  } else {
+    if (budget < def.cost) return;
+    if (x > 0 || x < -FIELD_W / 2) return;
+    const unit = buildUnitModel(selectedUnitType, 'blue');
+    unit.position.set(x, 0, z);
+    unit.rotation.y = -Math.PI / 2;
+    scene.add(unit);
+    deployedUnits.push(unit);
+    budget -= def.cost;
+  }
   SFX.place();
   updateBudgetDisplay();
   updateDeployCount();
@@ -1593,6 +1820,8 @@ function generateEnemyArmy(playerBudget) {
     cavalry: 15,
     catapult: 5,
     elephant: 8,
+    trebuchet: 3,
+    ballista: 6,
   };
 
   while (enemyBudget > 0) {
@@ -1680,6 +1909,33 @@ function spawnBoulder(from, to, damage, team, splash) {
   SFX.catapultLaunch();
 }
 
+function spawnBolt(from, to, damage, team) {
+  const bolt = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.6, 4),
+    new THREE.MeshBasicMaterial({ color: team === 'blue' ? 0x66aaff : 0xff6666 })
+  );
+  const start = from.clone();
+  start.y = 0.6;
+  bolt.position.copy(start);
+  bolt.lookAt(to);
+  bolt.rotation.x += Math.PI / 2;
+
+  projectiles.push({
+    mesh: bolt,
+    start: start.clone(),
+    end: to.clone(),
+    progress: 0,
+    speed: 20,
+    damage,
+    team,
+    type: 'bolt',
+    targetPos: to.clone(),
+    splash: 0,
+  });
+  scene.add(bolt);
+  SFX.ballistaShot();
+}
+
 function updateProjectiles(dt) {
   for (let i = projectiles.length - 1; i >= 0; i--) {
     const p = projectiles[i];
@@ -1689,8 +1945,8 @@ function updateProjectiles(dt) {
     if (p.progress >= 1) {
       // Hit
       scene.remove(p.mesh);
-      if (p.type === 'arrow') {
-        SFX.arrowHit();
+      if (p.type === 'arrow' || p.type === 'bolt') {
+        if (p.type === 'bolt') SFX.ballistaHit(); else SFX.arrowHit();
         // Find closest enemy at target
         const targets = p.team === 'blue' ? enemyUnits : deployedUnits;
         let closest = null, closestDist = 2;
@@ -1751,6 +2007,8 @@ function getUnitEyeHeight(type) {
     case 'elephant': return 2.35;
     case 'archer': return 1.3;
     case 'catapult': return 1.3;
+    case 'trebuchet': return 1.5;
+    case 'ballista': return 0.8;
     default: return 1.4;
   }
 }
@@ -1839,16 +2097,23 @@ function updateCombatAI(dt) {
       const found = findNearestEnemy(unit, enemies);
       if (!found.target) return;
       u.target = found.target;
-      const isRanged = u.type === 'archer' || u.type === 'catapult';
+      const isRanged = u.type === 'archer' || u.type === 'catapult' || u.type === 'trebuchet' || u.type === 'ballista';
       if (isRanged) {
         if (found.dist <= u.range && u.attackCooldown <= 0) {
           if (u.type === 'archer') {
             spawnArrow(unit.position, found.target.position, getAttackDamage(unit, found.target), u.team);
             u.attackCooldown = 1.0;
-          } else {
+          } else if (u.type === 'catapult') {
             const clusterPos = findClusterCenter(found.target, enemies);
             spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.catapult.splash);
             u.attackCooldown = 3.0;
+          } else if (u.type === 'trebuchet') {
+            const clusterPos = findClusterCenter(found.target, enemies);
+            spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.trebuchet.splash);
+            u.attackCooldown = 4.0;
+          } else if (u.type === 'ballista') {
+            spawnBolt(unit.position, found.target.position, getAttackDamage(unit, found.target), u.team);
+            u.attackCooldown = 2.0;
           }
         }
       } else if (found.dist <= u.range && u.attackCooldown <= 0) {
@@ -1874,7 +2139,7 @@ function updateCombatAI(dt) {
 
     u.target = target;
 
-    const isRanged = u.type === 'archer' || u.type === 'catapult';
+    const isRanged = u.type === 'archer' || u.type === 'catapult' || u.type === 'trebuchet' || u.type === 'ballista';
     const attackRange = u.range;
 
     if (isRanged) {
@@ -1901,6 +2166,29 @@ function updateCombatAI(dt) {
             const clusterPos = findClusterCenter(target, enemies);
             spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.catapult.splash);
             u.attackCooldown = 3.0;
+          }
+          faceTarget(unit, target);
+        } else {
+          moveToward(unit, target, dt);
+        }
+      } else if (u.type === 'trebuchet') {
+        // Trebuchet: heavy boulders, larger splash, creep forward if out of range
+        if (dist <= attackRange) {
+          if (u.attackCooldown <= 0) {
+            const clusterPos = findClusterCenter(target, enemies);
+            spawnBoulder(unit.position, clusterPos, u.damage, u.team, UNIT_DEFS.trebuchet.splash);
+            u.attackCooldown = 4.0;
+          }
+          faceTarget(unit, target);
+        } else {
+          moveToward(unit, target, dt);
+        }
+      } else if (u.type === 'ballista') {
+        // Ballista: precision bolts, advance if out of range
+        if (dist <= attackRange) {
+          if (u.attackCooldown <= 0) {
+            spawnBolt(unit.position, target.position, getAttackDamage(unit, target), u.team);
+            u.attackCooldown = 2.0;
           }
           faceTarget(unit, target);
         } else {
@@ -1984,6 +2272,7 @@ function clampToField(unit) {
 // ═══════════════════════════════════════════
 function startBattle() {
   if (deployedUnits.length === 0) return;
+  if (isSandboxMode && enemyUnits.length === 0) return;
 
   showScreen('battle-screen');
 
@@ -1997,18 +2286,17 @@ function startBattle() {
 
   if (isCampaignMode) {
     // Campaign: enemies already on field, take snapshot for retry
-    // Snapshot uses original gold/survivors (before spending in deployment)
     campaignState.preBattleSnapshot = {
       gold: campaignState.gold,
       survivors: campaignState.survivors.map(s => ({...s})),
     };
-    // Update campaign gold to reflect what's left after deployment
     campaignState.gold = budget;
-  } else {
-    // Skirmish: generate enemy army with extra budget for more challenge
+  } else if (!isSandboxMode) {
+    // This branch no longer used (skirmish removed), but kept for safety
     const spent = MAX_BUDGET - budget;
     generateEnemyArmy(spent + 50);
   }
+  // Sandbox: enemies already placed manually, no generation needed
 
   initialBlueCount = deployedUnits.length;
 
@@ -2166,49 +2454,54 @@ function endBattle(victory) {
   if (possessedUnit) exitPossession();
   battleRunning = false;
 
-  const stats = loadStats();
-  stats.battles++;
-  if (victory) {
-    stats.wins++;
-    stats.bonusGold += 50;
-  }
-  saveStats(stats);
+  if (!isSandboxMode) {
+    const stats = loadStats();
+    stats.battles++;
+    if (victory) {
+      stats.wins++;
+      stats.bonusGold += 50;
+    }
+    saveStats(stats);
 
-  // Achievement checks
-  ggTry('aw_first_battle');
+    // Achievement checks
+    ggTry('aw_first_battle');
+
+    if (victory) {
+      ggTry('aw_victor');
+
+      // Flawless: no blue units lost
+      const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+      if (blueAlive === initialBlueCount) ggTry('aw_flawless');
+
+      // Cavalry Charge: 5+ cavalry
+      const cavCount = deployedUnits.filter(u => u.userData.type === 'cavalry').length;
+      if (cavCount >= 5) ggTry('aw_cavalry_charge');
+
+      // Rain of Arrows: 5+ archers
+      const archerCount = deployedUnits.filter(u => u.userData.type === 'archer').length;
+      if (archerCount >= 5) ggTry('aw_archer_army');
+
+      // Balanced: all 5 base types
+      const types = new Set(deployedUnits.map(u => u.userData.type));
+      const baseTypes = ['swordsman', 'archer', 'spearman', 'cavalry', 'catapult'];
+      if (baseTypes.every(t => types.has(t))) ggTry('aw_balanced');
+
+      // Underdog: outnumbered 2:1
+      if (enemyUnits.length >= deployedUnits.length * 2) ggTry('aw_underdog');
+
+      // Blitz: under 30 seconds
+      if (battleTime < 30) ggTry('aw_speed_demon');
+
+      // Commander: 5 wins
+      if (stats.wins >= 5) ggTry('aw_commander');
+
+      // Warlord: 10 wins
+      if (stats.wins >= 10) ggTry('aw_warlord');
+    }
+  }
 
   if (victory) {
     SFX.victory();
-    ggTry('aw_victor');
-
-    // Flawless: no blue units lost
-    const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
-    if (blueAlive === initialBlueCount) ggTry('aw_flawless');
-
-    // Cavalry Charge: 5+ cavalry
-    const cavCount = deployedUnits.filter(u => u.userData.type === 'cavalry').length;
-    if (cavCount >= 5) ggTry('aw_cavalry_charge');
-
-    // Rain of Arrows: 5+ archers
-    const archerCount = deployedUnits.filter(u => u.userData.type === 'archer').length;
-    if (archerCount >= 5) ggTry('aw_archer_army');
-
-    // Balanced: all 5 base types
-    const types = new Set(deployedUnits.map(u => u.userData.type));
-    const baseTypes = ['swordsman', 'archer', 'spearman', 'cavalry', 'catapult'];
-    if (baseTypes.every(t => types.has(t))) ggTry('aw_balanced');
-
-    // Underdog: outnumbered 2:1
-    if (enemyUnits.length >= deployedUnits.length * 2) ggTry('aw_underdog');
-
-    // Blitz: under 30 seconds
-    if (battleTime < 30) ggTry('aw_speed_demon');
-
-    // Commander: 5 wins
-    if (stats.wins >= 5) ggTry('aw_commander');
-
-    // Warlord: 10 wins
-    if (stats.wins >= 10) ggTry('aw_warlord');
   } else {
     SFX.defeat();
   }
@@ -2227,10 +2520,9 @@ function endBattle(victory) {
       const mins = Math.floor(battleTime / 60);
       const secs = Math.floor(battleTime % 60);
       document.getElementById('end-stats').innerHTML =
-        'Your army: <span>' + deployedUnits.length + '</span> deployed, <span>' + blueAlive + '</span> survived<br>' +
-        'Enemy army: <span>' + enemyUnits.length + '</span> units, <span>' + redAlive + '</span> remaining<br>' +
-        'Battle time: <span>' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span><br>' +
-        'Total wins: <span>' + loadStats().wins + '</span>';
+        'Blue army: <span>' + deployedUnits.length + '</span> deployed, <span>' + blueAlive + '</span> survived<br>' +
+        'Red army: <span>' + enemyUnits.length + '</span> units, <span>' + redAlive + '</span> remaining<br>' +
+        'Battle time: <span>' + mins + ':' + (secs < 10 ? '0' : '') + secs + '</span>';
 
       showScreen('end-screen');
     }
@@ -2364,7 +2656,9 @@ function cleanupBattleScene() {
 function resetToDeployment() {
   cleanupBattleScene();
   isCampaignMode = false;
+  // Keep isSandboxMode as-is so sandbox returns to sandbox deploy
   campaignState = null;
+  sandboxTeam = 'blue';
   showScreen('deploy-screen');
   initDeployment();
 }
