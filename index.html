@@ -241,6 +241,30 @@
   .shop-buy.owned { border-color: #555; color: #555; background: transparent; cursor: default; }
   .shop-buy.locked { border-color: #444; color: #444; background: transparent; cursor: default; }
 
+  /* ═══ NEWS PANEL ═══ */
+  .news-entry {
+    padding: 12px;
+    border-radius: 7px;
+    border: 1px solid #333;
+    margin-bottom: 6px;
+    transition: border-color 0.15s;
+  }
+  .news-entry:hover { border-color: #c9a84c44; }
+  .news-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .news-date { font-size: 0.55rem; color: #555; letter-spacing: 0.05em; flex-shrink: 0; }
+  .news-title { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; }
+  .news-desc { font-size: 0.65rem; color: #777; margin-top: 2px; line-height: 1.4; }
+  .news-tag {
+    display: inline-block;
+    font-size: 0.5rem;
+    padding: 2px 8px;
+    border-radius: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
   /* ═══ GAME LIST ═══ */
   .game-list {
     display: flex;
@@ -492,6 +516,23 @@
   .game-card.brawl-monsters .game-icon {
     background: linear-gradient(135deg, #1a081a, #2a0a2a);
     border: 1px solid #e040fb44;
+    border-radius: 8px;
+  }
+
+  /* BATTLE BROS card */
+  .game-card.battle-bros {
+    border-left-color: #00e5ff;
+  }
+  .game-card.battle-bros:hover {
+    border-color: #00e5ff;
+    box-shadow: 0 0 30px #00e5ff15, -5px 0 20px #00e5ff10;
+  }
+  .game-card.battle-bros::before {
+    background: linear-gradient(90deg, #00e5ff08 0%, transparent 50%);
+  }
+  .game-card.battle-bros .game-icon {
+    background: linear-gradient(135deg, #081a1a, #0a2a2a);
+    border: 1px solid #00e5ff44;
     border-radius: 8px;
   }
 
@@ -1006,6 +1047,7 @@ for (let i = 0; i < 30; i++) {
     <button class="nav-btn" onclick="openAchievements()">&#127942; ACHIEVEMENTS</button>
     <button class="nav-btn" onclick="openShop()">&#128176; G BUX SHOP</button>
     <button class="nav-btn" onclick="openSchoolMode()">&#127891; SCHOOL MODE</button>
+    <button class="nav-btn" onclick="openNews()">&#128240; NEWS</button>
   </div>
 
   <div class="game-list">
@@ -1249,6 +1291,31 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- BATTLE BROS -->
+    <a href="battle-bros/index.html" class="game-card battle-bros">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#081a1a" stroke="#00e5ff" stroke-width="2"/>
+          <rect x="14" y="16" width="6" height="6" fill="#00e5ff" opacity="0.8"/>
+          <rect x="14" y="22" width="6" height="8" fill="#00e5ff" opacity="0.5"/>
+          <rect x="10" y="24" width="4" height="2" fill="#00e5ff" opacity="0.6"/>
+          <rect x="14" y="30" width="3" height="6" fill="#00e5ff" opacity="0.4"/>
+          <rect x="17" y="30" width="3" height="6" fill="#00e5ff" opacity="0.4"/>
+          <rect x="30" y="16" width="6" height="6" fill="#ff4444" opacity="0.8"/>
+          <rect x="30" y="22" width="6" height="8" fill="#ff4444" opacity="0.5"/>
+          <rect x="36" y="24" width="4" height="2" fill="#ff4444" opacity="0.6"/>
+          <rect x="30" y="30" width="3" height="6" fill="#ff4444" opacity="0.4"/>
+          <rect x="33" y="30" width="3" height="6" fill="#ff4444" opacity="0.4"/>
+          <text x="25" y="27" text-anchor="middle" font-size="5" fill="#ffcc00" font-family="monospace" font-weight="bold">VS</text>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">BATTLE BROS</div>
+        <div class="game-desc">8-bit pixel fighting</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1280,6 +1347,16 @@ for (let i = 0; i < 30; i++) {
     <div class="gg-panel-sub">Parental controls &amp; learning quizzes</div>
     <div id="school-content"></div>
     <button class="gg-close" onclick="closeSchoolMode()">CLOSE</button>
+  </div>
+</div>
+
+<!-- News Overlay -->
+<div class="gg-overlay" id="news-overlay">
+  <div class="gg-panel">
+    <h2>&#128240; NEWS</h2>
+    <div class="gg-panel-sub">Latest updates &amp; announcements</div>
+    <div id="news-list"></div>
+    <button class="gg-close" onclick="closeNews()">CLOSE</button>
   </div>
 </div>
 
@@ -1410,6 +1487,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'bm_no_heal',       name: 'No Mercy',             desc: 'Win a run without choosing any heals',     reward: 20 },
     { id: 'bm_collect_all',   name: 'Gotta Catch Em All',   desc: 'Collect every monster species',            reward: 30 },
   ]},
+  { group: 'BATTLE BROS', items: [
+    { id: 'bb_first_fight',   name: 'First Bout',        desc: 'Complete any fight',                  reward: 5 },
+    { id: 'bb_first_win',     name: 'Winner',             desc: 'Win a match',                         reward: 10 },
+    { id: 'bb_all_fighters',  name: 'Roster Complete',    desc: 'Win with all 8 fighters',             reward: 20 },
+    { id: 'bb_perfect_round', name: 'Perfect',            desc: 'Win a round without taking damage',   reward: 25 },
+    { id: 'bb_sweep',         name: 'Flawless Victory',   desc: 'Win a match 2-0',                     reward: 20 },
+    { id: 'bb_10_wins',       name: 'Veteran',            desc: 'Win 10 matches total',                reward: 25 },
+    { id: 'bb_special_ko',    name: 'Finishing Move',     desc: 'KO with a special move',              reward: 15 },
+    { id: 'bb_comeback',      name: 'Comeback Kid',       desc: 'Win after losing round 1',            reward: 25 },
+    { id: 'bb_speed_ko',      name: 'Speed Demon',        desc: 'KO opponent in under 10 seconds',     reward: 15 },
+    { id: 'bb_2p_match',      name: 'Friendly Rival',     desc: 'Complete a 2P local match',           reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1428,6 +1517,8 @@ const SHOP_ITEMS = [
   { id: 'dd_monster_truck',  name: 'Monster Truck',     desc: 'Bigger car with more knockback',                cost: 75, icon: '&#128663;', game: 'Devious Driving' },
   { id: 'bm_drakovex',      name: 'Drakovex',          desc: 'Unlocks the Drakovex monster (Fire/Shadow)', cost: 75, icon: '&#128050;', game: 'Brawl Monsters' },
   { id: 'bm_stat_scanner',  name: 'Monster Scanner',   desc: 'See enemy stats and move types in battle',   cost: 50, icon: '&#128269;', game: 'Brawl Monsters' },
+  { id: 'bb_shadow_mode',  name: 'Shadow Mode',       desc: 'CRT scanlines and fighter after-image trails', cost: 75, icon: '&#128065;', game: 'Battle Bros' },
+  { id: 'bb_boss_fighter', name: 'Boss Fighter',      desc: 'Unlock the hidden fighter Omega',              cost: 50, icon: '&#11088;',  game: 'Battle Bros' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══
@@ -1496,6 +1587,54 @@ function purchaseItem(id, cost) {
   ggSave(data);
   document.getElementById('gbux-amount').textContent = data.gBux;
 }
+
+// ═══ NEWS PANEL ═══
+const NEWS_TAG_COLORS = {
+  'all':              { bg: '#c9a84c22', border: '#c9a84c', color: '#c9a84c' },
+  'brawl-monsters':   { bg: '#e040fb22', border: '#e040fb', color: '#e040fb' },
+  'devious-driving':  { bg: '#e91e6322', border: '#e91e63', color: '#e91e63' },
+  'tower-defense':    { bg: '#9b59b622', border: '#9b59b6', color: '#9b59b6' },
+  'mini-life':        { bg: '#4caf5022', border: '#4caf50', color: '#4caf50' },
+  'hurgvibbit':       { bg: '#ff174422', border: '#ff1744', color: '#ff1744' },
+  'ancient-warfare':  { bg: '#cd7f3222', border: '#cd7f32', color: '#cd7f32' },
+  'rogue-depths':     { bg: '#8b5e3c22', border: '#8b5e3c', color: '#8b5e3c' },
+  'battle-bros':      { bg: '#00e5ff22', border: '#00e5ff', color: '#00e5ff' },
+};
+const NEWS_TAG_LABELS = {
+  'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
+  'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
+  'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
+};
+const NEWS_ENTRIES = [
+  { date: '2026-02-28', title: 'Battle Bros Launches!', desc: 'New 8-bit pixel fighting game with 8 unique fighters, VS CPU and 2P local modes, special moves, and best-of-3 rounds!', game: 'battle-bros' },
+  { date: '2026-02-24', title: 'Brawl Monsters Launches!', desc: 'Brand new monster battling game with 13 unique monsters, a trainer system, tutorial mode, and collection tracking. Catch and battle your way to the top!', game: 'brawl-monsters' },
+  { date: '2026-02-24', title: 'Bug Update 3', desc: 'Devious Driving: removed power-ups, added bot count selection, improved start line visuals.', game: 'devious-driving' },
+  { date: '2026-02-22', title: 'Devious Driving Arrives', desc: 'New kart racing game with 1-4 player split-screen, AI opponents, multiple tracks including Highway, wall bouncing, fullscreen toggle, and reverse driving.', game: 'devious-driving' },
+  { date: '2026-02-22', title: 'Bug Update 2', desc: 'Tower Defense: cartoony visual overhaul with new colorful graphics. Rogue Depths: added R key to drop items, renamed Shadow Class to Rogue Class, renamed Halfway There achievement.', game: 'all' },
+  { date: '2026-02-22', title: 'Rogue Depths Expands', desc: 'New between-floor shop, weapon inventory system, swing animations for all melee weapons, and save/load support.', game: 'rogue-depths' },
+  { date: '2026-02-21', title: 'Rogue Depths Launches!', desc: 'New dungeon crawler game with cartoon rendering, mouse-relative controls, scythe weapon, and multiple maps.', game: 'rogue-depths' },
+  { date: '2026-02-21', title: 'Bug Update 1', desc: 'Added GG favicon to all pages. Mobile responsive launcher layout. Scrollable game list with themed scrollbar. Ancient Warfare: victory bonus gold, mobile catapults.', game: 'all' },
+];
+
+function openNews() {
+  const container = document.getElementById('news-list');
+  container.innerHTML = '';
+  for (const entry of NEWS_ENTRIES) {
+    const div = document.createElement('div');
+    div.className = 'news-entry';
+    const tag = NEWS_TAG_COLORS[entry.game] || NEWS_TAG_COLORS['all'];
+    const tagLabel = NEWS_TAG_LABELS[entry.game] || entry.game;
+    div.innerHTML = '<div class="news-head">' +
+      '<span class="news-date">' + entry.date + '</span>' +
+      '<span class="news-title">' + entry.title + '</span>' +
+      '<span class="news-tag" style="background:' + tag.bg + ';border:1px solid ' + tag.border + ';color:' + tag.color + '">' + tagLabel + '</span>' +
+      '</div>' +
+      '<div class="news-desc">' + entry.desc + '</div>';
+    container.appendChild(div);
+  }
+  document.getElementById('news-overlay').classList.add('visible');
+}
+function closeNews() { document.getElementById('news-overlay').classList.remove('visible'); }
 
 // ═══ REFRESH ON FOCUS ═══
 function refreshGBux() {

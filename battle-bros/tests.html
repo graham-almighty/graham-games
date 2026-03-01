@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Battle Bros - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #00e5ff; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #00e5ff; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Battle Bros - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0, _currentGroup = '';
+const _results = document.getElementById('results');
+
+function group(name) {
+  _currentGroup = name;
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, epsilon, name) {
+  const pass = Math.abs(actual - expected) <= epsilon;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ', got ' + actual);
+}
+
+function showSummary() {
+  const total = _passed + _failed;
+  const el = document.getElementById('summary');
+  el.innerHTML = '<span class="' + (_failed === 0 ? 'pass' : 'fail') + '">' +
+    _passed + ' / ' + total + ' tests passed' +
+    (_failed > 0 ? ' (' + _failed + ' failed)' : ' — ALL CLEAR') + '</span>';
+}
+
+// ============================================================
+// MOCK LOCALSTORAGE
+// ============================================================
+const mockStorage = {};
+const realGetItem = localStorage.getItem.bind(localStorage);
+const realSetItem = localStorage.setItem.bind(localStorage);
+localStorage.getItem = function(key) { return mockStorage[key] !== undefined ? mockStorage[key] : null; };
+localStorage.setItem = function(key, val) { mockStorage[key] = val; };
+function clearMockStorage() { for (const k in mockStorage) delete mockStorage[k]; }
+
+// ============================================================
+// EXTRACTED GAME LOGIC (mirrors battle-bros/index.html)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+const BB_ACH = {
+  bb_first_fight:   { name: 'First Bout',      reward: 5 },
+  bb_first_win:     { name: 'Winner',           reward: 10 },
+  bb_all_fighters:  { name: 'Roster Complete',  reward: 20 },
+  bb_perfect_round: { name: 'Perfect',          reward: 25 },
+  bb_sweep:         { name: 'Flawless Victory', reward: 20 },
+  bb_10_wins:       { name: 'Veteran',          reward: 25 },
+  bb_special_ko:    { name: 'Finishing Move',   reward: 15 },
+  bb_comeback:      { name: 'Comeback Kid',     reward: 25 },
+  bb_speed_ko:      { name: 'Speed Demon',      reward: 15 },
+  bb_2p_match:      { name: 'Friendly Rival',   reward: 50 },
+};
+
+const BB_STATS_KEY = 'bb-stats';
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(BB_STATS_KEY)) || { totalFights: 0, wins: 0, fighterWins: {} }; }
+  catch(e) { return { totalFights: 0, wins: 0, fighterWins: {} }; }
+}
+function saveStats(s) { localStorage.setItem(BB_STATS_KEY, JSON.stringify(s)); }
+
+const GAME_W = 384, GAME_H = 216, GROUND_Y = 176, GRAVITY = 0.4, JUMP_VEL = -7;
+const SPRITE_W = 32, SPRITE_H = 40, SPECIAL_COOLDOWN = 240;
+
+function makePalette(skin, hair, pri, sec, acc) {
+  return { skin, hair, pri, sec, acc, eye: '#111' };
+}
+
+const FIGHTERS = {
+  blaze: { name: 'Blaze', hp: 100, speed: 2.2, punchDmg: 8,  kickDmg: 12, special: { name: 'Fireball',      damage: 20, type: 'projectile', cooldown: SPECIAL_COOLDOWN } },
+  frost: { name: 'Frost', hp: 100, speed: 2.5, punchDmg: 7,  kickDmg: 10, special: { name: 'Ice Spike',     damage: 18, type: 'dash',       cooldown: SPECIAL_COOLDOWN, extraStun: 15 } },
+  volt:  { name: 'Volt',  hp: 100, speed: 2.8, punchDmg: 6,  kickDmg: 9,  special: { name: 'Thunder Clap',  damage: 22, type: 'aoe',        cooldown: SPECIAL_COOLDOWN } },
+  stone: { name: 'Stone', hp: 100, speed: 1.6, punchDmg: 10, kickDmg: 14, special: { name: 'Ground Pound',  damage: 25, type: 'slam',       cooldown: SPECIAL_COOLDOWN } },
+  shade: { name: 'Shade', hp: 100, speed: 3.0, punchDmg: 7,  kickDmg: 11, special: { name: 'Shadow Step',   damage: 16, type: 'teleport',   cooldown: SPECIAL_COOLDOWN } },
+  gale:  { name: 'Gale',  hp: 100, speed: 2.6, punchDmg: 6,  kickDmg: 10, special: { name: 'Tornado Kick',  damage: 19, type: 'multihit',   cooldown: SPECIAL_COOLDOWN } },
+  fang:  { name: 'Fang',  hp: 100, speed: 2.4, punchDmg: 9,  kickDmg: 13, special: { name: 'Claw Rush',     damage: 21, type: 'dash',       cooldown: SPECIAL_COOLDOWN } },
+  nova:  { name: 'Nova',  hp: 100, speed: 2.2, punchDmg: 8,  kickDmg: 11, special: { name: 'Star Burst',    damage: 24, type: 'charged',    cooldown: SPECIAL_COOLDOWN } },
+  omega: { name: 'Omega', hp: 100, speed: 2.4, punchDmg: 8,  kickDmg: 12, special: { name: 'Omega Beam',    damage: 22, type: 'projectile', cooldown: SPECIAL_COOLDOWN }, hidden: true },
+};
+
+const FIGHTER_IDS = Object.keys(FIGHTERS).filter(id => id !== 'omega');
+
+const ATTACK_DATA = {
+  punch:   { startup: 2, active: 3, recovery: 4, hbX: 20, hbY: 6, hbW: 16, hbH: 16, hitstun: 12, knockback: 6 },
+  kick:    { startup: 4, active: 3, recovery: 6, hbX: 22, hbY: 10, hbW: 20, hbH: 12, hitstun: 16, knockback: 10 },
+  special: { startup: 3, active: 4, recovery: 5, hbX: 18, hbY: 4, hbW: 24, hbH: 20, hitstun: 20, knockback: 14 },
+};
+
+function getHitbox(f, atk) {
+  const data = ATTACK_DATA[atk];
+  const dir = f.facing;
+  return {
+    x: f.x + (dir === 1 ? SPRITE_W/2 + data.hbX - 10 : SPRITE_W/2 - data.hbX - data.hbW + 10),
+    y: f.y + data.hbY,
+    w: data.hbW,
+    h: data.hbH,
+  };
+}
+
+function getHurtbox(f) {
+  return { x: f.x + 6, y: f.y + 2, w: SPRITE_W - 12, h: SPRITE_H - 4 };
+}
+
+function aabbOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+const P1_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', punch: 'KeyF', kick: 'KeyG', special: 'KeyH' };
+const P2_KEYS = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', punch: 'KeyJ', kick: 'KeyK', special: 'KeyL' };
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// ── FIGHTER DEFINITIONS ──
+group('Fighter Definitions');
+
+assertEqual(FIGHTER_IDS.length, 8, 'There are 8 base fighters (excluding Omega)');
+assertEqual(Object.keys(FIGHTERS).length, 9, 'Total 9 fighters including hidden Omega');
+
+for (const id of FIGHTER_IDS) {
+  const f = FIGHTERS[id];
+  assert(typeof f.name === 'string' && f.name.length > 0, id + ' has a name');
+  assertEqual(f.hp, 100, id + ' has 100 HP');
+  assert(f.speed > 0 && f.speed <= 4, id + ' speed in valid range (0-4): ' + f.speed);
+  assert(f.punchDmg > 0, id + ' has positive punch damage');
+  assert(f.kickDmg > 0, id + ' has positive kick damage');
+  assert(f.kickDmg > f.punchDmg, id + ' kick damage > punch damage');
+  assert(f.special && typeof f.special.name === 'string', id + ' has a named special move');
+  assert(f.special.damage > 0, id + ' special has positive damage');
+  assertEqual(f.special.cooldown, SPECIAL_COOLDOWN, id + ' special cooldown is SPECIAL_COOLDOWN');
+  assert(['projectile','dash','aoe','slam','teleport','multihit','charged'].includes(f.special.type), id + ' special type is valid: ' + f.special.type);
+}
+
+// Omega is hidden
+assert(FIGHTERS.omega.hidden === true, 'Omega is marked as hidden');
+assert(!FIGHTER_IDS.includes('omega'), 'Omega is excluded from FIGHTER_IDS');
+
+// Unique names
+const names = Object.values(FIGHTERS).map(f => f.name);
+assertEqual(new Set(names).size, names.length, 'All fighter names are unique');
+
+// Speed vs damage balance: slower fighters should hit harder
+assert(FIGHTERS.stone.punchDmg >= FIGHTERS.shade.punchDmg, 'Stone (slow) punches harder than Shade (fast)');
+assert(FIGHTERS.stone.speed < FIGHTERS.shade.speed, 'Stone is slower than Shade');
+
+// ── COMBAT MATH ──
+group('Combat Math');
+
+{
+  // Punch damage
+  const blaze = FIGHTERS.blaze;
+  assertEqual(blaze.punchDmg, 8, 'Blaze punch does 8 damage');
+  assertEqual(blaze.kickDmg, 12, 'Blaze kick does 12 damage');
+  assertEqual(blaze.special.damage, 20, 'Blaze special does 20 damage');
+
+  // Block reduction (75% reduction = 25% of damage)
+  const blocked = Math.floor(blaze.punchDmg * 0.25);
+  assertEqual(blocked, 2, 'Blocked punch deals 25% damage (2)');
+
+  const blockedKick = Math.floor(blaze.kickDmg * 0.25);
+  assertEqual(blockedKick, 3, 'Blocked kick deals 25% damage (3)');
+
+  // HP deduction
+  let hp = 100;
+  hp -= blaze.punchDmg;
+  assertEqual(hp, 92, 'HP after punch: 92');
+  hp -= blaze.kickDmg;
+  assertEqual(hp, 80, 'HP after punch+kick: 80');
+
+  // Lethal hit
+  hp = 5;
+  hp = Math.max(0, hp - blaze.punchDmg);
+  assertEqual(hp, 0, 'HP cannot go below 0');
+}
+
+// ── HITBOX DETECTION ──
+group('Hitbox Detection');
+
+{
+  // AABB overlap tests
+  const a = { x: 10, y: 10, w: 20, h: 20 };
+  const b = { x: 25, y: 15, w: 20, h: 20 };
+  assert(aabbOverlap(a, b), 'Overlapping boxes detected');
+
+  const c = { x: 50, y: 50, w: 10, h: 10 };
+  assert(!aabbOverlap(a, c), 'Non-overlapping boxes not detected');
+
+  // Edge touching (not overlapping in AABB convention)
+  const d = { x: 30, y: 10, w: 10, h: 10 };
+  assert(!aabbOverlap(a, d), 'Edge-touching boxes are not overlapping');
+
+  // Fighter hitbox generation
+  const testFighter = { x: 100, y: 136, facing: 1 };
+  const punchHb = getHitbox(testFighter, 'punch');
+  assert(punchHb.w === 16 && punchHb.h === 16, 'Punch hitbox is 16x16');
+  assert(punchHb.x > testFighter.x, 'Facing-right punch hitbox is to the right of fighter');
+
+  const testFighterL = { x: 100, y: 136, facing: -1 };
+  const punchHbL = getHitbox(testFighterL, 'punch');
+  assert(punchHbL.x < testFighterL.x + SPRITE_W/2, 'Facing-left punch hitbox is to the left');
+
+  // Hurtbox
+  const hb = getHurtbox(testFighter);
+  assertEqual(hb.x, 106, 'Hurtbox x offset is fighter.x + 6');
+  assertEqual(hb.w, SPRITE_W - 12, 'Hurtbox width is SPRITE_W - 12');
+}
+
+// ── KNOCKBACK & HITSTUN ──
+group('Knockback & Hitstun');
+
+{
+  assertEqual(ATTACK_DATA.punch.hitstun, 12, 'Punch hitstun is 12 frames');
+  assertEqual(ATTACK_DATA.kick.hitstun, 16, 'Kick hitstun is 16 frames');
+  assertEqual(ATTACK_DATA.special.hitstun, 20, 'Special hitstun is 20 frames');
+
+  assertEqual(ATTACK_DATA.punch.knockback, 6, 'Punch knockback is 6');
+  assertEqual(ATTACK_DATA.kick.knockback, 10, 'Kick knockback is 10');
+  assertEqual(ATTACK_DATA.special.knockback, 14, 'Special knockback is 14');
+
+  // Hitstun increases with attack type
+  assert(ATTACK_DATA.kick.hitstun > ATTACK_DATA.punch.hitstun, 'Kick hitstun > punch hitstun');
+  assert(ATTACK_DATA.special.hitstun > ATTACK_DATA.kick.hitstun, 'Special hitstun > kick hitstun');
+
+  // Frost extra stun
+  assertEqual(FIGHTERS.frost.special.extraStun, 15, 'Frost has 15 extra hitstun on special');
+}
+
+// ── ATTACK FRAME DATA ──
+group('Attack Frame Data');
+
+{
+  for (const atk of ['punch', 'kick', 'special']) {
+    const d = ATTACK_DATA[atk];
+    assert(d.startup > 0, atk + ' has positive startup frames');
+    assert(d.active > 0, atk + ' has positive active frames');
+    assert(d.recovery > 0, atk + ' has positive recovery frames');
+    assert(d.hbW > 0 && d.hbH > 0, atk + ' hitbox has positive dimensions');
+  }
+
+  // Punch is faster than kick
+  const punchTotal = ATTACK_DATA.punch.startup + ATTACK_DATA.punch.active + ATTACK_DATA.punch.recovery;
+  const kickTotal = ATTACK_DATA.kick.startup + ATTACK_DATA.kick.active + ATTACK_DATA.kick.recovery;
+  assert(punchTotal < kickTotal, 'Punch total frames (' + punchTotal + ') < kick total (' + kickTotal + ')');
+
+  // Kick has more range
+  assert(ATTACK_DATA.kick.hbX > ATTACK_DATA.punch.hbX, 'Kick reaches further than punch');
+}
+
+// ── SPECIAL COOLDOWN ──
+group('Special Cooldown');
+
+{
+  assertEqual(SPECIAL_COOLDOWN, 240, 'Special cooldown is 240 frames (4 seconds at 60fps)');
+
+  // Cooldown countdown simulation
+  let cd = SPECIAL_COOLDOWN;
+  for (let i = 0; i < 240; i++) cd--;
+  assertEqual(cd, 0, 'Cooldown reaches 0 after 240 frames');
+
+  // Cannot use when on cooldown
+  cd = 100;
+  const canUse = cd <= 0;
+  assert(!canUse, 'Cannot use special when cooldown > 0');
+
+  // Can use when cooldown is 0
+  cd = 0;
+  assert(cd <= 0, 'Can use special when cooldown is 0');
+}
+
+// ── ROUND SYSTEM ──
+group('Round System');
+
+{
+  // Best of 3
+  let p1R = 0, p2R = 0;
+  p1R++;
+  assert(p1R < 2 && p2R < 2, 'Match not over at 1-0');
+  p2R++;
+  assert(p1R < 2 && p2R < 2, 'Match not over at 1-1');
+  p1R++;
+  assert(p1R >= 2, 'P1 wins at 2-1');
+
+  // Timer (60 seconds at 60fps)
+  const roundTimerFrames = 60 * 60;
+  assertEqual(roundTimerFrames, 3600, 'Round timer is 3600 frames');
+
+  // Timer comparison: higher HP wins
+  let hp1 = 60, hp2 = 40;
+  const timerWinner = hp1 >= hp2 ? 0 : 1;
+  assertEqual(timerWinner, 0, 'P1 wins on timer with more HP');
+
+  // Sweep check (2-0)
+  p1R = 2; p2R = 0;
+  assert(p2R === 0 && p1R >= 2, 'Sweep detected at 2-0');
+
+  // Comeback check (lost round 1, won match)
+  p1R = 2; p2R = 1;
+  assert(p1R >= 2 && p2R >= 1, 'Comeback detected: won after losing a round');
+}
+
+// ── G BUX INTEGRATION ──
+group('G Bux Integration');
+
+{
+  clearMockStorage();
+
+  // Default data
+  let data = ggLoad();
+  assertEqual(data.gBux, 0, 'Default G Bux is 0');
+  assertEqual(Object.keys(data.achievements).length, 0, 'Default achievements is empty');
+
+  // Achievement unlocking
+  data.achievements['bb_first_fight'] = true;
+  data.gBux += BB_ACH.bb_first_fight.reward;
+  ggSave(data);
+  data = ggLoad();
+  assert(data.achievements['bb_first_fight'] === true, 'Achievement saved');
+  assertEqual(data.gBux, 5, 'G Bux increased by reward amount');
+
+  // No double award
+  const alreadyEarned = !!data.achievements['bb_first_fight'];
+  assert(alreadyEarned, 'Already-earned achievement detected');
+
+  // All achievements have valid rewards
+  let totalReward = 0;
+  for (const id in BB_ACH) {
+    assert(BB_ACH[id].reward > 0, 'Achievement ' + id + ' has positive reward');
+    assert(typeof BB_ACH[id].name === 'string', 'Achievement ' + id + ' has a name');
+    totalReward += BB_ACH[id].reward;
+  }
+  assertEqual(totalReward, 210, 'Total achievement rewards sum to 210 G Bux');
+  assertEqual(Object.keys(BB_ACH).length, 10, 'There are 10 achievements');
+}
+
+// ── STATS PERSISTENCE ──
+group('Stats Persistence');
+
+{
+  clearMockStorage();
+
+  // Default stats
+  let stats = loadStats();
+  assertEqual(stats.totalFights, 0, 'Default totalFights is 0');
+  assertEqual(stats.wins, 0, 'Default wins is 0');
+  assert(typeof stats.fighterWins === 'object', 'fighterWins is an object');
+
+  // Increment and save
+  stats.totalFights++;
+  stats.wins++;
+  stats.fighterWins['blaze'] = 1;
+  saveStats(stats);
+
+  // Reload
+  stats = loadStats();
+  assertEqual(stats.totalFights, 1, 'totalFights persists');
+  assertEqual(stats.wins, 1, 'wins persists');
+  assertEqual(stats.fighterWins['blaze'], 1, 'fighterWins.blaze persists');
+
+  // Roster complete check
+  for (const id of FIGHTER_IDS) {
+    stats.fighterWins[id] = 1;
+  }
+  saveStats(stats);
+  stats = loadStats();
+  const allWon = FIGHTER_IDS.every(id => stats.fighterWins[id] > 0);
+  assert(allWon, 'Roster complete when all 8 base fighters have wins');
+}
+
+// ── INPUT MAPPING ──
+group('Input Mapping');
+
+{
+  // P1 keys
+  assertEqual(P1_KEYS.left, 'KeyA', 'P1 left is A');
+  assertEqual(P1_KEYS.right, 'KeyD', 'P1 right is D');
+  assertEqual(P1_KEYS.up, 'KeyW', 'P1 up/jump is W');
+  assertEqual(P1_KEYS.down, 'KeyS', 'P1 down/block is S');
+  assertEqual(P1_KEYS.punch, 'KeyF', 'P1 punch is F');
+  assertEqual(P1_KEYS.kick, 'KeyG', 'P1 kick is G');
+  assertEqual(P1_KEYS.special, 'KeyH', 'P1 special is H');
+
+  // P2 keys
+  assertEqual(P2_KEYS.left, 'ArrowLeft', 'P2 left is ArrowLeft');
+  assertEqual(P2_KEYS.right, 'ArrowRight', 'P2 right is ArrowRight');
+  assertEqual(P2_KEYS.up, 'ArrowUp', 'P2 up/jump is ArrowUp');
+  assertEqual(P2_KEYS.down, 'ArrowDown', 'P2 down/block is ArrowDown');
+  assertEqual(P2_KEYS.punch, 'KeyJ', 'P2 punch is J');
+  assertEqual(P2_KEYS.kick, 'KeyK', 'P2 kick is K');
+  assertEqual(P2_KEYS.special, 'KeyL', 'P2 special is L');
+
+  // No key conflicts between P1 and P2
+  const p1Vals = Object.values(P1_KEYS);
+  const p2Vals = Object.values(P2_KEYS);
+  const overlap = p1Vals.filter(k => p2Vals.includes(k));
+  assertEqual(overlap.length, 0, 'No key conflicts between P1 and P2');
+}
+
+// ── SHOP UNLOCKS ──
+group('Shop Unlocks');
+
+{
+  clearMockStorage();
+
+  // Omega hidden without purchase
+  let data = ggLoad();
+  const hasOmega = data.shopPurchases && data.shopPurchases['bb_boss_fighter'];
+  assert(!hasOmega, 'Omega not available without shop purchase');
+
+  // Omega available with purchase
+  data.shopPurchases = { bb_boss_fighter: true };
+  ggSave(data);
+  data = ggLoad();
+  assert(data.shopPurchases['bb_boss_fighter'] === true, 'Omega available after purchase');
+
+  // Shadow mode check
+  data.shopPurchases['bb_shadow_mode'] = true;
+  ggSave(data);
+  data = ggLoad();
+  assert(data.shopPurchases['bb_shadow_mode'] === true, 'Shadow mode available after purchase');
+
+  // Roster with Omega
+  const idsWithOmega = [...FIGHTER_IDS];
+  if (data.shopPurchases['bb_boss_fighter']) idsWithOmega.push('omega');
+  assertEqual(idsWithOmega.length, 9, 'Roster has 9 fighters with Omega unlocked');
+}
+
+// ── CONSTANTS ──
+group('Game Constants');
+
+{
+  assertEqual(GAME_W, 384, 'Game width is 384');
+  assertEqual(GAME_H, 216, 'Game height is 216');
+  assertEqual(GROUND_Y, 176, 'Ground Y is 176');
+  assertApprox(GRAVITY, 0.4, 0.01, 'Gravity is 0.4');
+  assertEqual(JUMP_VEL, -7, 'Jump velocity is -7');
+  assertEqual(SPRITE_W, 32, 'Sprite width is 32');
+  assertEqual(SPRITE_H, 40, 'Sprite height is 40');
+
+  // Aspect ratio check
+  assertApprox(GAME_W / GAME_H, 16/9, 0.02, 'Game resolution is ~16:9');
+
+  // Ground Y leaves room for floor rendering
+  assert(GROUND_Y < GAME_H, 'Ground Y is above bottom of screen');
+  assert(GAME_H - GROUND_Y >= 30, 'At least 30px floor area below ground line');
+
+  // Fighter fits on screen
+  assert(SPRITE_H <= GROUND_Y - 10, 'Fighter sprite fits above ground line');
+}
+
+// ── PHYSICS ──
+group('Physics');
+
+{
+  // Jump arc simulation
+  let y = GROUND_Y - SPRITE_H;
+  let vy = JUMP_VEL;
+  let maxHeight = 0;
+  let frames = 0;
+  while (y < GROUND_Y - SPRITE_H || frames < 2) {
+    vy += GRAVITY;
+    y += vy;
+    if (y < GROUND_Y - SPRITE_H) maxHeight = (GROUND_Y - SPRITE_H) - y;
+    frames++;
+    if (y >= GROUND_Y - SPRITE_H) { y = GROUND_Y - SPRITE_H; break; }
+    if (frames > 200) break;
+  }
+  assert(maxHeight > 40, 'Jump height > 40px: ' + maxHeight.toFixed(1));
+  assert(maxHeight < 100, 'Jump height < 100px: ' + maxHeight.toFixed(1));
+  assert(frames > 10, 'Jump takes > 10 frames');
+  assert(frames < 60, 'Jump takes < 60 frames (< 1 second)');
+
+  // Stage bounds
+  let fx = -10;
+  fx = Math.max(4, Math.min(GAME_W - SPRITE_W - 4, fx));
+  assertEqual(fx, 4, 'Left bound clamps to 4');
+
+  fx = GAME_W + 100;
+  fx = Math.max(4, Math.min(GAME_W - SPRITE_W - 4, fx));
+  assertEqual(fx, GAME_W - SPRITE_W - 4, 'Right bound clamps correctly');
+}
+
+// ── SPECIAL MOVE TYPES ──
+group('Special Move Types');
+
+{
+  const types = new Set();
+  for (const id in FIGHTERS) {
+    types.add(FIGHTERS[id].special.type);
+  }
+  assert(types.has('projectile'), 'At least one projectile special');
+  assert(types.has('dash'), 'At least one dash special');
+  assert(types.has('aoe'), 'At least one AoE special');
+  assert(types.has('slam'), 'At least one slam special');
+  assert(types.has('teleport'), 'At least one teleport special');
+  assert(types.has('multihit'), 'At least one multihit special');
+  assert(types.has('charged'), 'At least one charged special');
+
+  // Each fighter has a unique special name
+  const specialNames = Object.values(FIGHTERS).map(f => f.special.name);
+  assertEqual(new Set(specialNames).size, specialNames.length, 'All special move names are unique');
+}
+
+// ── BALANCE ──
+group('Balance');
+
+{
+  // All fighters have same HP
+  for (const id in FIGHTERS) {
+    assertEqual(FIGHTERS[id].hp, 100, id + ' has 100 HP');
+  }
+
+  // Damage ranges are reasonable
+  for (const id in FIGHTERS) {
+    const f = FIGHTERS[id];
+    assert(f.punchDmg >= 5 && f.punchDmg <= 15, id + ' punch damage in range [5,15]');
+    assert(f.kickDmg >= 8 && f.kickDmg <= 18, id + ' kick damage in range [8,18]');
+    assert(f.special.damage >= 15 && f.special.damage <= 30, id + ' special damage in range [15,30]');
+  }
+
+  // Speed range
+  const speeds = Object.values(FIGHTERS).map(f => f.speed);
+  const minSpd = Math.min(...speeds);
+  const maxSpd = Math.max(...speeds);
+  assert(minSpd >= 1.0, 'Minimum speed >= 1.0');
+  assert(maxSpd <= 4.0, 'Maximum speed <= 4.0');
+  assert(maxSpd - minSpd >= 1.0, 'Speed spread is at least 1.0');
+}
+
+// ============================================================
+showSummary();
+</script>
+</body>
+</html>

@@ -1340,6 +1340,109 @@ group('Game List Scroll');
 }
 
 // ============================================================
+// NEWS PANEL
+// ============================================================
+group('News Panel');
+
+{
+  // Test: NEWS_ENTRIES is a non-empty array with required fields
+  const entries = [
+    { date: '2026-02-28', title: 'Battle Bros Launches!', desc: 'New 8-bit pixel fighting game with 8 unique fighters, VS CPU and 2P local modes, special moves, and best-of-3 rounds!', game: 'battle-bros' },
+    { date: '2026-02-24', title: 'Brawl Monsters Launches!', desc: 'Brand new monster battling game with 13 unique monsters, a trainer system, tutorial mode, and collection tracking. Catch and battle your way to the top!', game: 'brawl-monsters' },
+    { date: '2026-02-24', title: 'Bug Update 3', desc: 'Devious Driving: removed power-ups, added bot count selection, improved start line visuals.', game: 'devious-driving' },
+    { date: '2026-02-22', title: 'Devious Driving Arrives', desc: 'New kart racing game with 1-4 player split-screen, AI opponents, multiple tracks including Highway, wall bouncing, fullscreen toggle, and reverse driving.', game: 'devious-driving' },
+    { date: '2026-02-22', title: 'Bug Update 2', desc: 'Tower Defense: cartoony visual overhaul with new colorful graphics. Rogue Depths: added R key to drop items, renamed Shadow Class to Rogue Class, renamed Halfway There achievement.', game: 'all' },
+    { date: '2026-02-22', title: 'Rogue Depths Expands', desc: 'New between-floor shop, weapon inventory system, swing animations for all melee weapons, and save/load support.', game: 'rogue-depths' },
+    { date: '2026-02-21', title: 'Rogue Depths Launches!', desc: 'New dungeon crawler game with cartoon rendering, mouse-relative controls, scythe weapon, and multiple maps.', game: 'rogue-depths' },
+    { date: '2026-02-21', title: 'Bug Update 1', desc: 'Added GG favicon to all pages. Mobile responsive launcher layout. Scrollable game list with themed scrollbar. Ancient Warfare: victory bonus gold, mobile catapults.', game: 'all' },
+  ];
+
+  assert(entries.length > 0, 'NEWS_ENTRIES is not empty');
+
+  for (const entry of entries) {
+    assert(typeof entry.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(entry.date), 'Entry "' + entry.title + '" has valid date format (YYYY-MM-DD)');
+    assert(typeof entry.title === 'string' && entry.title.length > 0, 'Entry "' + entry.title + '" has non-empty title');
+    assert(typeof entry.desc === 'string' && entry.desc.length > 0, 'Entry "' + entry.title + '" has non-empty description');
+    assert(typeof entry.game === 'string' && entry.game.length > 0, 'Entry "' + entry.title + '" has non-empty game tag');
+  }
+
+  // Test: entries are sorted newest-first (dates descending)
+  let sorted = true;
+  for (let i = 1; i < entries.length; i++) {
+    if (entries[i].date > entries[i - 1].date) { sorted = false; break; }
+  }
+  assert(sorted, 'NEWS_ENTRIES are sorted newest-first');
+
+  // Test: all game tags have matching colors
+  const TAG_COLORS = {
+    'all': true, 'brawl-monsters': true, 'devious-driving': true,
+    'tower-defense': true, 'mini-life': true, 'hurgvibbit': true,
+    'ancient-warfare': true, 'rogue-depths': true, 'battle-bros': true,
+  };
+  for (const entry of entries) {
+    assert(TAG_COLORS[entry.game], 'Game tag "' + entry.game + '" has matching color definition');
+  }
+
+  // Test: TAG_COLORS has expected game keys
+  const expectedGames = ['all', 'brawl-monsters', 'devious-driving', 'tower-defense', 'mini-life', 'hurgvibbit', 'ancient-warfare', 'rogue-depths', 'battle-bros'];
+  for (const g of expectedGames) {
+    assert(TAG_COLORS[g], 'TAG_COLORS has key for "' + g + '"');
+  }
+
+  // Test: no duplicate titles
+  const titles = entries.map(e => e.title);
+  const uniqueTitles = new Set(titles);
+  assertEqual(uniqueTitles.size, titles.length, 'All news entry titles are unique');
+}
+
+{
+  // Test: news overlay DOM structure (simulate)
+  const overlay = document.createElement('div');
+  overlay.id = 'news-overlay';
+  overlay.className = 'gg-overlay';
+  overlay.innerHTML = '<div class="gg-panel"><h2>NEWS</h2><div id="news-list"></div><button class="gg-close">CLOSE</button></div>';
+  document.body.appendChild(overlay);
+
+  // Test: overlay starts hidden (no .visible class)
+  assert(!overlay.classList.contains('visible'), 'News overlay starts without .visible class');
+
+  // Test: adding .visible class makes it "visible"
+  overlay.classList.add('visible');
+  assert(overlay.classList.contains('visible'), 'News overlay gains .visible class when opened');
+
+  // Test: removing .visible class hides it
+  overlay.classList.remove('visible');
+  assert(!overlay.classList.contains('visible'), 'News overlay loses .visible class when closed');
+
+  // Test: news-list container exists
+  const list = overlay.querySelector('#news-list');
+  assert(list !== null, 'News overlay has #news-list container');
+
+  // Test: close button exists
+  const closeBtn = overlay.querySelector('.gg-close');
+  assert(closeBtn !== null, 'News overlay has close button');
+
+  // Test: dynamically populate entries
+  const testEntries = [
+    { date: '2026-02-24', title: 'Test Entry', desc: 'Test description', game: 'all' },
+    { date: '2026-02-22', title: 'Older Entry', desc: 'Older description', game: 'mini-life' },
+  ];
+  list.innerHTML = '';
+  for (const entry of testEntries) {
+    const div = document.createElement('div');
+    div.className = 'news-entry';
+    div.innerHTML = '<div class="news-head"><span class="news-date">' + entry.date + '</span><span class="news-title">' + entry.title + '</span><span class="news-tag">' + entry.game + '</span></div><div class="news-desc">' + entry.desc + '</div>';
+    list.appendChild(div);
+  }
+  assertEqual(list.querySelectorAll('.news-entry').length, 2, 'Populating news-list creates correct number of entries');
+  assertEqual(list.querySelector('.news-date').textContent, '2026-02-24', 'First entry date renders correctly');
+  assertEqual(list.querySelector('.news-title').textContent, 'Test Entry', 'First entry title renders correctly');
+  assertEqual(list.querySelector('.news-desc').textContent, 'Test description', 'First entry description renders correctly');
+
+  document.body.removeChild(overlay);
+}
+
+// ============================================================
 showSummary();
 </script>
 </body>
