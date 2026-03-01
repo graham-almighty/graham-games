@@ -624,8 +624,8 @@ function clearJustPressed() {
   for (const k in justPressed) delete justPressed[k];
 }
 
-const P1_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', punch: 'KeyF', kick: 'KeyG', special: 'KeyH' };
-const P2_KEYS = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', punch: 'KeyJ', kick: 'KeyK', special: 'KeyL' };
+const P1_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', punch: 'KeyE', kick: 'KeyQ', special: 'KeyH' };
+const P2_KEYS = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', punch: 'Slash', kick: 'Period', special: 'KeyL' };
 
 // ═══════════════════════════════════════════
 // GAME STATE
@@ -1175,7 +1175,7 @@ function drawHUD(ctx) {
 
   // Fighter names
   ctx.fillStyle = '#fff';
-  ctx.font = '6px "Press Start 2P", monospace';
+  ctx.font = '7px monospace';
   ctx.textAlign = 'left';
   ctx.fillText(f1.def.name.toUpperCase(), 16, 6);
   ctx.textAlign = 'right';
@@ -1200,7 +1200,7 @@ function drawHUD(ctx) {
   // Timer
   const secs = Math.max(0, Math.ceil(roundTimer / 60));
   ctx.fillStyle = '#fff';
-  ctx.font = '10px "Press Start 2P", monospace';
+  ctx.font = '10px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(String(secs), GAME_W / 2, 16);
 
@@ -1217,7 +1217,7 @@ function drawHUD(ctx) {
 
   // "SP" label
   ctx.fillStyle = '#888';
-  ctx.font = '4px "Press Start 2P", monospace';
+  ctx.font = '6px monospace';
   ctx.textAlign = 'left';
   ctx.fillText('SP', 4, 32);
   ctx.textAlign = 'right';
@@ -1257,13 +1257,13 @@ function drawTitle(ctx) {
 
   // Title text
   ctx.fillStyle = '#00e5ff';
-  ctx.font = '16px "Press Start 2P", monospace';
+  ctx.font = '16px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('BATTLE BROS', GAME_W / 2, 60);
 
   // Subtitle
   ctx.fillStyle = '#888';
-  ctx.font = '6px "Press Start 2P", monospace';
+  ctx.font = '7px monospace';
   ctx.fillText('8-BIT FIGHTING', GAME_W / 2, 78);
 
   // Two pixel fighters
@@ -1274,14 +1274,14 @@ function drawTitle(ctx) {
 
   // VS
   ctx.fillStyle = '#ffcc00';
-  ctx.font = '10px "Press Start 2P", monospace';
+  ctx.font = '10px monospace';
   ctx.fillText('VS', GAME_W / 2, 118);
 
   // Menu
   const items = ['VS CPU', '2P LOCAL'];
   for (let i = 0; i < items.length; i++) {
     ctx.fillStyle = menuSelection === i ? '#00e5ff' : '#666';
-    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.font = '8px monospace';
     ctx.fillText(items[i], GAME_W / 2, 155 + i * 20);
     if (menuSelection === i) {
       ctx.fillText('>', GAME_W / 2 - 60, 155 + i * 20);
@@ -1290,7 +1290,7 @@ function drawTitle(ctx) {
 
   // Controls hint
   ctx.fillStyle = '#444';
-  ctx.font = '5px "Press Start 2P", monospace';
+  ctx.font = '6px monospace';
   ctx.fillText('W/S TO SELECT - ENTER TO CONFIRM', GAME_W / 2, GAME_H - 10);
 }
 
@@ -1300,7 +1300,7 @@ function drawCharSelect(ctx) {
 
   // Header
   ctx.fillStyle = '#00e5ff';
-  ctx.font = '8px "Press Start 2P", monospace';
+  ctx.font = '8px monospace';
   ctx.textAlign = 'center';
   const picking = charSelectPhase === 1 ? 'P1 SELECT' : (gameMode === '2p' ? 'P2 SELECT' : 'CPU FIGHTER');
   ctx.fillText(picking, GAME_W / 2, 18);
@@ -1347,7 +1347,7 @@ function drawCharSelect(ctx) {
 
     // Name
     ctx.fillStyle = isSelected ? '#fff' : '#888';
-    ctx.font = '4px "Press Start 2P", monospace';
+    ctx.font = '6px monospace';
     ctx.textAlign = 'center';
     ctx.fillText(def.name.toUpperCase(), cx + cellW / 2, cy + cellH - 4);
   }
@@ -1363,19 +1363,19 @@ function drawCharSelect(ctx) {
   ctx.strokeRect(GAME_W/2 - 100, panelY, 200, 50);
 
   ctx.fillStyle = '#00e5ff';
-  ctx.font = '6px "Press Start 2P", monospace';
+  ctx.font = '7px monospace';
   ctx.textAlign = 'left';
   ctx.fillText(selDef.name, GAME_W/2 - 90, panelY + 12);
 
   ctx.fillStyle = '#888';
-  ctx.font = '4px "Press Start 2P", monospace';
+  ctx.font = '6px monospace';
   ctx.fillText('SPD: ' + selDef.speed + '  PUNCH: ' + selDef.punchDmg + '  KICK: ' + selDef.kickDmg, GAME_W/2 - 90, panelY + 24);
   ctx.fillText('SPECIAL: ' + selDef.special.name + ' (' + selDef.special.damage + ' DMG)', GAME_W/2 - 90, panelY + 34);
   ctx.fillText(selDef.desc, GAME_W/2 - 90, panelY + 44);
 
   // Controls hint
   ctx.fillStyle = '#444';
-  ctx.font = '4px "Press Start 2P", monospace';
+  ctx.font = '6px monospace';
   ctx.textAlign = 'center';
   ctx.fillText('A/D TO BROWSE - ENTER TO SELECT - ESC TO GO BACK', GAME_W / 2, GAME_H - 6);
 }
@@ -1413,7 +1413,7 @@ function drawFight(ctx) {
     ctx.fillStyle = '#000000aa';
     ctx.fillRect(0, GAME_H / 2 - 20, GAME_W, 40);
     ctx.fillStyle = '#fff';
-    ctx.font = '12px "Press Start 2P", monospace';
+    ctx.font = '12px monospace';
     ctx.textAlign = 'center';
     if (roundStartPhase === 'round') {
       ctx.fillText('ROUND ' + roundNum, GAME_W / 2, GAME_H / 2 + 5);
@@ -1438,14 +1438,14 @@ function drawMatchEnd(ctx) {
   const winnerChar = p1Won ? fighters[0] : fighters[1];
 
   ctx.fillStyle = p1Won ? '#00e5ff' : '#ff4444';
-  ctx.font = '14px "Press Start 2P", monospace';
+  ctx.font = '14px monospace';
   ctx.textAlign = 'center';
   ctx.fillText(winnerLabel, GAME_W / 2, 50);
 
   // Winner fighter name
   if (winnerChar) {
     ctx.fillStyle = '#fff';
-    ctx.font = '8px "Press Start 2P", monospace';
+    ctx.font = '8px monospace';
     ctx.fillText(winnerChar.def.name.toUpperCase(), GAME_W / 2, 72);
 
     // Draw winner sprite
@@ -1454,14 +1454,14 @@ function drawMatchEnd(ctx) {
 
   // Score
   ctx.fillStyle = '#888';
-  ctx.font = '6px "Press Start 2P", monospace';
+  ctx.font = '7px monospace';
   ctx.fillText('ROUNDS: ' + p1Rounds + ' - ' + p2Rounds, GAME_W / 2, 140);
 
   // Menu options
   const items = ['REMATCH', 'CHARACTER SELECT', 'TITLE SCREEN'];
   for (let i = 0; i < items.length; i++) {
     ctx.fillStyle = menuSelection === i ? '#00e5ff' : '#666';
-    ctx.font = '6px "Press Start 2P", monospace';
+    ctx.font = '7px monospace';
     ctx.fillText(items[i], GAME_W / 2, 162 + i * 14);
     if (menuSelection === i) {
       ctx.fillText('>', GAME_W / 2 - 80, 162 + i * 14);

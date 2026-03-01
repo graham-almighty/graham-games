@@ -157,8 +157,8 @@ function aabbOverlap(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-const P1_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', punch: 'KeyF', kick: 'KeyG', special: 'KeyH' };
-const P2_KEYS = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', punch: 'KeyJ', kick: 'KeyK', special: 'KeyL' };
+const P1_KEYS = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS', punch: 'KeyE', kick: 'KeyQ', special: 'KeyH' };
+const P2_KEYS = { left: 'ArrowLeft', right: 'ArrowRight', up: 'ArrowUp', down: 'ArrowDown', punch: 'Slash', kick: 'Period', special: 'KeyL' };
 
 // ============================================================
 // TESTS
@@ -428,8 +428,8 @@ group('Input Mapping');
   assertEqual(P1_KEYS.right, 'KeyD', 'P1 right is D');
   assertEqual(P1_KEYS.up, 'KeyW', 'P1 up/jump is W');
   assertEqual(P1_KEYS.down, 'KeyS', 'P1 down/block is S');
-  assertEqual(P1_KEYS.punch, 'KeyF', 'P1 punch is F');
-  assertEqual(P1_KEYS.kick, 'KeyG', 'P1 kick is G');
+  assertEqual(P1_KEYS.punch, 'KeyE', 'P1 punch is E');
+  assertEqual(P1_KEYS.kick, 'KeyQ', 'P1 kick is Q');
   assertEqual(P1_KEYS.special, 'KeyH', 'P1 special is H');
 
   // P2 keys
@@ -437,8 +437,8 @@ group('Input Mapping');
   assertEqual(P2_KEYS.right, 'ArrowRight', 'P2 right is ArrowRight');
   assertEqual(P2_KEYS.up, 'ArrowUp', 'P2 up/jump is ArrowUp');
   assertEqual(P2_KEYS.down, 'ArrowDown', 'P2 down/block is ArrowDown');
-  assertEqual(P2_KEYS.punch, 'KeyJ', 'P2 punch is J');
-  assertEqual(P2_KEYS.kick, 'KeyK', 'P2 kick is K');
+  assertEqual(P2_KEYS.punch, 'Slash', 'P2 punch is /');
+  assertEqual(P2_KEYS.kick, 'Period', 'P2 kick is .');
   assertEqual(P2_KEYS.special, 'KeyL', 'P2 special is L');
 
   // No key conflicts between P1 and P2
