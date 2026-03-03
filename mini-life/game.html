@@ -934,7 +934,7 @@
     gap: 16px;
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.4s;
+    transition: opacity 0.2s;
   }
   .drive-overlay.visible { opacity: 1; pointer-events: all; }
   .drive-overlay .road {
@@ -2786,9 +2786,9 @@ const QUESTS = {
 
 // NPC definitions
 const TOWN_NPC_DEFS = [
-  { id: 'barista', name: 'Barista Bean', x: 108, z: 4, skinTone: 3, hairColor: 2, hairStyle: 'curly', gender: 'female', outfit: 3 },
-  { id: 'merchant', name: 'Merchant Mike', x: 108, z: -8, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
-  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 4, skinTone: 1, hairColor: 4, hairStyle: 'short', gender: 'female', outfit: 7 },
+  { id: 'barista', name: 'Barista Bean', x: 108, z: 2.5, skinTone: 3, hairColor: 2, hairStyle: 'curly', gender: 'female', outfit: 3 },
+  { id: 'merchant', name: 'Merchant Mike', x: 108, z: -10, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
+  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 2.5, skinTone: 1, hairColor: 4, hairStyle: 'short', gender: 'female', outfit: 7 },
   { id: 'old_pete', name: 'Old Pete', x: 124, z: 12, skinTone: 0, hairColor: 4, hairStyle: 'long', gender: 'male', outfit: 0 },
 ];
 
@@ -2848,6 +2848,8 @@ function purchaseCar() {
   rebuildInteractMeshes();
   showTip('Car purchased! Click it to drive to town.');
   mlTry('ml_shopaholic');
+  // Pre-build town in background so first drive is instant
+  setTimeout(() => { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } }, 100);
 }
 
 function purchaseMansion() {
@@ -2858,73 +2860,102 @@ function purchaseMansion() {
   showTip('Mansion purchased! Drive there in your car.');
   document.getElementById('drive-mansion-btn').style.display = '';
   mlTry('ml_mansion_mogul');
+  // Pre-build mansion in background so first drive is instant
+  setTimeout(() => { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } }, 100);
+}
+
+function performTeleport(destination) {
+  // Build destination geometry if needed (pre-built at purchase, this is a fallback)
+  try {
+    if (destination === 'town' && !townGroup) { townGroup = buildTown(); buildTownNPCs(); }
+    if (destination === 'mansion' && !mansionGroup) { mansionGroup = buildMansion(); }
+  } catch (e) {
+    console.error('Build error:', e);
+    showTip('Error loading destination!');
+  }
+
+  // Always teleport the player — even if build failed, set position and state flags
+  if (destination === 'town') {
+    if (townGroup) townGroup.visible = true;
+    if (mansionGroup) mansionGroup.visible = false;
+    inTown = true;
+    inMansion = false;
+    currentFloor = 0;
+    character.position.set(TOWN_PLAYER_SPAWN.x, TOWN_PLAYER_SPAWN.y, TOWN_PLAYER_SPAWN.z);
+    yaw = Math.PI / 2;
+    scene.fog.far = TOWN_FOG_FAR;
+    sunLight.shadow.camera.left = -60;
+    sunLight.shadow.camera.right = 60;
+    sunLight.shadow.camera.top = 40;
+    sunLight.shadow.camera.bottom = -40;
+    sunLight.shadow.camera.updateProjectionMatrix();
+    if (petDog) petDog.visible = false;
+    if (petCat) petCat.visible = false;
+  } else if (destination === 'mansion') {
+    if (mansionGroup) mansionGroup.visible = true;
+    if (townGroup) townGroup.visible = false;
+    inTown = false;
+    inMansion = true;
+    currentFloor = 0;
+    character.position.set(MANSION_PLAYER_SPAWN.x, MANSION_PLAYER_SPAWN.y, MANSION_PLAYER_SPAWN.z);
+    yaw = Math.PI / 2;
+    scene.fog.far = MANSION_FOG_FAR;
+    sunLight.shadow.camera.left = -80;
+    sunLight.shadow.camera.right = 80;
+    sunLight.shadow.camera.top = 50;
+    sunLight.shadow.camera.bottom = -50;
+    sunLight.shadow.camera.updateProjectionMatrix();
+    if (petDog) petDog.visible = false;
+    if (petCat) petCat.visible = false;
+  } else {
+    inTown = false;
+    inMansion = false;
+    currentFloor = 0;
+    character.position.set(HOME_PLAYER_SPAWN.x, HOME_PLAYER_SPAWN.y, HOME_PLAYER_SPAWN.z);
+    yaw = Math.PI;
+    scene.fog.far = HOME_FOG_FAR;
+    sunLight.shadow.camera.left = -15;
+    sunLight.shadow.camera.right = 15;
+    sunLight.shadow.camera.top = 20;
+    sunLight.shadow.camera.bottom = -15;
+    sunLight.shadow.camera.updateProjectionMatrix();
+    if (townGroup) townGroup.visible = false;
+    if (mansionGroup) mansionGroup.visible = false;
+    if (petDog) petDog.visible = activePet === 'dog';
+    if (petCat) petCat.visible = activePet === 'cat';
+  }
+  updatePlayerY();
+}
+
+function hideDriveOverlay() {
+  const overlay = document.getElementById('drive-overlay');
+  overlay.classList.remove('visible');
+  overlay.style.transition = '';
+  overlay.style.opacity = '';
+  overlay.style.pointerEvents = '';
 }
 
 function startDrivingTransition(destination) {
   if (npcDialogueOpen || currentAction || driveDestOpen || jobMiniGameRunning) return;
-  const overlay = document.getElementById('drive-overlay');
-  const driveText = document.getElementById('drive-text');
-  if (destination === 'town') driveText.textContent = 'Driving to town...';
-  else if (destination === 'mansion') driveText.textContent = 'Driving to the mansion...';
-  else driveText.textContent = 'Driving home...';
-  overlay.classList.add('visible');
   if (document.pointerLockElement) document.exitPointerLock();
 
-  setTimeout(() => {
-    if (destination === 'town') {
-      if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); }
-      townGroup.visible = true;
-      if (mansionGroup) mansionGroup.visible = false;
-      inTown = true;
-      inMansion = false;
-      currentFloor = 0;
-      character.position.set(TOWN_PLAYER_SPAWN.x, TOWN_PLAYER_SPAWN.y, TOWN_PLAYER_SPAWN.z);
-      yaw = Math.PI / 2;
-      scene.fog.far = TOWN_FOG_FAR;
-      sunLight.shadow.camera.left = -60;
-      sunLight.shadow.camera.right = 60;
-      sunLight.shadow.camera.top = 40;
-      sunLight.shadow.camera.bottom = -40;
-      sunLight.shadow.camera.updateProjectionMatrix();
-      if (petDog) petDog.visible = false;
-      if (petCat) petCat.visible = false;
-    } else if (destination === 'mansion') {
-      if (!mansionGroup) { mansionGroup = buildMansion(); }
-      mansionGroup.visible = true;
-      if (townGroup) townGroup.visible = false;
-      inTown = false;
-      inMansion = true;
-      currentFloor = 0;
-      character.position.set(MANSION_PLAYER_SPAWN.x, MANSION_PLAYER_SPAWN.y, MANSION_PLAYER_SPAWN.z);
-      yaw = Math.PI / 2;
-      scene.fog.far = MANSION_FOG_FAR;
-      sunLight.shadow.camera.left = -80;
-      sunLight.shadow.camera.right = 80;
-      sunLight.shadow.camera.top = 50;
-      sunLight.shadow.camera.bottom = -50;
-      sunLight.shadow.camera.updateProjectionMatrix();
-      if (petDog) petDog.visible = false;
-      if (petCat) petCat.visible = false;
-    } else {
-      inTown = false;
-      inMansion = false;
-      currentFloor = 0;
-      character.position.set(HOME_PLAYER_SPAWN.x, HOME_PLAYER_SPAWN.y, HOME_PLAYER_SPAWN.z);
-      yaw = Math.PI;
-      scene.fog.far = HOME_FOG_FAR;
-      sunLight.shadow.camera.left = -15;
-      sunLight.shadow.camera.right = 15;
-      sunLight.shadow.camera.top = 20;
-      sunLight.shadow.camera.bottom = -15;
-      sunLight.shadow.camera.updateProjectionMatrix();
-      if (townGroup) townGroup.visible = false;
-      if (mansionGroup) mansionGroup.visible = false;
-      if (petDog) petDog.visible = activePet === 'dog';
-      if (petCat) petCat.visible = activePet === 'cat';
-    }
-    updatePlayerY();
-    overlay.classList.remove('visible');
-  }, 2000);
+  // Show overlay and wait for it to paint before doing heavy work
+  const overlay = document.getElementById('drive-overlay');
+  const text = document.getElementById('drive-text');
+  text.textContent = destination === 'town' ? 'Driving to town...' : destination === 'mansion' ? 'Driving to mansion...' : 'Driving home...';
+  overlay.classList.add('visible');
+
+  // Use rAF + setTimeout to ensure the overlay is painted before blocking the thread
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      performTeleport(destination);
+      // Hide overlay after a brief moment and re-acquire pointer lock
+      setTimeout(() => {
+        hideDriveOverlay();
+        renderer.domElement.requestPointerLock();
+      }, 150);
+    }, 16);
+  });
 }
 
 function buildTown() {
@@ -2968,57 +2999,144 @@ function buildTown() {
   swR.position.set(122, 0.04, TOWN_ORIGIN.z);
   g.add(swR);
 
-  // === CAFE (left side, Z=1 to 7) ===
-  const cafe = new THREE.Mesh(new THREE.BoxGeometry(8, 3.5, 6), buildingMat1);
-  cafe.position.set(108, 1.75, 4);
-  cafe.castShadow = true; cafe.receiveShadow = true;
-  g.add(cafe);
+  // Helper to make a wall mesh
+  function makeWall(w, h, d, material, x, y, z) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return m;
+  }
+
+  const floorMat1 = new THREE.MeshLambertMaterial({ color: 0xcc9966 }); // cafe floor (warm wood)
+  const floorMat2 = new THREE.MeshLambertMaterial({ color: 0x889999 }); // shop floor (tile)
+  const floorMat3 = new THREE.MeshLambertMaterial({ color: 0xbbaa88 }); // hall floor (marble)
+  const innerWall1 = new THREE.MeshLambertMaterial({ color: 0xccaa77 }); // cafe inner walls
+  const innerWall2 = new THREE.MeshLambertMaterial({ color: 0x7799bb }); // shop inner walls
+  const innerWall3 = new THREE.MeshLambertMaterial({ color: 0xddddcc }); // hall inner walls
+  const counterMat = new THREE.MeshLambertMaterial({ color: 0x664422 });
+  const shelfMat = new THREE.MeshLambertMaterial({ color: 0x886633 });
+  const tableMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const deskMat = new THREE.MeshLambertMaterial({ color: 0x553311 });
+
+  // === CAFE (left side, X=104-112, Z=1-7) ===
+  // Walls (0.3 thick, 3.5 tall)
+  makeWall(8.4, 3.5, 0.3, buildingMat1, 108, 1.75, 1);     // Back wall (Z=1)
+  makeWall(0.3, 3.5, 6, buildingMat1, 104, 1.75, 4);         // Left wall (X=104)
+  makeWall(0.3, 3.5, 6, buildingMat1, 112, 1.75, 4);         // Right wall (X=112)
+  makeWall(5.4, 3.5, 0.3, buildingMat1, 106.6, 1.75, 7);     // Front-left (X=104 to 109.3)
+  makeWall(1.2, 3.5, 0.3, buildingMat1, 111.5, 1.75, 7);     // Front-right (X=110.9 to 112)
+  // Door frame top
+  makeWall(1.6, 1.2, 0.3, buildingMat1, 110.1, 2.9, 7);      // Above door gap
+  // Floor
+  makeWall(8, 0.1, 6, floorMat1, 108, 0.05, 4);
+  // Interior back wall accent
+  makeWall(7.4, 3, 0.05, innerWall1, 108, 1.5, 1.2);
   const cafeRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat);
   cafeRoof.position.set(108, 3.65, 4);
   g.add(cafeRoof);
   // Cafe sign
   const signMat = new THREE.MeshLambertMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.3 });
   const cafeSign = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 0.1), signMat);
-  cafeSign.position.set(108, 3.2, 7.06);
+  cafeSign.position.set(108, 3.2, 7.16);
   g.add(cafeSign);
-  // Cafe door gap (just visual - an opening)
-  const cafeDoor = new THREE.Mesh(new THREE.BoxGeometry(1.2, 2.3, 0.15), new THREE.MeshLambertMaterial({ color: 0x553322 }));
-  cafeDoor.position.set(110, 1.15, 7);
-  g.add(cafeDoor);
+  // Cafe interior: counter along back wall
+  makeWall(5, 1, 0.8, counterMat, 108, 0.5, 1.8);
+  // Counter top (lighter)
+  makeWall(5.2, 0.08, 1, new THREE.MeshLambertMaterial({ color: 0x997755 }), 108, 1.04, 1.8);
+  // 2 small tables
+  [106, 110].forEach(tx => {
+    makeWall(1, 0.06, 1, tableMat, tx, 0.7, 5);       // Table top
+    makeWall(0.1, 0.7, 0.1, tableMat, tx, 0.35, 5);   // Table leg
+    // 2 stools per table
+    [-0.7, 0.7].forEach(dz => {
+      makeWall(0.4, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0x444444 }), tx, 0.45, 5 + dz);
+      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, 5 + dz);
+    });
+  });
+  // Cafe interior light
+  const cafeLight = new THREE.PointLight(0xffeecc, 0.5, 10);
+  cafeLight.position.set(108, 3.2, 4);
+  g.add(cafeLight);
 
-  // === SHOP (left side, Z=-12 to -5) ===
-  const shop = new THREE.Mesh(new THREE.BoxGeometry(8, 3, 7), buildingMat2);
-  shop.position.set(108, 1.5, -8);
-  shop.castShadow = true; shop.receiveShadow = true;
-  g.add(shop);
+  // === SHOP (left side, X=104-112, Z=-12 to -4.5) ===
+  // Walls (0.3 thick, 3 tall)
+  makeWall(8.4, 3, 0.3, buildingMat2, 108, 1.5, -12);        // Back wall (Z=-12)
+  makeWall(0.3, 3, 7.5, buildingMat2, 104, 1.5, -8.25);      // Left wall (X=104)
+  makeWall(0.3, 3, 7.5, buildingMat2, 112, 1.5, -8.25);      // Right wall (X=112)
+  makeWall(3.4, 3, 0.3, buildingMat2, 105.6, 1.5, -4.5);     // Front-left (X=104 to 107.3)
+  makeWall(3.2, 3, 0.3, buildingMat2, 110.5, 1.5, -4.5);     // Front-right (X=108.9 to 112)
+  // Door frame top
+  makeWall(1.6, 0.7, 0.3, buildingMat2, 108.1, 2.65, -4.5);  // Above door gap
+  // Floor
+  makeWall(8, 0.1, 7.5, floorMat2, 108, 0.05, -8.25);
+  // Interior back wall accent
+  makeWall(7.4, 2.5, 0.05, innerWall2, 108, 1.25, -11.8);
   const shopRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 8), roofMat2);
-  shopRoof.position.set(108, 3.15, -8);
+  shopRoof.position.set(108, 3.15, -8.25);
   g.add(shopRoof);
   // Shop awning
   const awningMat = new THREE.MeshLambertMaterial({ color: 0x3366aa });
   const awning = new THREE.Mesh(new THREE.BoxGeometry(4, 0.1, 1.5), awningMat);
-  awning.position.set(108, 2.8, -4.2);
+  awning.position.set(108, 2.8, -3.8);
   g.add(awning);
+  // Shop interior: counter near front
+  makeWall(4, 1, 0.6, counterMat, 108, 0.5, -5.5);
+  // Register on counter
+  makeWall(0.5, 0.4, 0.4, new THREE.MeshLambertMaterial({ color: 0x333333 }), 108, 1.2, -5.5);
+  // Shelves along left wall
+  [0, 1.5, 3].forEach(dz => {
+    makeWall(1.5, 0.08, 0.6, shelfMat, 104.9, 1 + dz * 0.4, -8 + dz);
+    makeWall(1.5, 0.08, 0.6, shelfMat, 104.9, 1.8 + dz * 0.2, -8 + dz);
+  });
+  // Shelves along right wall
+  [0, 1.5, 3].forEach(dz => {
+    makeWall(1.5, 0.08, 0.6, shelfMat, 111.1, 1 + dz * 0.4, -8 + dz);
+    makeWall(1.5, 0.08, 0.6, shelfMat, 111.1, 1.8 + dz * 0.2, -8 + dz);
+  });
+  // Shop interior light
+  const shopLight = new THREE.PointLight(0xeeeeff, 0.5, 10);
+  shopLight.position.set(108, 2.8, -8.25);
+  g.add(shopLight);
 
-  // === TOWN HALL (right side, Z=1 to 7) ===
-  const hall = new THREE.Mesh(new THREE.BoxGeometry(10, 4, 6), buildingMat3);
-  hall.position.set(132, 2, 4);
-  hall.castShadow = true; hall.receiveShadow = true;
-  g.add(hall);
+  // === TOWN HALL (right side, X=127-137, Z=1-7) ===
+  // Walls (0.3 thick, 4 tall)
+  makeWall(10.4, 4, 0.3, buildingMat3, 132, 2, 1);           // Back wall (Z=1)
+  makeWall(0.3, 4, 6, buildingMat3, 127, 2, 4);               // Left wall (X=127)
+  makeWall(0.3, 4, 6, buildingMat3, 137, 2, 4);               // Right wall (X=137)
+  makeWall(4.2, 4, 0.3, buildingMat3, 129, 2, 7);             // Front-left (X=127 to 131.1)
+  makeWall(4.2, 4, 0.3, buildingMat3, 135, 2, 7);             // Front-right (X=132.9 to 137)
+  // Door frame top
+  makeWall(1.8, 1.5, 0.3, buildingMat3, 132, 3.25, 7);       // Above door gap
+  // Floor
+  makeWall(10, 0.1, 6, floorMat3, 132, 0.05, 4);
+  // Interior back wall accent
+  makeWall(9.4, 3.5, 0.05, innerWall3, 132, 1.75, 1.2);
   const hallRoof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.4, 7), roofMat3);
   hallRoof.position.set(132, 4.2, 4);
   g.add(hallRoof);
-  // Columns
+  // Columns (outside, near door)
   const colMat = new THREE.MeshLambertMaterial({ color: 0xddddcc });
-  [-2, 0, 2].forEach(dx => {
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.5, 8), colMat);
-    col.position.set(132 + dx, 1.75, 7.2);
+  [-2, 2].forEach(dx => {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.8, 8), colMat);
+    col.position.set(132 + dx, 1.9, 7.3);
     g.add(col);
   });
-  // Hall door
-  const hallDoor = new THREE.Mesh(new THREE.BoxGeometry(1.5, 2.5, 0.15), new THREE.MeshLambertMaterial({ color: 0x553322 }));
-  hallDoor.position.set(132, 1.25, 7);
-  g.add(hallDoor);
+  // Town Hall interior: large desk
+  makeWall(3, 0.9, 1.2, deskMat, 132, 0.45, 3);
+  // Desk top
+  makeWall(3.2, 0.06, 1.4, new THREE.MeshLambertMaterial({ color: 0x664422 }), 132, 0.93, 3);
+  // Bulletin board on back wall
+  makeWall(2.5, 1.5, 0.08, new THREE.MeshLambertMaterial({ color: 0xcc9944 }), 132, 2.2, 1.3);
+  // Chairs
+  [130.5, 133.5].forEach(cx => {
+    makeWall(0.5, 0.04, 0.5, new THREE.MeshLambertMaterial({ color: 0x444444 }), cx, 0.45, 4.5);
+    makeWall(0.06, 0.45, 0.06, lampMat, cx, 0.22, 4.5);
+  });
+  // Town Hall interior light
+  const hallLight = new THREE.PointLight(0xffeedd, 0.5, 12);
+  hallLight.position.set(132, 3.5, 4);
+  g.add(hallLight);
 
   // === PARKING LOT (right side, Z=-12 to -5) ===
   const lot = new THREE.Mesh(new THREE.BoxGeometry(12, 0.05, 8), lotMat);
@@ -3112,9 +3230,24 @@ function buildTown() {
 
 // Building collision AABBs for town
 const TOWN_BUILDINGS = [
-  { xMin: 104, xMax: 112, zMin: 1, zMax: 7 },   // Cafe
-  { xMin: 104, xMax: 112, zMin: -12, zMax: -4.5 }, // Shop
-  { xMin: 127, xMax: 137, zMin: 1, zMax: 7 },    // Town Hall
+  // Cafe walls (door gap at X=109.3-110.9 on Z=7 face)
+  { xMin: 103.8, xMax: 112.2, zMin: 0.8, zMax: 1.2 },     // Back
+  { xMin: 103.8, xMax: 104.2, zMin: 1, zMax: 7 },          // Left
+  { xMin: 111.8, xMax: 112.2, zMin: 1, zMax: 7 },          // Right
+  { xMin: 103.8, xMax: 109.3, zMin: 6.8, zMax: 7.2 },      // Front-left
+  { xMin: 110.9, xMax: 112.2, zMin: 6.8, zMax: 7.2 },      // Front-right
+  // Shop walls (door gap at X=107.3-108.9 on Z=-4.5 face)
+  { xMin: 103.8, xMax: 112.2, zMin: -12.2, zMax: -11.8 },  // Back
+  { xMin: 103.8, xMax: 104.2, zMin: -12, zMax: -4.5 },     // Left
+  { xMin: 111.8, xMax: 112.2, zMin: -12, zMax: -4.5 },     // Right
+  { xMin: 103.8, xMax: 107.3, zMin: -4.7, zMax: -4.3 },    // Front-left
+  { xMin: 108.9, xMax: 112.2, zMin: -4.7, zMax: -4.3 },    // Front-right
+  // Town Hall walls (door gap at X=131.1-132.9 on Z=7 face)
+  { xMin: 126.8, xMax: 137.2, zMin: 0.8, zMax: 1.2 },      // Back
+  { xMin: 126.8, xMax: 127.2, zMin: 1, zMax: 7 },           // Left
+  { xMin: 136.8, xMax: 137.2, zMin: 1, zMax: 7 },           // Right
+  { xMin: 126.8, xMax: 131.1, zMin: 6.8, zMax: 7.2 },       // Front-left
+  { xMin: 132.9, xMax: 137.2, zMin: 6.8, zMax: 7.2 },       // Front-right
   // Fountain
   { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 },
 ];
@@ -3127,10 +3260,9 @@ function buildTownNPCs() {
       outfit: def.outfit,
     });
     npcChar.position.set(def.x, 0.15, def.z);
-    // Face towards the road
-    if (def.x < 118) npcChar.rotation.y = -Math.PI / 2;
-    else npcChar.rotation.y = Math.PI / 2;
-    if (def.id === 'old_pete') npcChar.rotation.y = Math.PI; // faces south
+    // Face toward building entrance
+    const npcRotations = { barista: 0, merchant: Math.PI, mayor: 0, old_pete: Math.PI };
+    npcChar.rotation.y = npcRotations[def.id] || 0;
     townGroup.add(npcChar);
     // Tag ALL meshes in the NPC group for raycast detection
     npcChar.traverse(child => {
@@ -3309,30 +3441,30 @@ function buildMansion() {
   g.add(chandLight);
 
   // Interior dividing walls
-  // Foyer/Kitchen divider (X=275, Z=-10 to -3)
-  const divK = new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 7), mansionWallMat);
-  divK.position.set(275, wy, -6.5);
-  g.add(divK);
-  // Foyer/Living divider (X=275, Z=3 to 10)
-  const divL = new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 7), mansionWallMat);
-  divL.position.set(275, wy, 6.5);
-  g.add(divL);
-  // Kitchen/Theater divider (X=285, Z=-10 to -3)
-  const divT = new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 7), mansionWallMat);
-  divT.position.set(285, wy, -6.5);
-  g.add(divT);
-  // Theater/Spa divider (X=295, Z=-10 to -3)
-  const divS = new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 7), mansionWallMat);
-  divS.position.set(295, wy, -6.5);
-  g.add(divS);
-  // Horizontal divider N/S (Z=-3, X=275 to 285)
-  const divH = new THREE.Mesh(new THREE.BoxGeometry(10, wh, 0.15), mansionWallMat);
-  divH.position.set(280, wy, -3);
-  g.add(divH);
-  // Horizontal divider for stair area (Z=3, X=285 to 305)
-  const divH2 = new THREE.Mesh(new THREE.BoxGeometry(20, wh, 0.15), mansionWallMat);
-  divH2.position.set(295, wy, 3);
-  g.add(divH2);
+  // Foyer/Kitchen divider (X=275, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, -8.75) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, -4.25) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(275, wh - 0.5, -6.5) }));
+  // Foyer/Living divider (X=275, Z=3 to 10) — doorway at Z=5.5 to 7.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, 4.25) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, 8.75) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(275, wh - 0.5, 6.5) }));
+  // Kitchen/Theater divider (X=285, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(285, wy, -8.75) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(285, wy, -4.25) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(285, wh - 0.5, -6.5) }));
+  // Theater/Spa divider (X=295, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(295, wy, -8.75) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(295, wy, -4.25) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(295, wh - 0.5, -6.5) }));
+  // Horizontal divider N/S (Z=-3, X=275 to 285) — doorway at X=278.5 to 281.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.5, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(276.75, wy, -3) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.5, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(283.25, wy, -3) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(280, wh - 0.5, -3) }));
+  // Horizontal divider for stair area (Z=3, X=285 to 305) — doorway at X=293 to 297
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(289, wy, 3) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(301, wy, 3) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(295, wh - 0.5, 3) }));
 
   // === GOURMET KITCHEN (X=275-285, Z=-10 to -3) ===
   // Kitchen island
@@ -3522,22 +3654,22 @@ function buildMansion() {
   g.add(uCeil);
 
   // Upper floor dividers
-  // Master/Library divider (Z=0, X=265-280)
-  const uDivML = new THREE.Mesh(new THREE.BoxGeometry(15, uwh, 0.15), mansionWallMat);
-  uDivML.position.set(272.5, uwy, 0);
-  g.add(uDivML);
-  // Art/Game divider (Z=0, X=290-305) — partial, leave gap for balcony access
-  const uDivAG = new THREE.Mesh(new THREE.BoxGeometry(15, uwh, 0.15), mansionWallMat);
-  uDivAG.position.set(297.5, uwy, 0);
-  g.add(uDivAG);
-  // Left/Right divider (X=280, full height)
-  const uDivLR = new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 20), mansionWallMat);
-  uDivLR.position.set(280, uwy, 0);
-  g.add(uDivLR);
-  // Art/Balcony divider (X=290)
-  const uDivAB = new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 10), mansionWallMat);
-  uDivAB.position.set(290, uwy, -5);
-  g.add(uDivAB);
+  // Master/Library divider (Z=0, X=265-280) — doorway at X=271 to 274
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(268, uwy, 0) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(277, uwy, 0) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(272.5, MANSION_UPPER_Y + uwh - 0.5, 0) }));
+  // Art/Game ↔ Balcony divider (Z=0, X=290-305) — doorway at X=296 to 299
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(293, uwy, 0) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(302, uwy, 0) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(297.5, MANSION_UPPER_Y + uwh - 0.5, 0) }));
+  // Left/Right divider (X=280, Z=-10 to 10) — doorway at Z=-3 to 3 (near staircase)
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 7), mansionWallMat), { position: new THREE.Vector3(280, uwy, -6.5) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 7), mansionWallMat), { position: new THREE.Vector3(280, uwy, 6.5) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 6), mansionWallMat), { position: new THREE.Vector3(280, MANSION_UPPER_Y + uwh - 0.5, 0) }));
+  // Art/Balcony divider (X=290, Z=-10 to 0) — doorway at Z=-6.5 to -3.5
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 3.5), mansionWallMat), { position: new THREE.Vector3(290, uwy, -8.25) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 3.5), mansionWallMat), { position: new THREE.Vector3(290, uwy, -1.75) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 3), mansionWallMat), { position: new THREE.Vector3(290, MANSION_UPPER_Y + uwh - 0.5, -5) }));
 
   // Upper windows
   [270, 275, 295, 300].forEach(wx => {
@@ -6455,7 +6587,7 @@ function triggerGameOver(need) {
   closeNPCDialogue();
   document.getElementById('shop-overlay').classList.remove('visible');
   document.getElementById('pet-menu-overlay').classList.remove('visible');
-  document.getElementById('drive-overlay').classList.remove('visible');
+  hideDriveOverlay();
   SFX.stopLoops();
   SFX.stopMusic();
   SFX.gameOver();
@@ -6579,7 +6711,7 @@ function restartGame() {
   sunLight.shadow.camera.top = 20;
   sunLight.shadow.camera.bottom = -15;
   sunLight.shadow.camera.updateProjectionMatrix();
-  document.getElementById('drive-overlay').classList.remove('visible');
+  hideDriveOverlay();
   document.getElementById('npc-dialogue-overlay').classList.remove('visible');
   document.getElementById('drive-dest-overlay').classList.remove('visible');
   document.getElementById('drive-mansion-btn').style.display = 'none';
@@ -6794,6 +6926,8 @@ function loadSlot(index) {
     const carBody = carGroup.children[0];
     interactables.push({ mesh: carBody, group: carGroup, type: 'car', label: 'Drive to Town', need: null, usePos: new THREE.Vector3(11, 0.15, -5), floor: 0 });
     rebuildInteractMeshes();
+    // Pre-build town in background so driving there is instant
+    setTimeout(() => { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } }, 100);
   }
   if (save.questLog) questLog = save.questLog;
   if (save.questsCompleted) questsCompleted = save.questsCompleted;
@@ -6818,6 +6952,8 @@ function loadSlot(index) {
   if (save.hasMansion) {
     hasMansion = true;
     document.getElementById('drive-mansion-btn').style.display = '';
+    // Pre-build mansion in background so driving there is instant
+    setTimeout(() => { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } }, 200);
   }
   if (save.inMansion && save.hasCar) {
     if (!mansionGroup) { mansionGroup = buildMansion(); }

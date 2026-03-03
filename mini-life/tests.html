@@ -128,10 +128,26 @@ const MANSION_FOG_FAR = 150;
 
 // Town building collision AABBs
 const TOWN_BUILDINGS = [
-  { xMin: 104, xMax: 112, zMin: 1, zMax: 7 },       // Cafe
-  { xMin: 104, xMax: 112, zMin: -12, zMax: -4.5 },   // Shop
-  { xMin: 127, xMax: 137, zMin: 1, zMax: 7 },        // Town Hall
-  { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 }, // Fountain
+  // Cafe walls (door gap at X=109.3-110.9 on Z=7 face)
+  { xMin: 103.8, xMax: 112.2, zMin: 0.8, zMax: 1.2 },
+  { xMin: 103.8, xMax: 104.2, zMin: 1, zMax: 7 },
+  { xMin: 111.8, xMax: 112.2, zMin: 1, zMax: 7 },
+  { xMin: 103.8, xMax: 109.3, zMin: 6.8, zMax: 7.2 },
+  { xMin: 110.9, xMax: 112.2, zMin: 6.8, zMax: 7.2 },
+  // Shop walls (door gap at X=107.3-108.9 on Z=-4.5 face)
+  { xMin: 103.8, xMax: 112.2, zMin: -12.2, zMax: -11.8 },
+  { xMin: 103.8, xMax: 104.2, zMin: -12, zMax: -4.5 },
+  { xMin: 111.8, xMax: 112.2, zMin: -12, zMax: -4.5 },
+  { xMin: 103.8, xMax: 107.3, zMin: -4.7, zMax: -4.3 },
+  { xMin: 108.9, xMax: 112.2, zMin: -4.7, zMax: -4.3 },
+  // Town Hall walls (door gap at X=131.1-132.9 on Z=7 face)
+  { xMin: 126.8, xMax: 137.2, zMin: 0.8, zMax: 1.2 },
+  { xMin: 126.8, xMax: 127.2, zMin: 1, zMax: 7 },
+  { xMin: 136.8, xMax: 137.2, zMin: 1, zMax: 7 },
+  { xMin: 126.8, xMax: 131.1, zMin: 6.8, zMax: 7.2 },
+  { xMin: 132.9, xMax: 137.2, zMin: 6.8, zMax: 7.2 },
+  // Fountain
+  { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 },
 ];
 
 // Mansion collision AABBs
@@ -201,9 +217,9 @@ const OUTFITS = [
 
 // NPC definitions
 const TOWN_NPC_DEFS = [
-  { id: 'barista', name: 'Barista Bean', x: 108, z: 4 },
-  { id: 'merchant', name: 'Merchant Mike', x: 108, z: -8 },
-  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 4 },
+  { id: 'barista', name: 'Barista Bean', x: 108, z: 2.5 },
+  { id: 'merchant', name: 'Merchant Mike', x: 108, z: -10 },
+  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 2.5 },
   { id: 'old_pete', name: 'Old Pete', x: 124, z: 12 },
 ];
 
@@ -805,49 +821,76 @@ test('Fog distance increases: home < town < mansion', () => {
 // ── Town Buildings Collision ──
 section('Town Buildings Collision');
 
-test('TOWN_BUILDINGS has 4 entries', () => {
-  assertEqual(TOWN_BUILDINGS.length, 4);
+test('TOWN_BUILDINGS has 16 wall-segment entries', () => {
+  assertEqual(TOWN_BUILDINGS.length, 16);
 });
 
-test('Cafe AABB: (104-112, 1-7)', () => {
-  const cafe = TOWN_BUILDINGS[0];
-  assertEqual(cafe.xMin, 104);
-  assertEqual(cafe.xMax, 112);
-  assertEqual(cafe.zMin, 1);
-  assertEqual(cafe.zMax, 7);
-});
-
-test('Shop AABB: (104-112, -12 to -4.5)', () => {
-  const shop = TOWN_BUILDINGS[1];
-  assertEqual(shop.xMin, 104);
-  assertEqual(shop.xMax, 112);
-  assertEqual(shop.zMin, -12);
-  assertEqual(shop.zMax, -4.5);
-});
-
-test('Town Hall AABB: (127-137, 1-7)', () => {
-  const hall = TOWN_BUILDINGS[2];
-  assertEqual(hall.xMin, 127);
-  assertEqual(hall.xMax, 137);
-  assertEqual(hall.zMin, 1);
-  assertEqual(hall.zMax, 7);
-});
-
-test('Fountain AABB: (128.5-131.5, 10.5-13.5)', () => {
-  const fountain = TOWN_BUILDINGS[3];
+test('Fountain AABB unchanged: (128.5-131.5, 10.5-13.5)', () => {
+  const fountain = TOWN_BUILDINGS[15];
   assertEqual(fountain.xMin, 128.5);
   assertEqual(fountain.xMax, 131.5);
   assertEqual(fountain.zMin, 10.5);
   assertEqual(fountain.zMax, 13.5);
 });
 
-test('Point inside cafe collides', () => {
-  assert(isInsideAABB(108, 4, TOWN_BUILDINGS[0]));
-});
-
 test('Point outside all buildings does not collide', () => {
   const collides = TOWN_BUILDINGS.some(b => isInsideAABB(120, 0, b));
   assert(!collides);
+});
+
+test('Cafe door gap at (110, 7) is passable', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(110, 7, b));
+  assert(!collides, 'Cafe door gap should be passable');
+});
+
+test('Shop door gap at (108, -4.5) is passable', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, -4.5, b));
+  assert(!collides, 'Shop door gap should be passable');
+});
+
+test('Town Hall door gap at (132, 7) is passable', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 7, b));
+  assert(!collides, 'Town Hall door gap should be passable');
+});
+
+test('Cafe interior (108, 4) is collision-free', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 4, b));
+  assert(!collides, 'Cafe interior should be free');
+});
+
+test('Shop interior (108, -8) is collision-free', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, -8, b));
+  assert(!collides, 'Shop interior should be free');
+});
+
+test('Town Hall interior (132, 4) is collision-free', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 4, b));
+  assert(!collides, 'Town Hall interior should be free');
+});
+
+test('Cafe left wall (104, 4) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(104, 4, b));
+  assert(collides, 'Cafe left wall should block');
+});
+
+test('Shop right wall (112, -8) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(112, -8, b));
+  assert(collides, 'Shop right wall should block');
+});
+
+test('Town Hall right wall (137, 4) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(137, 4, b));
+  assert(collides, 'Town Hall right wall should block');
+});
+
+test('Cafe back wall (108, 1) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 1, b));
+  assert(collides, 'Cafe back wall should block');
+});
+
+test('Cafe front wall left of door (106, 7) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(106, 7, b));
+  assert(collides, 'Cafe front wall should block');
 });
 
 // ── Mansion Collisions ──
@@ -920,23 +963,23 @@ test('TOWN_NPC_DEFS has 4 NPCs', () => {
   assertEqual(TOWN_NPC_DEFS.length, 4);
 });
 
-test('Barista Bean is at (108, 4)', () => {
+test('Barista Bean is inside cafe at (108, 2.5)', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'barista');
   assertEqual(npc.x, 108);
-  assertEqual(npc.z, 4);
+  assertEqual(npc.z, 2.5);
   assertEqual(npc.name, 'Barista Bean');
 });
 
-test('Merchant Mike is at (108, -8)', () => {
+test('Merchant Mike is inside shop at (108, -10)', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'merchant');
   assertEqual(npc.x, 108);
-  assertEqual(npc.z, -8);
+  assertEqual(npc.z, -10);
 });
 
-test('Mayor Maple is at (132, 4)', () => {
+test('Mayor Maple is inside town hall at (132, 2.5)', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'mayor');
   assertEqual(npc.x, 132);
-  assertEqual(npc.z, 4);
+  assertEqual(npc.z, 2.5);
 });
 
 test('Old Pete is at (124, 12)', () => {
@@ -956,6 +999,29 @@ test('Each NPC has matching quest', () => {
   TOWN_NPC_DEFS.forEach(npc => {
     const hasQuest = Object.values(QUESTS).some(q => q.npc === npc.id);
     assert(hasQuest, `NPC ${npc.id} has no quest`);
+  });
+});
+
+test('Barista is inside cafe footprint', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'barista');
+  assert(npc.x >= 104 && npc.x <= 112 && npc.z >= 1 && npc.z <= 7, 'Barista should be inside cafe');
+});
+
+test('Merchant is inside shop footprint', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'merchant');
+  assert(npc.x >= 104 && npc.x <= 112 && npc.z >= -12 && npc.z <= -4.5, 'Merchant should be inside shop');
+});
+
+test('Mayor is inside town hall footprint', () => {
+  const npc = TOWN_NPC_DEFS.find(n => n.id === 'mayor');
+  assert(npc.x >= 127 && npc.x <= 137 && npc.z >= 1 && npc.z <= 7, 'Mayor should be inside town hall');
+});
+
+test('NPCs inside buildings are not inside collision walls', () => {
+  ['barista', 'merchant', 'mayor'].forEach(id => {
+    const npc = TOWN_NPC_DEFS.find(n => n.id === id);
+    const collides = TOWN_BUILDINGS.some(b => isInsideAABB(npc.x, npc.z, b));
+    assert(!collides, id + ' should not be inside a collision wall');
   });
 });
 

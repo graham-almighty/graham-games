@@ -491,6 +491,133 @@
     letter-spacing: 0.03em;
   }
 
+  /* ═══ LEADERBOARD ═══ */
+  .lb-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .lb-overlay.visible { opacity: 1; pointer-events: auto; }
+  .lb-panel {
+    background: linear-gradient(135deg, #1a0a0a 0%, #0a0a0a 100%);
+    border: 3px solid var(--punk-red);
+    box-shadow: 0 0 40px #ff174444, inset 0 0 30px #ff174411;
+    padding: 2em 2.5em;
+    max-width: 560px; width: 90%;
+    max-height: 80vh; overflow-y: auto;
+    position: relative;
+  }
+  .lb-panel h3 {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 1.5rem;
+    color: var(--punk-yellow);
+    text-shadow: 2px 2px 0 #000;
+    text-align: center;
+    margin-bottom: 0.8em;
+    transform: rotate(-1deg);
+  }
+  .lb-close {
+    position: absolute; top: 10px; right: 14px;
+    background: none; border: none; color: #666;
+    font-size: 1.5rem; cursor: pointer;
+    font-family: 'Rubik Mono One', monospace;
+    transition: color 0.15s;
+  }
+  .lb-close:hover { color: var(--punk-red); }
+  .lb-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'Permanent Marker', sans-serif;
+  }
+  .lb-table th {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 0.65rem;
+    color: var(--punk-red);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 6px 8px;
+    border-bottom: 2px solid #ff174444;
+    text-align: left;
+  }
+  .lb-table td {
+    padding: 8px;
+    border-bottom: 1px solid #ffffff0a;
+    font-size: 0.95rem;
+    color: #aaa;
+  }
+  .lb-table tr:first-child td { color: var(--punk-yellow); }
+  .lb-table .lb-rank { width: 40px; text-align: center; font-size: 1.1rem; }
+  .lb-table .lb-score { color: var(--punk-red); font-family: 'Rubik Mono One', monospace; font-size: 0.85rem; }
+  .lb-table .lb-grade { text-align: center; font-weight: bold; }
+  .lb-table .lb-diff { color: #666; font-size: 0.8rem; text-transform: uppercase; }
+  .lb-empty {
+    text-align: center; color: #555; padding: 2em 1em;
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 1rem;
+  }
+  .lb-btn {
+    font-family: 'Permanent Marker', sans-serif;
+    font-size: 0.95rem;
+    color: var(--punk-yellow);
+    background: none;
+    border: 2px solid var(--punk-yellow);
+    padding: 0.4em 1.2em;
+    cursor: pointer;
+    margin-top: 1em;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+  .lb-btn:hover {
+    background: #ffd60022;
+    text-shadow: 0 0 10px #ffd60044;
+  }
+
+  /* Name entry on results screen */
+  .name-entry {
+    margin-top: 1em;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+  }
+  .name-entry input {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 1.8rem;
+    width: 4.5ch;
+    text-align: center;
+    background: #111;
+    color: var(--punk-yellow);
+    border: 3px solid var(--punk-red);
+    padding: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    caret-color: var(--punk-red);
+  }
+  .name-entry input::placeholder { color: #333; }
+  .name-entry input:focus { outline: none; box-shadow: 0 0 15px #ff174444; }
+  .name-entry button {
+    font-family: 'Rubik Mono One', monospace;
+    font-size: 0.9rem;
+    padding: 0.6em 1.2em;
+    background: var(--punk-red);
+    color: #fff;
+    border: 2px solid var(--punk-yellow);
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .name-entry button:hover { transform: scale(1.05); }
+
+  /* Inline leaderboard on results screen */
+  .lb-inline {
+    margin-top: 1em;
+    max-height: 260px;
+    overflow-y: auto;
+    width: 100%;
+    max-width: 480px;
+  }
+  .lb-inline .lb-table td { font-size: 0.85rem; padding: 5px 6px; }
+  .lb-inline .lb-table th { font-size: 0.6rem; padding: 4px 6px; }
+  .lb-highlight td { background: #ff174418; }
+
   /* ═══ PARTICLES ═══ */
   .burst {
     position: absolute;
@@ -671,6 +798,15 @@
   <div class="gg-toast-reward" id="gg-toast-reward"></div>
 </div>
 
+<!-- ═══ LEADERBOARD OVERLAY ═══ -->
+<div class="lb-overlay" id="lb-overlay">
+  <div class="lb-panel">
+    <button class="lb-close" onclick="hideLeaderboardOverlay()">X</button>
+    <h3>// TOP SCORES //</h3>
+    <div id="lb-overlay-list"></div>
+  </div>
+</div>
+
 <div class="spike-border-left"></div>
 <div class="spike-border-right"></div>
 
@@ -695,6 +831,7 @@
     <button data-diff="hard">HARD</button>
   </div>
   <button class="punk-btn" id="start-btn">SMASH IT</button>
+  <button class="lb-btn" onclick="showLeaderboardOverlay()">&#127942; TOP SCORES</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
   <div class="controls-hint">
     <kbd>SPACE</kbd> / <kbd>D</kbd> CLAP &nbsp;&nbsp; <kbd>F</kbd> / LEFT CLICK &nbsp; LEFT &nbsp;&nbsp; <kbd>J</kbd> / RIGHT CLICK &nbsp; RIGHT &nbsp;&nbsp; <kbd>K</kbd> / BOTH CLICKS &nbsp; BOTH
@@ -845,6 +982,13 @@
   <div class="grade" id="grade">A</div>
   <div class="final-score" id="final-score">0</div>
   <div class="stats" id="stats"></div>
+  <div id="lb-name-entry" class="name-entry" style="display:none">
+    <span style="color:#888;font-family:'Permanent Marker',sans-serif">NEW HIGH SCORE!</span>
+    <input type="text" id="lb-name-input" maxlength="3" placeholder="AAA" autocomplete="off">
+    <button onclick="submitLeaderboardName()">SAVE</button>
+  </div>
+  <div id="lb-results-inline" class="lb-inline" style="display:none"></div>
+  <button class="lb-btn" id="lb-view-btn" onclick="showResultsLeaderboard()" style="display:none">&#127942; VIEW TOP SCORES</button>
   <button class="punk-btn" id="retry-btn">AGAIN!!</button>
   <a href="../index.html" class="exit-btn">EXIT TO LAUNCHER</a>
   <div class="credits">by graham f who is a numbskull</div>
@@ -1643,6 +1787,85 @@ function endRound() {
   }
 }
 
+// ═══ LEADERBOARD SYSTEM ═══
+const LB_KEY = 'hurgvibbit-leaderboard';
+let lastGrade = '';
+let lastDifficulty = '';
+let lastEntryIndex = -1;
+
+function getLeaderboardData() {
+  try { return JSON.parse(localStorage.getItem(LB_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function saveLeaderboardEntry(name, entryScore, grade, diff) {
+  const board = getLeaderboardData();
+  board.push({ name: name.toUpperCase().slice(0, 3), score: entryScore, grade: grade, difficulty: diff });
+  board.sort((a, b) => b.score - a.score);
+  const trimmed = board.slice(0, 10);
+  localStorage.setItem(LB_KEY, JSON.stringify(trimmed));
+  return trimmed.findIndex(e => e.score === entryScore && e.name === name.toUpperCase().slice(0, 3));
+}
+
+function isTopScore(entryScore) {
+  const board = getLeaderboardData();
+  if (board.length < 10) return true;
+  return entryScore > board[board.length - 1].score;
+}
+
+function renderLeaderboard(containerId, highlightIndex) {
+  const container = document.getElementById(containerId);
+  const board = getLeaderboardData();
+  if (board.length === 0) {
+    container.innerHTML = '<div class="lb-empty">NO SCORES YET...<br>GO SMASH SOME BUTTONS!</div>';
+    return;
+  }
+  const medals = ['\u{1F947}', '\u{1F948}', '\u{1F949}'];
+  let html = '<table class="lb-table"><tr><th>#</th><th>NAME</th><th>SCORE</th><th>GRADE</th><th>DIFF</th></tr>';
+  board.forEach((entry, i) => {
+    const rowClass = i === highlightIndex ? ' class="lb-highlight"' : '';
+    const rank = i < 3 ? medals[i] : (i + 1);
+    const gradeColor = { S: 'var(--punk-yellow)', A: 'var(--punk-green)', B: 'var(--punk-cyan)', C: 'var(--punk-purple)', D: 'var(--punk-red)' }[entry.grade] || '#aaa';
+    html += `<tr${rowClass}>` +
+      `<td class="lb-rank">${rank}</td>` +
+      `<td>${entry.name}</td>` +
+      `<td class="lb-score">${entry.score.toLocaleString()}</td>` +
+      `<td class="lb-grade" style="color:${gradeColor}">${entry.grade}</td>` +
+      `<td class="lb-diff">${entry.difficulty}</td></tr>`;
+  });
+  html += '</table>';
+  container.innerHTML = html;
+}
+
+function showLeaderboardOverlay() {
+  renderLeaderboard('lb-overlay-list');
+  document.getElementById('lb-overlay').classList.add('visible');
+}
+
+function hideLeaderboardOverlay() {
+  document.getElementById('lb-overlay').classList.remove('visible');
+}
+
+function submitLeaderboardName() {
+  const input = document.getElementById('lb-name-input');
+  let name = input.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  if (name.length === 0) name = 'AAA';
+  while (name.length < 3) name += 'A';
+  name = name.slice(0, 3);
+  lastEntryIndex = saveLeaderboardEntry(name, score, lastGrade, lastDifficulty);
+  document.getElementById('lb-name-entry').style.display = 'none';
+  const inlineEl = document.getElementById('lb-results-inline');
+  inlineEl.style.display = 'block';
+  renderLeaderboard('lb-results-inline', lastEntryIndex);
+}
+
+function showResultsLeaderboard() {
+  document.getElementById('lb-view-btn').style.display = 'none';
+  const inlineEl = document.getElementById('lb-results-inline');
+  inlineEl.style.display = 'block';
+  renderLeaderboard('lb-results-inline');
+}
+
 function showResults() {
   gameActive = false;
   if (spawnTimer) clearInterval(spawnTimer);
@@ -1678,6 +1901,21 @@ function showResults() {
   document.getElementById('stats').innerHTML =
     `RADICAL: ${perfects} | SICK: ${greats} | MEH: ${oks} | LAME: ${misses}<br>` +
     `Hit Rate: ${hitRate}% | Max Combo: ${maxCombo}x`;
+
+  // Leaderboard integration
+  lastGrade = grade;
+  lastDifficulty = difficulty;
+  lastEntryIndex = -1;
+  document.getElementById('lb-results-inline').style.display = 'none';
+  if (isTopScore(score)) {
+    document.getElementById('lb-name-entry').style.display = 'flex';
+    document.getElementById('lb-name-input').value = '';
+    document.getElementById('lb-view-btn').style.display = 'none';
+    setTimeout(() => document.getElementById('lb-name-input').focus(), 100);
+  } else {
+    document.getElementById('lb-name-entry').style.display = 'none';
+    document.getElementById('lb-view-btn').style.display = 'inline-block';
+  }
 }
 
 document.getElementById('start-btn').addEventListener('click', () => {
@@ -1685,6 +1923,23 @@ document.getElementById('start-btn').addEventListener('click', () => {
 });
 document.getElementById('retry-btn').addEventListener('click', () => {
   startGame();
+});
+
+// Allow Enter key to submit name entry
+document.getElementById('lb-name-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') submitLeaderboardName();
+});
+
+// Close overlay on background click
+document.getElementById('lb-overlay').addEventListener('click', (e) => {
+  if (e.target.id === 'lb-overlay') hideLeaderboardOverlay();
+});
+
+// Close overlay on Escape
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('lb-overlay').classList.contains('visible')) {
+    hideLeaderboardOverlay();
+  }
 });
 </script>
 </body>
