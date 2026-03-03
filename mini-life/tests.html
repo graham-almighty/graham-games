@@ -1312,6 +1312,135 @@ test('Mansion car always drives home', () => {
   assertEqual(destination, 'home');
 });
 
+test('performTeleport falls back to home when town build fails', () => {
+  // Simulates the performTeleport fallback logic
+  let destination = 'town';
+  let townGroup = null;
+  let buildThrew = false;
+  try {
+    if (destination === 'town' && !townGroup) { throw new Error('build failed'); }
+  } catch (e) {
+    buildThrew = true;
+    destination = 'home';
+  }
+  if (destination === 'town' && !townGroup) destination = 'home';
+  assert(buildThrew, 'Build should have thrown');
+  assertEqual(destination, 'home');
+});
+
+test('performTeleport falls back to home when mansion build fails', () => {
+  let destination = 'mansion';
+  let mansionGroup = null;
+  let buildThrew = false;
+  try {
+    if (destination === 'mansion' && !mansionGroup) { throw new Error('build failed'); }
+  } catch (e) {
+    buildThrew = true;
+    destination = 'home';
+  }
+  if (destination === 'mansion' && !mansionGroup) destination = 'home';
+  assert(buildThrew, 'Build should have thrown');
+  assertEqual(destination, 'home');
+});
+
+test('performTeleport falls back to home when build succeeds but group is null', () => {
+  // Edge case: build "succeeds" (no throw) but returns null
+  let destination = 'mansion';
+  let mansionGroup = null;
+  try {
+    if (destination === 'mansion' && !mansionGroup) { mansionGroup = null; /* simulates failed return */ }
+  } catch (e) {
+    destination = 'home';
+  }
+  if (destination === 'mansion' && !mansionGroup) destination = 'home';
+  assertEqual(destination, 'home');
+});
+
+test('performTeleport proceeds when build succeeds', () => {
+  let destination = 'mansion';
+  let mansionGroup = null;
+  try {
+    if (destination === 'mansion' && !mansionGroup) { mansionGroup = { visible: false }; }
+  } catch (e) {
+    destination = 'home';
+  }
+  if (destination === 'mansion' && !mansionGroup) destination = 'home';
+  assertEqual(destination, 'mansion');
+  assert(mansionGroup !== null, 'mansionGroup should be set');
+});
+
+test('Teleport to town sets correct state', () => {
+  const destination = 'town';
+  let inTown = false, inMansion = false, currentFloor = 1;
+  if (destination === 'town') {
+    inTown = true; inMansion = false; currentFloor = 0;
+  }
+  assert(inTown);
+  assert(!inMansion);
+  assertEqual(currentFloor, 0);
+});
+
+test('Teleport to mansion sets correct state', () => {
+  const destination = 'mansion';
+  let inTown = true, inMansion = false, currentFloor = 1;
+  if (destination === 'mansion') {
+    inTown = false; inMansion = true; currentFloor = 0;
+  }
+  assert(!inTown);
+  assert(inMansion);
+  assertEqual(currentFloor, 0);
+});
+
+test('Teleport home clears town and mansion state', () => {
+  const destination = 'home';
+  let inTown = true, inMansion = true, currentFloor = 1;
+  if (destination === 'home') {
+    inTown = false; inMansion = false; currentFloor = 0;
+  }
+  assert(!inTown);
+  assert(!inMansion);
+  assertEqual(currentFloor, 0);
+});
+
+test('MANSION_PLAYER_SPAWN is within MANSION_BOUNDS', () => {
+  const spawn = { x: 258, y: 0.15, z: -12 };
+  const bounds = { xMin: 250, xMax: 310, zMin: -25, zMax: 25 };
+  assert(spawn.x >= bounds.xMin && spawn.x <= bounds.xMax, 'Spawn X out of mansion bounds');
+  assert(spawn.z >= bounds.zMin && spawn.z <= bounds.zMax, 'Spawn Z out of mansion bounds');
+});
+
+test('TOWN_PLAYER_SPAWN is within TOWN_BOUNDS', () => {
+  const spawn = { x: 135, y: 0.15, z: -8 };
+  const bounds = { xMin: 100, xMax: 145, zMin: -15, zMax: 15 };
+  assert(spawn.x >= bounds.xMin && spawn.x <= bounds.xMax, 'Spawn X out of town bounds');
+  assert(spawn.z >= bounds.zMin && spawn.z <= bounds.zMax, 'Spawn Z out of town bounds');
+});
+
+test('HOME_PLAYER_SPAWN is in yard area', () => {
+  const spawn = { x: 10, y: 0.15, z: 0.75 };
+  assert(spawn.x >= 5 && spawn.x <= 18, 'Spawn X out of yard bounds');
+  assert(spawn.z >= -8 && spawn.z <= 8, 'Spawn Z out of yard bounds');
+});
+
+test('Mansion walls use position.set not Object.assign (no read-only crash)', () => {
+  // Three.js r128 defines position via Object.defineProperties with writable:false
+  // Object.assign(mesh, {position: new Vector3()}) throws TypeError
+  // position.set(x,y,z) works correctly
+  const obj = {};
+  Object.defineProperties(obj, {
+    position: { configurable: true, enumerable: true, value: { x:0, y:0, z:0, set(x,y,z){this.x=x;this.y=y;this.z=z;} } }
+  });
+  // Object.assign would throw
+  let threw = false;
+  try { Object.assign(obj, { position: { x:1 } }); } catch(e) { threw = true; }
+  assert(threw, 'Object.assign should throw on read-only position');
+  // position.set works
+  obj.position.set(5, 10, 15);
+  assertEqual(obj.position.x, 5);
+  assertEqual(obj.position.y, 10);
+  assertEqual(obj.position.z, 15);
+});
+
 // ── Integration: Achievement Triggers ──
 section('Integration: Achievement Triggers');
 

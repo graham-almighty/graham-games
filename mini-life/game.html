@@ -2849,7 +2849,7 @@ function purchaseCar() {
   showTip('Car purchased! Click it to drive to town.');
   mlTry('ml_shopaholic');
   // Pre-build town in background so first drive is instant
-  setTimeout(() => { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } }, 100);
+  setTimeout(() => { try { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } } catch(e) { console.error('Town pre-build error:', e); } }, 100);
 }
 
 function purchaseMansion() {
@@ -2861,20 +2861,24 @@ function purchaseMansion() {
   document.getElementById('drive-mansion-btn').style.display = '';
   mlTry('ml_mansion_mogul');
   // Pre-build mansion in background so first drive is instant
-  setTimeout(() => { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } }, 100);
+  setTimeout(() => { try { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } } catch(e) { console.error('Mansion pre-build error:', e); } }, 100);
 }
 
 function performTeleport(destination) {
-  // Build destination geometry if needed (pre-built at purchase, this is a fallback)
+  // Build destination geometry if needed (pre-built at purchase/load, this is a fallback)
   try {
     if (destination === 'town' && !townGroup) { townGroup = buildTown(); buildTownNPCs(); }
     if (destination === 'mansion' && !mansionGroup) { mansionGroup = buildMansion(); }
   } catch (e) {
     console.error('Build error:', e);
-    showTip('Error loading destination!');
+    showTip('Error loading destination — returning home.');
+    destination = 'home';
   }
+  // If build ran but group is still null, fall back to home
+  if (destination === 'town' && !townGroup) { destination = 'home'; }
+  if (destination === 'mansion' && !mansionGroup) { destination = 'home'; }
 
-  // Always teleport the player — even if build failed, set position and state flags
+  // Teleport the player
   if (destination === 'town') {
     if (townGroup) townGroup.visible = true;
     if (mansionGroup) mansionGroup.visible = false;
@@ -3440,31 +3444,38 @@ function buildMansion() {
   chandLight.position.set(270, 2.5, 0);
   g.add(chandLight);
 
+  // Helper: create a wall segment and position it
+  function mWall(w, h, d, x, y, z) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mansionWallMat);
+    m.position.set(x, y, z);
+    g.add(m);
+  }
+
   // Interior dividing walls
   // Foyer/Kitchen divider (X=275, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, -8.75) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, -4.25) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(275, wh - 0.5, -6.5) }));
+  mWall(0.15, wh, 2.5, 275, wy, -8.75);
+  mWall(0.15, wh, 2.5, 275, wy, -4.25);
+  mWall(0.15, 1.2, 2, 275, wh - 0.5, -6.5);
   // Foyer/Living divider (X=275, Z=3 to 10) — doorway at Z=5.5 to 7.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, 4.25) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(275, wy, 8.75) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(275, wh - 0.5, 6.5) }));
+  mWall(0.15, wh, 2.5, 275, wy, 4.25);
+  mWall(0.15, wh, 2.5, 275, wy, 8.75);
+  mWall(0.15, 1.2, 2, 275, wh - 0.5, 6.5);
   // Kitchen/Theater divider (X=285, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(285, wy, -8.75) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(285, wy, -4.25) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(285, wh - 0.5, -6.5) }));
+  mWall(0.15, wh, 2.5, 285, wy, -8.75);
+  mWall(0.15, wh, 2.5, 285, wy, -4.25);
+  mWall(0.15, 1.2, 2, 285, wh - 0.5, -6.5);
   // Theater/Spa divider (X=295, Z=-10 to -3) — doorway at Z=-7.5 to -5.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(295, wy, -8.75) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, wh, 2.5), mansionWallMat), { position: new THREE.Vector3(295, wy, -4.25) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 2), mansionWallMat), { position: new THREE.Vector3(295, wh - 0.5, -6.5) }));
+  mWall(0.15, wh, 2.5, 295, wy, -8.75);
+  mWall(0.15, wh, 2.5, 295, wy, -4.25);
+  mWall(0.15, 1.2, 2, 295, wh - 0.5, -6.5);
   // Horizontal divider N/S (Z=-3, X=275 to 285) — doorway at X=278.5 to 281.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.5, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(276.75, wy, -3) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3.5, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(283.25, wy, -3) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(280, wh - 0.5, -3) }));
+  mWall(3.5, wh, 0.15, 276.75, wy, -3);
+  mWall(3.5, wh, 0.15, 283.25, wy, -3);
+  mWall(3, 1.2, 0.15, 280, wh - 0.5, -3);
   // Horizontal divider for stair area (Z=3, X=285 to 305) — doorway at X=293 to 297
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(289, wy, 3) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(8, wh, 0.15), mansionWallMat), { position: new THREE.Vector3(301, wy, 3) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(4, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(295, wh - 0.5, 3) }));
+  mWall(8, wh, 0.15, 289, wy, 3);
+  mWall(8, wh, 0.15, 301, wy, 3);
+  mWall(4, 1.2, 0.15, 295, wh - 0.5, 3);
 
   // === GOURMET KITCHEN (X=275-285, Z=-10 to -3) ===
   // Kitchen island
@@ -3655,21 +3666,21 @@ function buildMansion() {
 
   // Upper floor dividers
   // Master/Library divider (Z=0, X=265-280) — doorway at X=271 to 274
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(268, uwy, 0) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(277, uwy, 0) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(272.5, MANSION_UPPER_Y + uwh - 0.5, 0) }));
-  // Art/Game ↔ Balcony divider (Z=0, X=290-305) — doorway at X=296 to 299
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(293, uwy, 0) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(6, uwh, 0.15), mansionWallMat), { position: new THREE.Vector3(302, uwy, 0) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(3, 1.2, 0.15), mansionWallMat), { position: new THREE.Vector3(297.5, MANSION_UPPER_Y + uwh - 0.5, 0) }));
+  mWall(6, uwh, 0.15, 268, uwy, 0);
+  mWall(6, uwh, 0.15, 277, uwy, 0);
+  mWall(3, 1.2, 0.15, 272.5, MANSION_UPPER_Y + uwh - 0.5, 0);
+  // Art/Game - Balcony divider (Z=0, X=290-305) — doorway at X=296 to 299
+  mWall(6, uwh, 0.15, 293, uwy, 0);
+  mWall(6, uwh, 0.15, 302, uwy, 0);
+  mWall(3, 1.2, 0.15, 297.5, MANSION_UPPER_Y + uwh - 0.5, 0);
   // Left/Right divider (X=280, Z=-10 to 10) — doorway at Z=-3 to 3 (near staircase)
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 7), mansionWallMat), { position: new THREE.Vector3(280, uwy, -6.5) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 7), mansionWallMat), { position: new THREE.Vector3(280, uwy, 6.5) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 6), mansionWallMat), { position: new THREE.Vector3(280, MANSION_UPPER_Y + uwh - 0.5, 0) }));
+  mWall(0.15, uwh, 7, 280, uwy, -6.5);
+  mWall(0.15, uwh, 7, 280, uwy, 6.5);
+  mWall(0.15, 1.2, 6, 280, MANSION_UPPER_Y + uwh - 0.5, 0);
   // Art/Balcony divider (X=290, Z=-10 to 0) — doorway at Z=-6.5 to -3.5
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 3.5), mansionWallMat), { position: new THREE.Vector3(290, uwy, -8.25) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, uwh, 3.5), mansionWallMat), { position: new THREE.Vector3(290, uwy, -1.75) }));
-  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.15, 1.2, 3), mansionWallMat), { position: new THREE.Vector3(290, MANSION_UPPER_Y + uwh - 0.5, -5) }));
+  mWall(0.15, uwh, 3.5, 290, uwy, -8.25);
+  mWall(0.15, uwh, 3.5, 290, uwy, -1.75);
+  mWall(0.15, 1.2, 3, 290, MANSION_UPPER_Y + uwh - 0.5, -5);
 
   // Upper windows
   [270, 275, 295, 300].forEach(wx => {
@@ -6927,7 +6938,7 @@ function loadSlot(index) {
     interactables.push({ mesh: carBody, group: carGroup, type: 'car', label: 'Drive to Town', need: null, usePos: new THREE.Vector3(11, 0.15, -5), floor: 0 });
     rebuildInteractMeshes();
     // Pre-build town in background so driving there is instant
-    setTimeout(() => { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } }, 100);
+    setTimeout(() => { try { if (!townGroup) { townGroup = buildTown(); buildTownNPCs(); townGroup.visible = false; } } catch(e) { console.error('Town pre-build error:', e); } }, 100);
   }
   if (save.questLog) questLog = save.questLog;
   if (save.questsCompleted) questsCompleted = save.questsCompleted;
@@ -6953,7 +6964,7 @@ function loadSlot(index) {
     hasMansion = true;
     document.getElementById('drive-mansion-btn').style.display = '';
     // Pre-build mansion in background so driving there is instant
-    setTimeout(() => { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } }, 200);
+    setTimeout(() => { try { if (!mansionGroup) { mansionGroup = buildMansion(); mansionGroup.visible = false; } } catch(e) { console.error('Mansion pre-build error:', e); } }, 200);
   }
   if (save.inMansion && save.hasCar) {
     if (!mansionGroup) { mansionGroup = buildMansion(); }
