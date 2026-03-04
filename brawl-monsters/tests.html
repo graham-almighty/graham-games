@@ -1298,6 +1298,65 @@ function saveTrainer(data) {
   localStorage.setItem(TRAINER_KEY, JSON.stringify(data));
 }
 
+// Directional walk sprite generator (copied from game)
+function getTrainerMapSVG(data, dir, walkFrame) {
+  const skin = SKIN_TONES[data.skin] || SKIN_TONES[0];
+  const hair = HAIR_COLORS[data.hairColor] || HAIR_COLORS[0];
+  const shirt = SHIRT_COLORS[data.shirtColor] || SHIRT_COLORS[0];
+  const style = HAIR_STYLES[data.hairStyle] || 'short';
+  const acc = ACCESSORIES[data.accessory] || 'none';
+  const isBack = (dir === 3);
+  let lLegY = 42, rLegY = 42, lLegH = 14, rLegH = 14;
+  let lShoeY = 54, rShoeY = 54;
+  let lArmY = 27, rArmY = 27;
+  if (walkFrame === 1) {
+    lLegY = 39; rLegY = 45; lLegH = 14; rLegH = 11;
+    lShoeY = 51; rShoeY = 54;
+    lArmY = 29; rArmY = 25;
+  } else if (walkFrame === 2) {
+    lLegY = 45; rLegY = 39; lLegH = 11; rLegH = 14;
+    lShoeY = 54; rShoeY = 51;
+    lArmY = 25; rArmY = 29;
+  }
+  let hairPath = '';
+  if (isBack) {
+    if (style === 'short') hairPath = `<path d="M11,7 L29,7 A9,13 0 0,1 11,7 Z" fill="${hair}"/>`;
+    else if (style === 'spiky') hairPath = `<polygon points="10,14 13,2 16,12 20,0 24,12 27,2 30,14" fill="${hair}"/><path d="M11,14 Q11,8 20,7 Q29,8 29,14 L29,22 Q20,24 11,22 Z" fill="${hair}"/>`;
+    else if (style === 'long') hairPath = `<ellipse cx="20" cy="10" rx="11" ry="7" fill="${hair}"/><rect x="9" y="10" width="22" height="20" rx="4" fill="${hair}"/>`;
+    else if (style === 'ponytail') hairPath = `<ellipse cx="20" cy="10" rx="10" ry="6" fill="${hair}"/><rect x="17" y="10" width="6" height="18" rx="2" fill="${hair}"/>`;
+  } else {
+    if (style === 'short') hairPath = `<path d="M11,7 L29,7 A9,8 0 0,1 11,7 Z" fill="${hair}"/>`;
+    else if (style === 'spiky') hairPath = `<polygon points="10,14 13,2 16,12 20,0 24,12 27,2 30,14" fill="${hair}"/>`;
+    else if (style === 'long') hairPath = `<ellipse cx="20" cy="10" rx="11" ry="7" fill="${hair}"/><rect x="9" y="10" width="4" height="16" rx="2" fill="${hair}"/><rect x="27" y="10" width="4" height="16" rx="2" fill="${hair}"/>`;
+    else if (style === 'ponytail') hairPath = `<ellipse cx="20" cy="10" rx="10" ry="6" fill="${hair}"/><rect x="26" y="8" width="4" height="14" rx="2" fill="${hair}" transform="rotate(20,28,8)"/>`;
+  }
+  const facePath = isBack ? '' :
+    `<circle cx="16" cy="15" r="1.5" fill="#222"/><circle cx="24" cy="15" r="1.5" fill="#222"/><path d="M17,20 Q20,23 23,20" stroke="#222" fill="none" stroke-width="0.8"/>`;
+  let accPath = '';
+  if (acc === 'cap') {
+    accPath = isBack
+      ? `<path d="M10,11 Q10,2 20,1 Q30,2 30,11" fill="#444"/><rect x="10" y="9" width="20" height="4" rx="1" fill="#444"/>`
+      : `<path d="M10,11 Q10,2 20,1 Q30,2 30,11" fill="#444"/><rect x="10" y="9" width="20" height="4" rx="1" fill="#444"/><rect x="6" y="11" width="14" height="3" rx="1" fill="#555"/>`;
+  } else if (acc === 'glasses' && !isBack) {
+    accPath = `<circle cx="16" cy="17" r="3" fill="none" stroke="#555" stroke-width="1.2"/><circle cx="24" cy="17" r="3" fill="none" stroke="#555" stroke-width="1.2"/><line x1="19" y1="17" x2="21" y2="17" stroke="#555" stroke-width="1"/>`;
+  } else if (acc === 'headband') {
+    accPath = `<rect x="9" y="11" width="22" height="3" rx="1" fill="#e040fb"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 60">
+    ${hairPath}
+    <circle cx="20" cy="16" r="9" fill="${skin}"/>
+    ${facePath}
+    ${accPath}
+    <rect x="12" y="25" width="16" height="18" rx="3" fill="${shirt}"/>
+    <rect x="6" y="${lArmY}" width="6" height="12" rx="3" fill="${skin}"/>
+    <rect x="28" y="${rArmY}" width="6" height="12" rx="3" fill="${skin}"/>
+    <rect x="13" y="${lLegY}" width="6" height="${lLegH}" rx="2" fill="#334"/>
+    <rect x="21" y="${rLegY}" width="6" height="${rLegH}" rx="2" fill="#334"/>
+    <rect x="12" y="${lShoeY}" width="8" height="4" rx="2" fill="#222"/>
+    <rect x="20" y="${rShoeY}" width="8" height="4" rx="2" fill="#222"/>
+  </svg>`;
+}
+
 describe('Trainer - Name Filter', () => {
   it('Accepts normal names', () => {
     assert(isNameClean('Graham'), 'Graham should be clean');
@@ -1392,6 +1451,118 @@ describe('Trainer - Presets', () => {
     assert(longName.length > 12, 'Test name is 13 chars');
     // In the actual game, the input has maxlength=12
     assert('A'.repeat(12).length === 12, 'Max 12 chars enforced by HTML input');
+  });
+});
+
+describe('Trainer - Map Walk Sprites', () => {
+  const testTrainer = { name: 'Test', skin: 0, hairColor: 0, hairStyle: 0, shirtColor: 0, accessory: 0 };
+
+  it('getTrainerMapSVG returns valid SVG for all directions', () => {
+    for (const dir of [0, 1, 2, 3]) {
+      const svg = getTrainerMapSVG(testTrainer, dir, 0);
+      assert(svg.includes('<svg'), `Dir ${dir} should produce SVG`);
+      assert(svg.includes('viewBox="0 0 40 60"'), `Dir ${dir} should have correct viewBox`);
+    }
+  });
+
+  it('getTrainerMapSVG returns valid SVG for all walk frames', () => {
+    for (const frame of [0, 1, 2]) {
+      const svg = getTrainerMapSVG(testTrainer, 0, frame);
+      assert(svg.includes('<svg'), `Frame ${frame} should produce SVG`);
+    }
+  });
+
+  it('Walk frame 0 (idle) has centered legs', () => {
+    const svg = getTrainerMapSVG(testTrainer, 0, 0);
+    // Both legs at y=42
+    assert(svg.includes('y="42"'), 'Idle frame should have legs at y=42');
+  });
+
+  it('Walk frame 1 has offset legs (left forward)', () => {
+    const svg = getTrainerMapSVG(testTrainer, 0, 1);
+    assert(svg.includes('y="39"'), 'Walk frame 1 should have left leg at y=39');
+    assert(svg.includes('y="45"'), 'Walk frame 1 should have right leg at y=45');
+  });
+
+  it('Walk frame 2 has offset legs (right forward)', () => {
+    const svg = getTrainerMapSVG(testTrainer, 0, 2);
+    // Frame 2 swaps: left at 45, right at 39
+    assert(svg.includes('y="45"'), 'Walk frame 2 should have left leg at y=45');
+    assert(svg.includes('y="39"'), 'Walk frame 2 should have right leg at y=39');
+  });
+
+  it('Walk frames have arm swing', () => {
+    const idle = getTrainerMapSVG(testTrainer, 0, 0);
+    const walk1 = getTrainerMapSVG(testTrainer, 0, 1);
+    // Idle arms both at y=27
+    assert(idle.includes('y="27"'), 'Idle arms at y=27');
+    // Walk frame 1: left arm at 29, right at 25
+    assert(walk1.includes('y="29"'), 'Walk1 should have arm at y=29');
+    assert(walk1.includes('y="25"'), 'Walk1 should have arm at y=25');
+  });
+
+  it('Back-facing (dir=3) has no face features', () => {
+    const back = getTrainerMapSVG(testTrainer, 3, 0);
+    assert(!back.includes('r="1.5"'), 'Back view should not have eyes');
+    assert(!back.includes('M17,20'), 'Back view should not have mouth');
+  });
+
+  it('Front-facing (dir=0) has face features', () => {
+    const front = getTrainerMapSVG(testTrainer, 0, 0);
+    assert(front.includes('r="1.5"'), 'Front view should have eyes');
+    assert(front.includes('M17,20'), 'Front view should have mouth');
+  });
+
+  it('All hair styles work for front and back', () => {
+    for (const styleIdx of [0, 1, 2, 3]) {
+      const t = { ...testTrainer, hairStyle: styleIdx };
+      const front = getTrainerMapSVG(t, 0, 0);
+      const back = getTrainerMapSVG(t, 3, 0);
+      assert(front.includes('<svg'), `Front hair style ${styleIdx} should work`);
+      assert(back.includes('<svg'), `Back hair style ${styleIdx} should work`);
+      // Back should have different hair than front
+      assert(front !== back, `Style ${styleIdx}: front and back should differ`);
+    }
+  });
+
+  it('All accessories work for front and back', () => {
+    for (const accIdx of [0, 1, 2, 3]) {
+      const t = { ...testTrainer, accessory: accIdx };
+      const front = getTrainerMapSVG(t, 0, 0);
+      const back = getTrainerMapSVG(t, 3, 0);
+      assert(front.includes('<svg'), `Front acc ${accIdx} should work`);
+      assert(back.includes('<svg'), `Back acc ${accIdx} should work`);
+    }
+  });
+
+  it('Cap visible from back without brim', () => {
+    const t = { ...testTrainer, accessory: 1 }; // cap
+    const back = getTrainerMapSVG(t, 3, 0);
+    assert(back.includes('fill="#444"'), 'Back cap should have cap color');
+    assert(!back.includes('fill="#555"'), 'Back cap should not have brim');
+  });
+
+  it('Glasses not visible from back', () => {
+    const t = { ...testTrainer, accessory: 2 }; // glasses
+    const back = getTrainerMapSVG(t, 3, 0);
+    assert(!back.includes('stroke="#555"'), 'Back view should not show glasses');
+  });
+
+  it('All skin tones render in walk sprites', () => {
+    for (let i = 0; i < SKIN_TONES.length; i++) {
+      const t = { ...testTrainer, skin: i };
+      const svg = getTrainerMapSVG(t, 0, 1);
+      assert(svg.includes(SKIN_TONES[i]), `Skin tone ${i} should appear in SVG`);
+    }
+  });
+
+  it('Different walk frames produce different SVGs', () => {
+    const f0 = getTrainerMapSVG(testTrainer, 0, 0);
+    const f1 = getTrainerMapSVG(testTrainer, 0, 1);
+    const f2 = getTrainerMapSVG(testTrainer, 0, 2);
+    assert(f0 !== f1, 'Idle and walk1 should differ');
+    assert(f1 !== f2, 'Walk1 and walk2 should differ');
+    assert(f0 !== f2, 'Idle and walk2 should differ');
   });
 });
 
