@@ -924,6 +924,437 @@ body {
   75% { transform: translateX(4px); }
 }
 .shake { animation: shake 0.2s; }
+
+/* ═══ FREEPLAY ═══ */
+#freeplay-select-screen {
+  justify-content: flex-start;
+  padding: 20px 16px;
+  gap: 10px;
+  background: radial-gradient(ellipse at center, #1a0818 0%, #0a0a0f 70%);
+}
+#freeplay-hub-screen {
+  justify-content: flex-start;
+  padding: 20px 16px;
+  gap: 12px;
+  background: radial-gradient(ellipse at top, #1a0818 0%, #0a0a0f 60%);
+}
+.fp-hub-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.4rem;
+  color: #e040fb;
+  text-shadow: 0 0 20px #e040fb44;
+}
+.fp-hub-subtitle { color: #888; font-size: 0.85rem; }
+
+.fp-team-display {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+.fp-team-card {
+  width: 170px;
+  background: #141418;
+  border: 2px solid #333;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+}
+.fp-team-card .fp-mon-name { font-weight: bold; font-size: 0.9rem; }
+.fp-team-card .fp-mon-level { color: #e040fb; font-size: 0.75rem; margin: 2px 0; }
+.fp-team-card .fp-mon-stats { font-size: 0.65rem; color: #888; margin: 4px 0; }
+.fp-team-card .fp-xp-bar {
+  width: 100%;
+  height: 6px;
+  background: #222;
+  border-radius: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.fp-team-card .fp-xp-fill {
+  height: 100%;
+  background: #3399ff;
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+.fp-team-card .fp-xp-label { font-size: 0.6rem; color: #666; margin-top: 2px; }
+
+.fp-hub-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+}
+.fp-hub-actions .btn, .fp-hub-actions .btn-sm { width: 100%; }
+
+.fp-gym-progress {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.fp-badge {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  border: 2px solid #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  background: #1a1a22;
+  transition: all 0.2s;
+}
+.fp-badge.earned {
+  border-color: #ffcc00;
+  background: #ffcc0022;
+  box-shadow: 0 0 8px #ffcc0044;
+}
+.fp-gym-info { color: #888; font-size: 0.75rem; text-align: center; margin-top: 4px; }
+.fp-gym-btn-disabled { opacity: 0.5; pointer-events: none; }
+
+/* Level-up overlay */
+.fp-levelup-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.fp-levelup-overlay.visible { display: flex; }
+.fp-levelup-box {
+  background: #141418;
+  border: 2px solid #ffcc00;
+  border-radius: 8px;
+  padding: 24px 32px;
+  text-align: center;
+  max-width: 360px;
+  width: 90%;
+}
+.fp-levelup-title {
+  font-family: 'Cinzel Decorative', serif;
+  color: #ffcc00;
+  font-size: 1.2rem;
+  margin-bottom: 8px;
+}
+.fp-levelup-mon { font-size: 1.5rem; margin-bottom: 4px; }
+.fp-stat-changes { font-size: 0.8rem; color: #4caf50; margin: 8px 0; }
+
+/* Gym dialogue */
+.fp-gym-dialogue {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc;
+  z-index: 60;
+  align-items: center;
+  justify-content: center;
+}
+.fp-gym-dialogue.visible { display: flex; }
+.fp-gym-dialogue-box {
+  background: #141418;
+  border: 2px solid #e040fb;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+.fp-gym-leader-name {
+  font-family: 'Cinzel Decorative', serif;
+  color: #e040fb;
+  font-size: 1.1rem;
+}
+.fp-gym-leader-title { color: #888; font-size: 0.8rem; margin-bottom: 12px; }
+.fp-gym-dialogue-text { color: #ccc; font-size: 0.85rem; margin-bottom: 16px; }
+
+/* Freeplay move learn */
+.fp-move-learn-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.fp-move-learn-overlay.visible { display: flex; }
+.fp-move-learn-box {
+  background: #141418;
+  border: 2px solid #3399ff;
+  border-radius: 8px;
+  padding: 24px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+}
+.fp-move-learn-title {
+  font-family: 'Cinzel Decorative', serif;
+  color: #3399ff;
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+.fp-move-learn-new { color: #4caf50; font-size: 0.85rem; margin-bottom: 12px; }
+.fp-move-learn-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.fp-move-learn-btn {
+  background: #1a1a22;
+  border: 1px solid #555;
+  color: #ccc;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+.fp-move-learn-btn:hover { border-color: #e040fb; color: #e040fb; }
+.fp-move-learn-btn.selected { border-color: #ff4444; color: #ff4444; }
+
+/* Checkpoint select */
+#fp-checkpoint-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+  margin: 8px 0;
+}
+#fp-checkpoint-select .btn-sm { width: 100%; }
+
+/* Team detail overlay */
+.fp-detail-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc;
+  z-index: 60;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 30px;
+  overflow-y: auto;
+}
+.fp-detail-overlay.visible { display: flex; }
+.fp-detail-box {
+  background: #141418;
+  border: 2px solid #e040fb;
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 500px;
+  width: 90%;
+  margin-bottom: 30px;
+}
+.fp-detail-mon {
+  border-bottom: 1px solid #333;
+  padding: 12px 0;
+}
+.fp-detail-mon:last-child { border-bottom: none; }
+.fp-detail-mon-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.fp-detail-mon-name { font-weight: bold; font-size: 1rem; }
+.fp-detail-mon-level { color: #e040fb; font-size: 0.8rem; }
+.fp-detail-mon-stats { font-size: 0.75rem; color: #aaa; margin-bottom: 4px; }
+.fp-detail-mon-moves { font-size: 0.7rem; color: #888; }
+
+@keyframes popIn {
+  0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* ═══ FREEPLAY MAP ═══ */
+#freeplay-map-screen {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: #0a0a0f; overflow: hidden;
+}
+#freeplay-map-screen canvas {
+  display: block; width: 100%; height: 100%;
+  image-rendering: pixelated;
+}
+.fp-map-hud {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px;
+  background: #000000aa; backdrop-filter: blur(4px);
+  z-index: 10; pointer-events: none;
+}
+.fp-map-hud > * { pointer-events: auto; }
+.fp-map-team-icons { display: flex; gap: 6px; }
+.fp-map-team-icon {
+  width: 30px; height: 30px; text-align: center; line-height: 30px;
+  font-size: 1rem; background: #1a1a22; border: 1px solid #444; border-radius: 4px;
+}
+.fp-map-badges { display: flex; gap: 3px; align-items: center; font-size: 0.7rem; color: #ffcc00; }
+.fp-map-badges .badge-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #555; background: #1a1a22; }
+.fp-map-badges .badge-dot.earned { background: #ffcc00; border-color: #ffcc00; }
+.fp-map-btns {
+  position: absolute; bottom: 10px; right: 10px;
+  display: flex; gap: 6px; z-index: 10;
+}
+.fp-map-btns .btn-sm { font-size: 0.7rem; padding: 6px 12px; background: #000000aa; backdrop-filter: blur(4px); }
+.fp-map-zone-label {
+  position: absolute; bottom: 10px; left: 10px;
+  font-size: 0.7rem; color: #888; background: #000000aa;
+  padding: 3px 8px; border-radius: 4px; z-index: 10;
+}
+.fp-encounter-prompt {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: #1a1a2eee; border: 2px solid #c9a84c; border-radius: 12px;
+  padding: 20px 30px; text-align: center; z-index: 20;
+  backdrop-filter: blur(6px); min-width: 220px;
+}
+.fp-encounter-text { font-size: 1.1rem; color: #fff; margin-bottom: 16px; }
+.fp-encounter-btns { display: flex; gap: 12px; justify-content: center; }
+
+/* Touch D-pad (mobile) */
+.fp-dpad {
+  display: none; position: absolute; bottom: 60px; left: 16px; z-index: 10;
+  width: 120px; height: 120px;
+}
+.fp-dpad-btn {
+  position: absolute; width: 40px; height: 40px;
+  background: #ffffff22; border: 1px solid #ffffff44; border-radius: 8px;
+  color: #fff; font-size: 1.2rem; text-align: center; line-height: 40px;
+  cursor: pointer; user-select: none; -webkit-user-select: none;
+}
+.fp-dpad-btn:active { background: #ffffff44; }
+.fp-dpad-up { top: 0; left: 40px; }
+.fp-dpad-down { bottom: 0; left: 40px; }
+.fp-dpad-left { top: 40px; left: 0; }
+.fp-dpad-right { top: 40px; right: 0; }
+.fp-dpad-action {
+  position: absolute; bottom: 60px; right: 80px; z-index: 10;
+  width: 50px; height: 50px; border-radius: 50%;
+  background: #e040fb33; border: 2px solid #e040fb66;
+  color: #e040fb; font-size: 1rem; font-weight: bold;
+  text-align: center; line-height: 50px;
+  display: none; cursor: pointer; user-select: none;
+}
+
+/* ═══ CAPTURE SCREEN ═══ */
+#fp-capture-screen {
+  justify-content: center;
+  gap: 16px;
+  background: radial-gradient(ellipse at center, #1a0818 0%, #0a0a0f 70%);
+}
+.fp-capture-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem; color: #4caf50;
+  text-shadow: 0 0 20px #4caf5044;
+}
+.fp-capture-sub { font-size: 0.8rem; color: #888; }
+.fp-capture-cards {
+  display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  max-width: 600px;
+}
+.fp-capture-card {
+  width: 160px; background: #141418; border: 2px solid #333;
+  border-radius: 8px; padding: 12px; text-align: center; cursor: pointer;
+  transition: all 0.2s;
+}
+.fp-capture-card:hover { border-color: #4caf50; box-shadow: 0 0 12px #4caf5033; }
+.fp-capture-card .cc-icon { font-size: 1.5rem; }
+.fp-capture-card .cc-name { font-weight: bold; font-size: 0.85rem; margin: 4px 0; }
+.fp-capture-card .cc-level { color: #e040fb; font-size: 0.7rem; }
+.fp-capture-card .cc-el { font-size: 0.65rem; margin: 2px 0; }
+
+/* ═══ ROSTER SCREEN ═══ */
+#fp-roster-screen {
+  justify-content: flex-start;
+  padding: 20px 16px;
+  gap: 12px;
+  background: radial-gradient(ellipse at center, #1a0818 0%, #0a0a0f 70%);
+}
+.fp-roster-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.2rem; color: #e040fb;
+}
+.fp-roster-section-label {
+  font-size: 0.75rem; color: #888; text-transform: uppercase;
+  letter-spacing: 0.1em; margin-top: 8px;
+}
+.fp-roster-grid {
+  display: flex; gap: 8px; flex-wrap: wrap; justify-content: center;
+  max-width: 600px; width: 100%;
+}
+.fp-roster-card {
+  width: 110px; background: #141418; border: 2px solid #333;
+  border-radius: 6px; padding: 8px; text-align: center; cursor: pointer;
+  transition: all 0.2s; font-size: 0.75rem;
+}
+.fp-roster-card:hover { border-color: #e040fb; }
+.fp-roster-card.active-slot { border-color: #4caf50; }
+.fp-roster-card.swap-target { border-color: #ffcc00; box-shadow: 0 0 8px #ffcc0044; }
+.fp-roster-card .rc-icon { font-size: 1.2rem; }
+.fp-roster-card .rc-name { font-weight: bold; font-size: 0.75rem; }
+.fp-roster-card .rc-level { color: #e040fb; font-size: 0.65rem; }
+.fp-roster-empty {
+  width: 110px; height: 80px; border: 2px dashed #333;
+  border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  color: #444; font-size: 0.7rem;
+}
+.fp-roster-detail {
+  background: #1a1a22; border: 1px solid #444; border-radius: 6px;
+  padding: 12px; max-width: 400px; width: 100%;
+  font-size: 0.8rem; color: #ccc;
+}
+.fp-roster-actions { display: flex; gap: 8px; justify-content: center; margin-top: 4px; }
+
+/* ═══ QUEST LOG ═══ */
+.fp-quest-overlay {
+  display: none; position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc; z-index: 60;
+  align-items: flex-start; justify-content: center;
+  padding-top: 30px; overflow-y: auto;
+}
+.fp-quest-overlay.visible { display: flex; }
+.fp-quest-box {
+  background: #141418; border: 2px solid #e040fb;
+  border-radius: 8px; padding: 20px; max-width: 500px; width: 90%;
+  margin-bottom: 30px;
+}
+.fp-quest-title {
+  font-family: 'Cinzel Decorative', serif;
+  color: #e040fb; font-size: 1rem; margin-bottom: 12px; text-align: center;
+}
+.fp-quest-item {
+  padding: 8px 0; border-bottom: 1px solid #222;
+}
+.fp-quest-item:last-child { border-bottom: none; }
+.fp-quest-name { font-weight: bold; font-size: 0.85rem; }
+.fp-quest-name.complete { color: #4caf50; }
+.fp-quest-obj { font-size: 0.7rem; color: #888; margin-top: 2px; }
+
+/* NPC dialogue */
+.fp-npc-dialogue {
+  display: none; position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000000cc; z-index: 70;
+  align-items: flex-end; justify-content: center;
+  padding-bottom: 40px;
+}
+.fp-npc-dialogue.visible { display: flex; }
+.fp-npc-dialogue-box {
+  background: #141418; border: 2px solid #e040fb;
+  border-radius: 8px; padding: 16px 20px; max-width: 500px; width: 90%;
+  text-align: center;
+}
+.fp-npc-name { font-family: 'Cinzel Decorative', serif; color: #e040fb; font-size: 0.9rem; }
+.fp-npc-text { color: #ccc; font-size: 0.8rem; margin: 8px 0; }
+
+@media (max-width: 600px) {
+  .fp-team-card { width: 140px; padding: 8px; }
+  .fp-badge { width: 28px; height: 28px; font-size: 0.8rem; }
+  .fp-hub-title { font-size: 1.1rem; }
+  .fp-detail-box { padding: 12px; }
+  .fp-roster-card { width: 90px; padding: 6px; }
+  .fp-capture-card { width: 130px; padding: 8px; }
+  .fp-dpad { display: block; }
+  .fp-dpad-action { display: block; }
+  .fp-map-btns .btn-sm { font-size: 0.6rem; padding: 5px 8px; }
+}
 </style>
 </head>
 <body>
@@ -934,6 +1365,8 @@ body {
   <div class="title-name">BRAWL MONSTERS</div>
   <div class="title-sub">A Monster Battler Roguelike</div>
   <button class="btn" onclick="startDraft()">START RUN</button>
+  <button class="btn" id="fp-continue-btn" style="display:none" onclick="continueFreeplay()">CONTINUE FREEPLAY</button>
+  <button class="btn-sm" onclick="showFreeplayMenu()">FREEPLAY</button>
   <button class="btn-sm" onclick="showCollection()">COLLECTION</button>
   <button class="btn-sm" onclick="showStats()">BEST RUNS</button>
   <button class="btn-sm" onclick="showTrainerScreen()">EDIT TRAINER</button>
@@ -992,6 +1425,147 @@ body {
   </div>
   <button class="btn" id="draft-begin-btn" style="display:none" onclick="beginRun()">BEGIN RUN</button>
   <button class="btn-sm" onclick="showScreen('title-screen')">BACK</button>
+</div>
+
+<!-- Freeplay Select Screen -->
+<div class="screen" id="freeplay-select-screen">
+  <div class="draft-title">CHOOSE YOUR TEAM</div>
+  <div class="draft-sub" id="fp-select-sub">Select 3 monsters (0/3)</div>
+  <div id="fp-checkpoint-select" style="display:none"></div>
+  <div class="draft-cards" id="fp-select-cards"></div>
+  <div class="draft-selected" id="fp-select-slots">
+    <div class="draft-slot" id="fps0">?</div>
+    <div class="draft-slot" id="fps1">?</div>
+    <div class="draft-slot" id="fps2">?</div>
+  </div>
+  <button class="btn" id="fp-begin-btn" style="display:none" onclick="beginFreeplay()">BEGIN ADVENTURE</button>
+  <button class="btn-sm" onclick="showScreen('title-screen')">BACK</button>
+</div>
+
+<!-- Freeplay Hub Screen -->
+<div class="screen" id="freeplay-hub-screen">
+  <div class="fp-hub-title">FREEPLAY</div>
+  <div class="fp-hub-subtitle" id="fp-hub-subtitle"></div>
+  <div class="fp-team-display" id="fp-team-display"></div>
+  <div class="fp-gym-progress" id="fp-gym-progress"></div>
+  <div class="fp-gym-info" id="fp-gym-info"></div>
+  <div class="fp-hub-actions">
+    <button class="btn" onclick="startWildBattle()">WILD BATTLE</button>
+    <button class="btn" id="fp-gym-btn" onclick="startGymBattle()">GYM BATTLE</button>
+    <button class="btn-sm" onclick="showFreeplayTeamDetail()">VIEW TEAM</button>
+    <button class="btn-sm" onclick="saveFreeplayAndExit()">SAVE &amp; EXIT</button>
+  </div>
+</div>
+
+<!-- Freeplay overlays -->
+<div class="fp-levelup-overlay" id="fp-levelup-overlay">
+  <div class="fp-levelup-box">
+    <div class="fp-levelup-mon" id="fp-levelup-icon"></div>
+    <div class="fp-levelup-title" id="fp-levelup-title">LEVEL UP!</div>
+    <div class="fp-stat-changes" id="fp-stat-changes"></div>
+    <button class="btn-sm" onclick="dismissLevelUp()">OK</button>
+  </div>
+</div>
+
+<div class="fp-gym-dialogue" id="fp-gym-dialogue">
+  <div class="fp-gym-dialogue-box">
+    <div class="fp-gym-leader-name" id="fp-gym-name"></div>
+    <div class="fp-gym-leader-title" id="fp-gym-title-text"></div>
+    <div class="fp-gym-dialogue-text" id="fp-gym-dialogue-text"></div>
+    <button class="btn" id="fp-gym-dialogue-btn" onclick="dismissGymDialogue()">BATTLE!</button>
+  </div>
+</div>
+
+<div class="fp-move-learn-overlay" id="fp-move-learn-overlay">
+  <div class="fp-move-learn-box">
+    <div class="fp-move-learn-title" id="fp-move-learn-title">NEW MOVE AVAILABLE!</div>
+    <div class="fp-move-learn-new" id="fp-move-learn-new"></div>
+    <div class="fp-move-learn-list" id="fp-move-learn-list"></div>
+    <button class="btn-sm" id="fp-move-learn-confirm" style="display:none" onclick="confirmFpMoveLearn()">REPLACE</button>
+    <button class="btn-sm" onclick="skipFpMoveLearn()">SKIP</button>
+  </div>
+</div>
+
+<div class="fp-detail-overlay" id="fp-detail-overlay">
+  <div class="fp-detail-box">
+    <div style="font-family:'Cinzel Decorative',serif;color:#e040fb;font-size:1rem;margin-bottom:12px;text-align:center">YOUR TEAM</div>
+    <div id="fp-detail-content"></div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn-sm" onclick="closeFreeplayTeamDetail()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Capture Screen -->
+<div class="screen" id="fp-capture-screen">
+  <div class="fp-capture-title">MONSTER DEFEATED!</div>
+  <div class="fp-capture-sub">Choose one to capture (or skip):</div>
+  <div class="fp-capture-cards" id="fp-capture-cards"></div>
+  <button class="btn-sm" onclick="skipCapture()" style="margin-top:12px">SKIP</button>
+</div>
+
+<!-- Roster Screen -->
+<div class="screen" id="fp-roster-screen">
+  <div class="fp-roster-title">YOUR MONSTERS</div>
+  <div class="fp-roster-section-label">Active Team (3)</div>
+  <div class="fp-roster-grid" id="fp-roster-active"></div>
+  <div class="fp-roster-section-label" id="fp-roster-reserve-label">Reserves</div>
+  <div class="fp-roster-grid" id="fp-roster-reserve"></div>
+  <div class="fp-roster-detail" id="fp-roster-detail" style="display:none"></div>
+  <div class="fp-roster-actions" id="fp-roster-actions" style="display:none"></div>
+  <div style="text-align:center;margin-top:8px">
+    <button class="btn-sm" onclick="closeRosterScreen()">BACK TO MAP</button>
+  </div>
+</div>
+
+<!-- Freeplay Map Screen -->
+<div class="screen" id="freeplay-map-screen">
+  <canvas id="fp-map-canvas"></canvas>
+  <div class="fp-map-hud">
+    <div class="fp-map-team-icons" id="fp-map-team-icons"></div>
+    <div class="fp-map-badges" id="fp-map-badges"></div>
+  </div>
+  <div class="fp-map-zone-label" id="fp-map-zone-label"></div>
+  <div class="fp-map-btns">
+    <button class="btn-sm" onclick="showRosterScreen()">TEAM</button>
+    <button class="btn-sm" onclick="showQuestLog()">QUESTS</button>
+    <button class="btn-sm" onclick="saveFreeplayAndExit()">SAVE</button>
+  </div>
+  <div class="fp-dpad" id="fp-dpad">
+    <div class="fp-dpad-btn fp-dpad-up" data-dir="up">&uarr;</div>
+    <div class="fp-dpad-btn fp-dpad-down" data-dir="down">&darr;</div>
+    <div class="fp-dpad-btn fp-dpad-left" data-dir="left">&larr;</div>
+    <div class="fp-dpad-btn fp-dpad-right" data-dir="right">&rarr;</div>
+  </div>
+  <div class="fp-dpad-action" id="fp-dpad-action" onclick="fpMapInteract()">E</div>
+  <!-- Wild encounter prompt -->
+  <div class="fp-encounter-prompt" id="fp-encounter-prompt" style="display:none;">
+    <div class="fp-encounter-text">A wild monster appeared!</div>
+    <div class="fp-encounter-btns">
+      <button class="btn gold" onclick="acceptEncounter()">FIGHT</button>
+      <button class="btn" onclick="declineEncounter()">RUN</button>
+    </div>
+  </div>
+</div>
+
+<!-- Quest Log Overlay -->
+<div class="fp-quest-overlay" id="fp-quest-overlay">
+  <div class="fp-quest-box">
+    <div class="fp-quest-title">QUEST LOG</div>
+    <div id="fp-quest-content"></div>
+    <div style="text-align:center;margin-top:12px">
+      <button class="btn-sm" onclick="closeQuestLog()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<!-- NPC Dialogue -->
+<div class="fp-npc-dialogue" id="fp-npc-dialogue">
+  <div class="fp-npc-dialogue-box">
+    <div class="fp-npc-name" id="fp-npc-name"></div>
+    <div class="fp-npc-text" id="fp-npc-text"></div>
+    <div id="fp-npc-buttons"></div>
+  </div>
 </div>
 
 <!-- Battle Screen -->
@@ -1161,6 +1735,14 @@ const BM_ACH = {
   bm_10_wins:       { name: 'Monster Master',     reward: 25 },
   bm_no_heal:       { name: 'No Mercy',           reward: 20 },
   bm_collect_all:   { name: 'Gotta Catch Em All', reward: 30 },
+  bm_fp_first_wild: { name: 'Wild Card',          reward: 5 },
+  bm_fp_gym_1:      { name: 'Badge Collector',    reward: 15 },
+  bm_fp_gym_5:      { name: 'Grand Champion',     reward: 50 },
+  bm_fp_level_10:   { name: 'Power Trainer',      reward: 15 },
+  bm_fp_level_20:   { name: 'Max Power',          reward: 30 },
+  bm_fp_catch_5:    { name: 'Monster Collector',  reward: 15 },
+  bm_fp_catch_all:  { name: 'Gotta Catch Em All!', reward: 30 },
+  bm_fp_quests_all: { name: 'Quest Master',       reward: 25 },
 };
 function ggTry(id) { const a = BM_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 
@@ -1612,7 +2194,7 @@ function getTrainerSVG(data) {
     accPath = `<rect x="9" y="11" width="22" height="3" rx="1" fill="#e040fb"/>`;
   }
 
-  return `<svg width="60" height="70" viewBox="0 0 40 60">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="70" viewBox="0 0 40 60">
     <!-- Hair behind -->
     ${hairPath}
     <!-- Head -->
@@ -1813,8 +2395,225 @@ const REWARD_TYPES = [
 const TOTAL_FLOORS = 8;
 
 // ═══════════════════════════════════════════
+// FREEPLAY CONSTANTS
+// ═══════════════════════════════════════════
+const LEVEL_XP = [
+  0, 100, 250, 450, 700, 1000, 1400, 1850, 2400, 3000,
+  3700, 4500, 5400, 6400, 7500, 8800, 10200, 11800, 13600, 15600,
+];
+
+function getLevel(xp) {
+  for (let i = LEVEL_XP.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_XP[i]) return i + 1;
+  }
+  return 1;
+}
+
+function getStatsForLevel(baseDef, level) {
+  const scale = 1 + (level - 1) * 0.05;
+  return {
+    maxHp: Math.floor(baseDef.hp * scale),
+    atk: Math.floor(baseDef.atk * scale),
+    def: Math.floor(baseDef.def * scale),
+    spd: Math.floor(baseDef.spd * scale),
+  };
+}
+
+function calculateBattleXP(enemyTeam, avgPlayerLevel) {
+  let baseXP = 0;
+  for (const e of enemyTeam) {
+    const eLvl = e.level || 1;
+    baseXP += 30 + eLvl * 10;
+  }
+  const avgEnemyLvl = enemyTeam.reduce((s, e) => s + (e.level || 1), 0) / enemyTeam.length;
+  const levelDiff = avgEnemyLvl - avgPlayerLevel;
+  const multiplier = Math.max(0.25, Math.min(2.0, 1.0 + levelDiff * 0.1));
+  return Math.floor(baseXP * multiplier);
+}
+
+function createMonsterFreeplay(defKey, level, xp, moves) {
+  const baseDef = MONSTER_DEFS[defKey];
+  const stats = getStatsForLevel(baseDef, level);
+  return {
+    name: baseDef.name, element: baseDef.element, icon: baseDef.icon,
+    defKey: defKey, level: level, xp: xp || 0,
+    hp: stats.maxHp, maxHp: stats.maxHp,
+    atk: stats.atk, baseAtk: stats.atk,
+    def: stats.def, baseDef: stats.def,
+    spd: stats.spd, baseSpd: stats.spd,
+    moves: (moves || baseDef.moves).map(m => ({ ...m, effect: m.effect ? { ...m.effect } : null })),
+    buffs: {}, statuses: [], stunned: false, kos: 0,
+  };
+}
+
+const FREEPLAY_MOVE_POOL = {
+  emberon: [
+    { level: 8, move: { name: 'Fire Storm', element: 'Fire', power: 90, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } } },
+    { level: 15, move: { name: 'Eruption', element: 'Fire', power: 100, accuracy: 75, effect: null } },
+  ],
+  tidalin: [
+    { level: 8, move: { name: 'Whirlpool', element: 'Water', power: 85, accuracy: 90, effect: { type: 'debuff', stat: 'spd', amount: 30, turns: 2 } } },
+    { level: 15, move: { name: 'Tsunami', element: 'Water', power: 100, accuracy: 75, effect: null } },
+  ],
+  thornvine: [
+    { level: 8, move: { name: 'Toxic Bloom', element: 'Plant', power: 80, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 3, chance: 40 } } },
+    { level: 15, move: { name: 'Forest Wrath', element: 'Plant', power: 95, accuracy: 80, effect: { type: 'drain', percent: 40 } } },
+  ],
+  voltpaw: [
+    { level: 8, move: { name: 'Chain Lightning', element: 'Electric', power: 85, accuracy: 88, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Megavolt', element: 'Electric', power: 100, accuracy: 75, effect: { type: 'stun', chance: 35 } } },
+  ],
+  grimshade: [
+    { level: 8, move: { name: 'Phantom Wave', element: 'Shadow', power: 85, accuracy: 90, effect: { type: 'debuff', stat: 'def', amount: 25, turns: 2, chance: 30 } } },
+    { level: 15, move: { name: 'Abyss Drain', element: 'Shadow', power: 95, accuracy: 85, effect: { type: 'drain', percent: 50 } } },
+  ],
+  solarius: [
+    { level: 8, move: { name: 'Solar Flare', element: 'Light', power: 85, accuracy: 90, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Supernova', element: 'Light', power: 100, accuracy: 78, effect: { type: 'debuff', stat: 'accuracy', amount: 30, turns: 2 } } },
+  ],
+  drakovex: [
+    { level: 8, move: { name: 'Dark Blaze', element: 'Shadow', power: 90, accuracy: 85, effect: { type: 'debuff', stat: 'def', amount: 25, turns: 2, chance: 30 } } },
+    { level: 15, move: { name: 'Dragon Storm', element: 'Fire', power: 100, accuracy: 78, effect: { type: 'stun', chance: 25 } } },
+  ],
+  blazetail: [
+    { level: 8, move: { name: 'Flame Rush', element: 'Fire', power: 85, accuracy: 90, effect: { type: 'priority' } } },
+    { level: 15, move: { name: 'Inferno Spin', element: 'Fire', power: 95, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 30, turns: 2, chance: 35 } } },
+  ],
+  aquarion: [
+    { level: 8, move: { name: 'Tidal Shield', element: 'Water', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 60, turns: 3 } } },
+    { level: 15, move: { name: 'Ocean Crush', element: 'Water', power: 95, accuracy: 82, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 2, chance: 35 } } },
+  ],
+  petalynx: [
+    { level: 8, move: { name: 'Razor Leaf', element: 'Plant', power: 80, accuracy: 95, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } } },
+    { level: 15, move: { name: 'Jungle Fury', element: 'Plant', power: 95, accuracy: 85, effect: { type: 'drain', percent: 35 } } },
+  ],
+  zapplin: [
+    { level: 8, move: { name: 'Volt Surge', element: 'Electric', power: 80, accuracy: 95, effect: { type: 'stun', chance: 15 } } },
+    { level: 15, move: { name: 'Thunder Doom', element: 'Electric', power: 100, accuracy: 75, effect: { type: 'debuff', stat: 'spd', amount: 40, turns: 2 } } },
+  ],
+  spectrion: [
+    { level: 8, move: { name: 'Wraith Touch', element: 'Shadow', power: 80, accuracy: 92, effect: { type: 'drain', percent: 45 } } },
+    { level: 15, move: { name: 'Void Collapse', element: 'Shadow', power: 100, accuracy: 78, effect: { type: 'debuff', stat: 'atk', amount: 30, turns: 3, chance: 40 } } },
+  ],
+  celestine: [
+    { level: 8, move: { name: 'Prismatic Ray', element: 'Light', power: 80, accuracy: 92, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Celestial Judgment', element: 'Light', power: 100, accuracy: 80, effect: { type: 'healSelf', percent: 20 } } },
+  ],
+};
+
+const GYMS = [
+  {
+    id: 1, name: 'Scout Finn', title: 'The Ranger', requiredLevel: 5, badge: 'Forest Badge', badgeIcon: '\uD83C\uDF32',
+    team: [{ key: 'thornvine', level: 6 }, { key: 'blazetail', level: 6 }],
+    intro: 'Think you can handle the wilds? Let me test your skills!',
+    victory: 'Impressive! The Forest Badge is yours, trainer.',
+  },
+  {
+    id: 2, name: 'Captain Maeve', title: 'The Storm Caller', requiredLevel: 8, badge: 'Storm Badge', badgeIcon: '\u26C8\uFE0F',
+    team: [{ key: 'tidalin', level: 10 }, { key: 'voltpaw', level: 10 }, { key: 'zapplin', level: 9 }],
+    intro: 'The storm awaits, challenger! Can you weather it?',
+    victory: 'You weathered the storm. Take this badge.',
+  },
+  {
+    id: 3, name: 'Sage Elara', title: 'The Mystic', requiredLevel: 12, badge: 'Mystic Badge', badgeIcon: '\uD83D\uDD2E',
+    team: [{ key: 'grimshade', level: 14 }, { key: 'solarius', level: 14 }, { key: 'spectrion', level: 13 }],
+    intro: 'Light and shadow test your resolve, young one.',
+    victory: 'The mystic arts bow to your strength. Well earned.',
+  },
+  {
+    id: 4, name: 'Warden Kael', title: 'The Iron Wall', requiredLevel: 16, badge: 'Iron Badge', badgeIcon: '\uD83D\uDEE1\uFE0F',
+    team: [{ key: 'aquarion', level: 18 }, { key: 'celestine', level: 18 }, { key: 'thornvine', level: 17 }],
+    intro: 'No one has breached my defenses! Think you can?',
+    victory: 'You shattered my wall. The Iron Badge is yours.',
+  },
+  {
+    id: 5, name: 'Champion Drax', title: 'The Final Challenge', requiredLevel: 18, badge: 'Champion Badge', badgeIcon: '\uD83D\uDC51',
+    team: [{ key: 'drakovex', level: 20 }, { key: 'emberon', level: 20 }, { key: 'grimshade', level: 20 }],
+    intro: 'Only the strongest survive here. Show me everything!',
+    victory: 'You are the true champion of Brawl Monsters!',
+  },
+];
+
+const FP_SAVE_KEY = 'bm-freeplay-save';
+const FP_CHECKPOINT_KEY = 'bm-freeplay-checkpoints';
+
+function serializeMonster(m) {
+  return {
+    defKey: m.defKey, level: m.level, xp: m.xp,
+    moves: m.moves.map(mv => ({ ...mv, effect: mv.effect ? { ...mv.effect } : null })),
+    _skippedMoves: m._skippedMoves || [],
+  };
+}
+
+function saveFreeplay() {
+  const data = {
+    version: 2,
+    team: fpTeam.map(serializeMonster),
+    roster: fpRoster.map(serializeMonster),
+    gymsBeaten: fpGymsBeaten,
+    checkpoint: fpCheckpoint,
+    wildBattlesWon: fpWildBattlesWon,
+    totalXPEarned: fpTotalXPEarned,
+    startedAt: fpStartedAt,
+    speciesCaught: fpSpeciesCaught,
+    mapX: fpMapX, mapY: fpMapY,
+    quests: fpQuests,
+    questProgress: fpQuestProgress,
+  };
+  localStorage.setItem(FP_SAVE_KEY, JSON.stringify(data));
+}
+
+function loadFreeplay() {
+  try {
+    const raw = localStorage.getItem(FP_SAVE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function deleteFreeplaySave() {
+  localStorage.removeItem(FP_SAVE_KEY);
+}
+
+function loadCheckpoints() {
+  try {
+    const raw = localStorage.getItem(FP_CHECKPOINT_KEY);
+    if (!raw) return { maxCheckpoint: 0 };
+    return JSON.parse(raw);
+  } catch (e) { return { maxCheckpoint: 0 }; }
+}
+
+function saveCheckpoint(gymId) {
+  const cp = loadCheckpoints();
+  cp.maxCheckpoint = Math.max(cp.maxCheckpoint, gymId);
+  localStorage.setItem(FP_CHECKPOINT_KEY, JSON.stringify(cp));
+}
+
+function rebuildMonster(saved) {
+  const m = createMonsterFreeplay(saved.defKey, saved.level, saved.xp, saved.moves);
+  m.hp = m.maxHp;
+  if (saved._skippedMoves && saved._skippedMoves.length) m._skippedMoves = saved._skippedMoves;
+  return m;
+}
+
+function rebuildFreeplayTeam(saveData) {
+  fpTeam = saveData.team.map(rebuildMonster);
+  fpRoster = (saveData.roster || []).map(rebuildMonster);
+  fpGymsBeaten = saveData.gymsBeaten || [];
+  fpCheckpoint = saveData.checkpoint || 0;
+  fpWildBattlesWon = saveData.wildBattlesWon || 0;
+  fpTotalXPEarned = saveData.totalXPEarned || 0;
+  fpStartedAt = saveData.startedAt;
+  fpSpeciesCaught = saveData.speciesCaught || [];
+  if (saveData.mapX != null) { fpMapX = saveData.mapX; fpMapY = saveData.mapY; }
+  fpQuests = saveData.quests || { story: {}, side: {} };
+  fpQuestProgress = saveData.questProgress || { wildBattlesWon: 0, wildBattlesInZone: {}, speciesCaught: 0, differentSpecies: 0, moveLearnedCount: 0 };
+}
+
+// ═══════════════════════════════════════════
 // GAME STATE
 // ═══════════════════════════════════════════
+let gameMode = 'roguelike'; // 'roguelike' or 'freeplay'
 let playerTeam = [];
 let enemyTeam = [];
 let playerActive = 0;
@@ -1827,6 +2626,37 @@ let healsTaken = 0;
 let enemiesDefeated = 0;
 let battlesWon = 0;
 let runSweeps = 0;
+
+// Freeplay state
+let fpTeam = [];
+let fpRoster = []; // reserve monsters (not in active team)
+let fpGymsBeaten = [];
+let fpCheckpoint = 0;
+let fpWildBattlesWon = 0;
+let fpTotalXPEarned = 0;
+let fpStartedAt = null;
+let fpCurrentBattleType = 'wild'; // 'wild' or 'gym'
+let fpCurrentGymId = null;
+let fpLevelUpQueue = [];
+let fpPendingMoveLearn = null;
+let fpEnemyTeamCopy = []; // copy of enemies for capture screen
+let fpSpeciesCaught = []; // defKeys of unique species caught
+// Map state
+let fpMapX = 2 * 32 + 16; // pixel position
+let fpMapY = 2 * 32 + 16;
+let fpMapDir = 0; // 0=down,1=left,2=right,3=up
+let fpMapActive = false;
+let fpMapStepCooldown = 0;
+let fpMapKeys = {};
+// Quest state
+let fpQuests = { story: {}, side: {} };
+let fpQuestProgress = {
+  wildBattlesWon: 0,
+  wildBattlesInZone: {},
+  speciesCaught: 0,
+  differentSpecies: 0,
+  moveLearnedCount: 0,
+};
 
 // ═══════════════════════════════════════════
 // SCREEN MANAGEMENT
@@ -2152,7 +2982,13 @@ function aiSelectAction(aiTeam, aiActiveIdx, playerMon) {
 
   let bestScore = -Infinity;
   let bestAction = { type: 'move', index: 0 };
-  const smartness = currentFloor <= 1 ? 0.05 : Math.min(0.9, 0.3 + currentFloor * 0.08);
+  let smartness;
+  if (gameMode === 'freeplay') {
+    const avgLvl = fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length;
+    smartness = fpCurrentBattleType === 'gym' ? 0.6 + (fpCurrentGymId || 1) * 0.06 : Math.min(0.7, 0.3 + avgLvl * 0.02);
+  } else {
+    smartness = currentFloor <= 1 ? 0.05 : Math.min(0.9, 0.3 + currentFloor * 0.08);
+  }
 
   for (let i = 0; i < active.moves.length; i++) {
     const move = active.moves[i];
@@ -2723,14 +3559,14 @@ function renderBattle() {
   const em = enemyTeam[enemyActive];
 
   // Player HUD
-  document.getElementById('pp-name').textContent = pm.name;
+  document.getElementById('pp-name').textContent = gameMode === 'freeplay' ? `${pm.name} Lv${pm.level}` : pm.name;
   document.getElementById('pp-element').textContent = pm.element;
   document.getElementById('pp-element').style.background = ELEMENT_COLORS[pm.element];
   updateHPBar('pp', pm);
   renderStatuses('pp-statuses', pm);
 
   // Enemy HUD
-  document.getElementById('ep-name').textContent = em.name;
+  document.getElementById('ep-name').textContent = gameMode === 'freeplay' ? `${em.name} Lv${em.level || '?'}` : em.name;
   document.getElementById('ep-element').textContent = em.element;
   document.getElementById('ep-element').style.background = ELEMENT_COLORS[em.element];
   updateHPBar('ep', em);
@@ -3134,6 +3970,16 @@ function showForceSwitch() {
 }
 
 async function handleBattleWin() {
+  if (gameMode === 'freeplay') {
+    addBattleLog('Battle won!', 'log-heal');
+    showBattleMsg('VICTORY!', '#4caf50');
+    SFX.victory();
+    await delay(1500);
+    hideBattleMsg();
+    handleFreeplayBattleWin();
+    return;
+  }
+
   battlesWon++;
   const noLosses = playerTeam.every(m => m.hp > 0);
   if (noLosses) runSweeps++;
@@ -3159,6 +4005,12 @@ async function handleBattleWin() {
 }
 
 function handleRunDefeat() {
+  if (gameMode === 'freeplay') {
+    SFX.defeat();
+    handleFreeplayBattleLoss();
+    return;
+  }
+
   const stats = loadStats();
   stats.totalRuns++;
   stats.bestFloor = Math.max(stats.bestFloor, currentFloor);
@@ -3395,9 +4247,1494 @@ function cancelTutor() {
 }
 
 // ═══════════════════════════════════════════
+// FREEPLAY MODE
+// ═══════════════════════════════════════════
+let fpSelected = [];
+let fpStartLevel = 1;
+let fpGymDialogueCallback = null;
+
+function showFreeplayMenu() {
+  if (!loadTrainer()) { showTrainerScreen(); return; }
+  const save = loadFreeplay();
+  if (save) {
+    // Has existing save — ask continue or new
+    if (confirm('You have a saved Freeplay game. Start a new one? (OK = New, Cancel = Continue)')) {
+      deleteFreeplaySave();
+      showFreeplayNewGame();
+    } else {
+      continueFreeplay();
+    }
+  } else {
+    showFreeplayNewGame();
+  }
+}
+
+function showFreeplayNewGame() {
+  fpSelected = [];
+  fpStartLevel = 1;
+  const cp = loadCheckpoints();
+
+  const cpDiv = document.getElementById('fp-checkpoint-select');
+  if (cp.maxCheckpoint > 0) {
+    cpDiv.style.display = '';
+    let html = '<div style="color:#888;font-size:0.75rem;margin-bottom:4px">Start from:</div>';
+    html += `<button class="btn-sm${fpStartLevel === 1 ? ' selected' : ''}" onclick="setFpStartLevel(1)" style="${fpStartLevel === 1 ? 'border-color:#e040fb;color:#e040fb' : ''}">Level 1 (Fresh Start)</button>`;
+    for (let i = 1; i <= cp.maxCheckpoint; i++) {
+      const gym = GYMS[i - 1];
+      const lv = gym.requiredLevel;
+      html += `<button class="btn-sm" onclick="setFpStartLevel(${lv})" id="fp-cp-btn-${lv}">Level ${lv} (${gym.badge})</button>`;
+    }
+    cpDiv.innerHTML = html;
+  } else {
+    cpDiv.style.display = 'none';
+  }
+
+  renderFreeplaySelect();
+  showScreen('freeplay-select-screen');
+}
+
+function setFpStartLevel(lv) {
+  fpStartLevel = lv;
+  // Update button styling
+  const cpDiv = document.getElementById('fp-checkpoint-select');
+  cpDiv.querySelectorAll('.btn-sm').forEach(btn => {
+    btn.style.borderColor = '';
+    btn.style.color = '';
+  });
+  event.target.style.borderColor = '#e040fb';
+  event.target.style.color = '#e040fb';
+}
+
+function renderFreeplaySelect() {
+  const container = document.getElementById('fp-select-cards');
+  container.innerHTML = '';
+  const gg = ggLoad();
+  const hasDrakovex = !!gg.shopPurchases['bm_drakovex'];
+  const keys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex' || hasDrakovex);
+
+  for (const key of keys) {
+    const def = MONSTER_DEFS[key];
+    const card = document.createElement('div');
+    card.className = 'draft-card' + (fpSelected.includes(key) ? ' selected' : '');
+    card.onclick = () => toggleFreeplaySelect(key);
+    card.innerHTML = `
+      <div class="dc-header">
+        <span class="dc-icon">${def.icon}</span>
+        <span class="dc-name">${def.name}</span>
+        <span class="dc-element" style="background:${ELEMENT_COLORS[def.element]}">${def.element}</span>
+      </div>
+      <div class="dc-stats">
+        <span>HP <span class="stat-val">${def.hp}</span></span>
+        <span>ATK <span class="stat-val">${def.atk}</span></span>
+        <span>DEF <span class="stat-val">${def.def}</span></span>
+        <span>SPD <span class="stat-val">${def.spd}</span></span>
+      </div>
+      <div class="dc-moves">
+        ${def.moves.map(m => `<div>&#8227; ${m.name} <span style="color:${ELEMENT_COLORS[m.element]}">(${m.element})</span></div>`).join('')}
+      </div>
+    `;
+    container.appendChild(card);
+  }
+
+  document.getElementById('fp-select-sub').textContent = `Select 3 monsters (${fpSelected.length}/3)`;
+  for (let i = 0; i < 3; i++) {
+    const slot = document.getElementById('fps' + i);
+    if (fpSelected[i]) {
+      const def = MONSTER_DEFS[fpSelected[i]];
+      slot.textContent = def.icon;
+      slot.className = 'draft-slot filled';
+    } else {
+      slot.textContent = '?';
+      slot.className = 'draft-slot';
+    }
+  }
+  document.getElementById('fp-begin-btn').style.display = fpSelected.length === 3 ? '' : 'none';
+}
+
+function toggleFreeplaySelect(key) {
+  SFX.select();
+  const idx = fpSelected.indexOf(key);
+  if (idx >= 0) {
+    fpSelected.splice(idx, 1);
+  } else if (fpSelected.length < 3) {
+    fpSelected.push(key);
+  }
+  renderFreeplaySelect();
+}
+
+function beginFreeplay() {
+  gameMode = 'freeplay';
+  const xp = fpStartLevel > 1 ? LEVEL_XP[fpStartLevel - 1] : 0;
+
+  fpTeam = fpSelected.map(key => {
+    const m = createMonsterFreeplay(key, fpStartLevel, xp);
+    // Auto-assign learnable moves for checkpoint starts
+    if (fpStartLevel >= 8) {
+      const pool = FREEPLAY_MOVE_POOL[key];
+      if (pool && pool[0] && pool[0].level <= fpStartLevel) {
+        m.moves[3] = { ...pool[0].move, effect: pool[0].move.effect ? { ...pool[0].move.effect } : null };
+      }
+    }
+    return m;
+  });
+
+  // Pre-mark gyms beaten for checkpoint starts
+  fpGymsBeaten = [];
+  for (const gym of GYMS) {
+    if (gym.requiredLevel < fpStartLevel) fpGymsBeaten.push(gym.id);
+  }
+  fpCheckpoint = fpGymsBeaten.length;
+  fpWildBattlesWon = 0;
+  fpTotalXPEarned = 0;
+  fpStartedAt = new Date().toISOString();
+  fpRoster = [];
+  fpSpeciesCaught = fpSelected.slice(); // starting monsters count as caught
+  fpMapX = 2 * 32 + 16; fpMapY = 2 * 32 + 16;
+  fpQuests = { story: {}, side: {} };
+  fpQuestProgress = { wildBattlesWon: 0, wildBattlesInZone: {}, speciesCaught: fpSelected.length, differentSpecies: fpSelected.length, moveLearnedCount: 0 };
+
+  saveFreeplay();
+  enterFreeplayMap();
+}
+
+function continueFreeplay() {
+  const save = loadFreeplay();
+  if (!save) { showFreeplayNewGame(); return; }
+  gameMode = 'freeplay';
+  rebuildFreeplayTeam(save);
+  enterFreeplayMap();
+}
+
+function renderFreeplayHub() {
+  const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+  document.getElementById('fp-hub-subtitle').textContent = `Team Avg Level: ${avgLevel}`;
+
+  // Team display
+  const teamEl = document.getElementById('fp-team-display');
+  teamEl.innerHTML = '';
+  for (const m of fpTeam) {
+    const nextLvXp = m.level < 20 ? LEVEL_XP[m.level] : LEVEL_XP[19];
+    const currLvXp = LEVEL_XP[m.level - 1];
+    const progress = m.level >= 20 ? 100 : Math.floor(((m.xp - currLvXp) / (nextLvXp - currLvXp)) * 100);
+    const stats = getStatsForLevel(MONSTER_DEFS[m.defKey], m.level);
+    const card = document.createElement('div');
+    card.className = 'fp-team-card';
+    card.innerHTML = `
+      <div style="font-size:1.5rem">${m.icon}</div>
+      <div class="fp-mon-name">${m.name}</div>
+      <div class="fp-mon-level">Lv ${m.level}</div>
+      <div class="fp-mon-stats">HP ${stats.maxHp} / ATK ${stats.atk} / DEF ${stats.def} / SPD ${stats.spd}</div>
+      <div class="fp-xp-bar"><div class="fp-xp-fill" style="width:${progress}%"></div></div>
+      <div class="fp-xp-label">${m.level >= 20 ? 'MAX' : `XP: ${m.xp} / ${nextLvXp}`}</div>
+    `;
+    teamEl.appendChild(card);
+  }
+
+  // Gym progress badges
+  const gymEl = document.getElementById('fp-gym-progress');
+  gymEl.innerHTML = '';
+  for (const gym of GYMS) {
+    const earned = fpGymsBeaten.includes(gym.id);
+    const badge = document.createElement('div');
+    badge.className = 'fp-badge' + (earned ? ' earned' : '');
+    badge.textContent = earned ? gym.badgeIcon : '?';
+    badge.title = gym.badge;
+    gymEl.appendChild(badge);
+  }
+
+  // Gym info + button state
+  const nextGym = GYMS.find(g => !fpGymsBeaten.includes(g.id));
+  const gymBtn = document.getElementById('fp-gym-btn');
+  const gymInfo = document.getElementById('fp-gym-info');
+  if (!nextGym) {
+    gymBtn.classList.add('fp-gym-btn-disabled');
+    gymInfo.textContent = 'All gyms defeated! You are the Champion!';
+  } else if (avgLevel >= nextGym.requiredLevel) {
+    gymBtn.classList.remove('fp-gym-btn-disabled');
+    gymInfo.textContent = `${nextGym.name} "${nextGym.title}" — Ready to challenge!`;
+  } else {
+    gymBtn.classList.add('fp-gym-btn-disabled');
+    gymInfo.textContent = `Next: ${nextGym.name} (Lv ${nextGym.requiredLevel} required, you: Lv ${avgLevel})`;
+  }
+}
+
+function showFreeplayTeamDetail() {
+  const content = document.getElementById('fp-detail-content');
+  content.innerHTML = '';
+  for (const m of fpTeam) {
+    const stats = getStatsForLevel(MONSTER_DEFS[m.defKey], m.level);
+    const el = document.createElement('div');
+    el.className = 'fp-detail-mon';
+    el.innerHTML = `
+      <div class="fp-detail-mon-header">
+        <span style="font-size:1.3rem">${m.icon}</span>
+        <span class="fp-detail-mon-name">${m.name}</span>
+        <span class="fp-detail-mon-level">Lv ${m.level}</span>
+        <span style="font-size:0.7rem;color:${ELEMENT_COLORS[m.element]}">${m.element}</span>
+      </div>
+      <div class="fp-detail-mon-stats">HP ${stats.maxHp} | ATK ${stats.atk} | DEF ${stats.def} | SPD ${stats.spd}</div>
+      <div class="fp-detail-mon-moves">
+        ${m.moves.map(mv => `&#8227; ${mv.name} <span style="color:${ELEMENT_COLORS[mv.element]}">(${mv.element})</span> — Pow: ${mv.power || 'Status'} / Acc: ${mv.accuracy}`).join('<br>')}
+      </div>
+      <div style="font-size:0.65rem;color:#666;margin-top:4px">XP: ${m.xp}${m.level < 20 ? ' / ' + LEVEL_XP[m.level] + ' to next level' : ' (MAX)'}</div>
+    `;
+    content.appendChild(el);
+  }
+  document.getElementById('fp-detail-overlay').classList.add('visible');
+}
+
+function closeFreeplayTeamDetail() {
+  document.getElementById('fp-detail-overlay').classList.remove('visible');
+}
+
+function saveFreeplayAndExit() {
+  saveFreeplay();
+  fpMapActive = false;
+  gameMode = 'roguelike';
+  showScreen('title-screen');
+  updateTitleFreeplayBtn();
+}
+
+// ═══ Wild Battles ═══
+function generateWildEnemies(zoneLevelMin, zoneLevelMax) {
+  const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+  let minLv = zoneLevelMin || 1;
+  let maxLv = zoneLevelMax || avgLevel + 2;
+  const enemyLevel = Math.max(1, Math.min(20, minLv + Math.floor(Math.random() * (maxLv - minLv + 1))));
+  const scale = 1 + (enemyLevel - 1) * 0.05;
+  const count = avgLevel < 5 ? 1 : avgLevel < 12 ? 2 : 3;
+  const gg = ggLoad();
+  const hasDrakovex = !!gg.shopPurchases['bm_drakovex'];
+  const keys = Object.keys(MONSTER_DEFS).filter(k => k !== 'drakovex' || hasDrakovex);
+  const team = [];
+  for (let i = 0; i < count; i++) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    const m = createMonster(MONSTER_DEFS[key], scale);
+    m.level = enemyLevel;
+    m.defKey = key;
+    team.push(m);
+  }
+  return team;
+}
+
+function acceptEncounter() {
+  fpEncounterPending = false;
+  document.getElementById('fp-encounter-prompt').style.display = 'none';
+  startWildBattle();
+}
+
+function declineEncounter() {
+  fpEncounterPending = false;
+  document.getElementById('fp-encounter-prompt').style.display = 'none';
+  // Small extra cooldown so it doesn't immediately re-trigger
+  fpMapStepCooldown = 90;
+}
+
+function startWildBattle() {
+  fpCurrentBattleType = 'wild';
+  fpCurrentGymId = null;
+  const zone = getCurrentMapZone();
+  const enemies = zone ? generateWildEnemies(zone.levelMin, zone.levelMax) : generateWildEnemies();
+  fpMapActive = false;
+  startFreeplayBattle(enemies, zone ? `WILD — ${zone.name}` : 'WILD BATTLE');
+}
+
+function startFreeplayBattle(enemies, label) {
+  // Prepare player team for battle (reset buffs/statuses, keep current HP=max since we heal between)
+  for (const m of fpTeam) {
+    m.hp = m.maxHp;
+    m.buffs = {};
+    m.statuses = [];
+    m.stunned = false;
+  }
+  playerTeam = fpTeam;
+  enemyTeam = enemies;
+  playerActive = playerTeam.findIndex(m => m.hp > 0);
+  enemyActive = 0;
+  superEffectiveCount = 0;
+  battleState = 'playerTurn';
+
+  document.getElementById('floor-label').textContent = label;
+  clearBattleLog();
+  addBattleLog(label + ' — ' + enemies.length + ' enem' + (enemies.length === 1 ? 'y' : 'ies') + ' approach!', '');
+
+  renderBattle();
+  showScreen('battle-screen');
+  enableActions(true);
+}
+
+// ═══ Gym Battles ═══
+function startGymBattle(gymId) {
+  const nextGym = gymId ? GYMS.find(g => g.id === gymId) : GYMS.find(g => !fpGymsBeaten.includes(g.id));
+  if (!nextGym || fpGymsBeaten.includes(nextGym.id)) return;
+  const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+  if (avgLevel < nextGym.requiredLevel) return;
+
+  fpMapActive = false;
+  fpCurrentBattleType = 'gym';
+  fpCurrentGymId = nextGym.id;
+
+  // Show gym intro dialogue
+  showGymDialogue(nextGym.name, nextGym.title, nextGym.intro, 'BATTLE!', () => {
+    const enemies = buildGymTeam(nextGym);
+    startFreeplayBattle(enemies, `GYM: ${nextGym.name}`);
+  });
+}
+
+function buildGymTeam(gym) {
+  return gym.team.map(t => {
+    const baseDef = MONSTER_DEFS[t.key];
+    const scale = 1 + (t.level - 1) * 0.05;
+    const m = createMonster(baseDef, scale);
+    m.level = t.level;
+    m.defKey = t.key;
+    return m;
+  });
+}
+
+function showGymDialogue(name, title, text, btnText, callback) {
+  document.getElementById('fp-gym-name').textContent = name;
+  document.getElementById('fp-gym-title-text').textContent = title;
+  document.getElementById('fp-gym-dialogue-text').textContent = text;
+  document.getElementById('fp-gym-dialogue-btn').textContent = btnText;
+  fpGymDialogueCallback = callback;
+  document.getElementById('fp-gym-dialogue').classList.add('visible');
+}
+
+function dismissGymDialogue() {
+  document.getElementById('fp-gym-dialogue').classList.remove('visible');
+  if (fpGymDialogueCallback) {
+    const cb = fpGymDialogueCallback;
+    fpGymDialogueCallback = null;
+    cb();
+  }
+}
+
+// ═══ Freeplay Battle End ═══
+async function handleFreeplayBattleWin() {
+  // Save copy of enemies for capture screen (wild only)
+  if (fpCurrentBattleType === 'wild') {
+    fpEnemyTeamCopy = enemyTeam.map(e => ({ defKey: e.defKey, name: e.name, icon: e.icon, element: e.element, level: e.level || 1 }));
+  } else {
+    fpEnemyTeamCopy = [];
+  }
+
+  const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+  let xpAmount = calculateBattleXP(enemyTeam, avgLevel);
+  if (fpCurrentBattleType === 'gym') xpAmount *= 3;
+
+  // Award XP to living team members
+  fpLevelUpQueue = [];
+  for (const m of fpTeam) {
+    if (m.hp <= 0) continue;
+    const oldLevel = m.level;
+    m.xp += xpAmount;
+    const newLevel = Math.min(20, getLevel(m.xp));
+    if (newLevel > oldLevel) {
+      const oldStats = getStatsForLevel(MONSTER_DEFS[m.defKey], oldLevel);
+      const newStats = getStatsForLevel(MONSTER_DEFS[m.defKey], newLevel);
+      m.level = newLevel;
+      m.maxHp = newStats.maxHp;
+      m.hp = newStats.maxHp;
+      m.atk = newStats.atk; m.baseAtk = newStats.atk;
+      m.def = newStats.def; m.baseDef = newStats.def;
+      m.spd = newStats.spd; m.baseSpd = newStats.spd;
+      fpLevelUpQueue.push({
+        monster: m,
+        oldLevel: oldLevel,
+        newLevel: newLevel,
+        hpGain: newStats.maxHp - oldStats.maxHp,
+        atkGain: newStats.atk - oldStats.atk,
+        defGain: newStats.def - oldStats.def,
+        spdGain: newStats.spd - oldStats.spd,
+      });
+    }
+  }
+
+  fpTotalXPEarned += xpAmount;
+  if (fpCurrentBattleType === 'wild') fpWildBattlesWon++;
+
+  // Achievements
+  if (fpCurrentBattleType === 'wild' && fpWildBattlesWon === 1) ggTry('bm_fp_first_wild');
+  for (const m of fpTeam) {
+    if (m.level >= 10) ggTry('bm_fp_level_10');
+    if (m.level >= 20) ggTry('bm_fp_level_20');
+  }
+
+  // Handle gym victory
+  if (fpCurrentBattleType === 'gym' && fpCurrentGymId) {
+    fpGymsBeaten.push(fpCurrentGymId);
+    fpCheckpoint = fpGymsBeaten.length;
+    saveCheckpoint(fpCurrentGymId);
+    if (fpCurrentGymId === 1) ggTry('bm_fp_gym_1');
+    if (fpGymsBeaten.length >= 5) ggTry('bm_fp_gym_5');
+  }
+
+  // Quest progress
+  fpQuestProgress.wildBattlesWon = fpWildBattlesWon;
+  const zone = getCurrentMapZone();
+  if (zone && fpCurrentBattleType === 'wild') {
+    fpQuestProgress.wildBattlesInZone[zone.id] = (fpQuestProgress.wildBattlesInZone[zone.id] || 0) + 1;
+  }
+  checkQuestCompletion();
+
+  // Collection tracking
+  for (const e of enemyTeam) {
+    if (e.defKey && e.defKey !== '_boss') addToCollection(e.defKey);
+  }
+  const collected = loadCollection();
+  if (collected.length >= Object.keys(MONSTER_DEFS).length + 1) ggTry('bm_collect_all');
+
+  saveFreeplay();
+
+  // Show gym victory dialogue if applicable
+  if (fpCurrentBattleType === 'gym' && fpCurrentGymId) {
+    const gym = GYMS.find(g => g.id === fpCurrentGymId);
+    if (gym) {
+      await delay(500);
+      showGymDialogue(gym.name, gym.badge + ' earned!', gym.victory, 'CONTINUE', () => {
+        processLevelUpQueue();
+      });
+      return;
+    }
+  }
+
+  // Process level-ups or go to hub
+  await delay(300);
+  processLevelUpQueue();
+}
+
+function handleFreeplayBattleLoss() {
+  // Award 25% XP even on loss
+  const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+  let xpAmount = Math.floor(calculateBattleXP(enemyTeam, avgLevel) * 0.25);
+
+  for (const m of fpTeam) {
+    const oldLevel = m.level;
+    m.xp += xpAmount;
+    const newLevel = Math.min(20, getLevel(m.xp));
+    if (newLevel > oldLevel) {
+      const newStats = getStatsForLevel(MONSTER_DEFS[m.defKey], newLevel);
+      m.level = newLevel;
+      m.maxHp = newStats.maxHp;
+      m.atk = newStats.atk; m.baseAtk = newStats.atk;
+      m.def = newStats.def; m.baseDef = newStats.def;
+      m.spd = newStats.spd; m.baseSpd = newStats.spd;
+    }
+    // Full heal
+    m.hp = m.maxHp;
+    m.buffs = {};
+    m.statuses = [];
+    m.stunned = false;
+  }
+
+  fpTotalXPEarned += xpAmount;
+  saveFreeplay();
+
+  returnToFreeplayMap();
+}
+
+// ═══ Level-Up + Move Learn Flow ═══
+function processLevelUpQueue() {
+  if (fpLevelUpQueue.length === 0) {
+    // Check for pending move learns
+    checkMoveLearnQueue();
+    return;
+  }
+
+  const lu = fpLevelUpQueue.shift();
+  SFX.buff();
+  document.getElementById('fp-levelup-icon').textContent = lu.monster.icon;
+  document.getElementById('fp-levelup-title').textContent = `${lu.monster.name} reached Level ${lu.newLevel}!`;
+  document.getElementById('fp-stat-changes').innerHTML =
+    `HP +${lu.hpGain} &nbsp; ATK +${lu.atkGain} &nbsp; DEF +${lu.defGain} &nbsp; SPD +${lu.spdGain}`;
+  document.getElementById('fp-levelup-overlay').classList.add('visible');
+}
+
+function dismissLevelUp() {
+  document.getElementById('fp-levelup-overlay').classList.remove('visible');
+  // Continue with remaining level-ups
+  processLevelUpQueue();
+}
+
+function checkMoveLearnQueue() {
+  for (const m of fpTeam) {
+    const pool = FREEPLAY_MOVE_POOL[m.defKey];
+    if (!pool) continue;
+    for (const entry of pool) {
+      if (m.level >= entry.level) {
+        const alreadyKnown = m.moves.some(mv => mv.name === entry.move.name);
+        const skipped = m._skippedMoves && m._skippedMoves.includes(entry.move.name);
+        if (!alreadyKnown && !skipped) {
+          showFpMoveLearn(m, entry.move);
+          return;
+        }
+      }
+    }
+  }
+  // After all level-ups and move learns, show capture screen for wild battles
+  if (fpCurrentBattleType === 'wild' && fpEnemyTeamCopy.length > 0) {
+    showCaptureScreen(fpEnemyTeamCopy);
+    fpEnemyTeamCopy = [];
+    return;
+  }
+  fpEnemyTeamCopy = [];
+  returnToFreeplayMap();
+}
+
+let fpMoveLearnMonster = null;
+let fpMoveLearnNewMove = null;
+let fpMoveLearnReplaceIdx = -1;
+
+function showFpMoveLearn(monster, newMove) {
+  fpMoveLearnMonster = monster;
+  fpMoveLearnNewMove = newMove;
+  fpMoveLearnReplaceIdx = -1;
+
+  document.getElementById('fp-move-learn-title').textContent = `${monster.name} can learn a new move!`;
+  document.getElementById('fp-move-learn-new').innerHTML =
+    `<strong>${newMove.name}</strong> <span style="color:${ELEMENT_COLORS[newMove.element]}">(${newMove.element})</span> — Power: ${newMove.power || 'Status'} / Acc: ${newMove.accuracy}`;
+
+  const list = document.getElementById('fp-move-learn-list');
+  list.innerHTML = '';
+  for (let i = 0; i < monster.moves.length; i++) {
+    const mv = monster.moves[i];
+    const btn = document.createElement('button');
+    btn.className = 'fp-move-learn-btn';
+    btn.textContent = `${mv.name} (${mv.element}) — Pow: ${mv.power || 'Status'}`;
+    btn.onclick = () => selectFpMoveReplace(i);
+    list.appendChild(btn);
+  }
+
+  document.getElementById('fp-move-learn-confirm').style.display = 'none';
+  document.getElementById('fp-move-learn-overlay').classList.add('visible');
+}
+
+function selectFpMoveReplace(idx) {
+  fpMoveLearnReplaceIdx = idx;
+  SFX.select();
+  const btns = document.getElementById('fp-move-learn-list').querySelectorAll('.fp-move-learn-btn');
+  btns.forEach((b, i) => b.className = 'fp-move-learn-btn' + (i === idx ? ' selected' : ''));
+  document.getElementById('fp-move-learn-confirm').style.display = '';
+}
+
+function confirmFpMoveLearn() {
+  if (fpMoveLearnReplaceIdx < 0 || !fpMoveLearnMonster || !fpMoveLearnNewMove) return;
+  fpMoveLearnMonster.moves[fpMoveLearnReplaceIdx] = {
+    ...fpMoveLearnNewMove,
+    effect: fpMoveLearnNewMove.effect ? { ...fpMoveLearnNewMove.effect } : null,
+  };
+  SFX.buff();
+  document.getElementById('fp-move-learn-overlay').classList.remove('visible');
+  saveFreeplay();
+  checkMoveLearnQueue();
+}
+
+function skipFpMoveLearn() {
+  document.getElementById('fp-move-learn-overlay').classList.remove('visible');
+  // Mark this move as "seen" by adding it as a skipped flag so we don't ask again
+  // Simple approach: just continue checking
+  // To avoid re-prompting, we just move on (the check uses alreadyKnown)
+  // We need a different approach: track skipped moves
+  if (fpMoveLearnMonster && fpMoveLearnNewMove) {
+    if (!fpMoveLearnMonster._skippedMoves) fpMoveLearnMonster._skippedMoves = [];
+    fpMoveLearnMonster._skippedMoves.push(fpMoveLearnNewMove.name);
+  }
+  checkMoveLearnQueue();
+}
+
+function updateTitleFreeplayBtn() {
+  const save = loadFreeplay();
+  document.getElementById('fp-continue-btn').style.display = save ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════
+// 2D TILE MAP
+// ═══════════════════════════════════════════
+const TILE_SIZE = 32;
+const MAP_COLS = 30;
+const MAP_ROWS = 25;
+
+// Tile types: 0=grass, 1=tallGrass, 2=path, 3=water, 4=tree, 5=rock, 6=wall, 7=building, 8=door, 9=bridge, a=sign
+// Map stored as array of strings for compactness (hex-like chars)
+const FP_MAP_RAW = [
+  // Row 0-24 (30 cols each)
+  // Zone layout: top-left=Forest, top-right=Coast, center=Lake, bottom-left=Fortress, bottom-right=Peak
+  '444444444444440022004443333333', // 0
+  '410011001104440220044433333333', // 1
+  '411011001100002200004433393333', // 2
+  '410010011100002200114433393333', // 3
+  '400001101100002200110044993344', // 4
+  '411011001108222200110039933144', // 5
+  '410010110100222211110099929114', // 6  bridge path to coast gym
+  '414101101100002200000099298104', // 7  bridge path to gym 2 door
+  '440001001104442208444433333304', // 8
+  '444401100000002208001133939304', // 9
+  '444400011000002228001133333904', // 10
+  '222222222200002228000033333904', // 11
+  '110011001122222228000033333344', // 12
+  '110011001100002200000033333344', // 13
+  '118011001108332233333344455554', // 14
+  '110010011100333233333555555554', // 15
+  '110001101100332233334455555504', // 16
+  '111011001100002200004450011004', // 17
+  '666611011100002200004450110104', // 18
+  '620020011108222200004451101004', // 19  open fortress wall for gym 4
+  '628020000100222211110020080184', // 20  path to gym 4 + path to gym 5
+  '620060110100002200110020110104', // 21  open fortress wall + path to peak
+  '666611001104442204440021010004', // 22  path to peak gym area
+  '111101100000002204001155550054', // 23
+  '111100011000002204001155555554', // 24
+];
+
+const FP_MAP = FP_MAP_RAW.map(row => row.split('').map(c => {
+  if (c >= '0' && c <= '9') return parseInt(c);
+  if (c === 'a') return 10;
+  return parseInt(c);
+}));
+
+const FP_MAP_ZONES = [
+  { id: 'forest', name: 'Green Forest', x1: 0, y1: 0, x2: 14, y2: 13, levelMin: 1, levelMax: 5, gymId: 1 },
+  { id: 'coast', name: 'Storm Coast', x1: 15, y1: 0, x2: 29, y2: 13, levelMin: 5, levelMax: 9, gymId: 2 },
+  { id: 'lake', name: 'Mystic Lake', x1: 10, y1: 8, x2: 20, y2: 16, levelMin: 9, levelMax: 14, gymId: 3 },
+  { id: 'fortress', name: 'Iron Fortress', x1: 0, y1: 14, x2: 14, y2: 24, levelMin: 14, levelMax: 18, gymId: 4 },
+  { id: 'peak', name: 'Shadow Peak', x1: 15, y1: 14, x2: 29, y2: 24, levelMin: 17, levelMax: 20, gymId: 5 },
+];
+
+const TILE_COLORS = {
+  0: '#3a8c3a', // grass
+  1: '#2d6e2d', // tall grass
+  2: '#c4a46c', // path
+  3: '#2266aa', // water
+  4: '#2d5a1e', // tree
+  5: '#666666', // rock
+  6: '#444455', // wall
+  7: '#6b4226', // building
+  8: '#ccaa33', // door
+  9: '#8b6b3a', // bridge
+  10: '#886644', // sign
+};
+
+const WALKABLE_TILES = new Set([0, 1, 2, 8, 9, 10]);
+
+// NPC definitions: {id, name, col, row, color, zone}
+const FP_NPCS = [
+  { id: 'elder_oak', name: 'Elder Oak', col: 4, row: 3, zone: 'forest', trainer: { skin: 3, hairColor: 0, hairStyle: 2, shirtColor: 2, accessory: 2 } },
+  { id: 'fisher_kai', name: 'Fisher Kai', col: 22, row: 5, zone: 'coast', trainer: { skin: 1, hairColor: 2, hairStyle: 0, shirtColor: 1, accessory: 1 } },
+  { id: 'mystic_yara', name: 'Mystic Yara', col: 15, row: 11, zone: 'lake', trainer: { skin: 0, hairColor: 5, hairStyle: 3, shirtColor: 4, accessory: 3 } },
+  { id: 'blacksmith_gorn', name: 'Blacksmith Gorn', col: 4, row: 19, zone: 'fortress', trainer: { skin: 2, hairColor: 0, hairStyle: 1, shirtColor: 0, accessory: 0 } },
+  { id: 'shadow_keeper', name: 'Shadow Keeper', col: 25, row: 20, zone: 'peak', trainer: { skin: 4, hairColor: 4, hairStyle: 2, shirtColor: 4, accessory: 3 } },
+  { id: 'wandering_trader', name: 'Wandering Trader', col: 12, row: 12, zone: 'lake', trainer: { skin: 1, hairColor: 3, hairStyle: 0, shirtColor: 3, accessory: 1 } },
+];
+
+// Gym door positions on map
+const FP_GYM_DOORS = [
+  { gymId: 1, col: 11, row: 5 },   // Forest gym
+  { gymId: 2, col: 26, row: 7 },   // Coast gym
+  { gymId: 3, col: 11, row: 14 },  // Lake gym
+  { gymId: 4, col: 2, row: 20 },   // Fortress gym
+  { gymId: 5, col: 25, row: 20 },  // Peak gym (same as Shadow Keeper pos)
+];
+
+// Quest definitions
+const FP_STORY_QUESTS = [
+  { id: 1, name: 'First Steps', npc: 'elder_oak', objective: 'Win 2 wild battles',
+    intro: "Welcome, young trainer. The Green Forest is teeming with wild monsters — but they won't respect you until you prove yourself. Head into the tall grass and win two battles. That will show them you're no pushover.",
+    complete: "I felt the ground shake from here! You've earned your place among the trainers of this land. Take this — you'll need the strength for what lies ahead.",
+    check: (p) => p.wildBattlesWon >= 2, reward: 50 },
+  { id: 2, name: 'Forest Guardian', npc: 'elder_oak', objective: 'Beat Gym 1 (Scout Finn)',
+    intro: "Scout Finn guards the Forest Gym to the east. He's quick and clever — don't underestimate his team. Defeat him and you'll earn the right to venture beyond these woods.",
+    complete: "Finn has fallen! The forest acknowledges your strength. I've heard rumours of a fisherman on the Storm Coast who could use someone with your talents...",
+    check: () => fpGymsBeaten.includes(1), reward: 0 },
+  { id: 3, name: 'Tidal Challenge', npc: 'fisher_kai', objective: 'Catch 2 Water-type monsters',
+    intro: "Ahoy, trainer! The Storm Coast is crawling with Water-types — Aqualis, Tidalin, the works. I need someone to prove these waters can be tamed. Catch two Water-type monsters and bring 'em to me.",
+    complete: "Ha! You've got the sea in your blood, I can tell. Those Water-types will serve you well. Captain Maeve at the coastal gym won't know what hit her!",
+    check: () => fpSpeciesCaught.filter(k => MONSTER_DEFS[k] && MONSTER_DEFS[k].element === 'Water').length >= 2, reward: 100 },
+  { id: 4, name: 'Storm Surge', npc: 'fisher_kai', objective: 'Beat Gym 2 (Captain Maeve)',
+    intro: "Captain Maeve commands the Storm Coast Gym. She's a force of nature — literally. Her team hits like a tidal wave. You'll need every advantage you can get.",
+    complete: "Captain Maeve, defeated?! The whole coast is buzzing about you. There's a mystic out by the lake who's been waiting for someone like you to show up...",
+    check: () => fpGymsBeaten.includes(2), reward: 0 },
+  { id: 5, name: 'Lake Mystery', npc: 'mystic_yara', objective: 'Win 3 battles in Mystic Lake',
+    intro: "The lake whispers your name, trainer. Something ancient stirs beneath these waters — a power that tests all who enter. Prove your worth by winning three battles here in the mist.",
+    complete: "The lake accepts you. I can feel its power flowing into your monsters. You are ready to face Sage Elara — but be warned, her wisdom runs deep.",
+    check: (p) => (p.wildBattlesInZone['lake'] || 0) >= 3, reward: 150 },
+  { id: 6, name: 'Mystic Trial', npc: 'mystic_yara', objective: 'Beat Gym 3 (Sage Elara)',
+    intro: "Sage Elara has guarded the Mystic Lake Gym for decades. She sees through every strategy, every feint. Only a trainer with true conviction can overcome her trial.",
+    complete: "Elara's light dims before yours. You carry something rare — the spark of a true champion. The Iron Fortress to the south awaits. Blacksmith Gorn will forge you into something greater.",
+    check: () => fpGymsBeaten.includes(3), reward: 200 },
+  { id: 7, name: 'Iron Will', npc: 'blacksmith_gorn', objective: 'Have a monster reach Level 15',
+    intro: "Hmph. Another trainer thinks they're tough? In the Iron Fortress, strength is everything. Show me you mean business — forge one of your monsters to Level 15. Then we'll talk.",
+    complete: "Now THAT'S power! I can see the fire in that monster's eyes. You've got the iron will to challenge Warden Kael. Don't hold back — he certainly won't.",
+    check: () => fpTeam.concat(fpRoster).some(m => m.level >= 15), reward: 250 },
+  { id: 8, name: 'Fortress Siege', npc: 'blacksmith_gorn', objective: 'Beat Gym 4 (Warden Kael)',
+    intro: "Warden Kael built this fortress with his bare hands. His monsters are as unyielding as iron walls. If you can crack his defence, you'll be ready for the Shadow Peak.",
+    complete: "The Warden... beaten?! Ha! I haven't seen that in years! The Shadow Peak lies to the east. Dark things lurk there. Speak to the Keeper at its gate.",
+    check: () => fpGymsBeaten.includes(4), reward: 300 },
+  { id: 9, name: 'Shadow Gate', npc: 'shadow_keeper', objective: 'Win 5 battles in Shadow Peak',
+    intro: "You stand at the edge of darkness, trainer. The Shadow Peak devours the weak. Only those who can survive its relentless hordes earn the right to challenge Champion Drax. Win five battles here — if you can.",
+    complete: "You walk through shadows like they're nothing. Champion Drax awaits at the summit. He is the strongest trainer in all the land. This is your final test.",
+    check: (p) => (p.wildBattlesInZone['peak'] || 0) >= 5, reward: 400 },
+  { id: 10, name: 'Final Champion', npc: 'shadow_keeper', objective: 'Beat Gym 5 (Champion Drax)',
+    intro: "Champion Drax has never been defeated. His team is legendary — monsters raised in pure darkness, hardened by a thousand battles. This is it. Everything has led to this moment.",
+    complete: "It's... over. Drax has fallen. You've done what no trainer has ever done before. The land is free, the shadow lifts. You are the true Champion of the Brawl Monsters world!",
+    check: () => fpGymsBeaten.includes(5), reward: 0 },
+];
+
+const FP_SIDE_QUESTS = [
+  { id: 's1', name: 'Gone Fishing', npc: 'fisher_kai', objective: 'Catch 3 different species',
+    intro: "Y'know, the best trainers don't just fight — they collect. Variety is the spice of life! Bring me proof you've caught 3 different species and I'll make it worth your while.",
+    complete: "Three different species! You're building quite the menagerie. Here, take this reward — you've earned it, collector!",
+    check: () => fpSpeciesCaught.length >= 3, reward: 100 },
+  { id: 's2', name: 'Mystic Collection', npc: 'mystic_yara', objective: 'Have 6+ species in your roster',
+    intro: "The ancient texts speak of trainers who understood every species. True wisdom comes from diversity. Gather six different species into your roster and I shall share the lake's blessing.",
+    complete: "Six species... the lake's power resonates with your collection. You're beginning to understand the balance of all things. Take this blessing.",
+    check: () => fpSpeciesCaught.length >= 6, reward: 150 },
+  { id: 's3', name: 'Iron Forge', npc: 'blacksmith_gorn', objective: 'Have a monster learn a new move',
+    intro: "A monster's true potential is unlocked through new techniques. Train one of your monsters until it learns a new move — that's when you'll see real power.",
+    complete: "A new move mastered! That's the sound of steel being tempered. Your monster is sharper than ever. Take this as payment for the demonstration.",
+    check: (p) => p.moveLearnedCount >= 1, reward: 100 },
+  { id: 's4', name: 'Shadow Hunter', npc: 'shadow_keeper', objective: 'Win 10 wild battles total',
+    intro: "The shadows test endurance, not just strength. Only a trainer who has won ten wild battles truly understands the rhythm of combat. Prove your persistence.",
+    complete: "Ten victories. You fight not with desperation, but with purpose. The shadows respect that. Take this — you've earned the darkness's favour.",
+    check: (p) => p.wildBattlesWon >= 10, reward: 200 },
+  { id: 's5', name: 'True Collector', npc: 'wandering_trader', objective: 'Catch all 13 monster species',
+    intro: "I've wandered every corner of this land, and I've seen all 13 species of monster. Most trainers only ever catch a handful. But you... I think you might be different. Catch every single species and I'll give you something truly special.",
+    complete: "Every. Single. Species. I can't believe it! In all my years of wandering, I've never met a trainer who caught them all. You are a legend. Take this — you deserve it more than anyone.",
+    check: () => fpSpeciesCaught.length >= Object.keys(MONSTER_DEFS).length, reward: 500 },
+];
+
+function getCurrentMapZone() {
+  const col = Math.floor(fpMapX / TILE_SIZE);
+  const row = Math.floor(fpMapY / TILE_SIZE);
+  // Check lake first (overlapping center zone), then others
+  for (const z of FP_MAP_ZONES) {
+    if (col >= z.x1 && col <= z.x2 && row >= z.y1 && row <= z.y2) return z;
+  }
+  return FP_MAP_ZONES[0]; // default forest
+}
+
+// ═══ Map Rendering ═══
+let fpMapCanvas = null;
+let fpMapCtx = null;
+let fpMapAnimFrame = null;
+let fpTrainerImg = null;
+let fpNpcImgs = {};
+let fpEncounterPending = false;
+
+function enterFreeplayMap() {
+  showScreen('freeplay-map-screen');
+  fpMapCanvas = document.getElementById('fp-map-canvas');
+  fpMapCtx = fpMapCanvas.getContext('2d');
+  fpMapActive = true;
+  fpMapKeys = {};
+  // Cache trainer avatar as canvas-drawable image
+  const trainer = loadTrainer();
+  if (trainer) {
+    const svg = getTrainerSVG(trainer);
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = function() { fpTrainerImg = img; URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+  // Cache NPC trainer images
+  for (const npc of FP_NPCS) {
+    if (npc.trainer) {
+      const svg = getTrainerSVG(npc.trainer);
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = function() { fpNpcImgs[npc.id] = img; URL.revokeObjectURL(url); };
+      img.src = url;
+    }
+  }
+  resizeFpMapCanvas();
+  updateMapHud();
+  fpMapLoop();
+}
+
+function returnToFreeplayMap() {
+  saveFreeplay();
+  enterFreeplayMap();
+}
+
+function resizeFpMapCanvas() {
+  const screen = document.getElementById('freeplay-map-screen');
+  fpMapCanvas.width = screen.clientWidth;
+  fpMapCanvas.height = screen.clientHeight;
+}
+
+function fpMapLoop() {
+  if (!fpMapActive) { fpMapAnimFrame = null; return; }
+  updateFpMapPlayer();
+  renderFpMap();
+  fpMapAnimFrame = requestAnimationFrame(fpMapLoop);
+}
+
+function updateFpMapPlayer() {
+  if (fpEncounterPending) return;
+  const speed = 2;
+  let dx = 0, dy = 0;
+  if (fpMapKeys['ArrowUp'] || fpMapKeys['w'] || fpMapKeys['W']) { dy = -speed; fpMapDir = 3; }
+  if (fpMapKeys['ArrowDown'] || fpMapKeys['s'] || fpMapKeys['S']) { dy = speed; fpMapDir = 0; }
+  if (fpMapKeys['ArrowLeft'] || fpMapKeys['a'] || fpMapKeys['A']) { dx = -speed; fpMapDir = 1; }
+  if (fpMapKeys['ArrowRight'] || fpMapKeys['d'] || fpMapKeys['D']) { dx = speed; fpMapDir = 2; }
+
+  if (dx === 0 && dy === 0) return;
+
+  const newX = fpMapX + dx;
+  const newY = fpMapY + dy;
+
+  // Collision check — check corners of player bounding box (8px radius)
+  const r = 6;
+  if (dx !== 0) {
+    const checkX = dx > 0 ? newX + r : newX - r;
+    const col = Math.floor(checkX / TILE_SIZE);
+    const row1 = Math.floor((fpMapY - r) / TILE_SIZE);
+    const row2 = Math.floor((fpMapY + r) / TILE_SIZE);
+    if (col >= 0 && col < MAP_COLS && isTileWalkable(col, row1) && isTileWalkable(col, row2)) {
+      fpMapX = Math.max(r, Math.min(MAP_COLS * TILE_SIZE - r, newX));
+    }
+  }
+  if (dy !== 0) {
+    const checkY = dy > 0 ? newY + r : newY - r;
+    const row = Math.floor(checkY / TILE_SIZE);
+    const col1 = Math.floor((fpMapX - r) / TILE_SIZE);
+    const col2 = Math.floor((fpMapX + r) / TILE_SIZE);
+    if (row >= 0 && row < MAP_ROWS && isTileWalkable(col1, row) && isTileWalkable(col2, row)) {
+      fpMapY = Math.max(r, Math.min(MAP_ROWS * TILE_SIZE - r, newY));
+    }
+  }
+
+  // Encounter check on tall grass
+  if (fpMapStepCooldown > 0) {
+    fpMapStepCooldown--;
+  } else if (!fpEncounterPending) {
+    const col = Math.floor(fpMapX / TILE_SIZE);
+    const row = Math.floor(fpMapY / TILE_SIZE);
+    if (col >= 0 && col < MAP_COLS && row >= 0 && row < MAP_ROWS && FP_MAP[row][col] === 1) {
+      if (Math.random() < 0.03) {
+        fpMapStepCooldown = 60;
+        fpEncounterPending = true;
+        document.getElementById('fp-encounter-prompt').style.display = '';
+        return;
+      }
+    }
+  }
+
+}
+
+function isTileWalkable(col, row) {
+  if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
+  // Check NPC positions
+  for (const npc of FP_NPCS) {
+    if (npc.col === col && npc.row === row) return false;
+  }
+  return WALKABLE_TILES.has(FP_MAP[row][col]);
+}
+
+function renderFpMap() {
+  const ctx = fpMapCtx;
+  const cw = fpMapCanvas.width;
+  const ch = fpMapCanvas.height;
+
+  // Camera centered on player
+  const camX = fpMapX - cw / 2;
+  const camY = fpMapY - ch / 2;
+
+  ctx.fillStyle = '#0a0a0f';
+  ctx.fillRect(0, 0, cw, ch);
+
+  // Draw tiles
+  const startCol = Math.max(0, Math.floor(camX / TILE_SIZE));
+  const endCol = Math.min(MAP_COLS - 1, Math.floor((camX + cw) / TILE_SIZE));
+  const startRow = Math.max(0, Math.floor(camY / TILE_SIZE));
+  const endRow = Math.min(MAP_ROWS - 1, Math.floor((camY + ch) / TILE_SIZE));
+
+  for (let r = startRow; r <= endRow; r++) {
+    for (let c = startCol; c <= endCol; c++) {
+      const tile = FP_MAP[r][c];
+      const sx = c * TILE_SIZE - camX;
+      const sy = r * TILE_SIZE - camY;
+
+      ctx.fillStyle = TILE_COLORS[tile] || '#000';
+      ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+
+      // Tile details
+      if (tile === 1) { // tall grass tufts
+        ctx.fillStyle = '#1a5a1a';
+        for (let t = 0; t < 3; t++) {
+          const tx = sx + 4 + t * 10;
+          const ty = sy + 8 + (t % 2) * 8;
+          ctx.fillRect(tx, ty, 3, 8);
+          ctx.fillRect(tx - 2, ty, 7, 2);
+        }
+      } else if (tile === 4) { // tree
+        ctx.fillStyle = '#5a3a1e';
+        ctx.fillRect(sx + 12, sy + 16, 8, 16);
+        ctx.fillStyle = '#2a7a1a';
+        ctx.beginPath();
+        ctx.arc(sx + 16, sy + 14, 12, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (tile === 3) { // water waves
+        ctx.fillStyle = '#3388cc';
+        ctx.fillRect(sx + 4, sy + 12, 12, 2);
+        ctx.fillRect(sx + 14, sy + 20, 12, 2);
+      } else if (tile === 5) { // rock
+        ctx.fillStyle = '#888';
+        ctx.beginPath();
+        ctx.arc(sx + 16, sy + 18, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#999';
+        ctx.beginPath();
+        ctx.arc(sx + 14, sy + 15, 5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (tile === 8) { // door
+        ctx.fillStyle = '#aa8822';
+        ctx.fillRect(sx + 8, sy + 4, 16, 24);
+        ctx.fillStyle = '#ffcc44';
+        ctx.fillRect(sx + 20, sy + 14, 3, 3);
+        // Check if this is a gym door and show badge
+        const gymDoor = FP_GYM_DOORS.find(g => g.col === c && g.row === r);
+        if (gymDoor) {
+          if (fpGymsBeaten.includes(gymDoor.gymId)) {
+            ctx.fillStyle = '#ffcc00';
+            ctx.beginPath();
+            ctx.arc(sx + 16, sy + 2, 5, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillStyle = '#ff4444';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('GYM', sx + 16, sy + 0);
+          }
+        }
+      } else if (tile === 9) { // bridge
+        ctx.fillStyle = '#2266aa'; // water underneath
+        ctx.fillRect(sx, sy, TILE_SIZE, TILE_SIZE);
+        ctx.fillStyle = '#8b6b3a';
+        ctx.fillRect(sx + 2, sy, TILE_SIZE - 4, TILE_SIZE);
+        ctx.fillStyle = '#6b4b2a';
+        ctx.fillRect(sx + 2, sy, 2, TILE_SIZE);
+        ctx.fillRect(sx + TILE_SIZE - 4, sy, 2, TILE_SIZE);
+      } else if (tile === 7) { // building
+        ctx.fillStyle = '#8b5a36';
+        ctx.fillRect(sx + 2, sy + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.fillStyle = '#5a3a1e';
+        ctx.fillRect(sx, sy, TILE_SIZE, 4); // roof
+      } else if (tile === 6) { // wall
+        ctx.fillStyle = '#555566';
+        ctx.fillRect(sx + 1, sy + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+        ctx.fillStyle = '#4a4a5a';
+        ctx.fillRect(sx + 2, sy + TILE_SIZE / 2 - 1, TILE_SIZE - 4, 2);
+      }
+    }
+  }
+
+  // Draw NPCs
+  for (const npc of FP_NPCS) {
+    const nx = npc.col * TILE_SIZE + TILE_SIZE / 2 - camX;
+    const ny = npc.row * TILE_SIZE + TILE_SIZE / 2 - camY;
+    if (nx < -TILE_SIZE || nx > cw + TILE_SIZE || ny < -TILE_SIZE || ny > ch + TILE_SIZE) continue;
+    if (fpNpcImgs[npc.id]) {
+      ctx.drawImage(fpNpcImgs[npc.id], nx - 10, ny - 22, 20, 30);
+    } else {
+      ctx.fillStyle = '#888';
+      ctx.beginPath();
+      ctx.arc(nx, ny, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 7px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(npc.name.split(' ')[0], nx, ny - 24);
+    // Exclamation mark if has quest available
+    if (npcHasAvailableQuest(npc.id)) {
+      ctx.fillStyle = '#ffcc00';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('!', nx, ny - 32);
+    }
+  }
+
+  // Draw player
+  const px = fpMapX - camX;
+  const py = fpMapY - camY;
+  if (fpTrainerImg) {
+    // Draw trainer avatar (SVG viewBox is 40x60, draw at 20x30 on map)
+    ctx.drawImage(fpTrainerImg, px - 10, py - 22, 20, 30);
+  } else {
+    // Fallback pink circle
+    ctx.fillStyle = '#e040fb';
+    ctx.beginPath();
+    ctx.arc(px, py, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Zone label
+  const zone = getCurrentMapZone();
+  const zoneLabel = document.getElementById('fp-map-zone-label');
+  if (zone && zoneLabel) zoneLabel.textContent = `${zone.name} (Lv ${zone.levelMin}-${zone.levelMax})`;
+}
+
+function updateMapHud() {
+  // Team icons
+  const icons = document.getElementById('fp-map-team-icons');
+  if (icons) {
+    icons.innerHTML = '';
+    for (const m of fpTeam) {
+      const el = document.createElement('div');
+      el.className = 'fp-map-team-icon';
+      el.textContent = m.icon;
+      el.title = `${m.name} Lv${m.level}`;
+      icons.appendChild(el);
+    }
+  }
+  // Badge dots
+  const badges = document.getElementById('fp-map-badges');
+  if (badges) {
+    badges.innerHTML = '';
+    for (const gym of GYMS) {
+      const dot = document.createElement('div');
+      dot.className = 'badge-dot' + (fpGymsBeaten.includes(gym.id) ? ' earned' : '');
+      dot.title = gym.badge;
+      badges.appendChild(dot);
+    }
+  }
+}
+
+// Map keyboard handlers
+document.addEventListener('keydown', (e) => {
+  if (!fpMapActive) return;
+  fpMapKeys[e.key] = true;
+  if (e.key === 'e' || e.key === 'E') { e.preventDefault(); fpMapInteract(); }
+  if (e.key === 't' || e.key === 'T') { showRosterScreen(); }
+  if (e.key === 'q' || e.key === 'Q') { showQuestLog(); }
+});
+document.addEventListener('keyup', (e) => {
+  fpMapKeys[e.key] = false;
+});
+
+// Mobile D-pad
+document.addEventListener('DOMContentLoaded', () => {
+  const dpad = document.getElementById('fp-dpad');
+  if (!dpad) return;
+  dpad.querySelectorAll('.fp-dpad-btn').forEach(btn => {
+    const dir = btn.dataset.dir;
+    const key = dir === 'up' ? 'ArrowUp' : dir === 'down' ? 'ArrowDown' : dir === 'left' ? 'ArrowLeft' : 'ArrowRight';
+    btn.addEventListener('touchstart', (e) => { e.preventDefault(); fpMapKeys[key] = true; });
+    btn.addEventListener('touchend', (e) => { e.preventDefault(); fpMapKeys[key] = false; });
+    btn.addEventListener('touchcancel', (e) => { fpMapKeys[key] = false; });
+  });
+});
+
+window.addEventListener('resize', () => {
+  if (fpMapActive && fpMapCanvas) resizeFpMapCanvas();
+});
+
+// ═══════════════════════════════════════════
+// CAPTURE SYSTEM
+// ═══════════════════════════════════════════
+function showCaptureScreen(defeated) {
+  const container = document.getElementById('fp-capture-cards');
+  container.innerHTML = '';
+  const totalMonsters = fpTeam.length + fpRoster.length;
+
+  for (const e of defeated) {
+    const card = document.createElement('div');
+    card.className = 'fp-capture-card';
+    card.innerHTML = `
+      <div class="cc-icon">${e.icon || MONSTER_DEFS[e.defKey]?.icon || '?'}</div>
+      <div class="cc-name">${e.name}</div>
+      <div class="cc-level">Lv ${e.level}</div>
+      <div class="cc-el" style="color:${ELEMENT_COLORS[e.element]}">${e.element}</div>
+    `;
+    if (totalMonsters >= 20) {
+      card.style.opacity = '0.5';
+      card.title = 'Roster full (max 20)';
+    } else {
+      card.onclick = () => captureMonster(e);
+    }
+    container.appendChild(card);
+  }
+
+  if (totalMonsters >= 20) {
+    const warn = document.createElement('div');
+    warn.style.cssText = 'color:#ff4444;font-size:0.75rem;margin-top:8px';
+    warn.textContent = 'Roster full! Release a monster first or skip.';
+    container.after(warn);
+  }
+
+  showScreen('fp-capture-screen');
+}
+
+function captureMonster(enemyData) {
+  const m = createMonsterFreeplay(enemyData.defKey, enemyData.level, LEVEL_XP[enemyData.level - 1] || 0);
+  fpRoster.push(m);
+  if (!fpSpeciesCaught.includes(enemyData.defKey)) {
+    fpSpeciesCaught.push(enemyData.defKey);
+    fpQuestProgress.speciesCaught = fpSpeciesCaught.length;
+    fpQuestProgress.differentSpecies = fpSpeciesCaught.length;
+  }
+  // Achievements
+  if (fpSpeciesCaught.length >= 5) ggTry('bm_fp_catch_5');
+  if (fpSpeciesCaught.length >= Object.keys(MONSTER_DEFS).length) ggTry('bm_fp_catch_all');
+  checkQuestCompletion();
+  SFX.buff();
+  saveFreeplay();
+  returnToFreeplayMap();
+}
+
+function skipCapture() {
+  returnToFreeplayMap();
+}
+
+// ═══════════════════════════════════════════
+// ROSTER SYSTEM
+// ═══════════════════════════════════════════
+let rosterSelectedIdx = -1; // index in fpRoster
+let rosterSwapMode = false;
+
+function showRosterScreen() {
+  fpMapActive = false;
+  rosterSelectedIdx = -1;
+  rosterSwapMode = false;
+  renderRoster();
+  showScreen('fp-roster-screen');
+}
+
+function closeRosterScreen() {
+  enterFreeplayMap();
+}
+
+function renderRoster() {
+  // Active team
+  const activeGrid = document.getElementById('fp-roster-active');
+  activeGrid.innerHTML = '';
+  for (let i = 0; i < fpTeam.length; i++) {
+    const m = fpTeam[i];
+    const card = document.createElement('div');
+    card.className = 'fp-roster-card active-slot' + (rosterSwapMode ? ' swap-target' : '');
+    card.innerHTML = `
+      <div class="rc-icon">${m.icon}</div>
+      <div class="rc-name">${m.name}</div>
+      <div class="rc-level">Lv ${m.level}</div>
+    `;
+    if (rosterSwapMode) {
+      card.onclick = () => swapRosterMonster(rosterSelectedIdx, i);
+    }
+    activeGrid.appendChild(card);
+  }
+
+  // Reserve roster
+  const reserveGrid = document.getElementById('fp-roster-reserve');
+  reserveGrid.innerHTML = '';
+  document.getElementById('fp-roster-reserve-label').textContent = `Reserves (${fpRoster.length} / ${20 - fpTeam.length})`;
+  for (let i = 0; i < fpRoster.length; i++) {
+    const m = fpRoster[i];
+    const card = document.createElement('div');
+    card.className = 'fp-roster-card' + (rosterSelectedIdx === i ? ' swap-target' : '');
+    card.innerHTML = `
+      <div class="rc-icon">${m.icon}</div>
+      <div class="rc-name">${m.name}</div>
+      <div class="rc-level">Lv ${m.level}</div>
+    `;
+    card.onclick = () => selectRosterMonster(i);
+    reserveGrid.appendChild(card);
+  }
+  if (fpRoster.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'fp-roster-empty';
+    empty.textContent = 'No reserves';
+    reserveGrid.appendChild(empty);
+  }
+
+  // Detail panel
+  const detail = document.getElementById('fp-roster-detail');
+  const actions = document.getElementById('fp-roster-actions');
+  if (rosterSelectedIdx >= 0 && rosterSelectedIdx < fpRoster.length) {
+    const m = fpRoster[rosterSelectedIdx];
+    const stats = getStatsForLevel(MONSTER_DEFS[m.defKey], m.level);
+    detail.style.display = '';
+    detail.innerHTML = `
+      <div style="font-size:1.2rem;text-align:center">${m.icon} <strong>${m.name}</strong> <span style="color:#e040fb">Lv ${m.level}</span></div>
+      <div style="color:#aaa;font-size:0.75rem;margin:4px 0">HP ${stats.maxHp} | ATK ${stats.atk} | DEF ${stats.def} | SPD ${stats.spd}</div>
+      <div style="font-size:0.7rem;color:#888">
+        ${m.moves.map(mv => `&#8227; ${mv.name} (${mv.element}) Pow:${mv.power || 'Status'}`).join('<br>')}
+      </div>
+    `;
+    actions.style.display = '';
+    actions.innerHTML = `
+      <button class="btn-sm" onclick="startRosterSwap()">SWAP TO ACTIVE</button>
+      <button class="btn-sm" style="border-color:#ff4444;color:#ff4444" onclick="releaseMonster()">RELEASE</button>
+    `;
+  } else {
+    detail.style.display = 'none';
+    actions.style.display = 'none';
+  }
+}
+
+function selectRosterMonster(idx) {
+  if (rosterSwapMode) {
+    rosterSwapMode = false;
+    rosterSelectedIdx = idx;
+  } else {
+    rosterSelectedIdx = (rosterSelectedIdx === idx) ? -1 : idx;
+  }
+  renderRoster();
+}
+
+function startRosterSwap() {
+  rosterSwapMode = true;
+  renderRoster();
+}
+
+function swapRosterMonster(rosterIdx, activeIdx) {
+  if (rosterIdx < 0 || rosterIdx >= fpRoster.length) return;
+  if (activeIdx < 0 || activeIdx >= fpTeam.length) return;
+  const temp = fpTeam[activeIdx];
+  fpTeam[activeIdx] = fpRoster[rosterIdx];
+  fpRoster[rosterIdx] = temp;
+  // Full heal swapped-in monster
+  fpTeam[activeIdx].hp = fpTeam[activeIdx].maxHp;
+  rosterSwapMode = false;
+  rosterSelectedIdx = -1;
+  SFX.select();
+  saveFreeplay();
+  renderRoster();
+}
+
+function releaseMonster() {
+  if (rosterSelectedIdx < 0 || rosterSelectedIdx >= fpRoster.length) return;
+  const m = fpRoster[rosterSelectedIdx];
+  if (!confirm(`Release ${m.name}? This cannot be undone.`)) return;
+  fpRoster.splice(rosterSelectedIdx, 1);
+  rosterSelectedIdx = -1;
+  saveFreeplay();
+  renderRoster();
+}
+
+// ═══════════════════════════════════════════
+// NPC & QUEST SYSTEM
+// ═══════════════════════════════════════════
+let fpNpcDialogueCallback = null;
+
+function fpMapInteract() {
+  // Check if player is adjacent to an NPC
+  const col = Math.floor(fpMapX / TILE_SIZE);
+  const row = Math.floor(fpMapY / TILE_SIZE);
+  for (const npc of FP_NPCS) {
+    const dx = Math.abs(col - npc.col);
+    const dy = Math.abs(row - npc.row);
+    if (dx <= 1 && dy <= 1) {
+      interactWithNpc(npc);
+      return;
+    }
+  }
+  // Check gym door
+  const tile = (row >= 0 && row < MAP_ROWS && col >= 0 && col < MAP_COLS) ? FP_MAP[row][col] : -1;
+  if (tile === 8) {
+    const gymDoor = FP_GYM_DOORS.find(g => g.col === col && g.row === row);
+    if (gymDoor && !fpGymsBeaten.includes(gymDoor.gymId)) {
+      const gym = GYMS.find(g => g.id === gymDoor.gymId);
+      const avgLevel = Math.floor(fpTeam.reduce((s, m) => s + m.level, 0) / fpTeam.length);
+      if (gym && avgLevel >= gym.requiredLevel) {
+        startGymBattle(gymDoor.gymId);
+      } else if (gym) {
+        showNpcDialogue('Gym Door', `Requires team avg Lv ${gym.requiredLevel}. You: Lv ${avgLevel}.`, [{ text: 'OK', action: () => closeNpcDialogue() }]);
+      }
+    }
+  }
+}
+
+function interactWithNpc(npc) {
+  // Check if NPC has a quest to give or complete
+  const storyQuest = getStoryQuestForNpc(npc.id);
+  const sideQuest = getSideQuestForNpc(npc.id);
+
+  if (storyQuest && fpQuests.story[storyQuest.id] === 'active' && storyQuest.check(fpQuestProgress)) {
+    // Complete story quest
+    completeQuest('story', storyQuest);
+    return;
+  }
+  if (sideQuest && fpQuests.side[sideQuest.id] === 'active' && sideQuest.check(fpQuestProgress)) {
+    // Complete side quest
+    completeQuest('side', sideQuest);
+    return;
+  }
+  if (storyQuest && !fpQuests.story[storyQuest.id]) {
+    // Offer story quest
+    offerQuest('story', storyQuest, npc);
+    return;
+  }
+  if (sideQuest && !fpQuests.side[sideQuest.id]) {
+    // Offer side quest
+    offerQuest('side', sideQuest, npc);
+    return;
+  }
+
+  // Default dialogue
+  const dialogues = {
+    elder_oak: 'The forest holds many secrets. Explore and grow stronger!',
+    fisher_kai: 'The coast is full of Water-type monsters. Great for fishing!',
+    mystic_yara: 'The lake resonates with ancient power...',
+    blacksmith_gorn: 'I forge the mightiest weapons. Show me your strength!',
+    shadow_keeper: 'Only the brave dare enter the Shadow Peak.',
+    wandering_trader: 'I travel the land seeking rare monsters. You should too!',
+  };
+  showNpcDialogue(npc.name, dialogues[npc.id] || 'Hello, trainer!', [{ text: 'OK', action: () => closeNpcDialogue() }]);
+}
+
+function getStoryQuestForNpc(npcId) {
+  // Find the next story quest this NPC offers
+  for (const q of FP_STORY_QUESTS) {
+    if (q.npc !== npcId) continue;
+    // Only offer if previous quest is complete (or this is quest 1)
+    if (q.id > 1 && fpQuests.story[q.id - 1] !== 'complete') continue;
+    if (!fpQuests.story[q.id] || fpQuests.story[q.id] === 'active') return q;
+  }
+  return null;
+}
+
+function getSideQuestForNpc(npcId) {
+  for (const q of FP_SIDE_QUESTS) {
+    if (q.npc !== npcId) continue;
+    if (!fpQuests.side[q.id] || fpQuests.side[q.id] === 'active') return q;
+  }
+  return null;
+}
+
+function npcHasAvailableQuest(npcId) {
+  const sq = getStoryQuestForNpc(npcId);
+  if (sq && !fpQuests.story[sq.id]) return true;
+  if (sq && fpQuests.story[sq.id] === 'active' && sq.check(fpQuestProgress)) return true;
+  const side = getSideQuestForNpc(npcId);
+  if (side && !fpQuests.side[side.id]) return true;
+  if (side && fpQuests.side[side.id] === 'active' && side.check(fpQuestProgress)) return true;
+  return false;
+}
+
+function offerQuest(type, quest, npc) {
+  const text = quest.intro || quest.objective;
+  showNpcDialogue(npc.name, text, [
+    { text: 'ACCEPT', action: () => { fpQuests[type][quest.id] = 'active'; saveFreeplay(); showNpcDialogue(npc.name, `Quest accepted: ${quest.name}\n${quest.objective}`, [{ text: 'OK', action: () => closeNpcDialogue() }]); } },
+    { text: 'DECLINE', action: () => closeNpcDialogue() },
+  ]);
+}
+
+function completeQuest(type, quest) {
+  fpQuests[type][quest.id] = 'complete';
+  if (quest.reward > 0) {
+    // Award XP to all team members
+    for (const m of fpTeam) {
+      m.xp += quest.reward;
+      const newLevel = Math.min(20, getLevel(m.xp));
+      if (newLevel > m.level) {
+        const newStats = getStatsForLevel(MONSTER_DEFS[m.defKey], newLevel);
+        m.level = newLevel;
+        m.maxHp = newStats.maxHp; m.hp = newStats.maxHp;
+        m.atk = newStats.atk; m.baseAtk = newStats.atk;
+        m.def = newStats.def; m.baseDef = newStats.def;
+        m.spd = newStats.spd; m.baseSpd = newStats.spd;
+      }
+    }
+  }
+  // Check quest achievements
+  const completedStory = FP_STORY_QUESTS.filter(q => fpQuests.story[q.id] === 'complete').length;
+  if (completedStory >= 10) ggTry('bm_fp_quests_all');
+
+  SFX.buff();
+  saveFreeplay();
+  const rewardText = quest.reward > 0 ? `\n\n+${quest.reward} XP to all team members!` : '';
+  const completeText = quest.complete || `${quest.name} completed!`;
+  showNpcDialogue('Quest Complete!', `${completeText}${rewardText}`, [{ text: 'OK', action: () => closeNpcDialogue() }]);
+}
+
+function checkQuestCompletion() {
+  // Auto-complete quests that have been fulfilled
+  // (This is called after battles/captures, but completion dialogue only shows when talking to NPC)
+  // Just update progress counters
+  fpQuestProgress.wildBattlesWon = fpWildBattlesWon;
+  fpQuestProgress.differentSpecies = fpSpeciesCaught.length;
+  fpQuestProgress.speciesCaught = fpSpeciesCaught.length;
+}
+
+function showNpcDialogue(name, text, buttons) {
+  fpMapActive = false;
+  document.getElementById('fp-npc-name').textContent = name;
+  document.getElementById('fp-npc-text').textContent = text;
+  const btnContainer = document.getElementById('fp-npc-buttons');
+  btnContainer.innerHTML = '';
+  for (const b of buttons) {
+    const btn = document.createElement('button');
+    btn.className = 'btn-sm';
+    btn.textContent = b.text;
+    btn.style.margin = '4px';
+    btn.onclick = b.action;
+    btnContainer.appendChild(btn);
+  }
+  document.getElementById('fp-npc-dialogue').classList.add('visible');
+}
+
+function closeNpcDialogue() {
+  document.getElementById('fp-npc-dialogue').classList.remove('visible');
+  fpMapActive = true;
+  fpMapKeys = {};
+  if (!fpMapAnimFrame) fpMapLoop();
+}
+
+// Quest log
+function showQuestLog() {
+  fpMapActive = false;
+  const content = document.getElementById('fp-quest-content');
+  content.innerHTML = '';
+
+  const addSection = (title, quests, type) => {
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:0.8rem;color:#e040fb;margin:8px 0 4px;font-weight:bold';
+    header.textContent = title;
+    content.appendChild(header);
+    for (const q of quests) {
+      const status = fpQuests[type][q.id];
+      if (!status) continue; // not started
+      const item = document.createElement('div');
+      item.className = 'fp-quest-item';
+      item.innerHTML = `
+        <div class="fp-quest-name ${status === 'complete' ? 'complete' : ''}">${status === 'complete' ? '\u2713 ' : '\u25CB '}${q.name}</div>
+        <div class="fp-quest-obj">${q.objective}${q.reward > 0 ? ` (${q.reward} XP)` : ''}</div>
+      `;
+      content.appendChild(item);
+    }
+  };
+
+  addSection('Story Quests', FP_STORY_QUESTS, 'story');
+  addSection('Side Quests', FP_SIDE_QUESTS, 'side');
+
+  if (content.children.length === 0) {
+    content.innerHTML = '<div style="color:#666;text-align:center;padding:16px">No quests yet. Talk to NPCs to get quests!</div>';
+  }
+
+  document.getElementById('fp-quest-overlay').classList.add('visible');
+}
+
+function closeQuestLog() {
+  document.getElementById('fp-quest-overlay').classList.remove('visible');
+  fpMapActive = true;
+  fpMapKeys = {};
+  if (!fpMapAnimFrame) fpMapLoop();
+}
+
+// Track move learns for quest progress
+const _origConfirmFpMoveLearn = confirmFpMoveLearn;
+confirmFpMoveLearn = function() {
+  _origConfirmFpMoveLearn();
+  fpQuestProgress.moveLearnedCount++;
+};
+
+// ═══════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════
 showScreen('title-screen');
+updateTitleFreeplayBtn();
 </script>
 </body>
 </html>

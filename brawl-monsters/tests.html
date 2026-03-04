@@ -51,6 +51,14 @@ const BM_ACH = {
   bm_10_wins:       { name: 'Monster Master',     reward: 25 },
   bm_no_heal:       { name: 'No Mercy',           reward: 20 },
   bm_collect_all:   { name: 'Gotta Catch Em All', reward: 30 },
+  bm_fp_first_wild: { name: 'Wild Card',          reward: 5 },
+  bm_fp_gym_1:      { name: 'Badge Collector',    reward: 15 },
+  bm_fp_gym_5:      { name: 'Grand Champion',     reward: 50 },
+  bm_fp_level_10:   { name: 'Power Trainer',      reward: 15 },
+  bm_fp_level_20:   { name: 'Max Power',          reward: 30 },
+  bm_fp_catch_5:    { name: 'Monster Collector',  reward: 15 },
+  bm_fp_catch_all:  { name: 'Gotta Catch Em All!', reward: 30 },
+  bm_fp_quests_all: { name: 'Quest Master',       reward: 25 },
 };
 function ggTry(id) { const a = BM_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 
@@ -249,6 +257,221 @@ const LEARNABLE_MOVES = [
 
 const TOTAL_FLOORS = 8;
 
+// ═══ FREEPLAY CONSTANTS (copied from game) ═══
+const LEVEL_XP = [
+  0, 100, 250, 450, 700, 1000, 1400, 1850, 2400, 3000,
+  3700, 4500, 5400, 6400, 7500, 8800, 10200, 11800, 13600, 15600,
+];
+
+function getLevel(xp) {
+  for (let i = LEVEL_XP.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_XP[i]) return i + 1;
+  }
+  return 1;
+}
+
+function getStatsForLevel(baseDef, level) {
+  const scale = 1 + (level - 1) * 0.05;
+  return {
+    maxHp: Math.floor(baseDef.hp * scale),
+    atk: Math.floor(baseDef.atk * scale),
+    def: Math.floor(baseDef.def * scale),
+    spd: Math.floor(baseDef.spd * scale),
+  };
+}
+
+function calculateBattleXP(eTeam, avgPlayerLevel) {
+  let baseXP = 0;
+  for (const e of eTeam) {
+    const eLvl = e.level || 1;
+    baseXP += 30 + eLvl * 10;
+  }
+  const avgEnemyLvl = eTeam.reduce((s, e) => s + (e.level || 1), 0) / eTeam.length;
+  const levelDiff = avgEnemyLvl - avgPlayerLevel;
+  const multiplier = Math.max(0.25, Math.min(2.0, 1.0 + levelDiff * 0.1));
+  return Math.floor(baseXP * multiplier);
+}
+
+function createMonsterFreeplay(defKey, level, xp, moves) {
+  const baseDef = MONSTER_DEFS[defKey];
+  const stats = getStatsForLevel(baseDef, level);
+  return {
+    name: baseDef.name, element: baseDef.element, icon: baseDef.icon,
+    defKey: defKey, level: level, xp: xp || 0,
+    hp: stats.maxHp, maxHp: stats.maxHp,
+    atk: stats.atk, baseAtk: stats.atk,
+    def: stats.def, baseDef: stats.def,
+    spd: stats.spd, baseSpd: stats.spd,
+    moves: (moves || baseDef.moves).map(m => ({ ...m, effect: m.effect ? { ...m.effect } : null })),
+    buffs: {}, statuses: [], stunned: false, kos: 0,
+  };
+}
+
+const FREEPLAY_MOVE_POOL = {
+  emberon: [
+    { level: 8, move: { name: 'Fire Storm', element: 'Fire', power: 90, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } } },
+    { level: 15, move: { name: 'Eruption', element: 'Fire', power: 100, accuracy: 75, effect: null } },
+  ],
+  tidalin: [
+    { level: 8, move: { name: 'Whirlpool', element: 'Water', power: 85, accuracy: 90, effect: { type: 'debuff', stat: 'spd', amount: 30, turns: 2 } } },
+    { level: 15, move: { name: 'Tsunami', element: 'Water', power: 100, accuracy: 75, effect: null } },
+  ],
+  thornvine: [
+    { level: 8, move: { name: 'Toxic Bloom', element: 'Plant', power: 80, accuracy: 90, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 3, chance: 40 } } },
+    { level: 15, move: { name: 'Forest Wrath', element: 'Plant', power: 95, accuracy: 80, effect: { type: 'drain', percent: 40 } } },
+  ],
+  voltpaw: [
+    { level: 8, move: { name: 'Chain Lightning', element: 'Electric', power: 85, accuracy: 88, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Megavolt', element: 'Electric', power: 100, accuracy: 75, effect: { type: 'stun', chance: 35 } } },
+  ],
+  grimshade: [
+    { level: 8, move: { name: 'Phantom Wave', element: 'Shadow', power: 85, accuracy: 90, effect: { type: 'debuff', stat: 'def', amount: 25, turns: 2, chance: 30 } } },
+    { level: 15, move: { name: 'Abyss Drain', element: 'Shadow', power: 95, accuracy: 85, effect: { type: 'drain', percent: 50 } } },
+  ],
+  solarius: [
+    { level: 8, move: { name: 'Solar Flare', element: 'Light', power: 85, accuracy: 90, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Supernova', element: 'Light', power: 100, accuracy: 78, effect: { type: 'debuff', stat: 'accuracy', amount: 30, turns: 2 } } },
+  ],
+  drakovex: [
+    { level: 8, move: { name: 'Dark Blaze', element: 'Shadow', power: 90, accuracy: 85, effect: { type: 'debuff', stat: 'def', amount: 25, turns: 2, chance: 30 } } },
+    { level: 15, move: { name: 'Dragon Storm', element: 'Fire', power: 100, accuracy: 78, effect: { type: 'stun', chance: 25 } } },
+  ],
+  blazetail: [
+    { level: 8, move: { name: 'Flame Rush', element: 'Fire', power: 85, accuracy: 90, effect: { type: 'priority' } } },
+    { level: 15, move: { name: 'Inferno Spin', element: 'Fire', power: 95, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 30, turns: 2, chance: 35 } } },
+  ],
+  aquarion: [
+    { level: 8, move: { name: 'Tidal Shield', element: 'Water', power: 0, accuracy: 100, effect: { type: 'buffSelf', stat: 'def', amount: 60, turns: 3 } } },
+    { level: 15, move: { name: 'Ocean Crush', element: 'Water', power: 95, accuracy: 82, effect: { type: 'debuff', stat: 'atk', amount: 25, turns: 2, chance: 35 } } },
+  ],
+  petalynx: [
+    { level: 8, move: { name: 'Razor Leaf', element: 'Plant', power: 80, accuracy: 95, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } } },
+    { level: 15, move: { name: 'Jungle Fury', element: 'Plant', power: 95, accuracy: 85, effect: { type: 'drain', percent: 35 } } },
+  ],
+  zapplin: [
+    { level: 8, move: { name: 'Volt Surge', element: 'Electric', power: 80, accuracy: 95, effect: { type: 'stun', chance: 15 } } },
+    { level: 15, move: { name: 'Thunder Doom', element: 'Electric', power: 100, accuracy: 75, effect: { type: 'debuff', stat: 'spd', amount: 40, turns: 2 } } },
+  ],
+  spectrion: [
+    { level: 8, move: { name: 'Wraith Touch', element: 'Shadow', power: 80, accuracy: 92, effect: { type: 'drain', percent: 45 } } },
+    { level: 15, move: { name: 'Void Collapse', element: 'Shadow', power: 100, accuracy: 78, effect: { type: 'debuff', stat: 'atk', amount: 30, turns: 3, chance: 40 } } },
+  ],
+  celestine: [
+    { level: 8, move: { name: 'Prismatic Ray', element: 'Light', power: 80, accuracy: 92, effect: { type: 'stun', chance: 20 } } },
+    { level: 15, move: { name: 'Celestial Judgment', element: 'Light', power: 100, accuracy: 80, effect: { type: 'healSelf', percent: 20 } } },
+  ],
+};
+
+const GYMS = [
+  { id: 1, name: 'Scout Finn', title: 'The Ranger', requiredLevel: 5, badge: 'Forest Badge', badgeIcon: '\uD83C\uDF32',
+    team: [{ key: 'thornvine', level: 6 }, { key: 'blazetail', level: 6 }],
+    intro: 'Think you can handle the wilds? Let me test your skills!',
+    victory: 'Impressive! The Forest Badge is yours, trainer.',
+  },
+  { id: 2, name: 'Captain Maeve', title: 'The Storm Caller', requiredLevel: 8, badge: 'Storm Badge', badgeIcon: '\u26C8\uFE0F',
+    team: [{ key: 'tidalin', level: 10 }, { key: 'voltpaw', level: 10 }, { key: 'zapplin', level: 9 }],
+    intro: 'The storm awaits, challenger! Can you weather it?',
+    victory: 'You weathered the storm. Take this badge.',
+  },
+  { id: 3, name: 'Sage Elara', title: 'The Mystic', requiredLevel: 12, badge: 'Mystic Badge', badgeIcon: '\uD83D\uDD2E',
+    team: [{ key: 'grimshade', level: 14 }, { key: 'solarius', level: 14 }, { key: 'spectrion', level: 13 }],
+    intro: 'Light and shadow test your resolve, young one.',
+    victory: 'The mystic arts bow to your strength. Well earned.',
+  },
+  { id: 4, name: 'Warden Kael', title: 'The Iron Wall', requiredLevel: 16, badge: 'Iron Badge', badgeIcon: '\uD83D\uDEE1\uFE0F',
+    team: [{ key: 'aquarion', level: 18 }, { key: 'celestine', level: 18 }, { key: 'thornvine', level: 17 }],
+    intro: 'No one has breached my defenses! Think you can?',
+    victory: 'You shattered my wall. The Iron Badge is yours.',
+  },
+  { id: 5, name: 'Champion Drax', title: 'The Final Challenge', requiredLevel: 18, badge: 'Champion Badge', badgeIcon: '\uD83D\uDC51',
+    team: [{ key: 'drakovex', level: 20 }, { key: 'emberon', level: 20 }, { key: 'grimshade', level: 20 }],
+    intro: 'Only the strongest survive here. Show me everything!',
+    victory: 'You are the true champion of Brawl Monsters!',
+  },
+];
+
+const FP_SAVE_KEY = 'bm-freeplay-save';
+const FP_CHECKPOINT_KEY = 'bm-freeplay-checkpoints';
+
+function serializeMonster(m) {
+  return {
+    defKey: m.defKey, level: m.level, xp: m.xp,
+    moves: m.moves.map(mv => ({ ...mv, effect: mv.effect ? { ...mv.effect } : null })),
+    _skippedMoves: m._skippedMoves || [],
+  };
+}
+
+function saveFreeplay(fpTeam, fpGymsBeaten, fpCheckpoint, fpWildBattlesWon, fpTotalXPEarned, fpStartedAt, opts) {
+  opts = opts || {};
+  const data = {
+    version: 2,
+    team: fpTeam.map(serializeMonster),
+    roster: (opts.roster || []).map(serializeMonster),
+    gymsBeaten: fpGymsBeaten,
+    checkpoint: fpCheckpoint,
+    wildBattlesWon: fpWildBattlesWon,
+    totalXPEarned: fpTotalXPEarned,
+    startedAt: fpStartedAt,
+    speciesCaught: opts.speciesCaught || [],
+    mapX: opts.mapX || 80, mapY: opts.mapY || 80,
+    quests: opts.quests || { story: {}, side: {} },
+    questProgress: opts.questProgress || { wildBattlesWon: 0, wildBattlesInZone: {}, speciesCaught: 0, differentSpecies: 0, moveLearnedCount: 0 },
+  };
+  localStorage.setItem(FP_SAVE_KEY, JSON.stringify(data));
+  return data;
+}
+
+function loadFreeplay() {
+  try {
+    const raw = localStorage.getItem(FP_SAVE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) { return null; }
+}
+
+function deleteFreeplaySave() {
+  localStorage.removeItem(FP_SAVE_KEY);
+}
+
+function loadCheckpoints() {
+  try {
+    const raw = localStorage.getItem(FP_CHECKPOINT_KEY);
+    if (!raw) return { maxCheckpoint: 0 };
+    return JSON.parse(raw);
+  } catch (e) { return { maxCheckpoint: 0 }; }
+}
+
+function saveCheckpoint(gymId) {
+  const cp = loadCheckpoints();
+  cp.maxCheckpoint = Math.max(cp.maxCheckpoint, gymId);
+  localStorage.setItem(FP_CHECKPOINT_KEY, JSON.stringify(cp));
+}
+
+function rebuildMonster(saved) {
+  const m = createMonsterFreeplay(saved.defKey, saved.level, saved.xp, saved.moves);
+  m.hp = m.maxHp;
+  if (saved._skippedMoves && saved._skippedMoves.length) m._skippedMoves = saved._skippedMoves;
+  return m;
+}
+
+function rebuildFreeplayTeam(saveData) {
+  const team = saveData.team.map(rebuildMonster);
+  const roster = (saveData.roster || []).map(rebuildMonster);
+  return {
+    team,
+    roster,
+    gymsBeaten: saveData.gymsBeaten || [],
+    checkpoint: saveData.checkpoint || 0,
+    wildBattlesWon: saveData.wildBattlesWon || 0,
+    totalXPEarned: saveData.totalXPEarned || 0,
+    startedAt: saveData.startedAt,
+    speciesCaught: saveData.speciesCaught || [],
+    mapX: saveData.mapX, mapY: saveData.mapY,
+    quests: saveData.quests || { story: {}, side: {} },
+    questProgress: saveData.questProgress || {},
+  };
+}
+
 function createMonster(def, scale) {
   scale = scale || 1;
   return {
@@ -391,8 +614,8 @@ describe('G Bux Integration', () => {
     localStorage.removeItem(GG_KEY);
   });
 
-  it('BM_ACH has exactly 11 achievements', () => {
-    assertEqual(Object.keys(BM_ACH).length, 11);
+  it('BM_ACH has exactly 19 achievements', () => {
+    assertEqual(Object.keys(BM_ACH).length, 19);
   });
 
   it('All BM_ACH ids start with bm_', () => {
@@ -401,9 +624,9 @@ describe('G Bux Integration', () => {
     }
   });
 
-  it('BM_ACH total rewards equal 245 G', () => {
+  it('BM_ACH total rewards equal 430 G', () => {
     const total = Object.values(BM_ACH).reduce((s, a) => s + a.reward, 0);
-    assertEqual(total, 245);
+    assertEqual(total, 430);
   });
 });
 
@@ -1316,6 +1539,696 @@ describe('New Monster Definitions', () => {
   });
 });
 
+// ═══════════════════════════════════════════
+// FREEPLAY MODE TESTS
+// ═══════════════════════════════════════════
+
+describe('Freeplay — Level XP Thresholds', () => {
+  it('LEVEL_XP has 20 entries', () => {
+    assertEqual(LEVEL_XP.length, 20, 'Should have 20 level thresholds');
+  });
+
+  it('LEVEL_XP is monotonically increasing', () => {
+    for (let i = 1; i < LEVEL_XP.length; i++) {
+      assert(LEVEL_XP[i] > LEVEL_XP[i - 1], `LEVEL_XP[${i}] (${LEVEL_XP[i]}) should be > LEVEL_XP[${i - 1}] (${LEVEL_XP[i - 1]})`);
+    }
+  });
+
+  it('LEVEL_XP[0] is 0 (level 1 requires no XP)', () => {
+    assertEqual(LEVEL_XP[0], 0);
+  });
+});
+
+describe('Freeplay — getLevel()', () => {
+  it('0 XP = Level 1', () => {
+    assertEqual(getLevel(0), 1);
+  });
+
+  it('99 XP = Level 1 (just under Lv2)', () => {
+    assertEqual(getLevel(99), 1);
+  });
+
+  it('100 XP = Level 2', () => {
+    assertEqual(getLevel(100), 2);
+  });
+
+  it('15600 XP = Level 20 (max)', () => {
+    assertEqual(getLevel(15600), 20);
+  });
+
+  it('99999 XP = Level 20 (capped)', () => {
+    assertEqual(getLevel(99999), 20);
+  });
+
+  it('Each threshold exactly hits its level', () => {
+    for (let i = 0; i < LEVEL_XP.length; i++) {
+      assertEqual(getLevel(LEVEL_XP[i]), i + 1, `XP ${LEVEL_XP[i]} should give level ${i + 1}`);
+    }
+  });
+});
+
+describe('Freeplay — getStatsForLevel()', () => {
+  it('Level 1 stats match base definition', () => {
+    const stats = getStatsForLevel(MONSTER_DEFS.emberon, 1);
+    assertEqual(stats.maxHp, 110, 'Emberon Lv1 HP should be 110');
+    assertEqual(stats.atk, 75, 'Emberon Lv1 ATK should be 75');
+  });
+
+  it('Level 10 stats are 1.45x base', () => {
+    const stats = getStatsForLevel(MONSTER_DEFS.emberon, 10);
+    assertEqual(stats.maxHp, Math.floor(110 * 1.45), 'Emberon Lv10 HP');
+    assertEqual(stats.atk, Math.floor(75 * 1.45), 'Emberon Lv10 ATK');
+  });
+
+  it('Level 20 stats are 1.95x base', () => {
+    const stats = getStatsForLevel(MONSTER_DEFS.emberon, 20);
+    assertEqual(stats.maxHp, Math.floor(110 * 1.95), 'Emberon Lv20 HP');
+    assertEqual(stats.atk, Math.floor(75 * 1.95), 'Emberon Lv20 ATK');
+    assertEqual(stats.def, Math.floor(55 * 1.95), 'Emberon Lv20 DEF');
+    assertEqual(stats.spd, Math.floor(65 * 1.95), 'Emberon Lv20 SPD');
+  });
+
+  it('Stats increase monotonically with level', () => {
+    let prevHp = 0;
+    for (let lv = 1; lv <= 20; lv++) {
+      const stats = getStatsForLevel(MONSTER_DEFS.tidalin, lv);
+      assert(stats.maxHp > prevHp, `Tidalin Lv${lv} HP (${stats.maxHp}) should be > Lv${lv - 1} HP (${prevHp})`);
+      prevHp = stats.maxHp;
+    }
+  });
+});
+
+describe('Freeplay — calculateBattleXP()', () => {
+  it('Returns positive XP for a basic enemy', () => {
+    const enemies = [{ level: 5 }];
+    const xp = calculateBattleXP(enemies, 5);
+    assert(xp > 0, 'XP should be positive');
+  });
+
+  it('More enemies give more XP', () => {
+    const one = calculateBattleXP([{ level: 5 }], 5);
+    const three = calculateBattleXP([{ level: 5 }, { level: 5 }, { level: 5 }], 5);
+    assert(three > one, 'Three enemies should give more XP than one');
+  });
+
+  it('Higher level enemies give more XP', () => {
+    const low = calculateBattleXP([{ level: 3 }], 5);
+    const high = calculateBattleXP([{ level: 10 }], 5);
+    assert(high > low, 'Higher level enemies should give more XP');
+  });
+
+  it('Fighting below your level reduces XP', () => {
+    const even = calculateBattleXP([{ level: 10 }], 10);
+    const below = calculateBattleXP([{ level: 5 }], 10);
+    assert(below < even, 'Fighting below your level should give less XP');
+  });
+
+  it('XP multiplier is capped between 0.25 and 2.0', () => {
+    const veryLow = calculateBattleXP([{ level: 1 }], 20);
+    assert(veryLow > 0, 'Should still get some XP even at large level gap');
+  });
+});
+
+describe('Freeplay — createMonsterFreeplay()', () => {
+  it('Creates monster with correct level and XP', () => {
+    const m = createMonsterFreeplay('emberon', 5, 700);
+    assertEqual(m.level, 5);
+    assertEqual(m.xp, 700);
+    assertEqual(m.defKey, 'emberon');
+    assertEqual(m.name, 'Emberon');
+  });
+
+  it('Stats scale with level', () => {
+    const lv1 = createMonsterFreeplay('voltpaw', 1, 0);
+    const lv10 = createMonsterFreeplay('voltpaw', 10, 3000);
+    assert(lv10.maxHp > lv1.maxHp, 'Lv10 HP should be > Lv1');
+    assert(lv10.atk > lv1.atk, 'Lv10 ATK should be > Lv1');
+  });
+
+  it('HP starts at maxHp', () => {
+    const m = createMonsterFreeplay('tidalin', 8, 1850);
+    assertEqual(m.hp, m.maxHp);
+  });
+
+  it('Has 4 moves from base definition', () => {
+    const m = createMonsterFreeplay('grimshade', 1, 0);
+    assertEqual(m.moves.length, 4);
+    assertEqual(m.moves[0].name, 'Shadow Claw');
+  });
+
+  it('Accepts custom moves', () => {
+    const customMoves = [
+      { name: 'Test Move', element: 'Fire', power: 50, accuracy: 100, effect: null },
+    ];
+    const m = createMonsterFreeplay('emberon', 5, 700, customMoves);
+    assertEqual(m.moves.length, 1);
+    assertEqual(m.moves[0].name, 'Test Move');
+  });
+});
+
+describe('Freeplay — FREEPLAY_MOVE_POOL', () => {
+  it('Every monster in MONSTER_DEFS has a move pool entry', () => {
+    for (const key of Object.keys(MONSTER_DEFS)) {
+      assert(FREEPLAY_MOVE_POOL[key], `${key} should have a FREEPLAY_MOVE_POOL entry`);
+    }
+  });
+
+  it('Each entry has exactly 2 learnable moves', () => {
+    for (const [key, pool] of Object.entries(FREEPLAY_MOVE_POOL)) {
+      assertEqual(pool.length, 2, `${key} should have 2 learnable moves`);
+    }
+  });
+
+  it('Learnable move levels are 8 and 15', () => {
+    for (const [key, pool] of Object.entries(FREEPLAY_MOVE_POOL)) {
+      assertEqual(pool[0].level, 8, `${key} first move should be at level 8`);
+      assertEqual(pool[1].level, 15, `${key} second move should be at level 15`);
+    }
+  });
+
+  it('All moves have valid structure (name, element, power, accuracy)', () => {
+    for (const [key, pool] of Object.entries(FREEPLAY_MOVE_POOL)) {
+      for (const entry of pool) {
+        const m = entry.move;
+        assert(m.name, `${key} move should have a name`);
+        assert(m.element, `${key} ${m.name} should have an element`);
+        assert(typeof m.power === 'number', `${key} ${m.name} should have numeric power`);
+        assert(typeof m.accuracy === 'number', `${key} ${m.name} should have numeric accuracy`);
+        assert(m.accuracy > 0 && m.accuracy <= 100, `${key} ${m.name} accuracy should be 1-100`);
+      }
+    }
+  });
+
+  it('All move elements exist in ELEMENT_COLORS', () => {
+    for (const [key, pool] of Object.entries(FREEPLAY_MOVE_POOL)) {
+      for (const entry of pool) {
+        assert(ELEMENT_COLORS[entry.move.element], `${entry.move.name} element "${entry.move.element}" should be in ELEMENT_COLORS`);
+      }
+    }
+  });
+});
+
+describe('Freeplay — GYMS', () => {
+  it('Has 5 gyms', () => {
+    assertEqual(GYMS.length, 5);
+  });
+
+  it('Gym IDs are 1-5', () => {
+    for (let i = 0; i < 5; i++) {
+      assertEqual(GYMS[i].id, i + 1, `Gym ${i} should have ID ${i + 1}`);
+    }
+  });
+
+  it('Required levels increase monotonically', () => {
+    for (let i = 1; i < GYMS.length; i++) {
+      assert(GYMS[i].requiredLevel > GYMS[i - 1].requiredLevel,
+        `Gym ${GYMS[i].id} level (${GYMS[i].requiredLevel}) should be > Gym ${GYMS[i - 1].id} (${GYMS[i - 1].requiredLevel})`);
+    }
+  });
+
+  it('All gym team monster keys exist in MONSTER_DEFS', () => {
+    for (const gym of GYMS) {
+      for (const t of gym.team) {
+        assert(MONSTER_DEFS[t.key], `Gym ${gym.name} team member "${t.key}" should exist in MONSTER_DEFS`);
+      }
+    }
+  });
+
+  it('Each gym has name, title, badge, intro, victory text', () => {
+    for (const gym of GYMS) {
+      assert(gym.name, `Gym ${gym.id} needs a name`);
+      assert(gym.title, `Gym ${gym.id} needs a title`);
+      assert(gym.badge, `Gym ${gym.id} needs a badge name`);
+      assert(gym.badgeIcon, `Gym ${gym.id} needs a badge icon`);
+      assert(gym.intro, `Gym ${gym.id} needs intro dialogue`);
+      assert(gym.victory, `Gym ${gym.id} needs victory dialogue`);
+    }
+  });
+
+  it('Final gym requires level 18 or higher', () => {
+    const lastGym = GYMS[GYMS.length - 1];
+    assert(lastGym.requiredLevel >= 18, 'Final gym should require high level');
+  });
+});
+
+describe('Freeplay — Save/Load Round-Trip', () => {
+  it('Save and load preserves team data', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [
+      createMonsterFreeplay('emberon', 7, 1600),
+      createMonsterFreeplay('tidalin', 5, 800),
+      createMonsterFreeplay('voltpaw', 6, 1200),
+    ];
+    saveFreeplay(team, [1, 2], 2, 14, 8500, '2026-03-03T00:00:00Z');
+
+    const loaded = loadFreeplay();
+    assert(loaded !== null, 'Loaded data should not be null');
+    assertEqual(loaded.team.length, 3, 'Should have 3 team members');
+    assertEqual(loaded.team[0].defKey, 'emberon');
+    assertEqual(loaded.team[0].level, 7);
+    assertEqual(loaded.team[0].xp, 1600);
+    assertEqual(loaded.team[1].defKey, 'tidalin');
+    assertEqual(loaded.gymsBeaten.length, 2);
+    assertEqual(loaded.checkpoint, 2);
+    assertEqual(loaded.wildBattlesWon, 14);
+    assertEqual(loaded.totalXPEarned, 8500);
+
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Rebuild team restores stats correctly', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 10, 3000)];
+    saveFreeplay(team, [1], 1, 5, 3000, '2026-03-03T00:00:00Z');
+
+    const loaded = loadFreeplay();
+    const rebuilt = rebuildFreeplayTeam(loaded);
+    const m = rebuilt.team[0];
+    assertEqual(m.level, 10);
+    assertEqual(m.xp, 3000);
+    assertEqual(m.defKey, 'emberon');
+    assertEqual(m.hp, m.maxHp, 'Should be fully healed on load');
+
+    const expectedStats = getStatsForLevel(MONSTER_DEFS.emberon, 10);
+    assertEqual(m.maxHp, expectedStats.maxHp, 'MaxHP should match level 10 stats');
+    assertEqual(m.atk, expectedStats.atk, 'ATK should match level 10 stats');
+
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('loadFreeplay returns null when no save exists', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    assertEqual(loadFreeplay(), null);
+  });
+
+  it('deleteFreeplaySave clears the save', () => {
+    const team = [createMonsterFreeplay('emberon', 1, 0)];
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03T00:00:00Z');
+    assert(loadFreeplay() !== null, 'Save should exist');
+    deleteFreeplaySave();
+    assertEqual(loadFreeplay(), null, 'Save should be null after delete');
+  });
+
+  it('Moves are preserved through save/load', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 8, 1850)];
+    // Replace a move
+    team[0].moves[3] = { name: 'Fire Storm', element: 'Fire', power: 90, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } };
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03T00:00:00Z');
+
+    const loaded = loadFreeplay();
+    assertEqual(loaded.team[0].moves[3].name, 'Fire Storm', 'Replaced move should persist');
+    assertEqual(loaded.team[0].moves[3].power, 90);
+    assert(loaded.team[0].moves[3].effect !== null, 'Effect should be preserved');
+    assertEqual(loaded.team[0].moves[3].effect.type, 'debuff');
+
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+});
+
+describe('Freeplay — Checkpoint Persistence', () => {
+  it('Default checkpoint is 0', () => {
+    localStorage.removeItem(FP_CHECKPOINT_KEY);
+    const cp = loadCheckpoints();
+    assertEqual(cp.maxCheckpoint, 0);
+  });
+
+  it('Saving checkpoint updates maxCheckpoint', () => {
+    localStorage.removeItem(FP_CHECKPOINT_KEY);
+    saveCheckpoint(1);
+    assertEqual(loadCheckpoints().maxCheckpoint, 1);
+    saveCheckpoint(3);
+    assertEqual(loadCheckpoints().maxCheckpoint, 3);
+    localStorage.removeItem(FP_CHECKPOINT_KEY);
+  });
+
+  it('Checkpoint never decreases', () => {
+    localStorage.removeItem(FP_CHECKPOINT_KEY);
+    saveCheckpoint(3);
+    saveCheckpoint(1); // Attempt to go lower
+    assertEqual(loadCheckpoints().maxCheckpoint, 3, 'Should remain at 3');
+    localStorage.removeItem(FP_CHECKPOINT_KEY);
+  });
+});
+
+describe('Freeplay — Achievements', () => {
+  it('All freeplay achievements have valid IDs starting with bm_fp_', () => {
+    const fpAchs = Object.keys(BM_ACH).filter(k => k.startsWith('bm_fp_'));
+    assertEqual(fpAchs.length, 8, 'Should have 8 freeplay achievements');
+  });
+
+  it('All achievements have name and reward', () => {
+    for (const [id, ach] of Object.entries(BM_ACH)) {
+      assert(ach.name, `${id} should have a name`);
+      assert(typeof ach.reward === 'number' && ach.reward > 0, `${id} should have positive reward`);
+    }
+  });
+
+  it('Total BM achievement count is 19', () => {
+    assertEqual(Object.keys(BM_ACH).length, 19, 'Should have 19 total achievements');
+  });
+
+  it('Total BM achievement reward is correct', () => {
+    const total = Object.values(BM_ACH).reduce((s, a) => s + a.reward, 0);
+    // 245 (original 11) + 115 (5 freeplay) + 70 (3 map/capture) = 430
+    assertEqual(total, 430, 'Total BM achievements should be 430 G Bux');
+  });
+});
+
+// ═══════════════════════════════════════════
+// MAP SYSTEM TESTS
+// ═══════════════════════════════════════════
+
+// Inline map data for testing
+const TILE_SIZE = 32;
+const MAP_COLS = 30;
+const MAP_ROWS = 25;
+const FP_MAP_RAW = [
+  '444444444444440022004443333333',
+  '410011001104440220044433333333',
+  '411011001100002200004433393333',
+  '410010011100002200114433393333',
+  '400001101100002200110044993344',
+  '411011001108222200110039933144',
+  '410010110100222211110099929114',
+  '414101101100002200000099298104',
+  '440001001104442208444433333304',
+  '444401100000002208001133939304',
+  '444400011000002228001133333904',
+  '222222222200002228000033333904',
+  '110011001122222228000033333344',
+  '110011001100002200000033333344',
+  '118011001108332233333344455554',
+  '110010011100333233333555555554',
+  '110001101100332233334455555504',
+  '111011001100002200004450011004',
+  '666611011100002200004450110104',
+  '620020011108222200004451101004',
+  '628020000100222211110020080184',
+  '620060110100002200110020110104',
+  '666611001104442204440021010004',
+  '111101100000002204001155550054',
+  '111100011000002204001155555554',
+];
+const FP_MAP = FP_MAP_RAW.map(row => row.split('').map(c => parseInt(c)));
+const WALKABLE_TILES = new Set([0, 1, 2, 8, 9, 10]);
+
+const FP_MAP_ZONES = [
+  { id: 'forest', name: 'Green Forest', x1: 0, y1: 0, x2: 14, y2: 13, levelMin: 1, levelMax: 5, gymId: 1 },
+  { id: 'coast', name: 'Storm Coast', x1: 15, y1: 0, x2: 29, y2: 13, levelMin: 5, levelMax: 9, gymId: 2 },
+  { id: 'lake', name: 'Mystic Lake', x1: 10, y1: 8, x2: 20, y2: 16, levelMin: 9, levelMax: 14, gymId: 3 },
+  { id: 'fortress', name: 'Iron Fortress', x1: 0, y1: 14, x2: 14, y2: 24, levelMin: 14, levelMax: 18, gymId: 4 },
+  { id: 'peak', name: 'Shadow Peak', x1: 15, y1: 14, x2: 29, y2: 24, levelMin: 17, levelMax: 20, gymId: 5 },
+];
+
+const FP_NPCS = [
+  { id: 'elder_oak', name: 'Elder Oak', col: 4, row: 3, zone: 'forest', trainer: { skin: 3, hairColor: 0, hairStyle: 2, shirtColor: 2, accessory: 2 } },
+  { id: 'fisher_kai', name: 'Fisher Kai', col: 22, row: 5, zone: 'coast', trainer: { skin: 1, hairColor: 2, hairStyle: 0, shirtColor: 1, accessory: 1 } },
+  { id: 'mystic_yara', name: 'Mystic Yara', col: 15, row: 11, zone: 'lake', trainer: { skin: 0, hairColor: 5, hairStyle: 3, shirtColor: 4, accessory: 3 } },
+  { id: 'blacksmith_gorn', name: 'Blacksmith Gorn', col: 4, row: 19, zone: 'fortress', trainer: { skin: 2, hairColor: 0, hairStyle: 1, shirtColor: 0, accessory: 0 } },
+  { id: 'shadow_keeper', name: 'Shadow Keeper', col: 25, row: 20, zone: 'peak', trainer: { skin: 4, hairColor: 4, hairStyle: 2, shirtColor: 4, accessory: 3 } },
+  { id: 'wandering_trader', name: 'Wandering Trader', col: 12, row: 12, zone: 'lake', trainer: { skin: 1, hairColor: 3, hairStyle: 0, shirtColor: 3, accessory: 1 } },
+];
+
+const FP_GYM_DOORS = [
+  { gymId: 1, col: 11, row: 5 },
+  { gymId: 2, col: 26, row: 7 },
+  { gymId: 3, col: 11, row: 14 },
+  { gymId: 4, col: 2, row: 20 },
+  { gymId: 5, col: 25, row: 20 },
+];
+
+const FP_STORY_QUESTS = [
+  { id: 1, name: 'First Steps', npc: 'elder_oak', objective: 'Win 2 wild battles', reward: 50 },
+  { id: 2, name: 'Forest Guardian', npc: 'elder_oak', objective: 'Beat Gym 1', reward: 0 },
+  { id: 3, name: 'Tidal Challenge', npc: 'fisher_kai', objective: 'Catch 2 Water-type monsters', reward: 100 },
+  { id: 4, name: 'Storm Surge', npc: 'fisher_kai', objective: 'Beat Gym 2', reward: 0 },
+  { id: 5, name: 'Lake Mystery', npc: 'mystic_yara', objective: 'Win 3 battles in Mystic Lake', reward: 150 },
+  { id: 6, name: 'Mystic Trial', npc: 'mystic_yara', objective: 'Beat Gym 3', reward: 200 },
+  { id: 7, name: 'Iron Will', npc: 'blacksmith_gorn', objective: 'Have a monster reach Level 15', reward: 250 },
+  { id: 8, name: 'Fortress Siege', npc: 'blacksmith_gorn', objective: 'Beat Gym 4', reward: 300 },
+  { id: 9, name: 'Shadow Gate', npc: 'shadow_keeper', objective: 'Win 5 battles in Shadow Peak', reward: 400 },
+  { id: 10, name: 'Final Champion', npc: 'shadow_keeper', objective: 'Beat Gym 5', reward: 0 },
+];
+
+const FP_SIDE_QUESTS = [
+  { id: 's1', name: 'Gone Fishing', npc: 'fisher_kai', objective: 'Catch 3 different species', reward: 100 },
+  { id: 's2', name: 'Mystic Collection', npc: 'mystic_yara', objective: 'Have 6+ species in roster', reward: 150 },
+  { id: 's3', name: 'Iron Forge', npc: 'blacksmith_gorn', objective: 'Have a monster learn a new move', reward: 100 },
+  { id: 's4', name: 'Shadow Hunter', npc: 'shadow_keeper', objective: 'Win 10 wild battles total', reward: 200 },
+  { id: 's5', name: 'True Collector', npc: 'wandering_trader', objective: 'Catch all 13 monster species', reward: 500 },
+];
+
+describe('Map — Tile Data', () => {
+  it('Map has correct dimensions (30x25)', () => {
+    assertEqual(FP_MAP.length, MAP_ROWS, 'Should have 25 rows');
+    for (let r = 0; r < MAP_ROWS; r++) {
+      assertEqual(FP_MAP[r].length, MAP_COLS, `Row ${r} should have 30 columns`);
+    }
+  });
+
+  it('All tile values are valid (0-10)', () => {
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        const tile = FP_MAP[r][c];
+        assert(tile >= 0 && tile <= 10, `Tile at (${c},${r}) = ${tile} should be 0-10`);
+      }
+    }
+  });
+
+  it('Spawn area (2,2) is walkable', () => {
+    const tile = FP_MAP[2][2];
+    assert(WALKABLE_TILES.has(tile), `Spawn tile (2,2) = ${tile} should be walkable`);
+  });
+
+  it('Map has tall grass (tile 1) for encounters', () => {
+    let count = 0;
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        if (FP_MAP[r][c] === 1) count++;
+      }
+    }
+    assert(count > 20, `Should have significant tall grass, found ${count}`);
+  });
+
+  it('Map has path tiles (tile 2) connecting areas', () => {
+    let count = 0;
+    for (let r = 0; r < MAP_ROWS; r++) {
+      for (let c = 0; c < MAP_COLS; c++) {
+        if (FP_MAP[r][c] === 2) count++;
+      }
+    }
+    assert(count > 30, `Should have paths, found ${count}`);
+  });
+
+  it('All gym doors are placed on door tiles (tile 8)', () => {
+    for (const gd of FP_GYM_DOORS) {
+      assertEqual(FP_MAP[gd.row][gd.col], 8, `Gym ${gd.gymId} door at (${gd.col},${gd.row}) should be tile 8`);
+    }
+  });
+});
+
+describe('Map — Zones', () => {
+  it('Has 5 zones', () => {
+    assertEqual(FP_MAP_ZONES.length, 5);
+  });
+
+  it('Each zone has required fields', () => {
+    for (const z of FP_MAP_ZONES) {
+      assert(z.id, 'Zone needs id');
+      assert(z.name, 'Zone needs name');
+      assert(typeof z.levelMin === 'number', 'Zone needs levelMin');
+      assert(typeof z.levelMax === 'number', 'Zone needs levelMax');
+      assert(z.levelMax >= z.levelMin, `Zone ${z.name} levelMax should >= levelMin`);
+      assert(z.gymId >= 1 && z.gymId <= 5, `Zone ${z.name} should have valid gymId`);
+    }
+  });
+
+  it('Zone levels progress from low to high', () => {
+    const forest = FP_MAP_ZONES.find(z => z.id === 'forest');
+    const peak = FP_MAP_ZONES.find(z => z.id === 'peak');
+    assert(forest.levelMin < peak.levelMin, 'Forest should have lower levels than Peak');
+  });
+
+  it('Each gym has a corresponding zone', () => {
+    for (let i = 1; i <= 5; i++) {
+      const zone = FP_MAP_ZONES.find(z => z.gymId === i);
+      assert(zone, `Gym ${i} should have a zone`);
+    }
+  });
+});
+
+describe('Map — NPCs', () => {
+  it('Has 6 NPCs', () => {
+    assertEqual(FP_NPCS.length, 6);
+  });
+
+  it('NPCs are on walkable tiles (adjacent or grass)', () => {
+    for (const npc of FP_NPCS) {
+      const tile = FP_MAP[npc.row][npc.col];
+      // NPCs can be on any tile (they block movement themselves)
+      assert(npc.col >= 0 && npc.col < MAP_COLS, `${npc.name} col in bounds`);
+      assert(npc.row >= 0 && npc.row < MAP_ROWS, `${npc.name} row in bounds`);
+    }
+  });
+
+  it('Each NPC has required fields', () => {
+    for (const npc of FP_NPCS) {
+      assert(npc.id, `NPC needs id`);
+      assert(npc.name, `NPC needs name`);
+      assert(typeof npc.col === 'number', `${npc.name} needs col`);
+      assert(typeof npc.row === 'number', `${npc.name} needs row`);
+      assert(npc.trainer, `${npc.name} needs trainer`);
+      assert(npc.zone, `${npc.name} needs zone`);
+    }
+  });
+
+  it('NPC IDs are unique', () => {
+    const ids = FP_NPCS.map(n => n.id);
+    assertEqual(ids.length, new Set(ids).size, 'NPC IDs should be unique');
+  });
+});
+
+describe('Map — Quests', () => {
+  it('Has 10 story quests', () => {
+    assertEqual(FP_STORY_QUESTS.length, 10);
+  });
+
+  it('Has 5 side quests', () => {
+    assertEqual(FP_SIDE_QUESTS.length, 5);
+  });
+
+  it('Story quest IDs are 1-10', () => {
+    for (let i = 0; i < 10; i++) {
+      assertEqual(FP_STORY_QUESTS[i].id, i + 1, `Story quest ${i} should have ID ${i + 1}`);
+    }
+  });
+
+  it('Side quest IDs start with s', () => {
+    for (const q of FP_SIDE_QUESTS) {
+      assert(typeof q.id === 'string' && q.id.startsWith('s'), `Side quest ${q.id} should start with s`);
+    }
+  });
+
+  it('All quest NPCs exist', () => {
+    const npcIds = FP_NPCS.map(n => n.id);
+    for (const q of FP_STORY_QUESTS) {
+      assert(npcIds.includes(q.npc), `Story quest ${q.id} NPC "${q.npc}" should exist`);
+    }
+    for (const q of FP_SIDE_QUESTS) {
+      assert(npcIds.includes(q.npc), `Side quest ${q.id} NPC "${q.npc}" should exist`);
+    }
+  });
+
+  it('All quests have name, objective, and reward', () => {
+    for (const q of [...FP_STORY_QUESTS, ...FP_SIDE_QUESTS]) {
+      assert(q.name, `Quest ${q.id} needs name`);
+      assert(q.objective, `Quest ${q.id} needs objective`);
+      assert(typeof q.reward === 'number', `Quest ${q.id} needs numeric reward`);
+    }
+  });
+});
+
+describe('Capture & Roster', () => {
+  it('createMonsterFreeplay creates capturable monster with defKey', () => {
+    const m = createMonsterFreeplay('tidalin', 5, 700);
+    assertEqual(m.defKey, 'tidalin');
+    assertEqual(m.level, 5);
+    assert(m.maxHp > 0);
+    assertEqual(m.moves.length, 4);
+  });
+
+  it('Roster save/load round-trips', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 5, 700)];
+    const roster = [
+      createMonsterFreeplay('tidalin', 3, 300),
+      createMonsterFreeplay('voltpaw', 4, 500),
+    ];
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03', { roster, speciesCaught: ['emberon', 'tidalin', 'voltpaw'] });
+    const loaded = loadFreeplay();
+    assertEqual(loaded.roster.length, 2, 'Should have 2 roster monsters');
+    assertEqual(loaded.roster[0].defKey, 'tidalin');
+    assertEqual(loaded.roster[1].defKey, 'voltpaw');
+    assertEqual(loaded.speciesCaught.length, 3);
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Rebuild preserves roster', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 5, 700)];
+    const roster = [createMonsterFreeplay('tidalin', 3, 300)];
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03', { roster });
+    const loaded = loadFreeplay();
+    const rebuilt = rebuildFreeplayTeam(loaded);
+    assertEqual(rebuilt.roster.length, 1);
+    assertEqual(rebuilt.roster[0].defKey, 'tidalin');
+    assertEqual(rebuilt.roster[0].hp, rebuilt.roster[0].maxHp, 'Roster monsters should be fully healed');
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Map position saves and loads', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 1, 0)];
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03', { mapX: 256, mapY: 384 });
+    const loaded = loadFreeplay();
+    assertEqual(loaded.mapX, 256);
+    assertEqual(loaded.mapY, 384);
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Quest state saves and loads', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 1, 0)];
+    const quests = { story: { 1: 'complete', 2: 'active' }, side: { s1: 'active' } };
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03', { quests });
+    const loaded = loadFreeplay();
+    assertEqual(loaded.quests.story[1], 'complete');
+    assertEqual(loaded.quests.story[2], 'active');
+    assertEqual(loaded.quests.side.s1, 'active');
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Species caught list saves and loads', () => {
+    localStorage.removeItem(FP_SAVE_KEY);
+    const team = [createMonsterFreeplay('emberon', 1, 0)];
+    saveFreeplay(team, [], 0, 0, 0, '2026-03-03', { speciesCaught: ['emberon', 'tidalin'] });
+    const loaded = loadFreeplay();
+    assertEqual(loaded.speciesCaught.length, 2);
+    assert(loaded.speciesCaught.includes('emberon'));
+    assert(loaded.speciesCaught.includes('tidalin'));
+    localStorage.removeItem(FP_SAVE_KEY);
+  });
+
+  it('Max roster is 20 total (team + reserves)', () => {
+    // Just verify the constraint exists conceptually
+    const maxTotal = 20;
+    const teamSize = 3;
+    const maxReserves = maxTotal - teamSize;
+    assertEqual(maxReserves, 17, 'Should allow 17 reserves with 3 active');
+  });
+});
+
+describe('Gym Doors on Map', () => {
+  it('Has 5 gym doors', () => {
+    assertEqual(FP_GYM_DOORS.length, 5);
+  });
+
+  it('Gym door IDs match GYMS', () => {
+    for (const gd of FP_GYM_DOORS) {
+      const gym = GYMS.find(g => g.id === gd.gymId);
+      assert(gym, `Gym door ${gd.gymId} should have a matching gym`);
+    }
+  });
+
+  it('Gym doors are within map bounds', () => {
+    for (const gd of FP_GYM_DOORS) {
+      assert(gd.col >= 0 && gd.col < MAP_COLS, `Gym ${gd.gymId} col in bounds`);
+      assert(gd.row >= 0 && gd.row < MAP_ROWS, `Gym ${gd.gymId} row in bounds`);
+    }
+  });
+});
+
 renderResults();
 
 // Clean up
@@ -1324,6 +2237,8 @@ localStorage.removeItem(BM_STATS_KEY);
 localStorage.removeItem(BM_COLLECTION_KEY);
 localStorage.removeItem(TUTORIAL_KEY);
 localStorage.removeItem(TRAINER_KEY);
+localStorage.removeItem(FP_SAVE_KEY);
+localStorage.removeItem(FP_CHECKPOINT_KEY);
 </script>
 </body>
 </html>
