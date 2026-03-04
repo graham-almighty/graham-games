@@ -2027,15 +2027,15 @@ function skipTutorial() {
 const TRAINER_KEY = 'bm-trainer';
 const SKIN_TONES = ['#ffe0bd','#f1c27d','#c68642','#8d5524','#5c3310'];
 const HAIR_COLORS = ['#1a1a1a','#6b4226','#d4a543','#cc3333','#3366cc','#8833aa'];
-const HAIR_STYLES = ['short','spiky','long','ponytail'];
+const HAIR_STYLES = ['boy','spiky','long','ponytail'];
 const SHIRT_COLORS = ['#cc3333','#3366cc','#33aa33','#ddcc22','#8833aa','#eeeedd'];
 const ACCESSORIES = ['none','cap','glasses','headband'];
 
 function getHairSwatchSVG(index, color) {
   const c = color || '#888';
   const svgs = [
-    // short: close-cropped sides
-    `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="13" r="7" fill="#555"/><path d="M5,13 Q5,6 12,5 Q19,6 19,13" fill="none" stroke="${c}" stroke-width="2.5"/><rect x="4" y="11" width="2.5" height="4" rx="1" fill="${c}"/><rect x="17.5" y="11" width="2.5" height="4" rx="1" fill="${c}"/></svg>`,
+    // boy: dome cap (like Mini Life)
+    `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="13" r="7" fill="#555"/><path d="M5,13 A7,7 0 0,1 19,13 Z" fill="${c}"/></svg>`,
     // spiky: pointed spikes
     `<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="13" r="7" fill="#555"/><polygon points="5,13 7,3 9,11 12,1 15,11 17,3 19,13" fill="${c}"/></svg>`,
     // long: flowing down sides
@@ -2170,13 +2170,14 @@ function getTrainerSVG(data) {
   const skin = SKIN_TONES[data.skin] || SKIN_TONES[0];
   const hair = HAIR_COLORS[data.hairColor] || HAIR_COLORS[0];
   const shirt = SHIRT_COLORS[data.shirtColor] || SHIRT_COLORS[0];
-  const style = HAIR_STYLES[data.hairStyle] || 'short';
+  const style = HAIR_STYLES[data.hairStyle] || 'boy';
   const acc = ACCESSORIES[data.accessory] || 'none';
 
   let hairPath = '';
-  if (style === 'short') {
-    // Semicircle bangs — flat on top of head, curves down to eyes
-    hairPath = `<path d="M11,7 L29,7 A9,8 0 0,1 11,7 Z" fill="${hair}"/>`;
+  let hairFront = '';
+  if (style === 'boy') {
+    // Dome cap — renders in front of head, like Mini Life
+    hairFront = `<path d="M10,14 A10,8 0 0,1 30,14 Z" fill="${hair}"/>`;
   } else if (style === 'spiky') {
     hairPath = `<polygon points="10,14 13,2 16,12 20,0 24,12 27,2 30,14" fill="${hair}"/>`;
   } else if (style === 'long') {
@@ -2204,6 +2205,8 @@ function getTrainerSVG(data) {
     <circle cx="24" cy="15" r="1.5" fill="#222"/>
     <!-- Mouth -->
     <path d="M17,20 Q20,23 23,20" stroke="#222" fill="none" stroke-width="0.8"/>
+    <!-- Hair front -->
+    ${hairFront}
     <!-- Accessory -->
     ${accPath}
     <!-- Body -->
@@ -2226,7 +2229,7 @@ function getTrainerMapSVG(data, dir, walkFrame) {
   const skin = SKIN_TONES[data.skin] || SKIN_TONES[0];
   const hair = HAIR_COLORS[data.hairColor] || HAIR_COLORS[0];
   const shirt = SHIRT_COLORS[data.shirtColor] || SHIRT_COLORS[0];
-  const style = HAIR_STYLES[data.hairStyle] || 'short';
+  const style = HAIR_STYLES[data.hairStyle] || 'boy';
   const acc = ACCESSORIES[data.accessory] || 'none';
   const isBack = (dir === 3);
 
@@ -2246,9 +2249,10 @@ function getTrainerMapSVG(data, dir, walkFrame) {
 
   // Hair
   let hairPath = '';
+  let hairFront = '';
   if (isBack) {
-    if (style === 'short') {
-      hairPath = `<path d="M11,7 L29,7 A9,13 0 0,1 11,7 Z" fill="${hair}"/>`;
+    if (style === 'boy') {
+      hairPath = `<path d="M10,14 A10,10 0 0,1 30,14 Z" fill="${hair}"/>`;
     } else if (style === 'spiky') {
       hairPath = `<polygon points="10,14 13,2 16,12 20,0 24,12 27,2 30,14" fill="${hair}"/><path d="M11,14 Q11,8 20,7 Q29,8 29,14 L29,22 Q20,24 11,22 Z" fill="${hair}"/>`;
     } else if (style === 'long') {
@@ -2257,8 +2261,8 @@ function getTrainerMapSVG(data, dir, walkFrame) {
       hairPath = `<ellipse cx="20" cy="10" rx="10" ry="6" fill="${hair}"/><rect x="17" y="10" width="6" height="18" rx="2" fill="${hair}"/>`;
     }
   } else {
-    if (style === 'short') {
-      hairPath = `<path d="M11,7 L29,7 A9,8 0 0,1 11,7 Z" fill="${hair}"/>`;
+    if (style === 'boy') {
+      hairFront = `<path d="M10,14 A10,8 0 0,1 30,14 Z" fill="${hair}"/>`;
     } else if (style === 'spiky') {
       hairPath = `<polygon points="10,14 13,2 16,12 20,0 24,12 27,2 30,14" fill="${hair}"/>`;
     } else if (style === 'long') {
@@ -2288,6 +2292,7 @@ function getTrainerMapSVG(data, dir, walkFrame) {
     ${hairPath}
     <circle cx="20" cy="16" r="9" fill="${skin}"/>
     ${facePath}
+    ${hairFront}
     ${accPath}
     <rect x="12" y="25" width="16" height="18" rx="3" fill="${shirt}"/>
     <rect x="6" y="${lArmY}" width="6" height="12" rx="3" fill="${skin}"/>
@@ -5003,7 +5008,7 @@ const FP_NPCS = [
   { id: 'mystic_yara', name: 'Mystic Yara', col: 15, row: 11, zone: 'lake', trainer: { skin: 0, hairColor: 5, hairStyle: 3, shirtColor: 4, accessory: 3 } },
   { id: 'blacksmith_gorn', name: 'Blacksmith Gorn', col: 4, row: 19, zone: 'fortress', trainer: { skin: 2, hairColor: 0, hairStyle: 1, shirtColor: 0, accessory: 0 } },
   { id: 'shadow_keeper', name: 'Shadow Keeper', col: 25, row: 20, zone: 'peak', trainer: { skin: 4, hairColor: 4, hairStyle: 2, shirtColor: 4, accessory: 3 } },
-  { id: 'wandering_trader', name: 'Wandering Trader', col: 12, row: 12, zone: 'lake', trainer: { skin: 1, hairColor: 3, hairStyle: 0, shirtColor: 3, accessory: 1 } },
+  { id: 'wandering_trader', name: 'Wandering Trader', col: 12, row: 12, zone: 'lake', trainer: { skin: 1, hairColor: 3, hairStyle: 1, shirtColor: 3, accessory: 1 } },
 ];
 
 // Gym door positions on map
