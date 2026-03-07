@@ -12,6 +12,12 @@
 - If **yes**: stage changed files, commit with a descriptive message, and push to `origin`.
 - If **no**: do not commit or push. Leave changes unstaged.
 
+### Documentation Maintenance
+- **At the end of every session**, update the relevant `CLAUDE.md` files — both the main one and any game-specific ones affected by the session's changes.
+- Remove information that is no longer accurate or relevant.
+- Add any new systems, constants, achievements, shop items, or mechanics that were introduced.
+- Keep the main `CLAUDE.md` slim (cross-game totals, project structure, conventions). Put game-specific details only in the per-game `CLAUDE.md` files.
+
 ### General
 - All games are single HTML files. No build tools, no bundlers, no npm.
 - Prefer editing existing files over creating new ones.
