@@ -2976,12 +2976,14 @@ let currentSlot = -1;
 let currentSlotName = '';
 let jobLastDay = {};
 let totalShiftsWorked = 0;
+let militaryTraining = 0; // 0-4 = training, 5+ = missions unlocked
 
 const TOWN_JOBS = {
   barista:  { name: 'Order Rush',   basePay: 15, desc: 'Fill drink orders!' },
   merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
   mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
   sergeant: { name: 'Target Practice', basePay: 20, desc: 'Hit the targets!' },
+  sergeant_mission: { name: 'Military Mission', basePay: 35, desc: 'Complete the mission!' },
   frycook:  { name: 'Fry Cook', basePay: 12, desc: 'Serve fast food orders!' },
 };
 
@@ -4804,7 +4806,13 @@ function openNPCDialogue(npcId) {
 
   // NPC greetings for job-only NPCs (no quests)
   const jobGreetings = {
-    sergeant: ["ATTENTION! Welcome to the army fort, civilian!", "Think you've got what it takes? We'll see about that, recruit!", "Drop and give me twenty! ...Just kidding. Want a job?"],
+    sergeant: militaryTraining < 5
+      ? ["ATTENTION! Welcome to the army fort, civilian! Training: " + militaryTraining + "/5",
+         "Think you've got what it takes, recruit? Training: " + militaryTraining + "/5",
+         "Drop and give me twenty! ...Just kidding. Let's train! (" + militaryTraining + "/5)"]
+      : ["Soldier! Ready for your next mission?",
+         "Good to see you, private! Got a dangerous assignment for you.",
+         "At ease, soldier. Time to deploy!"],
     frycook: ["Welcome to Mic. Ronaldz! Home of the Cardboard Burger!", "Our food may taste like cardboard, but it's CHEAP cardboard!", "Need a job? The deep fryer's calling your name!"],
   };
 
@@ -4820,17 +4828,33 @@ function openNPCDialogue(npcId) {
       textEl.textContent = "Hello there!";
     }
     // Still show job button if this NPC has a job
-    const jobForNPC = TOWN_JOBS[npcId];
-    if (jobForNPC) {
-      if (jobLastDay[npcId] === day) {
+    // Special: sergeant has training vs mission progression
+    if (npcId === 'sergeant') {
+      if (jobLastDay['sergeant'] === day) {
         const disBtn = document.createElement('button');
         disBtn.textContent = 'Already worked today';
         disBtn.className = 'npc-btn-close';
         disBtn.disabled = true;
         disBtn.style.opacity = '0.5';
         btnsEl.appendChild(disBtn);
+      } else if (militaryTraining < 5) {
+        addDialogueBtn(btnsEl, 'Train: Target Practice ($20+)', 'npc-btn-accept', () => startTownJob('sergeant'));
       } else {
-        addDialogueBtn(btnsEl, 'Work: ' + jobForNPC.name + ' ($' + jobForNPC.basePay + '+)', 'npc-btn-accept', () => startTownJob(npcId));
+        addDialogueBtn(btnsEl, 'Mission: Deploy! ($35+)', 'npc-btn-accept', () => startTownJob('sergeant_mission'));
+      }
+    } else {
+      const jobForNPC = TOWN_JOBS[npcId];
+      if (jobForNPC) {
+        if (jobLastDay[npcId] === day) {
+          const disBtn = document.createElement('button');
+          disBtn.textContent = 'Already worked today';
+          disBtn.className = 'npc-btn-close';
+          disBtn.disabled = true;
+          disBtn.style.opacity = '0.5';
+          btnsEl.appendChild(disBtn);
+        } else {
+          addDialogueBtn(btnsEl, 'Work: ' + jobForNPC.name + ' ($' + jobForNPC.basePay + '+)', 'npc-btn-accept', () => startTownJob(npcId));
+        }
       }
     }
     addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
@@ -4935,8 +4959,15 @@ function startTownJob(npcId) {
     hintEl.innerHTML = '<kbd>A</kbd> Approve  <kbd>D</kbd> Deny';
     runTownHallJob(canvas, ctx, (score) => finishTownJob(npcId, score));
   } else if (npcId === 'sergeant') {
-    hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> Aim  <kbd>SPACE</kbd> Shoot';
-    runMilitaryJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+    hintEl.innerHTML = '<kbd>A</kbd> <kbd>D</kbd> Aim left/right  <kbd>W</kbd> <kbd>S</kbd> Aim up/down  <kbd>SPACE</kbd> Shoot';
+    runMilitaryJob(canvas, ctx, (score) => {
+      militaryTraining = Math.min(5, militaryTraining + 1);
+      if (militaryTraining >= 5) showTip('Training complete! Missions unlocked!');
+      finishTownJob(npcId, score);
+    });
+  } else if (npcId === 'sergeant_mission') {
+    hintEl.innerHTML = '<kbd>A</kbd> <kbd>D</kbd> Move  <kbd>W</kbd> Jump  <kbd>SPACE</kbd> Shoot';
+    runMilitaryMission(canvas, ctx, (score) => finishTownJob(npcId, score));
   } else if (npcId === 'frycook') {
     hintEl.innerHTML = '<kbd>1</kbd> Burger  <kbd>2</kbd> Fries  <kbd>3</kbd> Drink  <kbd>4</kbd> Nuggets';
     runFastFoodJob(canvas, ctx, (score) => finishTownJob(npcId, score));
@@ -4951,7 +4982,9 @@ function finishTownJob(npcId, score) {
   money += pay;
   needs.energy = Math.max(0, needs.energy - 15);
   needs.hunger = Math.max(0, needs.hunger - 10);
-  jobLastDay[npcId] = day;
+  // Mission uses same daily cooldown as sergeant
+  const cooldownId = npcId === 'sergeant_mission' ? 'sergeant' : npcId;
+  jobLastDay[cooldownId] = day;
   totalShiftsWorked++;
   SFX.jobComplete();
   SFX.kaChing();
@@ -5475,8 +5508,9 @@ function runMilitaryJob(canvas, ctx, onFinish) {
 
   function onKey(e) {
     if (!running) return;
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
-      keysDown[e.key] = true;
+    const k = e.key.toLowerCase();
+    if (k === 'a' || k === 'd' || k === 'w' || k === 's') {
+      keysDown[k] = true;
       e.preventDefault();
     }
     if (e.key === ' ') {
@@ -5505,7 +5539,8 @@ function runMilitaryJob(canvas, ctx, onFinish) {
     }
   }
   function onKeyUp(e) {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') keysDown[e.key] = false;
+    const k = e.key.toLowerCase();
+    if (k === 'a' || k === 'd' || k === 'w' || k === 's') keysDown[k] = false;
   }
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', onKeyUp);
@@ -5522,12 +5557,12 @@ function runMilitaryJob(canvas, ctx, onFinish) {
       if (targets.length < 6) spawnTarget();
     }
 
-    // Move crosshair
+    // Move crosshair (WASD)
     const moveSpeed = 300;
-    if (keysDown['ArrowLeft']) crosshairX = Math.max(10, crosshairX - moveSpeed * dt);
-    if (keysDown['ArrowRight']) crosshairX = Math.min(W - 10, crosshairX + moveSpeed * dt);
-    if (keysDown['ArrowUp']) crosshairY = Math.max(10, crosshairY - moveSpeed * dt);
-    if (keysDown['ArrowDown']) crosshairY = Math.min(H - 10, crosshairY + moveSpeed * dt);
+    if (keysDown['a']) crosshairX = Math.max(10, crosshairX - moveSpeed * dt);
+    if (keysDown['d']) crosshairX = Math.min(W - 10, crosshairX + moveSpeed * dt);
+    if (keysDown['w']) crosshairY = Math.max(10, crosshairY - moveSpeed * dt);
+    if (keysDown['s']) crosshairY = Math.min(H - 10, crosshairY + moveSpeed * dt);
 
     // Update targets
     for (let i = targets.length - 1; i >= 0; i--) {
@@ -5615,6 +5650,225 @@ function runMilitaryJob(canvas, ctx, onFinish) {
     ctx.fillText('$' + (20 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
     ctx.textAlign = 'center';
     ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, H - 20);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Military Mission: Side-scrolling combat ---
+function runMilitaryMission(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const GROUND = H - 50;
+  let player = { x: 80, y: GROUND, vy: 0, jumping: false };
+  let bullets = [];
+  let enemies = [];
+  let obstacles = [];
+  let particles = [];
+  let score = 0;
+  let timeLeft = 35;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let running = true;
+  let keysDown = {};
+  let scrollX = 0;
+
+  function spawnEnemy() {
+    const type = Math.random() < 0.4 ? 'runner' : 'turret';
+    enemies.push({
+      x: W + 20, y: GROUND, type: type,
+      hp: type === 'turret' ? 2 : 1,
+      speed: type === 'runner' ? 60 + Math.random() * 40 : 0,
+      shootTimer: type === 'turret' ? 2 : 99,
+    });
+  }
+  function spawnObstacle() {
+    const h = 20 + Math.random() * 30;
+    obstacles.push({ x: W + 20, y: GROUND - h, w: 15 + Math.random() * 20, h: h, speed: 60 });
+  }
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key.toLowerCase();
+    if (k === 'a' || k === 'd' || k === 'w') { keysDown[k] = true; e.preventDefault(); }
+    if (e.key === ' ') {
+      e.preventDefault();
+      bullets.push({ x: player.x + 10, y: player.y - 10, speed: 400 });
+      SFX.sfxClick && SFX.sfxClick();
+    }
+  }
+  function onKeyUp(e) { const k = e.key.toLowerCase(); if (k === 'a' || k === 'd' || k === 'w') keysDown[k] = false; }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKeyUp);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    scrollX += 60 * dt;
+    spawnTimer += dt;
+    if (spawnTimer > 1.2) {
+      spawnTimer = 0;
+      if (Math.random() < 0.6) spawnEnemy();
+      else spawnObstacle();
+    }
+
+    // Player movement
+    if (keysDown['a']) player.x = Math.max(20, player.x - 200 * dt);
+    if (keysDown['d']) player.x = Math.min(W / 2, player.x + 200 * dt);
+    if (keysDown['w'] && !player.jumping) { player.vy = -350; player.jumping = true; }
+    player.vy += 900 * dt;
+    player.y += player.vy * dt;
+    if (player.y >= GROUND) { player.y = GROUND; player.vy = 0; player.jumping = false; }
+
+    // Update bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].x += bullets[i].speed * dt;
+      if (bullets[i].x > W + 10) { bullets.splice(i, 1); continue; }
+      // Hit enemies
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        if (Math.abs(bullets[i].x - enemies[j].x) < 15 && Math.abs((bullets[i] ? bullets[i].y : 0) - enemies[j].y + 10) < 20) {
+          enemies[j].hp--;
+          if (enemies[j].hp <= 0) {
+            score += enemies[j].type === 'turret' ? 15 : 10;
+            for (let p = 0; p < 5; p++) particles.push({ x: enemies[j].x, y: enemies[j].y - 10, vx: (Math.random() - 0.5) * 100, vy: -Math.random() * 80, t: 0.5, color: '#ff4444' });
+            enemies.splice(j, 1);
+            SFX.jobCorrect();
+          }
+          bullets.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    // Update enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      enemies[i].x -= (enemies[i].speed + 60) * dt;
+      if (enemies[i].x < -20) { enemies.splice(i, 1); continue; }
+      // Collision with player
+      if (Math.abs(enemies[i].x - player.x) < 15 && Math.abs(enemies[i].y - player.y) < 20) {
+        score = Math.max(0, score - 5);
+        for (let p = 0; p < 3; p++) particles.push({ x: player.x, y: player.y - 10, vx: (Math.random() - 0.5) * 60, vy: -Math.random() * 50, t: 0.4, color: '#ffcc44' });
+        enemies.splice(i, 1);
+        SFX.jobWrong();
+      }
+    }
+
+    // Update obstacles
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+      obstacles[i].x -= obstacles[i].speed * dt;
+      if (obstacles[i].x < -40) { obstacles.splice(i, 1); continue; }
+      // Collision
+      if (player.x + 8 > obstacles[i].x && player.x - 8 < obstacles[i].x + obstacles[i].w && player.y > obstacles[i].y) {
+        score = Math.max(0, score - 3);
+        obstacles.splice(i, 1);
+        SFX.jobWrong();
+      }
+    }
+
+    // Update particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].x += particles[i].vx * dt;
+      particles[i].y += particles[i].vy * dt;
+      particles[i].t -= dt;
+      if (particles[i].t <= 0) particles.splice(i, 1);
+    }
+
+    // Draw background — desert/war zone
+    ctx.fillStyle = '#556644';
+    ctx.fillRect(0, 0, W, H);
+    // Sky
+    ctx.fillStyle = '#667788';
+    ctx.fillRect(0, 0, W, GROUND - 30);
+    // Mountains
+    ctx.fillStyle = '#445533';
+    for (let mx = 0; mx < W; mx += 80) {
+      const off = ((mx + scrollX * 0.2) % 160) - 80;
+      ctx.beginPath();
+      ctx.moveTo(mx - 40, GROUND - 30);
+      ctx.lineTo(mx, GROUND - 60 - Math.sin(mx * 0.03) * 20);
+      ctx.lineTo(mx + 40, GROUND - 30);
+      ctx.fill();
+    }
+    // Ground
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(0, GROUND, W, 50);
+
+    // Obstacles
+    obstacles.forEach(o => {
+      ctx.fillStyle = '#5a4a2a';
+      ctx.fillRect(o.x, o.y, o.w, o.h);
+      ctx.fillStyle = '#4a3a1a';
+      ctx.fillRect(o.x + 2, o.y + 2, o.w - 4, 4);
+    });
+
+    // Enemies
+    enemies.forEach(e => {
+      ctx.fillStyle = e.type === 'turret' ? '#884422' : '#cc3333';
+      // Body
+      ctx.fillRect(e.x - 8, e.y - 22, 16, 22);
+      // Head
+      ctx.fillStyle = e.type === 'turret' ? '#664422' : '#aa2222';
+      ctx.beginPath();
+      ctx.arc(e.x, e.y - 28, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Gun (turrets)
+      if (e.type === 'turret') {
+        ctx.fillStyle = '#444';
+        ctx.fillRect(e.x - 15, e.y - 16, 10, 3);
+      }
+    });
+
+    // Player — soldier
+    ctx.fillStyle = '#556644';
+    ctx.fillRect(player.x - 6, player.y - 24, 12, 24);
+    ctx.fillStyle = '#556644';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y - 30, 6, 0, Math.PI * 2);
+    ctx.fill();
+    // Helmet
+    ctx.fillStyle = '#445533';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y - 32, 7, Math.PI, 0);
+    ctx.fill();
+    // Gun
+    ctx.fillStyle = '#333';
+    ctx.fillRect(player.x + 4, player.y - 14, 14, 3);
+
+    // Bullets
+    ctx.fillStyle = '#ffcc00';
+    bullets.forEach(b => {
+      ctx.fillRect(b.x, b.y - 1, 8, 2);
+    });
+
+    // Particles
+    particles.forEach(p => {
+      ctx.fillStyle = p.color;
+      ctx.globalAlpha = p.t / 0.5;
+      ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+    });
+    ctx.globalAlpha = 1;
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (35 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, 22);
+    ctx.fillStyle = '#ccddaa';
+    ctx.font = 'bold 12px monospace';
+    ctx.fillText('MISSION: CLEAR THE ZONE', W / 2, H - 10);
 
     if (timeLeft <= 0) {
       running = false;
@@ -9455,6 +9709,7 @@ function restartGame() {
   questsCompleted = 0;
   jobLastDay = {};
   totalShiftsWorked = 0;
+  militaryTraining = 0;
   jobMiniGameRunning = false;
   currentSlot = -1;
   currentSlotName = '';
@@ -9573,6 +9828,7 @@ function buildSaveData() {
     questsCompleted,
     jobLastDay: { ...jobLastDay },
     totalShiftsWorked,
+    militaryTraining,
     hasBeaverPet,
     hasGGPoster,
   };
@@ -9723,6 +9979,7 @@ function loadSlot(index) {
   if (save.questsCompleted) questsCompleted = save.questsCompleted;
   if (save.jobLastDay) jobLastDay = save.jobLastDay;
   if (save.totalShiftsWorked) totalShiftsWorked = save.totalShiftsWorked;
+  if (save.militaryTraining) militaryTraining = save.militaryTraining;
   if (save.inTown && save.hasCar) {
     if (!townGroup) {
       townGroup = buildTown();

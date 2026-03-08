@@ -325,6 +325,7 @@ const TOWN_JOBS = {
   merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
   mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
   sergeant: { name: 'Target Practice', basePay: 20, desc: 'Hit the targets!' },
+  sergeant_mission: { name: 'Military Mission', basePay: 35, desc: 'Complete the mission!' },
   frycook:  { name: 'Fry Cook', basePay: 12, desc: 'Serve fast food orders!' },
 };
 
@@ -1870,15 +1871,16 @@ test('Arcade Pro triggers at miniGameScore >= 25', () => {
 // ── Town Job Definitions ──
 section('Town Job Definitions');
 
-test('TOWN_JOBS has 5 entries', () => {
-  assertEqual(Object.keys(TOWN_JOBS).length, 5);
+test('TOWN_JOBS has 6 entries', () => {
+  assertEqual(Object.keys(TOWN_JOBS).length, 6);
 });
 
-test('TOWN_JOBS has barista, merchant, mayor, sergeant, frycook', () => {
+test('TOWN_JOBS has barista, merchant, mayor, sergeant, sergeant_mission, frycook', () => {
   assert(TOWN_JOBS.barista, 'Missing barista');
   assert(TOWN_JOBS.merchant, 'Missing merchant');
   assert(TOWN_JOBS.mayor, 'Missing mayor');
   assert(TOWN_JOBS.sergeant, 'Missing sergeant');
+  assert(TOWN_JOBS.sergeant_mission, 'Missing sergeant_mission');
   assert(TOWN_JOBS.frycook, 'Missing frycook');
 });
 
@@ -1908,8 +1910,10 @@ test('Old Pete has no job', () => {
   assert(!TOWN_JOBS.old_pete, 'Old Pete should not have a job');
 });
 
-test('Job NPC IDs match TOWN_NPC_DEFS entries', () => {
+test('Job NPC IDs match TOWN_NPC_DEFS entries (excluding virtual jobs)', () => {
+  const virtualJobs = ['sergeant_mission']; // routed through sergeant NPC
   Object.keys(TOWN_JOBS).forEach(npcId => {
+    if (virtualJobs.includes(npcId)) return;
     const found = TOWN_NPC_DEFS.find(d => d.id === npcId);
     assert(found, 'Job NPC ' + npcId + ' not found in TOWN_NPC_DEFS');
   });
@@ -1952,6 +1956,14 @@ test('Frycook pay with score 0 = $12 (base)', () => {
 
 test('Frycook pay with score 30 = $27', () => {
   assertEqual(calculateJobPay('frycook', 30), 27);
+});
+
+test('Mission basePay is $35', () => {
+  assertEqual(TOWN_JOBS.sergeant_mission.basePay, 35);
+});
+
+test('Mission pay with score 40 = $55', () => {
+  assertEqual(calculateJobPay('sergeant_mission', 40), 55);
 });
 
 // ── Job Need Drains ──
