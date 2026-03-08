@@ -1,0 +1,3749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sibling Brawl</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bangers&family=Cinzel&display=swap');
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1020; font-family: 'Cinzel', serif; overflow: hidden; color: #fff; }
+
+/* === TOOLBAR === */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; height: 42px; z-index: 90;
+  background: linear-gradient(180deg, #2a1a3a, #1a1020);
+  border-bottom: 2px solid #ff66aa;
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+}
+#toolbar .gg-logo { width: 28px; height: 28px; }
+#toolbar .title { font-family: 'Bangers', cursive; font-size: 18px; color: #ff66aa; letter-spacing: 2px; }
+#toolbar .exit-btn {
+  margin-left: auto; background: none; border: 1px solid #ff66aa44;
+  color: #ff66aa; padding: 4px 14px; font-family: 'Cinzel'; font-size: 11px;
+  cursor: pointer; border-radius: 4px;
+}
+#toolbar .exit-btn:hover { background: #ff66aa22; }
+
+/* === SCREENS === */
+.screen { position: fixed; top: 42px; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.3s; }
+.hidden { display: none !important; }
+
+/* === TITLE === */
+#title-screen { background: radial-gradient(circle at 50% 40%, #3a1a4a 0%, #1a1020 70%); }
+#title-screen h1 { font-family: 'Bangers', cursive; font-size: 72px; color: #ff66aa; text-shadow: 3px 3px 0 #aa2266, 0 0 30px #ff66aa44; }
+#title-screen .subtitle { color: #ffaa44; font-size: 16px; margin: 8px 0 30px; font-style: italic; }
+.punk-btn {
+  background: linear-gradient(135deg, #ff66aa22, #ff66aa11); border: 2px solid #ff66aa;
+  color: #ff66aa; padding: 14px 40px; font-family: 'Bangers', cursive; font-size: 22px;
+  cursor: pointer; border-radius: 8px; letter-spacing: 2px; transition: all 0.2s;
+}
+.punk-btn:hover { background: #ff66aa33; transform: translateY(-2px); box-shadow: 0 4px 20px #ff66aa44; }
+
+/* === BATTLE HUD === */
+#battle-canvas { flex: 1; width: 100%; }
+#battle-hud {
+  position: fixed; top: 48px; left: 50%; transform: translateX(-50%); z-index: 15;
+  background: #00000088; backdrop-filter: blur(4px); border-radius: 0 0 8px 8px;
+  padding: 6px 20px; display: flex; gap: 20px; font-size: 14px;
+}
+.hud-blue { color: #4488ff; font-weight: bold; }
+.hud-red { color: #ff4444; font-weight: bold; }
+.hud-time { color: #aaa; }
+
+/* === FPS HUD === */
+#crosshair {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  z-index: 15; pointer-events: none; width: 24px; height: 24px;
+}
+#crosshair::before, #crosshair::after {
+  content: ''; position: absolute; background: rgba(255,255,255,0.7);
+}
+#crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
+#crosshair::after { top: 50%; left: 0; height: 2px; width: 100%; transform: translateY(-50%); }
+
+#player-hud {
+  position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+  z-index: 15; display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+#health-bar {
+  width: 220px; height: 18px; background: #33333399; border: 1px solid #666;
+  border-radius: 3px; overflow: hidden; backdrop-filter: blur(4px);
+}
+#health-fill { height: 100%; background: linear-gradient(90deg, #44ff44, #88ff88); transition: width 0.15s; width: 100%; }
+#health-text { color: #fff; font-size: 12px; text-shadow: 1px 1px 2px #000; font-family: 'Bangers', cursive; }
+
+#kill-counter {
+  position: fixed; bottom: 60px; left: 20px; z-index: 15;
+  color: #ff66aa; font-family: 'Bangers', cursive; font-size: 18px;
+  text-shadow: 1px 1px 2px #000;
+}
+
+#click-start {
+  position: fixed; top: 42px; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: rgba(0,0,0,0.7); display: flex; flex-direction: column;
+  align-items: center; justify-content: center; cursor: pointer;
+}
+#click-start .start-title {
+  font-family: 'Bangers', cursive; font-size: 42px; color: #ff66aa;
+  text-shadow: 0 0 20px #ff66aa66; margin-bottom: 10px;
+}
+#click-start .start-hint {
+  font-size: 14px; color: #aaa; font-family: 'Cinzel', serif;
+}
+
+#damage-flash {
+  position: fixed; inset: 0; z-index: 14; pointer-events: none;
+  background: radial-gradient(ellipse, transparent 50%, rgba(255,0,0,0.3));
+  opacity: 0; transition: opacity 0.1s;
+}
+
+/* === LOADOUT SCREEN === */
+#loadout-screen {
+  background: radial-gradient(circle at 50% 40%, #2a1040 0%, #1a1020 70%);
+  overflow-y: auto; justify-content: flex-start; padding: 20px;
+}
+.loadout-wrap {
+  display: flex; flex-wrap: wrap; gap: 24px; justify-content: center;
+  max-width: 800px; width: 100%;
+}
+.loadout-panel {
+  background: #00000066; border: 1px solid #ff66aa44; border-radius: 8px;
+  padding: 16px; min-width: 220px; flex: 1;
+}
+.loadout-panel h3 {
+  font-family: 'Bangers', cursive; color: #ff66aa; font-size: 20px;
+  margin-bottom: 12px; letter-spacing: 1px;
+}
+.loadout-title {
+  font-family: 'Bangers', cursive; font-size: 36px; color: #ff66aa;
+  text-shadow: 2px 2px 0 #aa2266; margin-bottom: 6px;
+}
+.loadout-candy {
+  color: #ffaa44; font-size: 14px; margin-bottom: 16px;
+  font-family: 'Bangers', cursive; letter-spacing: 1px;
+}
+.class-option {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border: 2px solid #ffffff22; border-radius: 6px; cursor: pointer;
+  margin-bottom: 8px; transition: all 0.2s;
+}
+.class-option:hover { border-color: #ff66aa66; background: #ff66aa11; }
+.class-option.selected { border-color: #ff66aa; background: #ff66aa22; }
+.class-icon { font-size: 28px; width: 40px; text-align: center; }
+.class-info { flex: 1; }
+.class-name { font-family: 'Bangers', cursive; font-size: 16px; color: #fff; }
+.class-desc { font-size: 11px; color: #aaa; }
+.color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.color-row label { color: #ccc; font-size: 12px; width: 60px; }
+.color-row input[type=color] {
+  width: 36px; height: 24px; border: 1px solid #ff66aa44; border-radius: 4px;
+  background: none; cursor: pointer; padding: 0;
+}
+.upgrade-row {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  padding: 6px; border: 1px solid #ffffff11; border-radius: 4px;
+}
+.upgrade-name { color: #ccc; font-size: 13px; flex: 1; }
+.upgrade-level { color: #ff66aa; font-size: 13px; font-family: 'Bangers', cursive; width: 50px; }
+.upgrade-btn {
+  background: #ff66aa22; border: 1px solid #ff66aa; color: #ff66aa;
+  padding: 3px 10px; font-family: 'Bangers', cursive; font-size: 12px;
+  cursor: pointer; border-radius: 4px; transition: all 0.15s;
+}
+.upgrade-btn:hover { background: #ff66aa44; }
+.upgrade-btn:disabled { opacity: 0.3; cursor: default; }
+.loadout-go {
+  margin-top: 16px; width: 100%; text-align: center;
+}
+
+/* === LEVEL SELECT === */
+#level-screen {
+  background: radial-gradient(circle at 50% 40%, #2a1040 0%, #1a1020 70%);
+  overflow-y: auto; padding: 20px;
+}
+.level-title {
+  font-family: 'Bangers', cursive; font-size: 36px; color: #ff66aa;
+  text-shadow: 2px 2px 0 #aa2266; margin-bottom: 20px;
+}
+.level-grid { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+.level-card {
+  background: #00000066; border: 2px solid #ff66aa44; border-radius: 10px;
+  padding: 20px; width: 260px; text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.level-card:hover:not(.locked) { border-color: #ff66aa; background: #ff66aa11; transform: translateY(-3px); }
+.level-card.locked { opacity: 0.4; cursor: default; }
+.level-card .level-num { font-family: 'Bangers', cursive; font-size: 14px; color: #aaa; letter-spacing: 2px; }
+.level-card .level-name { font-family: 'Bangers', cursive; font-size: 28px; color: #ff66aa; margin: 6px 0; }
+.level-card .level-desc { font-size: 12px; color: #ccc; line-height: 1.5; }
+.level-card .level-lock { font-size: 24px; margin-top: 8px; }
+.level-card .level-badge {
+  display: inline-block; margin-top: 8px; padding: 2px 10px; border-radius: 4px;
+  font-family: 'Bangers', cursive; font-size: 12px;
+}
+.level-card .badge-clear { background: #44ff4433; color: #44ff44; border: 1px solid #44ff4466; }
+.level-card .badge-new { background: #ff66aa22; color: #ff66aa; border: 1px solid #ff66aa44; }
+
+/* === END SCREEN === */
+#end-screen { background: #000000cc; backdrop-filter: blur(8px); }
+#end-screen h2 { font-family: 'Bangers', cursive; font-size: 56px; margin-bottom: 10px; }
+#end-screen .end-subtitle { font-size: 18px; margin-bottom: 20px; color: #aaa; }
+#end-screen .end-stats { font-size: 14px; color: #ccc; line-height: 2; margin-bottom: 20px; }
+#end-screen .end-stats span { font-weight: bold; color: #ff66aa; }
+.end-btns { display: flex; gap: 12px; }
+
+/* === INTRO CINEMATIC === */
+#intro-screen { background: #000; justify-content: flex-start; padding: 0; }
+.intro-container {
+  width: 100%; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; position: relative; overflow: hidden;
+}
+.intro-letterbox-top, .intro-letterbox-bot {
+  position: absolute; left: 0; right: 0; height: 12%; background: #000; z-index: 2;
+}
+.intro-letterbox-top { top: 0; }
+.intro-letterbox-bot { bottom: 0; }
+.intro-text {
+  position: absolute; width: 80%; max-width: 700px; text-align: center;
+  font-family: 'Bangers', cursive; color: #fff; opacity: 0;
+  transition: opacity 1s, transform 1s; transform: translateY(30px); z-index: 3;
+}
+.intro-text.visible { opacity: 1; transform: translateY(0); }
+.intro-text.exit { opacity: 0; transform: translateY(-30px); }
+.intro-text .line { margin: 10px 0; line-height: 1.4; }
+.intro-text .dramatic { font-size: 36px; color: #ff66aa; text-shadow: 0 0 20px #ff66aa66; }
+.intro-text .narration { font-size: 22px; color: #ddd; }
+.intro-text .small { font-size: 16px; color: #aaa; font-family: 'Cinzel', serif; font-style: italic; }
+.intro-text .candy { color: #ffaa44; }
+.intro-text .villain { color: #ff4444; }
+.intro-text .hero { color: #4488ff; }
+.intro-scene { position: absolute; inset: 0; z-index: 1; }
+.intro-scene-bg { position: absolute; inset: 12% 0; overflow: hidden; }
+@keyframes introGlow {
+  0% { box-shadow: inset 0 0 80px #ff66aa11; }
+  50% { box-shadow: inset 0 0 120px #ff66aa22; }
+  100% { box-shadow: inset 0 0 80px #ff66aa11; }
+}
+.intro-scene-bg { animation: introGlow 3s ease-in-out infinite; }
+.intro-skip {
+  position: absolute; bottom: 15%; right: 5%; z-index: 10;
+  background: none; border: 1px solid #ffffff44; color: #888;
+  padding: 6px 16px; font-family: 'Cinzel', serif; font-size: 11px;
+  cursor: pointer; border-radius: 4px; transition: all 0.2s;
+}
+.intro-skip:hover { color: #fff; border-color: #fff; }
+
+/* === TOAST === */
+#gg-toast {
+  position: fixed; top: 50px; right: -300px; z-index: 100;
+  background: linear-gradient(135deg, #2a1a3a, #1a1020); border: 1px solid #ff66aa;
+  border-radius: 8px; padding: 12px 20px; color: #ff66aa; font-size: 13px;
+  transition: right 0.4s;
+}
+#gg-toast.visible { right: 10px; }
+
+@media (max-width: 600px) {
+  #title-screen h1 { font-size: 42px; }
+  #health-bar { width: 160px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <svg class="gg-logo" viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="none" stroke="#ff66aa" stroke-width="2"/><text x="20" y="26" text-anchor="middle" fill="#ff66aa" font-size="16" font-family="Bangers">SB</text></svg>
+  <span class="title">SIBLING BRAWL</span>
+  <button class="exit-btn" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+</div>
+
+<!-- TITLE SCREEN -->
+<div id="title-screen" class="screen">
+  <h1>SIBLING BRAWL</h1>
+  <div class="subtitle">Stop the Evil Younger Sibling Empire!</div>
+  <button class="punk-btn" onclick="showLevelSelect()">BATTLE!</button>
+</div>
+
+<!-- INTRO CINEMATIC -->
+<div id="intro-screen" class="screen hidden">
+  <div class="intro-container">
+    <div class="intro-letterbox-top"></div>
+    <div class="intro-letterbox-bot"></div>
+    <div class="intro-scene">
+      <div class="intro-scene-bg" id="intro-scene-bg"></div>
+      <canvas id="intro-canvas" style="position:absolute;inset:12% 0;width:100%;height:76%;z-index:1;"></canvas>
+    </div>
+    <div class="intro-text" id="intro-text"></div>
+    <button class="intro-skip" onclick="skipIntro()">SKIP ></button>
+  </div>
+</div>
+
+<!-- LEVEL SELECT -->
+<div id="level-screen" class="screen hidden">
+  <div class="level-title">SELECT MISSION</div>
+  <div class="level-grid" id="level-grid"></div>
+</div>
+
+<!-- LOADOUT SCREEN -->
+<div id="loadout-screen" class="screen hidden">
+  <div class="loadout-title">LOADOUT</div>
+  <div class="loadout-candy" id="loadout-candy">Candy: 0</div>
+  <div class="loadout-wrap">
+    <div class="loadout-panel">
+      <h3>CLASS</h3>
+      <div id="class-picker"></div>
+      <h3 style="margin-top:16px">LOOK</h3>
+      <div class="color-row"><label>Hair</label><input type="color" id="color-hair" value="#8B4513"></div>
+      <div class="color-row"><label>Shirt</label><input type="color" id="color-shirt" value="#4488ff"></div>
+      <div class="color-row"><label>Skin</label><input type="color" id="color-skin" value="#ffcc99"></div>
+    </div>
+    <div class="loadout-panel">
+      <h3>UPGRADES</h3>
+      <div id="upgrade-list"></div>
+    </div>
+  </div>
+  <div class="loadout-go">
+    <button class="punk-btn" onclick="confirmLoadout()">FIGHT!</button>
+  </div>
+</div>
+
+<!-- BATTLE SCREEN -->
+<div id="battle-screen" class="screen hidden">
+  <div id="battle-hud">
+    <span class="hud-blue" id="hud-blue">Allies: 0</span>
+    <span class="hud-time" id="hud-time">0:00</span>
+    <span class="hud-red" id="hud-red">Enemy: 0</span>
+  </div>
+  <div id="battle-canvas"></div>
+  <div id="crosshair"></div>
+  <div id="player-hud">
+    <div id="health-bar"><div id="health-fill"></div></div>
+    <div id="health-text">100 HP</div>
+  </div>
+  <div id="kill-counter">Kills: 0</div>
+  <div id="damage-flash"></div>
+  <div id="click-start" class="hidden">
+    <div class="start-title">CLICK TO START</div>
+    <div class="start-hint">WASD to move | Mouse to look | Left click to attack</div>
+  </div>
+</div>
+
+<!-- END SCREEN -->
+<div id="end-screen" class="screen hidden">
+  <h2 id="end-title"></h2>
+  <div class="end-subtitle" id="end-subtitle"></div>
+  <div class="end-stats" id="end-stats"></div>
+  <div class="end-btns">
+    <button class="punk-btn" onclick="showLoadout()">PLAY AGAIN</button>
+    <button class="punk-btn" onclick="showLevelSelect()" style="border-color:#aaa;color:#aaa">MISSIONS</button>
+  </div>
+</div>
+
+<div id="gg-toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// =============================================
+// G BUX INTEGRATION
+// =============================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(d) { localStorage.setItem(GG_KEY, JSON.stringify(d)); }
+
+const toastQueue = [];
+let toastShowing = false;
+function showToast(msg) { toastQueue.push(msg); if (!toastShowing) drainToast(); }
+function drainToast() {
+  if (!toastQueue.length) { toastShowing = false; return; }
+  toastShowing = true;
+  const el = document.getElementById('gg-toast');
+  el.textContent = toastQueue.shift();
+  el.classList.add('visible');
+  setTimeout(() => { el.classList.remove('visible'); setTimeout(drainToast, 400); }, 2500);
+}
+
+const SB_ACH = {
+  sb_first_fight:  { name: 'First Fight',      reward: 5 },
+  sb_winner:       { name: 'Winner',            reward: 10 },
+  sb_flawless:     { name: 'Untouchable',       reward: 30 },
+  sb_pillow_army:  { name: 'Pillow Fort',       reward: 15 },
+  sb_nerf_squad:   { name: 'Nerf War',          reward: 15 },
+  sb_balanced:     { name: 'Mixed Tactics',     reward: 20 },
+  sb_underdog:     { name: 'Outnumbered',       reward: 25 },
+  sb_speed_win:    { name: 'Quick Fight',       reward: 20 },
+  sb_commander:    { name: 'Big Sibling',       reward: 25 },
+  sb_warlord:      { name: 'Supreme Sibling',   reward: 50 },
+};
+function ggTry(id) {
+  const a = SB_ACH[id]; if (!a) return;
+  const d = ggLoad(); if (d.achievements[id]) return;
+  d.achievements[id] = true; d.gBux += a.reward; ggSave(d);
+  showToast('* ' + a.name + ' +' + a.reward + 'G');
+}
+function hasPurchase(id) { return !!ggLoad().shopPurchases[id]; }
+
+// =============================================
+// STATS
+// =============================================
+const STATS_KEY = 'sb-stats';
+function loadStats() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+    return { wins: s.wins || 0, battles: s.battles || 0 };
+  }
+  catch { return { wins: 0, battles: 0 }; }
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+
+// =============================================
+// PLAYER DATA (persistent across sessions)
+// =============================================
+const PLAYER_KEY = 'sb-player';
+const CLASSES = {
+  pillow: { name: 'Pillow Fighter', desc: 'Melee brawler. Smack enemies with your pillow!', icon: '🛏️', baseDmg: 15, baseHp: 100, range: 2.5, cooldown: 0.8, attackType: 'melee' },
+  nerf:   { name: 'Nerf Gunner', desc: 'Ranged shooter. Pop enemies from a distance!', icon: '🔫', baseDmg: 12, baseHp: 70, range: 10, cooldown: 1.0, attackType: 'ranged' },
+  pooSling: { name: 'Poo Slinger', desc: 'Mortar bombardier. Lob stinky payloads!', icon: '💩', baseDmg: 40, baseHp: 70, range: 10, cooldown: 2.5, attackType: 'mortar' },
+};
+const UPGRADES = [
+  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
+  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 5, cost: 40 },
+  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 5, cost: 35 },
+  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 5, cost: 45 },
+  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 5, cost: 40 },
+  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 3, cost: 60 },
+];
+
+function loadPlayerData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(PLAYER_KEY)) || {};
+    return {
+      candy: d.candy || 0,
+      playerClass: d.playerClass || 'pillow',
+      hairColor: d.hairColor || '#8B4513',
+      shirtColor: d.shirtColor || '#4488ff',
+      skinColor: d.skinColor || '#ffcc99',
+      upgrades: Object.assign({ hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, d.upgrades || {}),
+      unlockedLevel: d.unlockedLevel || 1,
+      clearedLevels: d.clearedLevels || {},
+    };
+  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
+}
+function savePlayerData(d) { localStorage.setItem(PLAYER_KEY, JSON.stringify(d)); }
+
+function getPlayerStats() {
+  const pd = loadPlayerData();
+  const cls = CLASSES[pd.playerClass];
+  const firerateMult = Math.pow(0.9, pd.upgrades.firerate || 0); // -10% per level
+  const rangeMult = 1 + (pd.upgrades.range || 0) * 0.1; // +10% per level
+  const splashMult = 1 + (pd.upgrades.splash || 0) * 0.15; // +15% per level
+  return {
+    hp: cls.baseHp + (pd.upgrades.hp || 0) * 20,
+    damage: cls.baseDmg + (pd.upgrades.dmg || 0) * 3,
+    speed: 3.5 + (pd.upgrades.speed || 0) * 0.3,
+    range: cls.range * rangeMult,
+    cooldown: cls.cooldown * firerateMult,
+    attackType: cls.attackType,
+    splashMult: splashMult,
+  };
+}
+
+// =============================================
+// LEVEL DEFINITIONS
+// =============================================
+let currentLevel = 1;
+
+const LEVEL_DEFS = [
+  { id: 1, name: 'THE LIVING ROOM', desc: 'Take back the living room from the younger sibling empire!', boatPhase: false, partyHats: false },
+  { id: 2, name: 'B-DAY', desc: 'Storm the birthday party! Operation B-Day is a GO!', boatPhase: true, partyHats: true },
+  { id: 3, name: 'DOG POOPIC WAR I', desc: 'The dog left landmines in the backyard. Time to weaponize them!', poopWar: true },
+  { id: 4, name: 'DOG POOPIC WAR II', desc: 'The Great Poo Offensive! They have slingshots now too!', poopWar: true },
+  { id: 5, name: 'DOG POOPIC WAR III', desc: 'The Final Flush. Winner takes the yard FOREVER.', poopWar: true },
+];
+
+function showLevelSelect() {
+  hideAllScreens();
+  document.getElementById('level-screen').classList.remove('hidden');
+  renderLevelSelect();
+}
+
+function renderLevelSelect() {
+  const pd = loadPlayerData();
+  const grid = document.getElementById('level-grid');
+  grid.innerHTML = '';
+  for (const lvl of LEVEL_DEFS) {
+    const unlocked = lvl.id <= pd.unlockedLevel;
+    const cleared = !!pd.clearedLevels[lvl.id];
+    const card = document.createElement('div');
+    card.className = 'level-card' + (unlocked ? '' : ' locked');
+    card.innerHTML =
+      '<div class="level-num">MISSION ' + lvl.id + '</div>' +
+      '<div class="level-name">' + lvl.name + '</div>' +
+      '<div class="level-desc">' + lvl.desc + '</div>' +
+      (unlocked
+        ? '<div class="level-badge ' + (cleared ? 'badge-clear' : 'badge-new') + '">' + (cleared ? 'CLEARED' : 'READY') + '</div>'
+        : '<div class="level-lock">🔒</div>');
+    if (unlocked) {
+      card.onclick = () => { currentLevel = lvl.id; showIntro(); };
+    }
+    grid.appendChild(card);
+  }
+}
+
+// =============================================
+// SOUND EFFECTS
+// =============================================
+const SFX = (() => {
+  let ctx;
+  function getCtx() { if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)(); return ctx; }
+  function play(fn) { try { fn(getCtx()); } catch {} }
+
+  return {
+    pillowHit() { play(c => {
+      const n = c.createBufferSource(); const buf = c.createBuffer(1, c.sampleRate * 0.1, c.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+      n.buffer = buf; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 600;
+      n.connect(f); f.connect(c.destination); n.start();
+    }); },
+    nerfShot() { play(c => {
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(1200, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(400, c.currentTime + 0.1);
+      g.gain.setValueAtTime(0.15, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.1);
+      o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.1);
+    }); },
+    splash() { play(c => {
+      const n = c.createBufferSource(); const buf = c.createBuffer(1, c.sampleRate * 0.25, c.sampleRate);
+      const d = buf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.4;
+      n.buffer = buf; const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400;
+      n.connect(f); f.connect(c.destination); n.start();
+    }); },
+    scooterZoom() { play(c => {
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(150, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(300, c.currentTime + 0.15);
+      g.gain.setValueAtTime(0.1, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.15);
+      o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.15);
+    }); },
+    victory() { play(c => {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = c.createOscillator(); const g = c.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.1, c.currentTime + i * 0.15);
+        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + i * 0.15 + 0.3);
+        o.connect(g); g.connect(c.destination); o.start(c.currentTime + i * 0.15); o.stop(c.currentTime + i * 0.15 + 0.3);
+      });
+    }); },
+    defeat() { play(c => {
+      [200, 180, 150, 120].forEach((f, i) => {
+        const o = c.createOscillator(); const g = c.createGain();
+        o.type = 'sawtooth'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.08, c.currentTime + i * 0.2);
+        g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + i * 0.2 + 0.3);
+        o.connect(g); g.connect(c.destination); o.start(c.currentTime + i * 0.2); o.stop(c.currentTime + i * 0.2 + 0.3);
+      });
+    }); },
+    waterGun() { play(c => {
+      const n = c.createBufferSource(); const buf = c.createBuffer(1, c.sampleRate * 0.15, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3 * (1 - i / d.length);
+      n.buffer = buf;
+      const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1500;
+      const g = c.createGain(); g.gain.value = 0.3;
+      n.connect(f); f.connect(g); g.connect(c.destination); n.start();
+    }); },
+    pooLaunch() { play(c => {
+      // Wet stretchy slingshot snap + splat
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(80, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(200, c.currentTime + 0.05);
+      o.frequency.exponentialRampToValueAtTime(60, c.currentTime + 0.15);
+      g.gain.setValueAtTime(0.15, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.15);
+      o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.15);
+    }); },
+    pooSplat() { play(c => {
+      const n = c.createBufferSource(); const buf = c.createBuffer(1, c.sampleRate * 0.2, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.5 * (1 - i / d.length);
+      n.buffer = buf;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 300;
+      const g = c.createGain(); g.gain.value = 0.3;
+      n.connect(f); f.connect(g); g.connect(c.destination); n.start();
+    }); },
+  };
+})();
+
+// =============================================
+// UNIT DEFINITIONS
+// =============================================
+const FIELD_W = 30;
+const FIELD_D = 20;
+
+const UNIT_DEFS = {
+  pillow: { name: 'Pillow Fighter', cost: 10, hp: 100, damage: 15, speed: 1.5, range: 1.5, icon: '*', special: 'Basic melee brawler' },
+  nerf:   { name: 'Nerf Gunner',   cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   icon: '*', special: 'Ranged foam darts', meleeDamage: 5 },
+  blanket:{ name: 'Blanket Tank',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, icon: '*', special: 'Tanky blanket armor', antiScooter: true },
+  scooter:{ name: 'Scooter Rider', cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '*', special: 'Fast charge attack' },
+  balloon:{ name: 'Water Balloon', cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '*', special: 'Splash damage!', splash: 3 },
+  pooSling:{ name: 'Poo Slingshot', cost: 35, hp: 70,  damage: 40, speed: 0.5, range: 10,  icon: '*', special: 'Mortar poo bombardment!', splash: 2.5 },
+};
+
+// Army composition — varies by level
+const ARMY_COMP = [
+  { type: 'pillow', count: 6 },
+  { type: 'nerf', count: 3 },
+  { type: 'blanket', count: 3 },
+  { type: 'scooter', count: 2 },
+  { type: 'balloon', count: 1 },
+];
+
+const LEVEL_ARMIES = {
+  3: [ // Poopie War I — introducing poo slingshots
+    { type: 'pillow', count: 5 },
+    { type: 'nerf', count: 3 },
+    { type: 'blanket', count: 2 },
+    { type: 'scooter', count: 2 },
+    { type: 'pooSling', count: 2 },
+  ],
+  4: [ // Poopie War II — more poo slingshots, bigger army
+    { type: 'pillow', count: 6 },
+    { type: 'nerf', count: 3 },
+    { type: 'blanket', count: 3 },
+    { type: 'scooter', count: 2 },
+    { type: 'pooSling', count: 3 },
+    { type: 'balloon', count: 1 },
+  ],
+  5: [ // Poopie War III — The Final Flush, heavy poo bombardment
+    { type: 'pillow', count: 7 },
+    { type: 'nerf', count: 4 },
+    { type: 'blanket', count: 3 },
+    { type: 'scooter', count: 3 },
+    { type: 'pooSling', count: 4 },
+    { type: 'balloon', count: 1 },
+  ],
+};
+
+// =============================================
+// THREE.JS SETUP
+// =============================================
+let renderer, scene, camera, clock;
+
+function initThree(container) {
+  if (!renderer) {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  }
+  renderer.setSize(container.clientWidth, container.clientHeight);
+  container.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffe8cc);
+  scene.fog = new THREE.Fog(0xffe8cc, 20, 45);
+
+  camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 100);
+
+  clock = new THREE.Clock();
+
+  // Lights - warm indoor
+  const ambient = new THREE.AmbientLight(0xffeedd, 0.6);
+  scene.add(ambient);
+
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(10, 20, 8);
+  dirLight.castShadow = true;
+  dirLight.shadow.mapSize.set(2048, 2048);
+  dirLight.shadow.camera.left = -20; dirLight.shadow.camera.right = 20;
+  dirLight.shadow.camera.top = 15; dirLight.shadow.camera.bottom = -15;
+  scene.add(dirLight);
+
+  const hemi = new THREE.HemisphereLight(0xffeebb, 0x886644, 0.4);
+  scene.add(hemi);
+
+  // Add camera to scene so weapon mesh children render
+  scene.add(camera);
+}
+
+// =============================================
+// BATTLEFIELD
+// =============================================
+let fieldGroup;
+
+function buildBattlefield() {
+  const lvl = LEVEL_DEFS.find(l => l.id === currentLevel);
+  const outdoor = lvl && lvl.poopWar;
+
+  fieldGroup = new THREE.Group();
+  scene.add(fieldGroup);
+
+  if (outdoor) {
+    // Grass floor for outdoor levels
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_W + 10, FIELD_D + 10),
+      new THREE.MeshStandardMaterial({ color: 0x55aa44, roughness: 0.95 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    floor.name = 'ground';
+    fieldGroup.add(floor);
+    return; // No walls, couch, carpet, etc.
+  }
+
+  // Carpet floor
+  const floorGeo = new THREE.PlaneGeometry(FIELD_W, FIELD_D);
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xc4956a, roughness: 0.9 });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  floor.name = 'ground';
+  fieldGroup.add(floor);
+
+  // Carpet pattern - subtle stripes
+  for (let i = -FIELD_D / 2 + 2; i < FIELD_D / 2; i += 2) {
+    const stripe = new THREE.Mesh(
+      new THREE.PlaneGeometry(FIELD_W, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0xb8875e, roughness: 0.9 })
+    );
+    stripe.rotation.x = -Math.PI / 2;
+    stripe.position.set(0, 0.01, i);
+    fieldGroup.add(stripe);
+  }
+
+  // Center dividing line
+  const center = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.1, FIELD_D),
+    new THREE.MeshStandardMaterial({ color: 0xffffff, opacity: 0.3, transparent: true })
+  );
+  center.rotation.x = -Math.PI / 2;
+  center.position.y = 0.02;
+  fieldGroup.add(center);
+
+  // Toy blocks (obstacles/decoration)
+  const blockColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44, 0xff44ff];
+  for (let i = 0; i < 8; i++) {
+    const size = 0.4 + Math.random() * 0.4;
+    const block = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size, size),
+      new THREE.MeshStandardMaterial({ color: blockColors[i % blockColors.length] })
+    );
+    block.position.set(
+      (Math.random() - 0.5) * FIELD_W * 0.8,
+      size / 2,
+      (Math.random() - 0.5) * FIELD_D * 0.8
+    );
+    block.rotation.y = Math.random() * Math.PI;
+    block.castShadow = true;
+    fieldGroup.add(block);
+  }
+
+  // Couch (back wall decoration)
+  const couchBody = new THREE.Mesh(
+    new THREE.BoxGeometry(8, 2, 2),
+    new THREE.MeshStandardMaterial({ color: 0x6644aa })
+  );
+  couchBody.position.set(0, 1, -FIELD_D / 2 - 1.5);
+  couchBody.castShadow = true;
+  fieldGroup.add(couchBody);
+  const couchBack = new THREE.Mesh(
+    new THREE.BoxGeometry(8, 2.5, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x5533aa })
+  );
+  couchBack.position.set(0, 2.25, -FIELD_D / 2 - 2.5);
+  couchBack.castShadow = true;
+  fieldGroup.add(couchBack);
+
+  // Walls
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xeeddcc });
+  const wallH = 8;
+  const wallY = wallH / 2;
+
+  // Back wall
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_W + 4, wallH), wallMat);
+  backWall.position.set(0, wallY, -FIELD_D / 2 - 2);
+  fieldGroup.add(backWall);
+
+  // Front wall
+  const frontWall = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_W + 4, wallH), wallMat);
+  frontWall.position.set(0, wallY, FIELD_D / 2 + 2);
+  frontWall.rotation.y = Math.PI;
+  fieldGroup.add(frontWall);
+
+  // Left wall
+  const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_D + 4, wallH), wallMat);
+  leftWall.position.set(-FIELD_W / 2 - 2, wallY, 0);
+  leftWall.rotation.y = Math.PI / 2;
+  fieldGroup.add(leftWall);
+
+  // Right wall
+  const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(FIELD_D + 4, wallH), wallMat);
+  rightWall.position.set(FIELD_W / 2 + 2, wallY, 0);
+  rightWall.rotation.y = -Math.PI / 2;
+  fieldGroup.add(rightWall);
+
+  // Baseboard trim
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0xccbbaa });
+  const trimH = 0.4;
+  const backTrim = new THREE.Mesh(new THREE.BoxGeometry(FIELD_W + 4, trimH, 0.15), trimMat);
+  backTrim.position.set(0, trimH / 2, -FIELD_D / 2 - 1.9);
+  fieldGroup.add(backTrim);
+  const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(0.15, trimH, FIELD_D + 4), trimMat);
+  leftTrim.position.set(-FIELD_W / 2 - 1.9, trimH / 2, 0);
+  fieldGroup.add(leftTrim);
+  const rightTrim = new THREE.Mesh(new THREE.BoxGeometry(0.15, trimH, FIELD_D + 4), trimMat);
+  rightTrim.position.set(FIELD_W / 2 + 1.9, trimH / 2, 0);
+  fieldGroup.add(rightTrim);
+
+  // Picture frames on back wall
+  const frameMat = new THREE.MeshStandardMaterial({ color: 0x664422 });
+  for (let fx = -8; fx <= 8; fx += 8) {
+    const frame = new THREE.Mesh(new THREE.BoxGeometry(3, 2, 0.1), frameMat);
+    frame.position.set(fx, 4, -FIELD_D / 2 - 1.9);
+    fieldGroup.add(frame);
+    const pic = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.5),
+      new THREE.MeshStandardMaterial({ color: [0x88aacc, 0xccaa88, 0xaa88cc][Math.floor((fx + 8) / 8)] }));
+    pic.position.set(fx, 4, -FIELD_D / 2 - 1.84);
+    fieldGroup.add(pic);
+  }
+
+  // Window on left wall
+  const winFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 3, 4), frameMat);
+  winFrame.position.set(-FIELD_W / 2 - 1.9, 4, 0);
+  fieldGroup.add(winFrame);
+  const winGlass = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 2.5),
+    new THREE.MeshStandardMaterial({ color: 0xaaccff, opacity: 0.4, transparent: true }));
+  winGlass.position.set(-FIELD_W / 2 - 1.85, 4, 0);
+  winGlass.rotation.y = Math.PI / 2;
+  fieldGroup.add(winGlass);
+}
+
+function addPartyDecorations() {
+  if (!fieldGroup) return;
+
+  // Birthday banner on back wall
+  const bannerMat = new THREE.MeshStandardMaterial({ color: 0xff66aa });
+  const banner = new THREE.Mesh(new THREE.BoxGeometry(8, 0.8, 0.05), bannerMat);
+  banner.position.set(0, 5.5, -FIELD_D / 2 - 1.8);
+  fieldGroup.add(banner);
+  const bannerText = new THREE.Mesh(new THREE.BoxGeometry(7.5, 0.4, 0.06),
+    new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  bannerText.position.set(0, 5.5, -FIELD_D / 2 - 1.74);
+  fieldGroup.add(bannerText);
+
+  // Balloons (spheres on strings)
+  const balloonColors = [0xff4444, 0x44ff44, 0xffaa00, 0xff66aa, 0x4488ff, 0xaa44ff, 0xffff44];
+  for (let i = 0; i < 10; i++) {
+    const color = balloonColors[i % balloonColors.length];
+    const bx = (Math.random() - 0.5) * FIELD_W * 0.8;
+    const bz = (Math.random() - 0.5) * FIELD_D * 0.6;
+    const by = 4 + Math.random() * 2;
+    const balloon = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 8, 8),
+      new THREE.MeshStandardMaterial({ color })
+    );
+    balloon.position.set(bx, by, bz);
+    fieldGroup.add(balloon);
+    // String
+    const str = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.01, 0.01, by - 0.3),
+      new THREE.MeshBasicMaterial({ color: 0xaaaaaa })
+    );
+    str.position.set(bx, (by - 0.3) / 2, bz);
+    fieldGroup.add(str);
+  }
+
+  // Cake table
+  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 1.2),
+    new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  tableTop.position.set(3, 0.8, -2);
+  tableTop.castShadow = true;
+  fieldGroup.add(tableTop);
+  for (const tx of [-0.8, 0.8]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x886644 }));
+    leg.position.set(3 + tx, 0.4, -2);
+    fieldGroup.add(leg);
+  }
+  // Cake on table
+  const cakeBase = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.25, 12),
+    new THREE.MeshStandardMaterial({ color: 0xffaacc }));
+  cakeBase.position.set(3, 1.0, -2);
+  fieldGroup.add(cakeBase);
+  const cakeTop = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.2, 12),
+    new THREE.MeshStandardMaterial({ color: 0xffffff }));
+  cakeTop.position.set(3, 1.2, -2);
+  fieldGroup.add(cakeTop);
+  // Candles
+  for (let i = 0; i < 3; i++) {
+    const candle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xff6666 }));
+    candle.position.set(3 - 0.1 + i * 0.1, 1.38, -2);
+    fieldGroup.add(candle);
+  }
+
+  // Presents (colorful boxes scattered)
+  const presentColors = [0xff4444, 0x44ff44, 0x4488ff, 0xffaa00, 0xff66aa, 0xaa44ff];
+  for (let i = 0; i < 6; i++) {
+    const size = 0.3 + Math.random() * 0.3;
+    const present = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size, size),
+      new THREE.MeshStandardMaterial({ color: presentColors[i] })
+    );
+    present.position.set(
+      4 + Math.random() * 6,
+      size / 2,
+      (Math.random() - 0.5) * FIELD_D * 0.6
+    );
+    present.rotation.y = Math.random() * Math.PI;
+    present.castShadow = true;
+    fieldGroup.add(present);
+    // Ribbon on top
+    const ribbon = new THREE.Mesh(new THREE.BoxGeometry(size + 0.02, 0.04, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    ribbon.position.copy(present.position);
+    ribbon.position.y += size / 2;
+    ribbon.rotation.y = present.rotation.y;
+    fieldGroup.add(ribbon);
+  }
+
+  // Streamers hanging from ceiling
+  for (let i = 0; i < 6; i++) {
+    const color = balloonColors[i % balloonColors.length];
+    const sx = -FIELD_W / 2 + 2 + i * (FIELD_W / 6);
+    const streamer = new THREE.Mesh(
+      new THREE.BoxGeometry(0.06, 3, 0.02),
+      new THREE.MeshStandardMaterial({ color, opacity: 0.5, transparent: true })
+    );
+    streamer.position.set(sx, 6.5, (Math.random() - 0.5) * FIELD_D * 0.5);
+    streamer.rotation.z = Math.sin(i) * 0.3;
+    fieldGroup.add(streamer);
+  }
+}
+
+function addPartyHat(unitGroup) {
+  const hatColors = [0xff4444, 0x44ff44, 0xffaa00, 0xff66aa, 0x4488ff, 0xaa44ff];
+  const color = hatColors[Math.floor(Math.random() * hatColors.length)];
+  const type = unitGroup.userData.type;
+
+  // Hat height varies by unit type
+  let hatY = 1.55;
+  if (type === 'scooter') hatY = 1.3;
+  else if (type === 'balloon') hatY = 1.25;
+  else if (type === 'blanket') hatY = 1.65;
+  else if (type === 'pooSling') hatY = 1.48;
+
+  const hat = new THREE.Mesh(
+    new THREE.ConeGeometry(0.12, 0.3, 8),
+    new THREE.MeshStandardMaterial({ color })
+  );
+  hat.position.y = hatY;
+  unitGroup.add(hat);
+
+  // Pom pom on top
+  const pom = new THREE.Mesh(
+    new THREE.SphereGeometry(0.04, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0xffffff })
+  );
+  pom.position.y = hatY + 0.15;
+  unitGroup.add(pom);
+}
+
+let pooMines = []; // {group, x, z, exploded}
+
+function addPoopWarDecorations() {
+  if (!fieldGroup) return;
+  pooMines = [];
+  const pooMat = new THREE.MeshStandardMaterial({ color: 0x6b4226 });
+
+  // Fence along the back
+  const fenceMat = new THREE.MeshStandardMaterial({ color: 0xddcc99 });
+  for (let fx = -FIELD_W / 2 + 1; fx < FIELD_W / 2; fx += 2) {
+    const post = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.5, 0.08), fenceMat);
+    post.position.set(fx, 0.75, -FIELD_D / 2 + 0.5);
+    post.castShadow = true;
+    fieldGroup.add(post);
+  }
+  // Fence rails
+  for (const ry of [0.4, 0.9]) {
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(FIELD_W - 1, 0.08, 0.04), fenceMat);
+    rail.position.set(0, ry, -FIELD_D / 2 + 0.5);
+    fieldGroup.add(rail);
+  }
+
+  // Scattered dog poo piles on the field (landmines!)
+  for (let i = 0; i < 12; i++) {
+    const px = (Math.random() - 0.5) * (FIELD_W - 4);
+    const pz = (Math.random() - 0.5) * (FIELD_D - 4);
+    const pile = new THREE.Group();
+    // Base blob
+    const base = new THREE.Mesh(new THREE.SphereGeometry(0.12 + Math.random() * 0.08, 6, 4), pooMat);
+    base.scale.y = 0.5;
+    base.position.y = 0.05;
+    pile.add(base);
+    // Top blob
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), pooMat);
+    top.position.set(0, 0.12, 0);
+    top.scale.y = 0.6;
+    pile.add(top);
+    // Stink lines (tiny cylinders)
+    for (let s = 0; s < 3; s++) {
+      const stink = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x88aa44, transparent: true, opacity: 0.3 }));
+      stink.position.set((s - 1) * 0.06, 0.25 + s * 0.05, 0);
+      stink.rotation.z = (s - 1) * 0.3;
+      pile.add(stink);
+    }
+    pile.position.set(px, 0, pz);
+    fieldGroup.add(pile);
+    pooMines.push({ group: pile, x: px, z: pz, exploded: false });
+  }
+
+  // Dog house in the corner
+  const houseMat = new THREE.MeshStandardMaterial({ color: 0xaa4422 });
+  const houseBody = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 1.2), houseMat);
+  houseBody.position.set(-FIELD_W / 2 + 2, 0.6, -FIELD_D / 2 + 2);
+  houseBody.castShadow = true;
+  fieldGroup.add(houseBody);
+  const roofMat = new THREE.MeshStandardMaterial({ color: 0x663311 });
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(1.2, 0.6, 4), roofMat);
+  roof.position.set(-FIELD_W / 2 + 2, 1.5, -FIELD_D / 2 + 2);
+  roof.rotation.y = Math.PI / 4;
+  roof.castShadow = true;
+  fieldGroup.add(roof);
+  // Door hole
+  const door = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x222222 }));
+  door.position.set(-FIELD_W / 2 + 2, 0.4, -FIELD_D / 2 + 2.61);
+  fieldGroup.add(door);
+
+  // A tree
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, 2),
+    new THREE.MeshStandardMaterial({ color: 0x664422 }));
+  trunk.position.set(FIELD_W / 2 - 3, 1, -FIELD_D / 2 + 3);
+  trunk.castShadow = true;
+  fieldGroup.add(trunk);
+  const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x338822 }));
+  leaves.position.set(FIELD_W / 2 - 3, 2.5, -FIELD_D / 2 + 3);
+  leaves.castShadow = true;
+  fieldGroup.add(leaves);
+}
+
+// =============================================
+// BOAT SYSTEM (Level 2)
+// =============================================
+let boatPhase = false;
+let boatGroup = null;
+let allyBoats = [];
+let landingCutscene = false;
+let landingTime = 0;
+const LANDING_DURATION = 6;
+const BOAT_SPEED = 1.8;
+
+function buildBoat(variation) {
+  const boat = new THREE.Group();
+  const v = variation || 0;
+  const cardboard = new THREE.MeshStandardMaterial({ color: 0xa07040 });
+
+  // Bottom
+  const bottom = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 1.6), cardboard);
+  bottom.position.y = 0.04;
+  boat.add(bottom);
+
+  // Left wall
+  const leftW = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 0.08), cardboard);
+  leftW.position.set(0, 0.5, -0.8);
+  boat.add(leftW);
+
+  // Right wall
+  const rightW = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 0.08), cardboard);
+  rightW.position.set(0, 0.5, 0.8);
+  boat.add(rightW);
+
+  // Back wall
+  const backW = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1, 1.7), cardboard);
+  backW.position.set(-1, 0.5, 0);
+  boat.add(backW);
+
+  // Flames painted on sides (different colors per boat)
+  const flameColors = [0xff6600, 0xff2200, 0x00ccff, 0x44ff44, 0xffaa00];
+  const flameColor = flameColors[v % flameColors.length];
+  const flameMat = new THREE.MeshStandardMaterial({ color: flameColor, emissive: flameColor, emissiveIntensity: 0.3 });
+  for (const zs of [-0.78, 0.78]) {
+    for (let i = 0; i < 3; i++) {
+      const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.35, 4), flameMat);
+      flame.position.set(-0.3 + i * 0.4, 0.3, zs);
+      flame.rotation.z = zs < 0 ? 0.1 : -0.1;
+      boat.add(flame);
+    }
+  }
+
+  // Flag pole + flag
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.5),
+    new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+  pole.position.set(-0.8, 1.2, 0);
+  boat.add(pole);
+  const flagColors = [0x4488ff, 0x44ddff, 0x88ff44, 0xffaa44, 0xff66aa];
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.02),
+    new THREE.MeshStandardMaterial({ color: flagColors[v % flagColors.length] }));
+  flag.position.set(-0.8, 1.8, 0.15);
+  boat.add(flag);
+
+  // Wheels underneath (it's on carpet!)
+  const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+  for (const wx of [-0.7, 0.7]) {
+    for (const wz of [-0.5, 0.5]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.04, 8), wheelMat);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(wx, 0.08, wz);
+      boat.add(wheel);
+    }
+  }
+
+  return boat;
+}
+
+function startLandingCutscene() {
+  landingCutscene = true;
+  landingTime = 0;
+  allyBoats = [];
+
+  // Hide weapon during cutscene
+  if (weaponGroup) weaponGroup.visible = false;
+
+  // Player boat (lead boat, center)
+  boatGroup = buildBoat(0);
+  const startX = -FIELD_W / 2 - 6;
+  boatGroup.position.set(startX, 0, 0);
+  scene.add(boatGroup);
+  playerUnit.position.set(startX, 0, 0);
+
+  // Make player model visible during cutscene (rider in lead boat)
+  playerUnit.visible = true;
+
+  // Place ally units into boats behind/beside the player
+  const allyUnits = deployedUnits.filter(u => !u.userData.isPlayer);
+  const boatCount = Math.ceil(allyUnits.length / 3);
+  const boatPositions = [];
+  for (let i = 0; i < boatCount; i++) {
+    const row = Math.floor(i / 3);
+    const col = (i % 3) - 1;
+    boatPositions.push({
+      x: startX - 3 - row * 3.5,
+      z: col * 3.5 + (row % 2 ? 1.5 : 0),
+    });
+  }
+
+  let unitIdx = 0;
+  for (let b = 0; b < boatCount; b++) {
+    const ab = buildBoat(b + 1);
+    ab.position.set(boatPositions[b].x, 0, boatPositions[b].z);
+    scene.add(ab);
+
+    const riders = [];
+    for (let r = 0; r < 3 && unitIdx < allyUnits.length; r++, unitIdx++) {
+      const u = allyUnits[unitIdx];
+      u.position.set(boatPositions[b].x + (r - 1) * 0.5, 0, boatPositions[b].z);
+      u.visible = true;
+      riders.push(u);
+    }
+
+    allyBoats.push({ mesh: ab, startX: boatPositions[b].x, z: boatPositions[b].z, riders });
+  }
+
+  // Hide HUD during cutscene
+  document.getElementById('crosshair').style.display = 'none';
+  document.getElementById('player-hud').style.display = 'none';
+  document.getElementById('kill-counter').style.display = 'none';
+  document.getElementById('click-start').classList.add('hidden');
+
+  // Set camera rotation order for cinematic (prevents sideways snap)
+  camera.rotation.order = 'YXZ';
+
+  startBattleMusic();
+  clock.getDelta();
+  landingLoop();
+}
+
+function landingLoop() {
+  if (!battleRunning) return;
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
+  landingTime += dt;
+
+  const progress = Math.min(landingTime / LANDING_DURATION, 1);
+  const dest = -FIELD_W / 4;
+  const fleetStart = -FIELD_W / 2 - 6;
+
+  // Move player boat
+  const playerBoatX = fleetStart + progress * (dest - fleetStart);
+  boatGroup.position.x = playerBoatX;
+  playerUnit.position.set(playerBoatX, 0, 0);
+
+  // Move ally boats (staggered — they catch up)
+  for (const ab of allyBoats) {
+    const delay = (fleetStart - ab.startX) / 18;
+    const boatProgress = Math.min(Math.max((landingTime - delay) / LANDING_DURATION, 0), 1);
+    const abDest = -2 - Math.random() * 0.01;
+    const bx = ab.startX + boatProgress * (abDest - ab.startX);
+    ab.mesh.position.x = bx;
+    for (const r of ab.riders) {
+      r.position.x = bx + (Math.random() - 0.5) * 0.3;
+    }
+  }
+
+  // Camera: cinematic behind-view, slowly tracking forward and lowering
+  const camDist = 8 - progress * 3;
+  const camHeight = 4 + (1 - progress) * 2;
+  const camX = playerBoatX - camDist;
+  camera.position.set(camX, camHeight, 0.5);
+  camera.lookAt(new THREE.Vector3(playerBoatX + 4, 1, 0));
+
+  billboardHealthBars();
+  renderer.render(scene, camera);
+
+  if (progress >= 1) {
+    beginCameraTransition();
+    return;
+  }
+
+  requestAnimationFrame(landingLoop);
+}
+
+// Smooth transition from cinematic camera to FPS camera
+let camTransTime = 0;
+const CAM_TRANS_DURATION = 1.5;
+let camTransStart = {};
+
+function beginCameraTransition() {
+  // Remove all boats
+  if (boatGroup) { scene.remove(boatGroup); boatGroup = null; }
+  for (const ab of allyBoats) { scene.remove(ab.mesh); }
+  allyBoats = [];
+
+  // Scatter ally units to their fighting positions
+  const allyUnits = deployedUnits.filter(u => !u.userData.isPlayer);
+  for (const u of allyUnits) {
+    u.position.set(-2 - Math.random() * (FIELD_W / 2 - 3), 0, (Math.random() - 0.5) * (FIELD_D - 2));
+    u.rotation.y = -Math.PI / 2;
+    u.visible = true;
+  }
+
+  // Put player at landing spot
+  playerUnit.position.set(-FIELD_W / 4, 0, 0);
+
+  // Record where the cinematic camera currently is
+  camTransStart = {
+    x: camera.position.x,
+    y: camera.position.y,
+    z: camera.position.z,
+  };
+
+  camTransTime = 0;
+  clock.getDelta();
+  camTransLoop();
+}
+
+function camTransLoop() {
+  if (!battleRunning) return;
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
+  camTransTime += dt;
+
+  const t = Math.min(camTransTime / CAM_TRANS_DURATION, 1);
+  // Smooth ease-in-out
+  const ease = t < 0.5 ? 2 * t * t : 1 - 2 * (1 - t) * (1 - t);
+
+  // FPS target position
+  const fpsX = playerUnit.position.x;
+  const fpsY = 1.4;
+  const fpsZ = playerUnit.position.z;
+
+  // Interpolate position
+  camera.position.set(
+    camTransStart.x + (fpsX - camTransStart.x) * ease,
+    camTransStart.y + (fpsY - camTransStart.y) * ease,
+    camTransStart.z + (fpsZ - camTransStart.z) * ease
+  );
+
+  // Gradually rotate to face forward (rightward toward enemies)
+  const lookTarget = new THREE.Vector3(
+    camera.position.x + 5 * (1 - ease) + ease * (-Math.sin(-Math.PI / 2)) * 5,
+    1 + (1 - ease) * 0.5,
+    ease * (-Math.cos(-Math.PI / 2)) * 5
+  );
+  camera.lookAt(lookTarget);
+
+  billboardHealthBars();
+  renderer.render(scene, camera);
+
+  if (t >= 1) {
+    endLandingCutscene();
+    return;
+  }
+
+  requestAnimationFrame(camTransLoop);
+}
+
+function endLandingCutscene() {
+  landingCutscene = false;
+
+  // Hide player model again (back to FPS), show weapon
+  playerUnit.visible = false;
+  if (weaponGroup) weaponGroup.visible = true;
+
+  // Set FPS camera properly
+  playerYaw = -Math.PI / 2;
+  playerPitch = 0;
+  camera.rotation.order = 'YXZ';
+
+  // Start idle render loop so scene doesn't appear frozen
+  preBattleIdle = true;
+  preBattleIdleLoop();
+
+  // Show click to start
+  const pd = loadPlayerData();
+  const attackHint = pd.playerClass === 'nerf' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : 'Left click to swing';
+  document.getElementById('click-start').classList.remove('hidden');
+  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Mouse to look | ' + attackHint;
+
+  const startOverlay = document.getElementById('click-start');
+  startOverlay.addEventListener('click', function startClick() {
+    startOverlay.removeEventListener('click', startClick);
+    preBattleIdle = false;
+    renderer.domElement.requestPointerLock();
+    startOverlay.classList.add('hidden');
+    document.getElementById('crosshair').style.display = '';
+    document.getElementById('player-hud').style.display = '';
+    document.getElementById('kill-counter').style.display = '';
+
+    clock.getDelta();
+    battleLoop();
+  });
+}
+
+let preBattleIdle = false;
+function preBattleIdleLoop() {
+  if (!preBattleIdle) return;
+  updatePlayerCamera();
+  billboardHealthBars();
+  renderer.render(scene, camera);
+  requestAnimationFrame(preBattleIdleLoop);
+}
+
+// =============================================
+// UNIT MODEL BUILDER
+// =============================================
+function buildUnitModel(type, isBlue, customColors) {
+  const group = new THREE.Group();
+  const def = UNIT_DEFS[type];
+  const teamColor = isBlue ? 0x4488ff : 0xff4444;
+  const shirtColor = customColors ? new THREE.Color(customColors.shirt) : new THREE.Color(teamColor);
+  const teamMat = new THREE.MeshStandardMaterial({ color: shirtColor });
+  const skinColor = customColors ? new THREE.Color(customColors.skin) : new THREE.Color(0xffcc99);
+  const skinMat = new THREE.MeshStandardMaterial({ color: skinColor });
+  const darkMat = new THREE.MeshStandardMaterial({ color: isBlue ? 0x2255aa : 0xaa2222 });
+
+  if (type === 'pillow') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), teamMat);
+    body.position.y = 0.85; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), skinMat);
+    head.position.y = 1.4; head.castShadow = true; group.add(head);
+    const pillow = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.3, 0.15),
+      new THREE.MeshStandardMaterial({ color: 0xffffff }));
+    pillow.position.set(0.4, 1.0, 0); pillow.castShadow = true; group.add(pillow);
+    for (const s of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
+  } else if (type === 'nerf') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.65, 0.28), teamMat);
+    body.position.y = 0.82; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), skinMat);
+    head.position.y = 1.35; head.castShadow = true; group.add(head);
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xff8800 }));
+    gun.position.set(0.35, 0.9, 0.2); gun.castShadow = true; group.add(gun);
+    for (const s of [-0.1, 0.1]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
+  } else if (type === 'blanket') {
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.8, 0.4),
+      new THREE.MeshStandardMaterial({ color: 0x8866cc }));
+    body.position.y = 0.9; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), skinMat);
+    head.position.y = 1.5; head.castShadow = true; group.add(head);
+    const cape = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.1),
+      new THREE.MeshStandardMaterial({ color: 0x6644aa }));
+    cape.position.set(0, 0.85, -0.2); cape.castShadow = true; group.add(cape);
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.1, 0.45), teamMat);
+    band.position.y = 1.05; group.add(band);
+    for (const s of [-0.15, 0.15]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
+  } else if (type === 'scooter') {
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.06, 0.8),
+      new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    deck.position.y = 0.2; deck.castShadow = true; group.add(deck);
+    for (const z of [-0.35, 0.35]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.05, 12),
+        new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      wheel.rotation.z = Math.PI / 2; wheel.position.set(0, 0.1, z);
+      wheel.castShadow = true; group.add(wheel);
+    }
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.7),
+      new THREE.MeshStandardMaterial({ color: 0x888888 }));
+    pole.position.set(0, 0.55, 0.35); pole.castShadow = true; group.add(pole);
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3),
+      new THREE.MeshStandardMaterial({ color: 0x888888 }));
+    bar.rotation.z = Math.PI / 2; bar.position.set(0, 0.9, 0.35); group.add(bar);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.5, 0.25), teamMat);
+    body.position.y = 0.75; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.17, 8, 8), skinMat);
+    head.position.y = 1.15; head.castShadow = true; group.add(head);
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), darkMat);
+    helmet.position.y = 1.2; group.add(helmet);
+  } else if (type === 'balloon') {
+    const cart = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.3, 0.6),
+      new THREE.MeshStandardMaterial({ color: 0x885533 }));
+    cart.position.y = 0.35; cart.castShadow = true; group.add(cart);
+    for (const x of [-0.35, 0.35]) {
+      for (const z of [-0.25, 0.25]) {
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.06, 12),
+          new THREE.MeshStandardMaterial({ color: 0x333333 }));
+        wheel.rotation.z = Math.PI / 2; wheel.position.set(x, 0.12, z);
+        group.add(wheel);
+      }
+    }
+    const bucket = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.3, 8),
+      new THREE.MeshStandardMaterial({ color: 0x4488ff, opacity: 0.7, transparent: true }));
+    bucket.position.set(0, 0.65, 0); group.add(bucket);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.6, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x885533 }));
+    arm.position.set(0, 0.8, -0.2); arm.rotation.x = -0.3; arm.castShadow = true; group.add(arm);
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 0.02), teamMat);
+    flag.position.set(0, 1.1, -0.3); group.add(flag);
+  } else if (type === 'pooSling') {
+    // Kid with a Y-shaped slingshot
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.6, 0.28), teamMat);
+    body.position.y = 0.8; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), skinMat);
+    head.position.y = 1.3; head.castShadow = true; group.add(head);
+    // Slingshot Y-frame
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x885522 });
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.5), stickMat);
+    handle.position.set(0.3, 0.9, 0.1); handle.castShadow = true; group.add(handle);
+    const fork1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25), stickMat);
+    fork1.position.set(0.3, 1.2, 0.17); fork1.rotation.z = 0.3; group.add(fork1);
+    const fork2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.25), stickMat);
+    fork2.position.set(0.3, 1.2, 0.03); fork2.rotation.z = 0.3; group.add(fork2);
+    // Rubber band (stretched)
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0xcc8844 });
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.18), bandMat);
+    band.rotation.x = Math.PI / 2; band.position.set(0.35, 1.3, 0.1); group.add(band);
+    // Poo ammo ball in slingshot
+    const pooMat = new THREE.MeshStandardMaterial({ color: 0x6b4226 });
+    const poo = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), pooMat);
+    poo.position.set(0.35, 1.25, 0.1); group.add(poo);
+    for (const s of [-0.1, 0.1]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
+  }
+
+  // Add hair for custom-colored units (player character)
+  if (customColors && type !== 'balloon') {
+    const hairMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(customColors.hair) });
+    const headY = type === 'pillow' ? 1.4 : type === 'nerf' ? 1.35 : type === 'blanket' ? 1.5 : type === 'scooter' ? 1.15 : type === 'pooSling' ? 1.3 : 1.4;
+    const headR = type === 'pillow' ? 0.2 : type === 'nerf' ? 0.18 : type === 'blanket' ? 0.2 : type === 'scooter' ? 0.17 : type === 'pooSling' ? 0.18 : 0.2;
+    const hair = new THREE.Mesh(new THREE.SphereGeometry(headR + 0.03, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    hair.position.y = headY + 0.04;
+    hair.castShadow = true;
+    group.add(hair);
+  }
+
+  // Health bar
+  const hbGroup = new THREE.Group();
+  const hbW = 0.6;
+  const hbBg = new THREE.Mesh(
+    new THREE.PlaneGeometry(hbW, 0.08),
+    new THREE.MeshBasicMaterial({ color: 0x333333 })
+  );
+  hbGroup.add(hbBg);
+  const hbFill = new THREE.Mesh(
+    new THREE.PlaneGeometry(hbW, 0.08),
+    new THREE.MeshBasicMaterial({ color: teamColor })
+  );
+  hbGroup.add(hbFill);
+  const hbH = type === 'scooter' ? 1.5 : type === 'balloon' ? 1.4 : type === 'pooSling' ? 1.6 : 1.7;
+  hbGroup.position.y = hbH;
+  group.add(hbGroup);
+
+  group.userData = {
+    type, team: isBlue ? 'blue' : 'red', def,
+    hp: def.hp, maxHp: def.hp, damage: def.damage,
+    speed: def.speed, range: def.range,
+    alive: true, target: null, attackCooldown: 0,
+    charged: type === 'scooter',
+    hbGroup, hbFill,
+  };
+
+  return group;
+}
+
+// =============================================
+// ARMY GENERATION (Equal forces, fair battle)
+// =============================================
+let deployedUnits = [];
+let enemyUnits = [];
+let playerUnit = null;
+
+function generateArmies() {
+  deployedUnits = [];
+  enemyUnits = [];
+
+  const pd = loadPlayerData();
+  const pStats = getPlayerStats();
+
+  // Create player unit (invisible — we're in first person) with custom colors
+  playerUnit = buildUnitModel(pd.playerClass, true, {
+    shirt: pd.shirtColor, skin: pd.skinColor, hair: pd.hairColor
+  });
+  playerUnit.visible = false;
+  playerUnit.position.set(-FIELD_W / 4, 0, 0);
+  scene.add(playerUnit);
+  deployedUnits.push(playerUnit);
+  playerUnit.userData.isPlayer = true;
+  playerUnit.userData.shootCooldown = 0;
+  playerUnit.userData.hp = pStats.hp;
+  playerUnit.userData.maxHp = pStats.hp;
+  playerUnit.userData.damage = pStats.damage;
+  playerUnit.userData.playerSpeed = pStats.speed;
+  playerUnit.userData.playerStats = pStats;
+
+  // Use level-specific army or default
+  const armyComp = LEVEL_ARMIES[currentLevel] || ARMY_COMP;
+
+  // Player replaces one unit of their class type (or pillow if class not in army)
+  const replaceType = armyComp.find(e => e.type === pd.playerClass) ? pd.playerClass : 'pillow';
+  let skipOne = true;
+
+  for (const entry of armyComp) {
+    for (let i = 0; i < entry.count; i++) {
+      if (entry.type === replaceType && skipOne) {
+        skipOne = false;
+        // Still create the red counterpart
+        const red = buildUnitModel(entry.type, false);
+        red.position.set(2 + Math.random() * (FIELD_W / 2 - 3), 0, (Math.random() - 0.5) * (FIELD_D - 2));
+        red.rotation.y = Math.PI / 2;
+        scene.add(red); enemyUnits.push(red);
+        continue;
+      }
+
+      // Blue AI unit
+      const blue = buildUnitModel(entry.type, true);
+      blue.position.set(-2 - Math.random() * (FIELD_W / 2 - 3), 0, (Math.random() - 0.5) * (FIELD_D - 2));
+      blue.rotation.y = -Math.PI / 2;
+      scene.add(blue); deployedUnits.push(blue);
+
+      // Red unit (mirror)
+      const red = buildUnitModel(entry.type, false);
+      red.position.set(2 + Math.random() * (FIELD_W / 2 - 3), 0, (Math.random() - 0.5) * (FIELD_D - 2));
+      red.rotation.y = Math.PI / 2;
+      scene.add(red); enemyUnits.push(red);
+    }
+  }
+
+  // Add party hats to enemies in level 2
+  const lvl = LEVEL_DEFS.find(l => l.id === currentLevel);
+  if (lvl && lvl.partyHats) {
+    for (const e of enemyUnits) addPartyHat(e);
+  }
+}
+
+// =============================================
+// PROJECTILE SYSTEM
+// =============================================
+let projectiles = [];
+
+function spawnDart(from, to, damage, team) {
+  const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(from.position).add(new THREE.Vector3(0, 1, 0));
+  const start = mesh.position.clone();
+  const end = to.position.clone().add(new THREE.Vector3(0, 0.8, 0));
+  mesh.lookAt(end);
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 15, damage, team, type: 'dart' });
+  SFX.nerfShot();
+}
+
+function spawnBalloon(from, to, damage, team, splash) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 8),
+    new THREE.MeshStandardMaterial({ color: 0x4488ff, opacity: 0.8, transparent: true })
+  );
+  mesh.position.copy(from.position).add(new THREE.Vector3(0, 1, 0));
+  const start = mesh.position.clone();
+  const end = to.position.clone();
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 8, damage, team, type: 'balloon', splash });
+}
+
+function spawnWaterShot(from, dir, damage, team) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.08, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x44aaff, opacity: 0.8, transparent: true })
+  );
+  mesh.position.copy(from).add(new THREE.Vector3(0, 1.2, 0));
+  const start = mesh.position.clone();
+  const end = start.clone().add(dir.clone().multiplyScalar(12));
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 18, damage, team, type: 'dart' });
+  SFX.waterGun();
+}
+
+function spawnPoo(from, to, damage, team, splash) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x6b4226 })
+  );
+  mesh.position.copy(from.position).add(new THREE.Vector3(0, 1.3, 0));
+  const start = mesh.position.clone();
+  const end = to.position.clone();
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 7, damage, team, type: 'poo', splash });
+  SFX.pooLaunch();
+}
+
+function spawnPlayerPoo(fromPos, dir, damage, team, range, splash) {
+  const mesh = new THREE.Mesh(
+    new THREE.SphereGeometry(0.1, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0x6b4226 })
+  );
+  mesh.position.copy(fromPos).add(new THREE.Vector3(0, 1.2, 0));
+  const start = mesh.position.clone();
+  const end = start.clone().add(dir.clone().multiplyScalar(range || 10));
+  end.y = 0;
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 7, damage, team, type: 'poo', splash: splash || 2.5, isPlayerShot: true });
+  SFX.pooLaunch();
+}
+
+function updateProjectiles(dt) {
+  for (let i = projectiles.length - 1; i >= 0; i--) {
+    const p = projectiles[i];
+    const totalDist = p.start.distanceTo(p.end);
+    p.progress += (p.speed * dt) / totalDist;
+    p.mesh.position.lerpVectors(p.start, p.end, Math.min(p.progress, 1));
+
+    if (p.type === 'balloon' || p.type === 'poo') {
+      p.mesh.position.y += Math.sin(p.progress * Math.PI) * totalDist * 0.3;
+    }
+
+    // Check for in-flight hits on darts (not just at end)
+    let hit = false;
+    if (p.type === 'dart' && !p.splash && p.progress < 1) {
+      const allUnits = [...deployedUnits, ...enemyUnits];
+      for (const u of allUnits) {
+        if (!u.userData.alive) continue;
+        if (u.userData.team === p.team) continue;
+        if (u.userData.isPlayer) continue;
+        // Use XZ distance only (darts fly at y=1.2 but units are at y=0)
+        const ddx = u.position.x - p.mesh.position.x;
+        const ddz = u.position.z - p.mesh.position.z;
+        if (Math.sqrt(ddx * ddx + ddz * ddz) < 1.0) {
+          const wasAlive = u.userData.alive;
+          applyDamage(u, p.damage);
+          if (p.isPlayerShot && wasAlive && !u.userData.alive) playerKillCount++;
+          scene.remove(p.mesh);
+          projectiles.splice(i, 1);
+          hit = true;
+          break;
+        }
+      }
+    }
+    if (hit) continue;
+
+    if (p.progress >= 1) {
+      scene.remove(p.mesh);
+      const allUnits = [...deployedUnits, ...enemyUnits];
+      if (p.splash) {
+        for (const u of allUnits) {
+          if (!u.userData.alive) continue;
+          if (u.userData.team === p.team) continue;
+          const dist = u.position.distanceTo(p.end);
+          if (dist < p.splash) {
+            const wasAlive = u.userData.alive;
+            applyDamage(u, p.damage * (1 - dist / (p.splash + 1)));
+            if (p.isPlayerShot && wasAlive && !u.userData.alive) playerKillCount++;
+          }
+        }
+        if (p.type === 'poo') SFX.pooSplat(); else SFX.splash();
+      } else {
+        for (const u of allUnits) {
+          if (!u.userData.alive) continue;
+          if (u.userData.team === p.team) continue;
+          if (u.position.distanceTo(p.mesh.position) < 2) {
+            const wasAlive = u.userData.alive;
+            applyDamage(u, p.damage);
+            if (p.isPlayerShot && wasAlive && !u.userData.alive) playerKillCount++;
+            break;
+          }
+        }
+      }
+      projectiles.splice(i, 1);
+    }
+  }
+}
+
+// =============================================
+// CONFETTI SYSTEM
+// =============================================
+let confettiParticles = [];
+const CONFETTI_COLORS = [0xff66aa, 0x44ddff, 0xffaa44, 0x44ff44, 0xff4444, 0xaa44ff, 0xffff44];
+
+function spawnConfetti(pos) {
+  const count = 15 + Math.floor(Math.random() * 15);
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.BoxGeometry(0.08, 0.08, 0.02);
+    const mat = new THREE.MeshBasicMaterial({ color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)] });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.set(
+      pos.x + (Math.random() - 0.5) * 0.5,
+      pos.y + 0.5 + Math.random() * 0.5,
+      pos.z + (Math.random() - 0.5) * 0.5
+    );
+    p.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    scene.add(p);
+    confettiParticles.push({
+      mesh: p,
+      vx: (Math.random() - 0.5) * 4,
+      vy: 2 + Math.random() * 3,
+      vz: (Math.random() - 0.5) * 4,
+      spin: (Math.random() - 0.5) * 10,
+      life: 2 + Math.random(),
+      age: 0,
+    });
+  }
+}
+
+function updateConfetti(dt) {
+  for (let i = confettiParticles.length - 1; i >= 0; i--) {
+    const cp = confettiParticles[i];
+    cp.age += dt;
+    if (cp.age > cp.life) {
+      scene.remove(cp.mesh);
+      confettiParticles.splice(i, 1);
+      continue;
+    }
+    cp.vy -= 6 * dt;
+    cp.mesh.position.x += cp.vx * dt;
+    cp.mesh.position.y += cp.vy * dt;
+    cp.mesh.position.z += cp.vz * dt;
+    cp.mesh.rotation.x += cp.spin * dt;
+    cp.mesh.rotation.z += cp.spin * 0.7 * dt;
+    cp.vx += (Math.random() - 0.5) * 2 * dt;
+    cp.vz += (Math.random() - 0.5) * 2 * dt;
+    if (cp.mesh.position.y < 0.02) {
+      cp.mesh.position.y = 0.02;
+      cp.vy = 0; cp.vx *= 0.5; cp.vz *= 0.5;
+    }
+    cp.mesh.material.opacity = Math.max(0, 1 - cp.age / cp.life);
+    cp.mesh.material.transparent = true;
+  }
+}
+
+function clearConfetti() {
+  for (const cp of confettiParticles) scene.remove(cp.mesh);
+  confettiParticles = [];
+}
+
+function explodePooMine(mine) {
+  mine.exploded = true;
+  // Hide the poo pile
+  mine.group.visible = false;
+  // Brown explosion particles
+  const pos = new THREE.Vector3(mine.x, 0.2, mine.z);
+  const brownColors = [0x6b4226, 0x8b5a2b, 0x5c3317, 0x4a2a0a, 0x3d1c02, 0x88aa44];
+  for (let i = 0; i < 25; i++) {
+    const geo = new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({ color: brownColors[Math.floor(Math.random() * brownColors.length)], transparent: true });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.set(
+      pos.x + (Math.random() - 0.5) * 0.3,
+      pos.y + Math.random() * 0.3,
+      pos.z + (Math.random() - 0.5) * 0.3
+    );
+    scene.add(p);
+    confettiParticles.push({
+      mesh: p, age: 0, life: 1.0 + Math.random() * 0.5,
+      vx: (Math.random() - 0.5) * 6,
+      vy: 3 + Math.random() * 4,
+      vz: (Math.random() - 0.5) * 6,
+      spin: (Math.random() - 0.5) * 10,
+    });
+  }
+  SFX.pooSplat();
+}
+
+function checkPooMines() {
+  for (const mine of pooMines) {
+    if (mine.exploded) continue;
+    // Check player
+    if (playerUnit && playerUnit.userData.alive) {
+      const dx = playerUnit.position.x - mine.x;
+      const dz = playerUnit.position.z - mine.z;
+      if (dx * dx + dz * dz < 0.8 * 0.8) {
+        explodePooMine(mine);
+        applyDamage(playerUnit, 99999);
+        continue;
+      }
+    }
+    // Check all units (allies + enemies)
+    const allUnits = deployedUnits.concat(enemyUnits);
+    for (const u of allUnits) {
+      if (!u.userData.alive) continue;
+      if (u.userData.isPlayer) continue; // player checked above
+      const dx = u.position.x - mine.x;
+      const dz = u.position.z - mine.z;
+      if (dx * dx + dz * dz < 0.8 * 0.8) {
+        explodePooMine(mine);
+        applyDamage(u, 99999);
+        break;
+      }
+    }
+  }
+}
+
+// =============================================
+// COMBAT CORE
+// =============================================
+let battleRunning = false;
+let battleTime = 0;
+let snackBoostActive = false;
+let snackBoostTimer = 0;
+let playerKillCount = 0;
+let lastPlayerHp = 100;
+
+function applyDamage(unit, amount) {
+  unit.userData.hp -= amount;
+  if (unit.userData.hp <= 0) {
+    unit.userData.hp = 0;
+    unit.userData.alive = false;
+    unit.visible = false;
+    spawnConfetti(unit.position);
+  }
+  updateHealthBar(unit);
+
+  // Damage flash when player is hit
+  if (unit.userData.isPlayer && unit.userData.hp > 0) {
+    const flash = document.getElementById('damage-flash');
+    flash.style.opacity = '1';
+    setTimeout(() => { flash.style.opacity = '0'; }, 150);
+  }
+}
+
+function updateHealthBar(unit) {
+  const pct = Math.max(0, unit.userData.hp / unit.userData.maxHp);
+  unit.userData.hbFill.scale.x = pct;
+  unit.userData.hbFill.position.x = -(1 - pct) * 0.3;
+}
+
+function findNearest(unit, enemies) {
+  let best = null, bestDist = Infinity;
+  for (const e of enemies) {
+    if (!e.userData.alive) continue;
+    const d = unit.position.distanceTo(e.position);
+    if (d < bestDist) { bestDist = d; best = e; }
+  }
+  return best;
+}
+
+function moveToward(unit, target, dt) {
+  const dir = new THREE.Vector3().subVectors(target.position, unit.position);
+  dir.y = 0;
+  const dist = dir.length();
+  if (dist < 0.1) return;
+  dir.normalize();
+  unit.position.add(dir.multiplyScalar(unit.userData.speed * dt));
+  unit.position.y = 0;
+  unit.rotation.y = Math.atan2(dir.x, dir.z);
+}
+
+function clampToField(unit) {
+  unit.position.x = Math.max(-FIELD_W / 2 + 0.5, Math.min(FIELD_W / 2 - 0.5, unit.position.x));
+  unit.position.z = Math.max(-FIELD_D / 2 + 0.5, Math.min(FIELD_D / 2 - 0.5, unit.position.z));
+}
+
+function getAttackDamage(attacker, defender) {
+  let dmg = attacker.userData.damage;
+  const aType = attacker.userData.type;
+  const dType = defender.userData.type;
+
+  if (aType === 'blanket' && dType === 'scooter') dmg *= 2;
+  if (aType === 'scooter' && attacker.userData.charged) {
+    dmg *= 2;
+    attacker.userData.charged = false;
+  }
+  if (aType === 'nerf' && attacker.position.distanceTo(defender.position) < 2) {
+    dmg = UNIT_DEFS.nerf.meleeDamage;
+  }
+  if (snackBoostActive && attacker.userData.team === 'blue') dmg *= 1.1;
+
+  return dmg;
+}
+
+function updateCombatAI(dt) {
+  const allBlue = deployedUnits.filter(u => u.userData.alive);
+  const allRed = enemyUnits.filter(u => u.userData.alive);
+
+  function processUnit(unit, enemies) {
+    if (!unit.userData.alive) return;
+    if (unit.userData.isPlayer) return; // Player is controlled by FPS input
+    unit.userData.attackCooldown -= dt;
+
+    const target = findNearest(unit, enemies);
+    if (!target) return;
+
+    const dist = unit.position.distanceTo(target.position);
+    const range = unit.userData.range;
+    const type = unit.userData.type;
+
+    if (type === 'nerf') {
+      if (dist < 3) {
+        const away = new THREE.Vector3().subVectors(unit.position, target.position).normalize();
+        unit.position.add(away.multiplyScalar(unit.userData.speed * dt));
+        clampToField(unit);
+      } else if (dist <= range && unit.userData.attackCooldown <= 0) {
+        spawnDart(unit, target, getAttackDamage(unit, target), unit.userData.team);
+        unit.userData.attackCooldown = 1.0;
+      } else if (dist > range) {
+        moveToward(unit, target, dt);
+      }
+    } else if (type === 'balloon') {
+      if (dist <= range && unit.userData.attackCooldown <= 0) {
+        spawnBalloon(unit, target, getAttackDamage(unit, target), unit.userData.team, UNIT_DEFS.balloon.splash);
+        unit.userData.attackCooldown = 3.0;
+      } else if (dist > range) {
+        moveToward(unit, target, dt * 0.3);
+      }
+    } else if (type === 'pooSling') {
+      if (dist <= range && unit.userData.attackCooldown <= 0) {
+        spawnPoo(unit, target, getAttackDamage(unit, target), unit.userData.team, UNIT_DEFS.pooSling.splash);
+        unit.userData.attackCooldown = 2.5;
+      } else if (dist > range) {
+        moveToward(unit, target, dt * 0.4);
+      }
+    } else {
+      if (dist <= range) {
+        if (unit.userData.attackCooldown <= 0) {
+          applyDamage(target, getAttackDamage(unit, target));
+          unit.userData.attackCooldown = 0.8;
+          if (type === 'pillow') SFX.pillowHit();
+          else if (type === 'scooter') SFX.scooterZoom();
+        }
+        const dir = new THREE.Vector3().subVectors(target.position, unit.position);
+        unit.rotation.y = Math.atan2(dir.x, dir.z);
+      } else {
+        moveToward(unit, target, dt);
+      }
+    }
+    clampToField(unit);
+  }
+
+  for (const u of deployedUnits) processUnit(u, allRed);
+  for (const u of enemyUnits) processUnit(u, allBlue);
+}
+
+function billboardHealthBars() {
+  const all = [...deployedUnits, ...enemyUnits];
+  for (const u of all) {
+    if (!u.userData.alive) continue;
+    if (u.userData.isPlayer) continue; // Player HB is on HUD
+    // Face camera on Y axis only (ignore pitch so bars stay upright)
+    const hb = u.userData.hbGroup;
+    const dx = camera.position.x - u.position.x;
+    const dz = camera.position.z - u.position.z;
+    hb.rotation.set(0, Math.atan2(dx, dz), 0);
+  }
+}
+
+// =============================================
+// FPS PLAYER SYSTEM
+// =============================================
+let playerYaw = 0;
+let playerPitch = 0;
+const moveKeys = { w: false, a: false, s: false, d: false };
+let weaponGroup = null;
+let swingTime = 0;
+let isSwinging = false;
+
+function setupWeapon() {
+  weaponGroup = new THREE.Group();
+  const pd = loadPlayerData();
+  const skinColor = new THREE.Color(pd.skinColor);
+
+  if (pd.playerClass === 'nerf') {
+    // Nerf gun (first-person view)
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(0.12, 0.14, 0.45),
+      new THREE.MeshStandardMaterial({ color: 0xff8800 })
+    );
+    body.position.set(0.32, -0.26, -0.5);
+    weaponGroup.add(body);
+    const barrel = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.03, 0.03, 0.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0xffaa00 })
+    );
+    barrel.rotation.x = Math.PI / 2;
+    barrel.position.set(0.32, -0.22, -0.72);
+    weaponGroup.add(barrel);
+    const grip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.12, 0.06),
+      new THREE.MeshStandardMaterial({ color: 0xcc6600 })
+    );
+    grip.position.set(0.32, -0.36, -0.42);
+    weaponGroup.add(grip);
+    // Hand
+    const hand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: skinColor })
+    );
+    hand.position.set(0.32, -0.34, -0.48);
+    weaponGroup.add(hand);
+  } else if (pd.playerClass === 'pooSling') {
+    // Slingshot weapon (first-person view)
+    const stickMat = new THREE.MeshStandardMaterial({ color: 0x885522 });
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.35), stickMat);
+    handle.position.set(0.3, -0.3, -0.5);
+    weaponGroup.add(handle);
+    const fork1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), stickMat);
+    fork1.position.set(0.26, -0.1, -0.5); fork1.rotation.z = 0.4;
+    weaponGroup.add(fork1);
+    const fork2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), stickMat);
+    fork2.position.set(0.34, -0.1, -0.5); fork2.rotation.z = -0.4;
+    weaponGroup.add(fork2);
+    // Rubber band
+    const bandMat = new THREE.MeshStandardMaterial({ color: 0xcc8844 });
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.12), bandMat);
+    band.position.set(0.3, -0.02, -0.5);
+    weaponGroup.add(band);
+    // Poo ammo
+    const poo = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0x6b4226 }));
+    poo.position.set(0.3, -0.04, -0.5);
+    weaponGroup.add(poo);
+    // Hand
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: skinColor }));
+    hand.position.set(0.3, -0.42, -0.48);
+    weaponGroup.add(hand);
+  } else {
+    // Pillow weapon (first-person view)
+    const pillow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.45, 0.22, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0xffffff })
+    );
+    pillow.position.set(0.35, -0.28, -0.5);
+    pillow.rotation.z = -0.15;
+    weaponGroup.add(pillow);
+    const stripe = new THREE.Mesh(
+      new THREE.BoxGeometry(0.43, 0.06, 0.13),
+      new THREE.MeshStandardMaterial({ color: 0xddddff })
+    );
+    stripe.position.set(0.35, -0.28, -0.5);
+    stripe.rotation.z = -0.15;
+    weaponGroup.add(stripe);
+    // Hand
+    const hand = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: skinColor })
+    );
+    hand.position.set(0.22, -0.32, -0.42);
+    weaponGroup.add(hand);
+  }
+
+  camera.add(weaponGroup);
+}
+
+function updatePlayerMovement(dt) {
+  if (!playerUnit || !playerUnit.userData.alive) return;
+
+  const speed = playerUnit.userData.playerSpeed || 3.5;
+  const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+  const right = new THREE.Vector3(forward.z, 0, -forward.x);
+
+  const move = new THREE.Vector3();
+  if (moveKeys.w) move.add(forward);
+  if (moveKeys.s) move.sub(forward);
+  if (moveKeys.a) move.sub(right);
+  if (moveKeys.d) move.add(right);
+
+  if (move.lengthSq() > 0) {
+    move.normalize().multiplyScalar(speed * dt);
+    playerUnit.position.add(move);
+    clampToField(playerUnit);
+  }
+}
+
+function updatePlayerCamera() {
+  if (!playerUnit) return;
+  camera.position.set(playerUnit.position.x, 1.4, playerUnit.position.z);
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = playerYaw;
+  camera.rotation.x = playerPitch;
+}
+
+function updatePlayerCooldowns(dt) {
+  if (!playerUnit || !playerUnit.userData.alive) return;
+  if (playerUnit.userData.attackCooldown > 0) playerUnit.userData.attackCooldown -= dt;
+  if (playerUnit.userData.shootCooldown > 0) playerUnit.userData.shootCooldown -= dt;
+}
+
+function playerAttack() {
+  if (!playerUnit || !playerUnit.userData.alive) return;
+  if (playerUnit.userData.attackCooldown > 0) return;
+
+  const pStats = playerUnit.userData.playerStats;
+  playerUnit.userData.attackCooldown = pStats.cooldown;
+  isSwinging = true;
+  swingTime = 0;
+
+  if (pStats.attackType === 'ranged') {
+    // Nerf: shoot a dart forward
+    const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+    let dmg = pStats.damage;
+    if (snackBoostActive) dmg *= 1.1;
+    spawnPlayerDart(playerUnit.position, forward, dmg, 'blue', pStats.range);
+    SFX.nerfShot();
+  } else if (pStats.attackType === 'mortar') {
+    // Poo Slingshot: lob a poo bomb forward
+    const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+    let dmg = pStats.damage;
+    if (snackBoostActive) dmg *= 1.1;
+    spawnPlayerPoo(playerUnit.position, forward, dmg, 'blue', pStats.range, 2.5 * (pStats.splashMult || 1));
+  } else {
+    // Pillow: melee swing
+    SFX.pillowHit();
+    const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+
+    for (const enemy of enemyUnits) {
+      if (!enemy.userData.alive) continue;
+      const toEnemy = new THREE.Vector3().subVectors(enemy.position, playerUnit.position);
+      toEnemy.y = 0;
+      const dist = toEnemy.length();
+      if (dist > pStats.range) continue;
+
+      toEnemy.normalize();
+      if (forward.dot(toEnemy) > 0.3) {
+        let dmg = pStats.damage;
+        if (snackBoostActive) dmg *= 1.1;
+        const wasAlive = enemy.userData.alive;
+        applyDamage(enemy, dmg);
+        if (wasAlive && !enemy.userData.alive) playerKillCount++;
+        break;
+      }
+    }
+  }
+}
+
+function spawnPlayerDart(fromPos, dir, damage, team, range) {
+  const geo = new THREE.CylinderGeometry(0.02, 0.02, 0.3, 4);
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff8800 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(fromPos).add(new THREE.Vector3(0, 1.2, 0));
+  const start = mesh.position.clone();
+  const end = start.clone().add(dir.clone().multiplyScalar(range || 12));
+  mesh.lookAt(end);
+  scene.add(mesh);
+  projectiles.push({ mesh, start, end, progress: 0, speed: 15, damage, team, type: 'dart', isPlayerShot: true });
+}
+
+function playerShoot() {
+  if (!playerUnit || !playerUnit.userData.alive) return;
+  if (!hasPurchase('sb_super_soaker')) return;
+  if (playerUnit.userData.shootCooldown > 0) return;
+
+  playerUnit.userData.shootCooldown = 1.5;
+  const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+  spawnWaterShot(playerUnit.position, forward, 20, 'blue');
+}
+
+function updateWeaponSwing(dt) {
+  if (!weaponGroup) return;
+  if (isSwinging) {
+    swingTime += dt * 10;
+    if (swingTime > Math.PI) {
+      isSwinging = false;
+      swingTime = 0;
+      weaponGroup.rotation.set(0, 0, 0);
+    } else {
+      weaponGroup.rotation.z = -Math.sin(swingTime) * 0.8;
+      weaponGroup.rotation.x = -Math.sin(swingTime) * 0.3;
+    }
+  }
+}
+
+// =============================================
+// BATTLE MUSIC (same march as intro, looped)
+// =============================================
+let battleAudioCtx = null;
+let battleMusicLoop = null;
+
+function playMarch(volume) {
+  try {
+    const c = new (window.AudioContext || window.webkitAudioContext)();
+    const master = c.createGain();
+    master.gain.value = volume || 0.08;
+    master.connect(c.destination);
+
+    function snare(time) {
+      const n = c.createBufferSource();
+      const buf = c.createBuffer(1, c.sampleRate * 0.08, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+      n.buffer = buf;
+      const hp = c.createBiquadFilter();
+      hp.type = 'highpass'; hp.frequency.value = 2000;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.8, time);
+      g.gain.exponentialRampToValueAtTime(0.01, time + 0.08);
+      n.connect(hp); hp.connect(g); g.connect(master);
+      n.start(time);
+    }
+
+    function kick(time) {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(150, time);
+      o.frequency.exponentialRampToValueAtTime(40, time + 0.15);
+      const g = c.createGain();
+      g.gain.setValueAtTime(1, time);
+      g.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+      o.connect(g); g.connect(master);
+      o.start(time); o.stop(time + 0.2);
+    }
+
+    function brass(time, freq, dur) {
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.value = freq;
+      const f = c.createBiquadFilter();
+      f.type = 'lowpass'; f.frequency.value = 800;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0, time);
+      g.gain.linearRampToValueAtTime(0.35, time + 0.3);
+      g.gain.setValueAtTime(0.35, time + dur - 0.5);
+      g.gain.linearRampToValueAtTime(0, time + dur);
+      o.connect(f); f.connect(g); g.connect(master);
+      o.start(time); o.stop(time + dur);
+    }
+
+    function timpani(time, freq) {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(freq, time);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.7, time + 0.4);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.6, time);
+      g.gain.exponentialRampToValueAtTime(0.01, time + 0.5);
+      o.connect(g); g.connect(master);
+      o.start(time); o.stop(time + 0.5);
+    }
+
+    const now = c.currentTime + 0.1;
+    const bpm = 80;
+    const beat = 60 / bpm;
+
+    for (let i = 0; i < 32; i++) {
+      const t = now + i * beat;
+      if (i % 4 === 0 || i % 4 === 2) kick(t);
+      if (i % 4 === 1 || i % 4 === 3) snare(t);
+      if (i % 16 === 15) { snare(t + beat * 0.25); snare(t + beat * 0.5); snare(t + beat * 0.75); }
+    }
+
+    brass(now, 65, beat * 8);
+    brass(now + beat * 8, 58, beat * 8);
+    brass(now + beat * 16, 55, beat * 8);
+    brass(now + beat * 24, 73, beat * 8);
+
+    brass(now + beat * 2, 98, beat * 6);
+    brass(now + beat * 10, 87, beat * 6);
+    brass(now + beat * 18, 82, beat * 6);
+    brass(now + beat * 26, 110, beat * 6);
+
+    timpani(now, 65);
+    timpani(now + beat * 4, 55);
+    timpani(now + beat * 8, 58);
+    timpani(now + beat * 12, 49);
+    timpani(now + beat * 16, 55);
+    timpani(now + beat * 20, 65);
+    timpani(now + beat * 24, 73);
+    timpani(now + beat * 28, 82);
+
+    timpani(now + beat * 31, 65);
+    kick(now + beat * 31);
+    kick(now + beat * 31.5);
+
+    return c;
+  } catch (e) { return null; }
+}
+
+function startBattleMusic() {
+  stopBattleMusic();
+  battleAudioCtx = playMarch(0.08);
+  // Loop every ~24 seconds (32 beats at 80 BPM)
+  battleMusicLoop = setInterval(() => {
+    if (battleAudioCtx) try { battleAudioCtx.close(); } catch (e) {}
+    battleAudioCtx = playMarch(0.08);
+  }, 24000);
+}
+
+function stopBattleMusic() {
+  if (battleMusicLoop) { clearInterval(battleMusicLoop); battleMusicLoop = null; }
+  if (battleAudioCtx) { try { battleAudioCtx.close(); } catch (e) {} battleAudioCtx = null; }
+}
+
+// =============================================
+// LOADOUT SCREEN
+// =============================================
+function showLoadout() {
+  hideAllScreens();
+  document.getElementById('loadout-screen').classList.remove('hidden');
+  renderLoadout();
+}
+
+function renderLoadout() {
+  const pd = loadPlayerData();
+
+  document.getElementById('loadout-candy').textContent = 'Candy: ' + pd.candy;
+
+  // Class picker
+  const picker = document.getElementById('class-picker');
+  picker.innerHTML = '';
+  for (const [id, cls] of Object.entries(CLASSES)) {
+    const div = document.createElement('div');
+    div.className = 'class-option' + (pd.playerClass === id ? ' selected' : '');
+    div.innerHTML = '<div class="class-icon">' + cls.icon + '</div><div class="class-info"><div class="class-name">' + cls.name + '</div><div class="class-desc">' + cls.desc + '</div></div>';
+    div.onclick = () => { pd.playerClass = id; savePlayerData(pd); renderLoadout(); };
+    picker.appendChild(div);
+  }
+
+  // Colors
+  document.getElementById('color-hair').value = pd.hairColor;
+  document.getElementById('color-shirt').value = pd.shirtColor;
+  document.getElementById('color-skin').value = pd.skinColor;
+
+  // Color change handlers
+  document.getElementById('color-hair').onchange = (e) => { pd.hairColor = e.target.value; savePlayerData(pd); };
+  document.getElementById('color-shirt').onchange = (e) => { pd.shirtColor = e.target.value; savePlayerData(pd); };
+  document.getElementById('color-skin').onchange = (e) => { pd.skinColor = e.target.value; savePlayerData(pd); };
+
+  // Upgrades
+  const list = document.getElementById('upgrade-list');
+  list.innerHTML = '';
+  for (const up of UPGRADES) {
+    const lvl = pd.upgrades[up.id] || 0;
+    const canBuy = lvl < up.maxLevel && pd.candy >= up.cost;
+    const maxed = lvl >= up.maxLevel;
+    const div = document.createElement('div');
+    div.className = 'upgrade-row';
+    div.innerHTML =
+      '<div class="upgrade-name">' + up.name + '<br><span style="font-size:10px;color:#888">' + up.desc + '</span></div>' +
+      '<div class="upgrade-level">Lv ' + lvl + '/' + up.maxLevel + '</div>' +
+      '<button class="upgrade-btn" ' + (canBuy ? '' : 'disabled') + '>' + (maxed ? 'MAX' : up.cost + ' candy') + '</button>';
+    if (canBuy) {
+      div.querySelector('button').onclick = () => {
+        pd.candy -= up.cost;
+        pd.upgrades[up.id] = lvl + 1;
+        savePlayerData(pd);
+        renderLoadout();
+      };
+    }
+    list.appendChild(div);
+  }
+}
+
+function confirmLoadout() {
+  startBattle();
+}
+
+// =============================================
+// BATTLE PHASE (First Person)
+// =============================================
+function startBattle() {
+  hideAllScreens();
+  document.getElementById('battle-screen').classList.remove('hidden');
+
+  const container = document.getElementById('battle-canvas');
+  container.innerHTML = '';
+  initThree(container);
+  buildBattlefield();
+
+  // Add level-specific decorations
+  const lvl = LEVEL_DEFS.find(l => l.id === currentLevel);
+  if (lvl && lvl.partyHats) addPartyDecorations();
+  if (lvl && lvl.poopWar) {
+    // Outdoor backyard setting
+    scene.background = new THREE.Color(0x88ccff);
+    scene.fog = new THREE.Fog(0x88ccff, 25, 50);
+    addPoopWarDecorations();
+  }
+
+  generateArmies();
+  setupWeapon();
+
+  // Reset state
+  projectiles = [];
+  clearConfetti();
+  battleRunning = true;
+  battleTime = 0;
+  playerKillCount = 0;
+  lastPlayerHp = playerUnit.userData.maxHp;
+  playerYaw = -Math.PI / 2; // Face right toward enemies
+  playerPitch = 0;
+  isSwinging = false;
+  swingTime = 0;
+  boatPhase = false;
+  Object.keys(moveKeys).forEach(k => moveKeys[k] = false);
+
+  snackBoostActive = hasPurchase('sb_snack_boost');
+  snackBoostTimer = snackBoostActive ? 10 : 0;
+
+  // Level 2: landing cutscene with fleet of boats
+  if (lvl && lvl.boatPhase) {
+    // Hide ally units initially (they ride in on boats)
+    for (const u of deployedUnits) {
+      if (!u.userData.isPlayer) u.visible = false;
+    }
+    renderer.render(scene, camera);
+    startLandingCutscene();
+    return;
+  }
+
+  // Start idle render loop so scene doesn't appear frozen
+  preBattleIdle = true;
+  preBattleIdleLoop();
+
+  // Show "click to start"
+  const pd = loadPlayerData();
+  const attackHint = pd.playerClass === 'nerf' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : 'Left click to swing';
+  document.getElementById('click-start').classList.remove('hidden');
+  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Mouse to look | ' + attackHint;
+  document.getElementById('crosshair').style.display = 'none';
+  document.getElementById('player-hud').style.display = 'none';
+  document.getElementById('kill-counter').style.display = 'none';
+
+  const startOverlay = document.getElementById('click-start');
+  startOverlay.addEventListener('click', function startClick() {
+    startOverlay.removeEventListener('click', startClick);
+    preBattleIdle = false;
+    renderer.domElement.requestPointerLock();
+    startOverlay.classList.add('hidden');
+    document.getElementById('crosshair').style.display = '';
+    document.getElementById('player-hud').style.display = '';
+    document.getElementById('kill-counter').style.display = '';
+
+    startBattleMusic();
+    clock.getDelta(); // Reset delta
+    battleLoop();
+  });
+}
+
+function battleLoop() {
+  if (!battleRunning) return;
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05);
+
+  battleTime += dt;
+
+  // Snack boost
+  if (snackBoostActive) {
+    snackBoostTimer -= dt;
+    if (snackBoostTimer <= 0) snackBoostActive = false;
+  }
+
+  // Player
+  updatePlayerMovement(dt);
+  updatePlayerCooldowns(dt);
+  updateWeaponSwing(dt);
+
+  // AI + projectiles + confetti + mines
+  updateCombatAI(dt);
+  updateProjectiles(dt);
+  updateConfetti(dt);
+  checkPooMines();
+
+  // Camera + render
+  updatePlayerCamera();
+  billboardHealthBars();
+  renderer.render(scene, camera);
+
+  // HUD updates
+  const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+  const redAlive = enemyUnits.filter(u => u.userData.alive).length;
+  document.getElementById('hud-blue').textContent = 'Allies: ' + (blueAlive - (playerUnit.userData.alive ? 1 : 0));
+  document.getElementById('hud-red').textContent = 'Enemy: ' + redAlive;
+  const m = Math.floor(battleTime / 60), s = Math.floor(battleTime % 60);
+  document.getElementById('hud-time').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+
+  // Player health HUD
+  const hpPct = Math.max(0, playerUnit.userData.hp / playerUnit.userData.maxHp);
+  document.getElementById('health-fill').style.width = (hpPct * 100) + '%';
+  if (hpPct < 0.3) document.getElementById('health-fill').style.background = 'linear-gradient(90deg, #ff4444, #ff6644)';
+  else if (hpPct < 0.6) document.getElementById('health-fill').style.background = 'linear-gradient(90deg, #ffaa44, #ffcc44)';
+  else document.getElementById('health-fill').style.background = 'linear-gradient(90deg, #44ff44, #88ff88)';
+  document.getElementById('health-text').textContent = Math.ceil(playerUnit.userData.hp) + ' / ' + playerUnit.userData.maxHp + ' HP';
+
+  document.getElementById('kill-counter').textContent = 'Kills: ' + playerKillCount;
+
+  // Win/loss check
+  if (!playerUnit.userData.alive) {
+    document.exitPointerLock();
+    endBattle(false);
+    return;
+  }
+  if (redAlive === 0) {
+    document.exitPointerLock();
+    endBattle(true);
+    return;
+  }
+
+  requestAnimationFrame(battleLoop);
+}
+
+// =============================================
+// END BATTLE
+// =============================================
+function endBattle(victory) {
+  battleRunning = false;
+  stopBattleMusic();
+  document.exitPointerLock();
+
+  // Clean up boats if still present
+  if (boatGroup) { scene.remove(boatGroup); boatGroup = null; }
+  for (const ab of allyBoats) { if (ab.mesh.parent) scene.remove(ab.mesh); }
+  allyBoats = [];
+  boatPhase = false;
+  landingCutscene = false;
+
+  // Stats
+  const stats = loadStats();
+  stats.battles++;
+  if (victory) stats.wins++;
+  saveStats(stats);
+
+  // Level progression
+  if (victory) {
+    const pd = loadPlayerData();
+    pd.clearedLevels[currentLevel] = true;
+    if (currentLevel < LEVEL_DEFS.length && currentLevel + 1 > pd.unlockedLevel) {
+      pd.unlockedLevel = currentLevel + 1;
+    }
+    savePlayerData(pd);
+  }
+
+  // Achievements
+  ggTry('sb_first_fight');
+  if (victory) {
+    ggTry('sb_winner');
+
+    if (playerUnit.userData.hp === playerUnit.userData.maxHp) ggTry('sb_flawless');
+    if (playerKillCount >= 5) ggTry('sb_pillow_army');
+    if (playerKillCount >= 10) ggTry('sb_nerf_squad');
+
+    const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+    if (playerUnit.userData.hp >= playerUnit.userData.maxHp * 0.5) ggTry('sb_balanced');
+    if (blueAlive <= 3) ggTry('sb_underdog');
+    if (battleTime < 30) ggTry('sb_speed_win');
+    if (stats.wins >= 5) ggTry('sb_commander');
+    if (stats.wins >= 10) ggTry('sb_warlord');
+  }
+
+  // Candy rewards
+  const pd = loadPlayerData();
+  const killCandy = playerKillCount * 5;
+  const victoryBonus = victory ? 50 : 0;
+  const candyEarned = killCandy + victoryBonus;
+  pd.candy += candyEarned;
+  savePlayerData(pd);
+
+  // Sound
+  if (victory) SFX.victory(); else SFX.defeat();
+
+  // Show end screen
+  hideAllScreens();
+  document.getElementById('end-screen').classList.remove('hidden');
+
+  document.getElementById('end-title').textContent = victory ? 'MOM! THEY STARTED IT!' : 'You got TATTLED on!';
+  document.getElementById('end-title').style.color = victory ? '#44ddff' : '#ff4444';
+  document.getElementById('end-subtitle').textContent = victory ? 'The younger sibling empire has been defeated!' : 'The younger siblings win this round...';
+
+  const blueAlive = deployedUnits.filter(u => u.userData.alive).length;
+  const redKilled = enemyUnits.filter(u => !u.userData.alive).length;
+  const damageTaken = playerUnit.userData.maxHp - Math.max(0, playerUnit.userData.hp);
+  const mEnd = Math.floor(battleTime / 60), sEnd = Math.floor(battleTime % 60);
+  document.getElementById('end-stats').innerHTML =
+    'Your kills: <span>' + playerKillCount + '</span><br>' +
+    'Damage taken: <span>' + Math.round(damageTaken) + '</span><br>' +
+    'Allies surviving: <span>' + (blueAlive - (playerUnit.userData.alive ? 1 : 0)) + ' / ' + (deployedUnits.length - 1) + '</span><br>' +
+    'Enemies defeated: <span>' + redKilled + ' / ' + enemyUnits.length + '</span><br>' +
+    'Battle time: <span>' + mEnd + ':' + (sEnd < 10 ? '0' : '') + sEnd + '</span><br>' +
+    'Candy earned: <span>+' + candyEarned + '</span>' + (victory ? ' (+50 victory bonus!)' : '') + '<br>' +
+    'Total candy: <span>' + pd.candy + '</span><br>' +
+    'Total wins: <span>' + stats.wins + '</span>';
+}
+
+// =============================================
+// INTRO CINEMATIC
+// =============================================
+
+// --- Intro scene animations (canvas-drawn) ---
+function drawIntroScene(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    ctx.save();
+    ctx.strokeStyle = '#ffffff22';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 30, 40, 0, Math.PI * 2);
+    ctx.stroke();
+    const sec = t * 2;
+    ctx.strokeStyle = '#ffffff44';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30);
+    ctx.lineTo(cx + Math.sin(sec) * 30, cy - 30 - Math.cos(sec) * 30);
+    ctx.stroke();
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30);
+    ctx.lineTo(cx + Math.sin(sec * 0.08) * 22, cy - 30 - Math.cos(sec * 0.08) * 22);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,170,68,' + (0.1 + Math.sin(t * 2) * 0.05) + ')';
+    ctx.font = '14px Bangers';
+    ctx.textAlign = 'center';
+    ctx.fillText('TUESDAY', cx, cy + 40);
+    ctx.restore();
+  } else if (slideIndex === 1) {
+    const jarX = cx, jarY = cy + 20;
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(jarX - 80, jarY + 40, 160, 10);
+    ctx.fillStyle = 'rgba(200,220,255,0.15)';
+    ctx.beginPath();
+    ctx.moveTo(jarX - 25, jarY + 40);
+    ctx.quadraticCurveTo(jarX - 30, jarY - 10, jarX - 20, jarY - 30);
+    ctx.lineTo(jarX + 20, jarY - 30);
+    ctx.quadraticCurveTo(jarX + 30, jarY - 10, jarX + 25, jarY + 40);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,220,255,0.25)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(180,160,140,0.3)';
+    ctx.fillRect(jarX - 22, jarY - 36, 44, 8);
+    ctx.beginPath();
+    ctx.arc(jarX, jarY - 36, 6, Math.PI, 0);
+    ctx.fill();
+    const candyColors = ['#ff4444', '#44ff44', '#ffaa00', '#ff66aa', '#4488ff', '#ffff44'];
+    for (let i = 0; i < 12; i++) {
+      const cx2 = jarX - 15 + (i % 4) * 10;
+      const cy2 = jarY + 25 - Math.floor(i / 4) * 14;
+      ctx.fillStyle = candyColors[i % candyColors.length];
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.ellipse(cx2, cy2, 5, 3.5, (i * 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    const glow = ctx.createRadialGradient(jarX, jarY, 10, jarX, jarY, 70);
+    glow.addColorStop(0, 'rgba(255,170,68,0.08)');
+    glow.addColorStop(1, 'rgba(255,170,68,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(jarX - 80, jarY - 60, 160, 120);
+  } else if (slideIndex === 2) {
+    const flash = Math.max(0, 1 - t * 0.8);
+    ctx.fillStyle = 'rgba(255,0,0,' + (flash * 0.15) + ')';
+    ctx.fillRect(0, 0, w, h);
+    if (t < 1.5) {
+      ctx.strokeStyle = 'rgba(255,68,68,' + (0.4 * (1 - t / 1.5)) + ')';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, cy - 60);
+      ctx.lineTo(cx + 5, cy - 15);
+      ctx.lineTo(cx - 8, cy - 10);
+      ctx.lineTo(cx + 15, cy + 40);
+      ctx.stroke();
+    }
+  } else if (slideIndex === 3) {
+    const jarX = cx, jarY = cy + 20;
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(jarX - 80, jarY + 40, 160, 10);
+    ctx.fillStyle = 'rgba(200,220,255,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(jarX - 25, jarY + 40);
+    ctx.quadraticCurveTo(jarX - 30, jarY - 10, jarX - 20, jarY - 30);
+    ctx.lineTo(jarX + 20, jarY - 30);
+    ctx.quadraticCurveTo(jarX + 30, jarY - 10, jarX + 25, jarY + 40);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(200,220,255,0.2)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    const handProgress = Math.min(1, t * 0.4);
+    const handX = cx + 80 - handProgress * 70;
+    const handY = jarY - 20 + Math.sin(t * 3) * 3;
+    ctx.fillStyle = 'rgba(230,180,140,0.5)';
+    ctx.fillRect(handX + 10, handY - 5, 80, 14);
+    ctx.beginPath();
+    ctx.ellipse(handX, handY, 12, 10, 0, 0, Math.PI * 2);
+    ctx.fill();
+    for (let f = 0; f < 4; f++) {
+      ctx.beginPath();
+      const fy = handY - 8 + f * 5;
+      ctx.ellipse(handX - 10 - (f === 1 || f === 2 ? 4 : 0), fy, 4, 2.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    if (handProgress > 0.5) {
+      const candyColors = ['#ff4444', '#44ff44', '#ffaa00'];
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = candyColors[i];
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.ellipse(handX - 5 + i * 6, handY - 12, 4, 3, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+  } else if (slideIndex === 4) {
+    const fortX = cx, fortY = cy + 30;
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    for (let i = 0; i < 5; i++) {
+      const px = fortX - 40 + i * 20;
+      const py = fortY + 5;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (let i = 0; i < 4; i++) {
+      const px = fortX - 30 + i * 20;
+      const py = fortY - 10;
+      ctx.beginPath();
+      ctx.ellipse(px, py, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(100,68,170,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(fortX - 55, fortY + 15);
+    ctx.quadraticCurveTo(fortX, fortY - 40, fortX + 55, fortY + 15);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,136,0,0.5)';
+    const gunBob = Math.sin(t * 4) * 2;
+    ctx.fillRect(fortX + 25, fortY - 20 + gunBob, 25, 5);
+    ctx.fillRect(fortX - 50, fortY - 15 + gunBob, 25, 5);
+    ctx.fillStyle = '#fff';
+    for (const ex of [-15, 15]) {
+      ctx.beginPath();
+      ctx.arc(fortX + ex, fortY - 25, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.arc(fortX + ex, fortY - 25, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+    }
+  } else if (slideIndex === 5) {
+    const flagX = cx, flagY = cy;
+    ctx.strokeStyle = 'rgba(200,200,200,0.4)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(flagX, flagY + 50);
+    ctx.lineTo(flagX, flagY - 40);
+    ctx.stroke();
+    const wave = Math.sin(t * 3) * 5;
+    ctx.fillStyle = 'rgba(255,68,68,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(flagX, flagY - 40);
+    ctx.quadraticCurveTo(flagX + 30, flagY - 35 + wave, flagX + 55, flagY - 30);
+    ctx.lineTo(flagX + 50, flagY - 10);
+    ctx.quadraticCurveTo(flagX + 25, flagY - 15 + wave, flagX, flagY - 10);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(flagX + 27, flagY - 25, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,68,68,0.5)';
+    ctx.beginPath();
+    ctx.arc(flagX + 25, flagY - 26, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(flagX + 29, flagY - 26, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (slideIndex === 6) {
+    const hx = cx, hy = cy + 30;
+    const glow = ctx.createRadialGradient(hx, hy - 20, 5, hx, hy - 20, 60);
+    glow.addColorStop(0, 'rgba(68,136,255,0.15)');
+    glow.addColorStop(1, 'rgba(68,136,255,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(hx - 70, hy - 80, 140, 120);
+    ctx.fillStyle = 'rgba(68,136,255,0.4)';
+    ctx.beginPath();
+    ctx.arc(hx, hy - 55, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(hx - 8, hy - 45, 16, 25);
+    ctx.fillRect(hx - 25, hy - 40, 50, 6);
+    ctx.fillRect(hx - 7, hy - 20, 6, 22);
+    ctx.fillRect(hx + 1, hy - 20, 6, 22);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(hx + 25, hy - 37, 12, 6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (slideIndex === 7) {
+    const candyColors = ['#ff4444', '#44ff44', '#ffaa00', '#ff66aa', '#4488ff', '#ffff44', '#aa44ff'];
+    for (let i = 0; i < 20; i++) {
+      const seed = i * 137.5;
+      const cx2 = (seed * 7.3) % w;
+      const cy2 = ((t * 40 + seed * 3.1) % (h + 20)) - 10;
+      const rot = t * 2 + seed;
+      ctx.save();
+      ctx.translate(cx2, cy2);
+      ctx.rotate(rot);
+      ctx.fillStyle = candyColors[i % candyColors.length];
+      ctx.globalAlpha = 0.4;
+      ctx.fillRect(-4, -3, 8, 6);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// --- Intro music (one-shot for cinematic) ---
+let introAudioCtx = null;
+
+function startIntroMusic() {
+  introAudioCtx = playMarch(0.12);
+}
+
+function stopIntroMusic() {
+  if (introAudioCtx) { try { introAudioCtx.close(); } catch (e) {} introAudioCtx = null; }
+}
+
+const INTRO_SLIDES = [
+  {
+    bg: '#0a0008',
+    lines: [
+      { text: 'It was a Tuesday.', cls: 'narration' },
+      { text: 'A perfectly normal Tuesday.', cls: 'small' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0a00 0%, #2a1500 100%)',
+    lines: [
+      { text: 'The candy jar sat on the kitchen counter...', cls: 'narration' },
+      { text: '47 pieces. Carefully counted. Rightfully YOURS.', cls: 'narration candy' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0005 0%, #2a000a 100%)',
+    lines: [
+      { text: 'But then...', cls: 'small' },
+      { text: 'THEY struck.', cls: 'dramatic villain' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: '#180008',
+    lines: [
+      { text: 'The younger siblings.', cls: 'narration villain' },
+      { text: 'They raided the candy jar while you were at school.', cls: 'narration' },
+      { text: 'They took EVERYTHING.', cls: 'dramatic villain' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0008 0%, #1a0018 100%)',
+    lines: [
+      { text: 'They built pillow forts. Armed themselves with nerf guns.', cls: 'narration' },
+      { text: 'Wrapped themselves in blankets like tiny, sticky-fingered tanks.', cls: 'narration' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #000a1a 0%, #001a2a 100%)',
+    lines: [
+      { text: 'They declared the living room...', cls: 'narration' },
+      { text: 'THE YOUNGER SIBLING EMPIRE', cls: 'dramatic villain' },
+      { text: "And they're NOT sharing the candy.", cls: 'small' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #000818 0%, #001030 100%)',
+    lines: [
+      { text: 'But you are the OLDER sibling.', cls: 'narration hero' },
+      { text: 'You have a bigger allowance. Better tactics.', cls: 'narration' },
+      { text: 'And you are NOT letting this slide.', cls: 'dramatic hero' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'Grab your pillow. Join the fight.', cls: 'narration candy' },
+      { text: 'Take back what is yours.', cls: 'narration' },
+      { text: 'SIBLING BRAWL', cls: 'dramatic' },
+    ],
+    duration: 4000,
+  },
+];
+
+const BDAY_INTRO_SLIDES = [
+  {
+    bg: '#0a0008',
+    lines: [
+      { text: 'It was a Saturday.', cls: 'narration' },
+      { text: 'THEIR birthday.', cls: 'small' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0a00 0%, #2a1500 100%)',
+    lines: [
+      { text: 'The younger siblings were throwing a BIRTHDAY PARTY.', cls: 'narration villain' },
+      { text: 'Cake. Ice cream. ALL the candy.', cls: 'narration candy' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0005 0%, #2a000a 100%)',
+    lines: [
+      { text: "And you weren't invited.", cls: 'dramatic villain' },
+    ],
+    duration: 2500,
+  },
+  {
+    bg: '#180008',
+    lines: [
+      { text: 'They fortified the living room with pillow forts.', cls: 'narration' },
+      { text: 'Armed guards at every entrance. Party hats on. War paint drawn.', cls: 'narration' },
+      { text: 'Battle candy distributed.', cls: 'narration villain' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #000818 0%, #001030 100%)',
+    lines: [
+      { text: 'But you found a refrigerator box in the garage.', cls: 'narration hero' },
+      { text: 'You drew flames on it. Added a flag.', cls: 'narration' },
+      { text: 'It was the most beautiful boat ever built.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'Operation B-Day is a GO.', cls: 'dramatic' },
+      { text: 'Storm the party. Take the cake.', cls: 'narration candy' },
+      { text: "It's YOUR birthday now.", cls: 'dramatic hero' },
+    ],
+    duration: 4000,
+  },
+];
+
+// DOG POOPIC WAR I — The Discovery
+const POOP_WAR_1_SLIDES = [
+  {
+    bg: '#0a0800',
+    lines: [
+      { text: 'The battlefield shifted.', cls: 'narration' },
+      { text: 'To the BACKYARD.', cls: 'dramatic' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a1000 0%, #2a1800 100%)',
+    lines: [
+      { text: "The family dog had been busy.", cls: 'narration' },
+      { text: 'REAL busy.', cls: 'small' },
+      { text: 'The yard was a MINEFIELD.', cls: 'dramatic villain' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0800 0%, #1a1200 100%)',
+    lines: [
+      { text: 'Both sides eyed the ammunition.', cls: 'narration' },
+      { text: 'Someone found a slingshot in the garage.', cls: 'narration' },
+      { text: 'Someone else found a second one.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#1a0800',
+    lines: [
+      { text: 'And then...', cls: 'small' },
+      { text: 'The DOG POOPIC WARS began.', cls: 'dramatic villain' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'Load your slingshot. Watch your step.', cls: 'narration candy' },
+      { text: 'This is going to get MESSY.', cls: 'dramatic hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+// DOG POOPIC WAR II — The Great Poo Offensive
+const POOP_WAR_2_SLIDES = [
+  {
+    bg: '#0a0800',
+    lines: [
+      { text: 'You thought it was over.', cls: 'narration' },
+      { text: 'It was NOT over.', cls: 'dramatic villain' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0800 0%, #2a1200 100%)',
+    lines: [
+      { text: 'The younger siblings had been PRACTICING.', cls: 'narration' },
+      { text: 'They built their own slingshots.', cls: 'narration villain' },
+      { text: 'Better ones.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0500 0%, #1a0a00 100%)',
+    lines: [
+      { text: 'And the dog... the dog had been fed EXTRA.', cls: 'narration' },
+      { text: 'The backyard was worse than ever.', cls: 'narration villain' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: '#1a0800',
+    lines: [
+      { text: 'DOG POOPIC WAR II', cls: 'dramatic' },
+      { text: 'The Great Poo Offensive', cls: 'narration candy' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'They have slingshots now too.', cls: 'narration' },
+      { text: 'May the stinkiest side win.', cls: 'dramatic hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+// DOG POOPIC WAR III — The Final Flush
+const POOP_WAR_3_SLIDES = [
+  {
+    bg: '#0a0500',
+    lines: [
+      { text: 'This is it.', cls: 'narration' },
+      { text: 'The FINAL battle.', cls: 'dramatic' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #1a0500 0%, #2a0800 100%)',
+    lines: [
+      { text: 'Both sides have amassed their LARGEST armies.', cls: 'narration' },
+      { text: 'Poo slingshots on every corner.', cls: 'narration villain' },
+      { text: 'The dog has been eating BEANS.', cls: 'small' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0000 0%, #1a0500 100%)',
+    lines: [
+      { text: 'The yard is more poop than grass at this point.', cls: 'narration' },
+      { text: 'Every step could be your LAST.', cls: 'dramatic villain' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#1a0500',
+    lines: [
+      { text: 'DOG POOPIC WAR III', cls: 'dramatic' },
+      { text: 'The Final Flush', cls: 'narration candy' },
+    ],
+    duration: 3000,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'Winner takes the yard FOREVER.', cls: 'narration' },
+      { text: "There is no tomorrow. There is only POO.", cls: 'dramatic hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+// Shared poo drawing helpers
+function drawPooPile(ctx, x, y, t, offset) {
+  ctx.fillStyle = 'rgba(107,66,38,0.5)';
+  ctx.beginPath();
+  ctx.arc(x, y, 5 + Math.sin(t + offset) * 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(136,170,68,0.3)';
+  ctx.lineWidth = 1;
+  for (let s = 0; s < 2; s++) {
+    ctx.beginPath();
+    ctx.moveTo(x + (s - 0.5) * 4, y - 6);
+    ctx.quadraticCurveTo(x + (s - 0.5) * 6, y - 14 + Math.sin(t * 3 + s) * 2, x + (s - 0.5) * 3, y - 18);
+    ctx.stroke();
+  }
+}
+
+function drawSlingshot(ctx, cx, cy, t, scale) {
+  const s = scale || 1;
+  ctx.strokeStyle = 'rgba(136,85,34,0.5)';
+  ctx.lineWidth = 4 * s;
+  ctx.beginPath(); ctx.moveTo(cx, cy + 30 * s); ctx.lineTo(cx, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx - 15 * s, cy - 25 * s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + 15 * s, cy - 25 * s); ctx.stroke();
+  const pull = Math.sin(t * 2) * 5 * s;
+  ctx.strokeStyle = 'rgba(204,136,68,0.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 15 * s, cy - 25 * s);
+  ctx.quadraticCurveTo(cx, cy - 10 * s + pull, cx + 15 * s, cy - 25 * s);
+  ctx.stroke();
+  ctx.fillStyle = 'rgba(107,66,38,0.6)';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 12 * s + pull * 0.5, 6 * s, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPoopTitle(ctx, cx, cy, t, title) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold ' + Math.min(ctx.canvas.width * 0.07, 38) + 'px Bangers, Impact, sans-serif';
+  ctx.fillStyle = 'rgba(107,66,38,' + (0.6 + Math.sin(t * 2) * 0.1) + ')';
+  ctx.fillText(title, cx, cy);
+  ctx.strokeStyle = 'rgba(60,30,10,0.5)';
+  ctx.lineWidth = 2;
+  ctx.strokeText(title, cx, cy);
+  ctx.font = '20px serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.fillText('\ud83d\udca9', cx - 100 + Math.sin(t * 3) * 5, cy);
+  ctx.fillText('\ud83d\udca9', cx + 95 + Math.sin(t * 3 + 1) * 5, cy);
+  ctx.restore();
+}
+
+// WAR I — The Discovery: backyard, dog, slingshot found
+function drawPoopWar1Intro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Backyard fence
+    ctx.strokeStyle = 'rgba(200,180,140,0.3)';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 9; i++) ctx.strokeRect(cx - 100 + i * 25, cy - 10, 8, 40);
+    ctx.strokeStyle = 'rgba(200,180,140,0.2)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 100, cy); ctx.lineTo(cx + 100, cy);
+    ctx.moveTo(cx - 100, cy + 20); ctx.lineTo(cx + 100, cy + 20); ctx.stroke();
+    ctx.fillStyle = 'rgba(80,160,60,0.15)';
+    ctx.fillRect(cx - 120, cy + 30, 240, 40);
+  } else if (slideIndex === 1) {
+    // Dog and poo piles
+    ctx.fillStyle = 'rgba(180,140,80,0.35)';
+    ctx.beginPath(); ctx.ellipse(cx, cy - 5, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 18, cy - 12, 8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 22, cy - 20, 4, 7, 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx - 18, cy - 10);
+    ctx.quadraticCurveTo(cx - 28, cy - 30 + Math.sin(t * 5) * 5, cx - 22, cy - 25);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(180,140,80,0.35)'; ctx.stroke();
+    const pooPos = [[-40, 25], [-10, 35], [30, 20], [50, 30], [-55, 15], [20, 40]];
+    for (const [px, py] of pooPos) drawPooPile(ctx, cx + px, cy + py, t, px);
+  } else if (slideIndex === 2) {
+    drawSlingshot(ctx, cx, cy, t, 1);
+  } else if (slideIndex === 3) {
+    drawPoopTitle(ctx, cx, cy - 55, t, 'DOG POOPIC WARS');
+    // Two sides facing off
+    for (const side of [{ x: cx - 50, c: 'rgba(68,136,255,0.3)' }, { x: cx + 50, c: 'rgba(255,68,68,0.3)' }]) {
+      for (let i = 0; i < 4; i++) {
+        ctx.fillStyle = side.c;
+        const sx = side.x + (i - 1.5) * 15;
+        ctx.beginPath(); ctx.arc(sx, cy + 5, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(sx - 3, cy + 10, 6, 12);
+      }
+    }
+    ctx.fillStyle = 'rgba(107,66,38,0.5)';
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath(); ctx.arc(cx - 20 + i * 20, cy - 15 + Math.sin(t * 4 + i * 2) * 15, 4, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 4) {
+    // Slingshot ready to fire (dramatic)
+    drawSlingshot(ctx, cx, cy, t, 1.3);
+    ctx.strokeStyle = 'rgba(136,170,68,0.3)'; ctx.lineWidth = 1;
+    for (let s = 0; s < 3; s++) {
+      ctx.beginPath(); ctx.moveTo(cx + (s - 1) * 6, cy - 25);
+      ctx.quadraticCurveTo(cx + (s - 1) * 8, cy - 40 + Math.sin(t * 4 + s) * 3, cx + (s - 1) * 5, cy - 50);
+      ctx.stroke();
+    }
+  }
+}
+
+// WAR II — The Escalation: enemy slingshots, more poo, arms race
+function drawPoopWar2Intro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Broken fence, scorch marks
+    ctx.strokeStyle = 'rgba(200,180,140,0.25)';
+    ctx.lineWidth = 3;
+    for (let i = 0; i < 9; i++) {
+      ctx.save();
+      ctx.translate(cx - 100 + i * 25, cy - 10);
+      if (i === 3 || i === 6) ctx.rotate(0.2 + Math.sin(t + i) * 0.05);
+      ctx.strokeRect(0, 0, 8, i === 3 ? 25 : 40);
+      ctx.restore();
+    }
+    // Brown splat marks on ground
+    ctx.fillStyle = 'rgba(107,66,38,0.2)';
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath(); ctx.arc(cx - 60 + i * 30, cy + 35, 8 + Math.sin(t + i) * 2, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 1) {
+    // Enemy kids with slingshots
+    const redKids = [cx - 30, cx, cx + 30];
+    for (const kx of redKids) {
+      ctx.fillStyle = 'rgba(255,68,68,0.3)';
+      ctx.beginPath(); ctx.arc(kx, cy - 10, 6, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(kx - 3, cy - 4, 6, 14);
+      // Mini slingshot in hand
+      ctx.strokeStyle = 'rgba(136,85,34,0.4)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(kx + 8, cy - 2); ctx.lineTo(kx + 14, cy - 12); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(kx + 8, cy - 2); ctx.lineTo(kx + 14, cy - 6); ctx.stroke();
+    }
+    // Menacing eyes
+    for (const kx of redKids) {
+      ctx.fillStyle = 'rgba(255,255,255,0.6)';
+      ctx.beginPath(); ctx.arc(kx - 2, cy - 12, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(kx + 2, cy - 12, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 2) {
+    // Dog eating from giant bowl, looking guilty
+    ctx.fillStyle = 'rgba(180,140,80,0.35)';
+    ctx.beginPath(); ctx.ellipse(cx + 20, cy, 18, 12, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 38, cy - 8, 8, 0, Math.PI * 2); ctx.fill();
+    // Food bowl
+    ctx.fillStyle = 'rgba(180,180,180,0.3)';
+    ctx.beginPath(); ctx.ellipse(cx - 15, cy + 5, 15, 6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(139,90,43,0.4)';
+    ctx.beginPath(); ctx.ellipse(cx - 15, cy + 3, 12, 4, 0, 0, Math.PI * 2); ctx.fill();
+    // Extra poo everywhere
+    const pooPos = [[-60, 25], [-30, 30], [0, 35], [30, 25], [60, 30], [-45, 40], [45, 40], [-15, 45], [15, 20]];
+    for (const [px, py] of pooPos) drawPooPile(ctx, cx + px, cy + py, t, px);
+  } else if (slideIndex === 3) {
+    drawPoopTitle(ctx, cx, cy - 50, t, 'DOG POOPIC WAR II');
+    // Subtitle
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.font = Math.min(w * 0.035, 18) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(200,150,80,0.5)';
+    ctx.fillText('The Great Poo Offensive', cx, cy - 30);
+    ctx.restore();
+    // Slingshots on both sides firing at each other
+    drawSlingshot(ctx, cx - 50, cy + 15, t, 0.7);
+    drawSlingshot(ctx, cx + 50, cy + 15, t + 1, 0.7);
+    // Poo flying between them
+    ctx.fillStyle = 'rgba(107,66,38,0.5)';
+    for (let i = 0; i < 4; i++) {
+      const px = cx - 30 + i * 20;
+      const py = cy - 5 + Math.sin(t * 5 + i * 1.5) * 20;
+      ctx.beginPath(); ctx.arc(px, py, 3.5, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 4) {
+    // Two armies charging at each other
+    for (let i = 0; i < 6; i++) {
+      const bx = cx - 80 + i * 12 + Math.sin(t * 3) * 3;
+      ctx.fillStyle = 'rgba(68,136,255,0.35)';
+      ctx.beginPath(); ctx.arc(bx, cy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(bx - 2, cy + 4, 4, 8);
+    }
+    for (let i = 0; i < 6; i++) {
+      const rx = cx + 30 + i * 12 - Math.sin(t * 3) * 3;
+      ctx.fillStyle = 'rgba(255,68,68,0.35)';
+      ctx.beginPath(); ctx.arc(rx, cy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(rx - 2, cy + 4, 4, 8);
+    }
+    // Explosion in middle
+    ctx.fillStyle = 'rgba(107,66,38,' + (0.2 + Math.sin(t * 4) * 0.1) + ')';
+    ctx.beginPath(); ctx.arc(cx, cy, 15 + Math.sin(t * 6) * 5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+// WAR III — The Final Flush: apocalyptic poo wasteland
+function drawPoopWar3Intro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Dramatic lightning
+    ctx.fillStyle = 'rgba(20,10,0,0.3)';
+    ctx.fillRect(0, 0, w, h);
+    if (Math.sin(t * 8) > 0.9) {
+      ctx.strokeStyle = 'rgba(255,220,100,0.6)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx + 20, cy - 60);
+      ctx.lineTo(cx + 10, cy - 30);
+      ctx.lineTo(cx + 25, cy - 25);
+      ctx.lineTo(cx + 5, cy + 10);
+      ctx.stroke();
+    }
+    // Silhouette of yard covered in poo
+    ctx.fillStyle = 'rgba(107,66,38,0.3)';
+    ctx.fillRect(cx - 100, cy + 20, 200, 30);
+    // Tiny poo bumps on horizon
+    for (let i = 0; i < 12; i++) {
+      ctx.beginPath();
+      ctx.arc(cx - 90 + i * 16, cy + 18, 4 + Math.sin(i) * 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (slideIndex === 1) {
+    // Massive army formation
+    for (let row = 0; row < 3; row++) {
+      for (let col = 0; col < 8; col++) {
+        const x = cx - 60 + col * 17;
+        const y = cy - 15 + row * 18;
+        ctx.fillStyle = row < 2 ? 'rgba(68,136,255,0.25)' : 'rgba(255,68,68,0.25)';
+        ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(x - 1.5, y + 3, 3, 6);
+      }
+    }
+    // Slingshots everywhere
+    for (let i = 0; i < 4; i++) {
+      const sx = cx - 50 + i * 35;
+      ctx.strokeStyle = 'rgba(136,85,34,0.3)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx, cy + 40); ctx.lineTo(sx, cy + 25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx, cy + 25); ctx.lineTo(sx - 5, cy + 15); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx, cy + 25); ctx.lineTo(sx + 5, cy + 15); ctx.stroke();
+    }
+  } else if (slideIndex === 2) {
+    // Ground is more poo than grass
+    ctx.fillStyle = 'rgba(80,160,60,0.1)';
+    ctx.fillRect(cx - 100, cy + 10, 200, 40);
+    ctx.fillStyle = 'rgba(107,66,38,0.35)';
+    for (let i = 0; i < 20; i++) {
+      const px = cx - 90 + (i * 137.5 % 180);
+      const py = cy + 15 + (i * 73.1 % 30);
+      ctx.beginPath(); ctx.arc(px, py, 4 + Math.sin(t + i) * 1, 0, Math.PI * 2); ctx.fill();
+    }
+    // Skull and crossbones (made of poo)
+    ctx.fillStyle = 'rgba(107,66,38,0.4)';
+    ctx.beginPath(); ctx.arc(cx, cy - 15, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx - 5, cy - 18, 3, 0, Math.PI * 2);
+    ctx.arc(cx + 5, cy - 18, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath(); ctx.arc(cx - 5, cy - 18, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 5, cy - 18, 2, 0, Math.PI * 2); ctx.fill();
+    // Warning sign
+    ctx.strokeStyle = 'rgba(255,200,0,0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx - 15, cy + 5); ctx.lineTo(cx, cy - 30); ctx.lineTo(cx + 15, cy + 5); ctx.closePath();
+    ctx.stroke();
+  } else if (slideIndex === 3) {
+    drawPoopTitle(ctx, cx, cy - 50, t, 'DOG POOPIC WAR III');
+    ctx.save(); ctx.textAlign = 'center';
+    ctx.font = Math.min(w * 0.035, 18) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(200,100,50,0.5)';
+    ctx.fillText('The Final Flush', cx, cy - 30);
+    ctx.restore();
+    // Apocalyptic scene — poo raining from sky
+    ctx.fillStyle = 'rgba(107,66,38,0.4)';
+    for (let i = 0; i < 15; i++) {
+      const seed = i * 137.5;
+      const px = (seed * 3.7) % w;
+      const py = ((t * 80 + seed * 2.1) % (h + 20)) - 10;
+      ctx.beginPath(); ctx.arc(px, py, 3 + Math.sin(t + i) * 1, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 4) {
+    // Epic standoff — single figure vs army
+    ctx.fillStyle = 'rgba(68,136,255,0.4)';
+    ctx.beginPath(); ctx.arc(cx - 60, cy, 6, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(cx - 63, cy + 6, 6, 14);
+    // Slingshot in hand
+    ctx.strokeStyle = 'rgba(136,85,34,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 52, cy - 2); ctx.lineTo(cx - 46, cy - 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 52, cy - 2); ctx.lineTo(cx - 46, cy - 6); ctx.stroke();
+    // Red army
+    for (let i = 0; i < 10; i++) {
+      const rx = cx + 20 + (i % 5) * 14;
+      const ry = cy - 10 + Math.floor(i / 5) * 16;
+      ctx.fillStyle = 'rgba(255,68,68,0.3)';
+      ctx.beginPath(); ctx.arc(rx, ry, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(rx - 2, ry + 4, 4, 8);
+    }
+    // Wind blowing (dramatic lines)
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 5; i++) {
+      const ly = cy - 20 + i * 12;
+      ctx.beginPath(); ctx.moveTo(cx - 100, ly); ctx.lineTo(cx - 100 + 40 + Math.sin(t * 3 + i) * 10, ly); ctx.stroke();
+    }
+  }
+}
+
+// --- B-Day intro canvas drawings ---
+function drawBDayIntroScene(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Calendar showing SATURDAY
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+    ctx.fillRect(cx - 50, cy - 50, 100, 80);
+    ctx.fillStyle = 'rgba(255,68,68,0.3)';
+    ctx.fillRect(cx - 50, cy - 50, 100, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.font = '10px Bangers';
+    ctx.textAlign = 'center';
+    ctx.fillText('SATURDAY', cx, cy - 35);
+    ctx.font = '40px Bangers';
+    ctx.fillText('🎂', cx, cy + 15);
+    // Party streamers
+    const colors = ['#ff4444','#44ff44','#ffaa00','#ff66aa','#4488ff'];
+    for (let i = 0; i < 5; i++) {
+      ctx.strokeStyle = colors[i];
+      ctx.globalAlpha = 0.3;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      const sx = cx - 80 + i * 40;
+      ctx.moveTo(sx, cy - 70);
+      for (let j = 0; j < 6; j++) {
+        ctx.lineTo(sx + Math.sin(t * 3 + j + i) * 10, cy - 70 + j * 15);
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  } else if (slideIndex === 1) {
+    // Birthday cake with candles
+    ctx.fillStyle = 'rgba(139,69,19,0.3)';
+    ctx.fillRect(cx - 40, cy, 80, 40);
+    ctx.fillStyle = 'rgba(255,182,193,0.3)';
+    ctx.fillRect(cx - 45, cy - 5, 90, 15);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(cx - 42, cy + 5, 84, 3);
+    // Candles
+    for (let i = 0; i < 5; i++) {
+      const candleX = cx - 30 + i * 15;
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      ctx.fillRect(candleX - 2, cy - 20, 4, 20);
+      // Flame
+      const flicker = Math.sin(t * 8 + i * 2) * 2;
+      ctx.fillStyle = 'rgba(255,200,0,' + (0.4 + Math.sin(t * 5 + i) * 0.1) + ')';
+      ctx.beginPath();
+      ctx.ellipse(candleX, cy - 24 + flicker, 3, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Candy around cake
+    const candyColors = ['#ff4444', '#44ff44', '#ffaa00', '#ff66aa'];
+    for (let i = 0; i < 8; i++) {
+      ctx.fillStyle = candyColors[i % candyColors.length];
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.ellipse(cx - 60 + i * 18, cy + 50, 4, 3, i * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  } else if (slideIndex === 2) {
+    // "NOT INVITED" stamp
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(-0.2);
+    ctx.strokeStyle = 'rgba(255,0,0,' + (0.3 + Math.sin(t * 2) * 0.1) + ')';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(-80, -25, 160, 50);
+    ctx.fillStyle = 'rgba(255,0,0,' + (0.3 + Math.sin(t * 2) * 0.1) + ')';
+    ctx.font = '28px Bangers';
+    ctx.textAlign = 'center';
+    ctx.fillText('NOT INVITED', 0, 10);
+    ctx.restore();
+  } else if (slideIndex === 3) {
+    // Pillow fort with party hats peeking over
+    const fortY = cy + 20;
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.ellipse(cx - 40 + i * 20, fortY + 5, 14, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Heads with party hats poking over fort
+    for (let i = 0; i < 3; i++) {
+      const hx = cx - 20 + i * 20;
+      const hy = fortY - 15;
+      ctx.fillStyle = 'rgba(255,200,160,0.35)';
+      ctx.beginPath();
+      ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+      ctx.fill();
+      // Party hat
+      const hatColors = ['#ff4444', '#44ff44', '#ffaa00'];
+      ctx.fillStyle = hatColors[i];
+      ctx.globalAlpha = 0.5;
+      ctx.beginPath();
+      ctx.moveTo(hx - 5, hy - 4);
+      ctx.lineTo(hx, hy - 18);
+      ctx.lineTo(hx + 5, hy - 4);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      // Eyes
+      ctx.fillStyle = '#222';
+      ctx.beginPath();
+      ctx.arc(hx - 2, hy - 1, 1, 0, Math.PI * 2);
+      ctx.arc(hx + 2, hy - 1, 1, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (slideIndex === 4) {
+    // Cardboard boat with flames
+    const bx = cx, by = cy + 20;
+    ctx.fillStyle = 'rgba(160,120,60,0.35)';
+    ctx.beginPath();
+    ctx.moveTo(bx - 50, by + 15);
+    ctx.lineTo(bx - 40, by - 15);
+    ctx.lineTo(bx + 40, by - 15);
+    ctx.lineTo(bx + 50, by + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(160,120,60,0.5)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Flames drawn on side
+    ctx.fillStyle = 'rgba(255,100,0,0.4)';
+    for (let i = 0; i < 4; i++) {
+      const fx = bx - 30 + i * 18;
+      const flicker = Math.sin(t * 5 + i) * 3;
+      ctx.beginPath();
+      ctx.moveTo(fx - 6, by + 5);
+      ctx.quadraticCurveTo(fx, by - 12 + flicker, fx + 6, by + 5);
+      ctx.fill();
+    }
+    // Flag
+    ctx.strokeStyle = 'rgba(200,200,200,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 15);
+    ctx.lineTo(bx, by - 45);
+    ctx.stroke();
+    const flagWave = Math.sin(t * 3) * 3;
+    ctx.fillStyle = 'rgba(68,136,255,0.4)';
+    ctx.beginPath();
+    ctx.moveTo(bx, by - 45);
+    ctx.quadraticCurveTo(bx + 15, by - 42 + flagWave, bx + 25, by - 38);
+    ctx.lineTo(bx + 22, by - 30);
+    ctx.quadraticCurveTo(bx + 12, by - 33 + flagWave, bx, by - 30);
+    ctx.fill();
+    // Hero silhouette in boat
+    ctx.fillStyle = 'rgba(68,136,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(bx, by - 22, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillRect(bx - 4, by - 16, 8, 12);
+  } else if (slideIndex === 5) {
+    // Falling candy + confetti
+    const candyColors = ['#ff4444', '#44ff44', '#ffaa00', '#ff66aa', '#4488ff', '#ffff44', '#aa44ff'];
+    for (let i = 0; i < 25; i++) {
+      const seed = i * 137.5;
+      const cx2 = (seed * 7.3) % w;
+      const cy2 = ((t * 50 + seed * 3.1) % (h + 20)) - 10;
+      const rot = t * 3 + seed;
+      ctx.save();
+      ctx.translate(cx2, cy2);
+      ctx.rotate(rot);
+      ctx.fillStyle = candyColors[i % candyColors.length];
+      ctx.globalAlpha = 0.5;
+      if (i % 3 === 0) {
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillRect(-4, -3, 8, 6);
+      }
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+let activeIntroSlides = INTRO_SLIDES;
+let activeIntroDraw = drawIntroScene;
+
+let introTimeout = null;
+let introSlideIndex = 0;
+let introAnimFrame = null;
+let introStartTime = 0;
+let introSlideTime = 0;
+
+function showIntro() {
+  if (currentLevel === 2) {
+    activeIntroSlides = BDAY_INTRO_SLIDES;
+    activeIntroDraw = drawBDayIntroScene;
+  } else if (currentLevel === 3) {
+    activeIntroSlides = POOP_WAR_1_SLIDES;
+    activeIntroDraw = drawPoopWar1Intro;
+  } else if (currentLevel === 4) {
+    activeIntroSlides = POOP_WAR_2_SLIDES;
+    activeIntroDraw = drawPoopWar2Intro;
+  } else if (currentLevel === 5) {
+    activeIntroSlides = POOP_WAR_3_SLIDES;
+    activeIntroDraw = drawPoopWar3Intro;
+  } else {
+    activeIntroSlides = INTRO_SLIDES;
+    activeIntroDraw = drawIntroScene;
+  }
+
+  hideAllScreens();
+  document.getElementById('intro-screen').classList.remove('hidden');
+  introSlideIndex = 0;
+  introStartTime = performance.now();
+  introSlideTime = 0;
+
+  const cvs = document.getElementById('intro-canvas');
+  cvs.width = cvs.clientWidth;
+  cvs.height = cvs.clientHeight;
+
+  startIntroMusic();
+  startIntroAnim();
+  playIntroSlide();
+}
+
+function startIntroAnim() {
+  const cvs = document.getElementById('intro-canvas');
+  const ctx = cvs.getContext('2d');
+  function frame() {
+    const t = (performance.now() - introStartTime) / 1000;
+    activeIntroDraw(ctx, cvs.width, cvs.height, Math.max(0, introSlideIndex - 1), introSlideTime > 0 ? t - introSlideTime : t);
+    introAnimFrame = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function playIntroSlide() {
+  if (introSlideIndex >= activeIntroSlides.length) {
+    skipIntro();
+    return;
+  }
+
+  const slide = activeIntroSlides[introSlideIndex];
+  const textEl = document.getElementById('intro-text');
+  const bgEl = document.getElementById('intro-scene-bg');
+
+  textEl.className = 'intro-text exit';
+
+  setTimeout(() => {
+    bgEl.style.background = slide.bg;
+    introSlideTime = (performance.now() - introStartTime) / 1000;
+
+    let html = '';
+    for (const line of slide.lines) {
+      html += '<div class="line ' + line.cls + '">' + line.text + '</div>';
+    }
+    textEl.innerHTML = html;
+    textEl.className = 'intro-text';
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        textEl.className = 'intro-text visible';
+      });
+    });
+
+    introSlideIndex++;
+    introTimeout = setTimeout(playIntroSlide, slide.duration);
+  }, 600);
+}
+
+function skipIntro() {
+  if (introTimeout) { clearTimeout(introTimeout); introTimeout = null; }
+  if (introAnimFrame) { cancelAnimationFrame(introAnimFrame); introAnimFrame = null; }
+  stopIntroMusic();
+  showLoadout();
+}
+
+// =============================================
+// SCREEN MANAGEMENT
+// =============================================
+function hideAllScreens() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+}
+
+function showTitle() {
+  if (battleRunning) { battleRunning = false; }
+  stopBattleMusic();
+  document.exitPointerLock();
+  hideAllScreens();
+  document.getElementById('title-screen').classList.remove('hidden');
+}
+
+// =============================================
+// FPS INPUT CONTROLS
+// =============================================
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement !== renderer?.domElement) return;
+  if (!battleRunning) return;
+  playerYaw -= e.movementX * 0.002;
+  playerPitch -= e.movementY * 0.002;
+  playerPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, playerPitch));
+});
+
+document.addEventListener('mousedown', (e) => {
+  if (document.pointerLockElement !== renderer?.domElement) return;
+  if (!battleRunning) return;
+  if (e.button === 0) playerAttack();
+  if (e.button === 2) playerShoot();
+});
+
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in moveKeys) { moveKeys[k] = true; e.preventDefault(); }
+  if (k === 'escape') {
+    if (document.pointerLockElement) document.exitPointerLock();
+    else showTitle();
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k in moveKeys) moveKeys[k] = false;
+});
+
+// Re-acquire pointer lock on click during battle
+document.addEventListener('click', (e) => {
+  if (!battleRunning) return;
+  if (document.pointerLockElement) return;
+  if (e.target === renderer?.domElement || e.target.closest('#battle-canvas')) {
+    renderer?.domElement.requestPointerLock();
+  }
+});
+
+// Window resize
+window.addEventListener('resize', () => {
+  if (!renderer) return;
+  const bc = document.getElementById('battle-canvas');
+  if (!bc || !bc.clientWidth) return;
+  renderer.setSize(bc.clientWidth, bc.clientHeight);
+  if (camera) {
+    camera.aspect = bc.clientWidth / bc.clientHeight;
+    camera.updateProjectionMatrix();
+  }
+});
+</script>
+</body>
+</html>

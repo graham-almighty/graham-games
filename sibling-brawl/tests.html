@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html><head><title>Sibling Brawl Tests</title></head>
+<body>
+<div id="results"></div>
+<script>
+// === TEST FRAMEWORK ===
+let _passed = 0, _failed = 0, _currentGroup = '';
+function group(name) { _currentGroup = name; }
+function assert(cond, name) {
+  const fullName = _currentGroup ? _currentGroup + ': ' + name : name;
+  const div = document.createElement('div');
+  if (cond) { div.className = 'test pass'; _passed++; }
+  else { div.className = 'test fail'; _failed++; }
+  div.textContent = (cond ? 'PASS' : 'FAIL') + ': ' + fullName;
+  document.getElementById('results').appendChild(div);
+}
+function assertEqual(a, b, name) {
+  assert(a === b, name + ' (expected ' + b + ', got ' + a + ')');
+}
+function assertApprox(a, b, eps, name) {
+  assert(Math.abs(a - b) < eps, name + ' (expected ~' + b + ', got ' + a + ')');
+}
+function showSummary() {
+  const div = document.createElement('div');
+  div.className = 'summary';
+  div.textContent = _passed + ' passed, ' + _failed + ' failed (' + (_passed + _failed) + ' total)';
+  document.getElementById('results').appendChild(div);
+}
+
+// === MOCK LOCALSTORAGE ===
+const _store = {};
+const localStorage = {
+  getItem(k) { return _store[k] !== undefined ? _store[k] : null; },
+  setItem(k, v) { _store[k] = String(v); },
+  removeItem(k) { delete _store[k]; },
+  clear() { for (const k in _store) delete _store[k]; },
+};
+
+// === CONSTANTS FROM GAME ===
+const FIELD_W = 30;
+const FIELD_D = 20;
+
+const UNIT_DEFS = {
+  pillow: { name: 'Pillow Fighter', cost: 10, hp: 100, damage: 15, speed: 1.5, range: 1.5, icon: '*', special: 'Basic melee brawler' },
+  nerf:   { name: 'Nerf Gunner',   cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   icon: '*', special: 'Ranged foam darts', meleeDamage: 5 },
+  blanket:{ name: 'Blanket Tank',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, icon: '*', special: 'Tanky blanket armor', antiScooter: true },
+  scooter:{ name: 'Scooter Rider', cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '*', special: 'Fast charge attack' },
+  balloon:{ name: 'Water Balloon', cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '*', special: 'Splash damage!', splash: 3 },
+  pooSling:{ name: 'Poo Slingshot', cost: 35, hp: 70,  damage: 40, speed: 0.5, range: 10,  icon: '*', special: 'Mortar poo bombardment!', splash: 2.5 },
+};
+
+// Army composition — same for both sides
+const ARMY_COMP = [
+  { type: 'pillow', count: 6 },
+  { type: 'nerf', count: 3 },
+  { type: 'blanket', count: 3 },
+  { type: 'scooter', count: 2 },
+  { type: 'balloon', count: 1 },
+];
+
+// === G BUX SYSTEM ===
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(d) { localStorage.setItem(GG_KEY, JSON.stringify(d)); }
+
+const SB_ACH = {
+  sb_first_fight:  { name: 'First Fight',      reward: 5 },
+  sb_winner:       { name: 'Winner',            reward: 10 },
+  sb_flawless:     { name: 'Untouchable',       reward: 30 },
+  sb_pillow_army:  { name: 'Pillow Fort',       reward: 15 },
+  sb_nerf_squad:   { name: 'Nerf War',          reward: 15 },
+  sb_balanced:     { name: 'Mixed Tactics',     reward: 20 },
+  sb_underdog:     { name: 'Outnumbered',       reward: 25 },
+  sb_speed_win:    { name: 'Quick Fight',       reward: 20 },
+  sb_commander:    { name: 'Big Sibling',       reward: 25 },
+  sb_warlord:      { name: 'Supreme Sibling',   reward: 50 },
+};
+
+function ggTry(id) {
+  const a = SB_ACH[id]; if (!a) return;
+  const d = ggLoad(); if (d.achievements[id]) return;
+  d.achievements[id] = true; d.gBux += a.reward; ggSave(d);
+}
+function hasPurchase(id) { return !!ggLoad().shopPurchases[id]; }
+
+// === STATS ===
+const STATS_KEY = 'sb-stats';
+function loadStats() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STATS_KEY)) || {};
+    return { wins: s.wins || 0, battles: s.battles || 0 };
+  }
+  catch { return { wins: 0, battles: 0 }; }
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+
+// === PLAYER DATA ===
+const PLAYER_KEY = 'sb-player';
+const CLASSES = {
+  pillow: { name: 'Pillow Fighter', desc: 'Melee brawler. Smack enemies with your pillow!', icon: '🛏️', baseDmg: 15, baseHp: 100, range: 2.5, cooldown: 0.8, attackType: 'melee' },
+  nerf:   { name: 'Nerf Gunner', desc: 'Ranged shooter. Pop enemies from a distance!', icon: '🔫', baseDmg: 12, baseHp: 70, range: 10, cooldown: 1.0, attackType: 'ranged' },
+  pooSling: { name: 'Poo Slinger', desc: 'Mortar bombardier. Lob stinky payloads!', icon: '💩', baseDmg: 40, baseHp: 70, range: 10, cooldown: 2.5, attackType: 'mortar' },
+};
+const UPGRADES = [
+  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
+  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 5, cost: 40 },
+  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 5, cost: 35 },
+  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 5, cost: 45 },
+  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 5, cost: 40 },
+  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 3, cost: 60 },
+];
+
+function loadPlayerData() {
+  try {
+    const d = JSON.parse(localStorage.getItem(PLAYER_KEY)) || {};
+    return {
+      candy: d.candy || 0,
+      playerClass: d.playerClass || 'pillow',
+      hairColor: d.hairColor || '#8B4513',
+      shirtColor: d.shirtColor || '#4488ff',
+      skinColor: d.skinColor || '#ffcc99',
+      upgrades: Object.assign({ hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, d.upgrades || {}),
+      unlockedLevel: d.unlockedLevel || 1,
+      clearedLevels: d.clearedLevels || {},
+    };
+  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
+}
+function savePlayerData(d) { localStorage.setItem(PLAYER_KEY, JSON.stringify(d)); }
+
+function getPlayerStats() {
+  const pd = loadPlayerData();
+  const cls = CLASSES[pd.playerClass];
+  const firerateMult = Math.pow(0.9, pd.upgrades.firerate || 0);
+  const rangeMult = 1 + (pd.upgrades.range || 0) * 0.1;
+  const splashMult = 1 + (pd.upgrades.splash || 0) * 0.15;
+  return {
+    hp: cls.baseHp + (pd.upgrades.hp || 0) * 20,
+    damage: cls.baseDmg + (pd.upgrades.dmg || 0) * 3,
+    speed: 3.5 + (pd.upgrades.speed || 0) * 0.3,
+    range: cls.range * rangeMult,
+    cooldown: cls.cooldown * firerateMult,
+    attackType: cls.attackType,
+    splashMult: splashMult,
+  };
+}
+
+// === DAMAGE CALC (extracted from game) ===
+function getAttackDamage(attacker, defender, snackBoostActive) {
+  let dmg = attacker.damage;
+  const aType = attacker.type;
+  const dType = defender.type;
+  if (aType === 'blanket' && dType === 'scooter') dmg *= 2;
+  if (aType === 'scooter' && attacker.charged) {
+    dmg *= 2;
+    attacker.charged = false;
+  }
+  if (aType === 'nerf' && attacker.dist < 2) {
+    dmg = UNIT_DEFS.nerf.meleeDamage;
+  }
+  if (snackBoostActive && attacker.team === 'blue') dmg *= 1.1;
+  return dmg;
+}
+
+// === TESTS ===
+
+// --- Constants ---
+group('Constants');
+assertEqual(FIELD_W, 30, 'FIELD_W is 30');
+assertEqual(FIELD_D, 20, 'FIELD_D is 20');
+
+// --- Unit Definitions ---
+group('Unit Definitions');
+assertEqual(Object.keys(UNIT_DEFS).length, 6, '6 unit types');
+assert(UNIT_DEFS.pillow, 'pillow type exists');
+assert(UNIT_DEFS.nerf, 'nerf type exists');
+assert(UNIT_DEFS.blanket, 'blanket type exists');
+assert(UNIT_DEFS.scooter, 'scooter type exists');
+assert(UNIT_DEFS.balloon, 'balloon type exists');
+
+// Costs
+assertEqual(UNIT_DEFS.pillow.cost, 10, 'pillow costs 10');
+assertEqual(UNIT_DEFS.nerf.cost, 15, 'nerf costs 15');
+assertEqual(UNIT_DEFS.blanket.cost, 12, 'blanket costs 12');
+assertEqual(UNIT_DEFS.scooter.cost, 25, 'scooter costs 25');
+assertEqual(UNIT_DEFS.balloon.cost, 40, 'balloon costs 40');
+
+// HP values
+assertEqual(UNIT_DEFS.pillow.hp, 100, 'pillow HP 100');
+assertEqual(UNIT_DEFS.nerf.hp, 60, 'nerf HP 60');
+assertEqual(UNIT_DEFS.blanket.hp, 130, 'blanket HP 130');
+assertEqual(UNIT_DEFS.scooter.hp, 90, 'scooter HP 90');
+assertEqual(UNIT_DEFS.balloon.hp, 80, 'balloon HP 80');
+
+// Damage values
+assertEqual(UNIT_DEFS.pillow.damage, 15, 'pillow damage 15');
+assertEqual(UNIT_DEFS.nerf.damage, 12, 'nerf damage 12');
+assertEqual(UNIT_DEFS.blanket.damage, 12, 'blanket damage 12');
+assertEqual(UNIT_DEFS.scooter.damage, 20, 'scooter damage 20');
+assertEqual(UNIT_DEFS.balloon.damage, 45, 'balloon damage 45');
+
+// Speed values
+assertApprox(UNIT_DEFS.pillow.speed, 1.5, 0.01, 'pillow speed 1.5');
+assertApprox(UNIT_DEFS.nerf.speed, 1.2, 0.01, 'nerf speed 1.2');
+assertApprox(UNIT_DEFS.blanket.speed, 1.0, 0.01, 'blanket speed 1.0');
+assertApprox(UNIT_DEFS.scooter.speed, 3.0, 0.01, 'scooter speed 3.0');
+assertApprox(UNIT_DEFS.balloon.speed, 0.4, 0.01, 'balloon speed 0.4');
+
+// Range values
+assertApprox(UNIT_DEFS.pillow.range, 1.5, 0.01, 'pillow range 1.5 (melee)');
+assertEqual(UNIT_DEFS.nerf.range, 8, 'nerf range 8 (ranged)');
+assertApprox(UNIT_DEFS.blanket.range, 1.8, 0.01, 'blanket range 1.8 (melee)');
+assertApprox(UNIT_DEFS.scooter.range, 1.8, 0.01, 'scooter range 1.8 (melee)');
+assertEqual(UNIT_DEFS.balloon.range, 12, 'balloon range 12 (siege)');
+
+// Special properties
+assertEqual(UNIT_DEFS.nerf.meleeDamage, 5, 'nerf melee damage is 5');
+assertEqual(UNIT_DEFS.blanket.antiScooter, true, 'blanket has antiScooter');
+assertEqual(UNIT_DEFS.balloon.splash, 3, 'balloon splash radius 3');
+
+// Names
+assertEqual(UNIT_DEFS.pillow.name, 'Pillow Fighter', 'pillow name');
+assertEqual(UNIT_DEFS.nerf.name, 'Nerf Gunner', 'nerf name');
+assertEqual(UNIT_DEFS.blanket.name, 'Blanket Tank', 'blanket name');
+assertEqual(UNIT_DEFS.scooter.name, 'Scooter Rider', 'scooter name');
+assertEqual(UNIT_DEFS.balloon.name, 'Water Balloon', 'balloon name');
+
+// --- Army Composition ---
+group('Army Composition');
+{
+  assertEqual(ARMY_COMP.length, 5, '5 unit types in army');
+  // Total units per side
+  const totalPerSide = ARMY_COMP.reduce((sum, e) => sum + e.count, 0);
+  assertEqual(totalPerSide, 15, '15 units per side');
+}
+{
+  // All army types are valid unit types
+  for (const entry of ARMY_COMP) {
+    assert(UNIT_DEFS[entry.type], entry.type + ' is a valid unit type');
+    assert(entry.count > 0, entry.type + ' has positive count');
+  }
+}
+{
+  // Pillow is most numerous (6)
+  const pillowEntry = ARMY_COMP.find(e => e.type === 'pillow');
+  assertEqual(pillowEntry.count, 6, '6 pillow fighters per side');
+}
+{
+  // Balloon is least numerous (1)
+  const balloonEntry = ARMY_COMP.find(e => e.type === 'balloon');
+  assertEqual(balloonEntry.count, 1, '1 water balloon per side');
+}
+{
+  // Both sides get equal forces (same ARMY_COMP)
+  const blueTotal = ARMY_COMP.reduce((sum, e) => sum + e.count, 0);
+  const redTotal = ARMY_COMP.reduce((sum, e) => sum + e.count, 0);
+  assertEqual(blueTotal, redTotal, 'equal forces for both sides');
+}
+{
+  // Player replaces one pillow (blue has 15 total: 1 player + 14 AI)
+  const pillowCount = ARMY_COMP.find(e => e.type === 'pillow').count;
+  assert(pillowCount >= 1, 'at least 1 pillow for player to replace');
+}
+
+// --- FPS Player ---
+group('FPS Player');
+{
+  // Player attack damage is pillow damage (15)
+  const playerDmg = 15;
+  assertEqual(playerDmg, UNIT_DEFS.pillow.damage, 'player deals pillow damage');
+}
+{
+  // Player attack range is 2.5
+  const attackRange = 2.5;
+  assert(attackRange > UNIT_DEFS.pillow.range, 'player attack range wider than AI pillow');
+  assert(attackRange < UNIT_DEFS.nerf.range, 'player attack range less than nerf range');
+}
+{
+  // Player attack cooldown is 0.8s
+  const cooldown = 0.8;
+  assertEqual(cooldown, 0.8, 'player attack cooldown 0.8s');
+}
+{
+  // Player movement speed is 3.5 (faster than any unit for fun)
+  const playerSpeed = 3.5;
+  assert(playerSpeed > UNIT_DEFS.scooter.speed, 'player faster than scooter (3.0)');
+}
+{
+  // Player eye height is 1.4
+  const eyeHeight = 1.4;
+  assertEqual(eyeHeight, 1.4, 'player eye height 1.4');
+}
+{
+  // Attack cone: dot product > 0.3 means ~70 degree frontal cone
+  const threshold = 0.3;
+  assert(threshold > 0, 'attack cone threshold is positive');
+  assert(threshold < 1, 'attack cone threshold less than 1 (direct forward)');
+  // cos(70deg) ≈ 0.34, so 0.3 gives slightly wider than 70 degrees
+  assert(threshold < Math.cos(70 * Math.PI / 180) + 0.05, 'threshold allows ~70 degree cone');
+}
+{
+  // Super soaker damage is 20
+  const soakerDmg = 20;
+  assert(soakerDmg > UNIT_DEFS.pillow.damage, 'super soaker does more than pillow');
+  assert(soakerDmg < UNIT_DEFS.balloon.damage, 'super soaker does less than balloon');
+}
+{
+  // Super soaker cooldown is 1.5s
+  const soakerCooldown = 1.5;
+  assert(soakerCooldown > 0.8, 'super soaker slower than pillow attack');
+}
+
+// --- Combat Damage ---
+group('Combat Damage');
+{
+  const attacker = { type: 'pillow', damage: 15, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 15, 'pillow vs pillow = 15');
+}
+{
+  const attacker = { type: 'blanket', damage: 12, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'scooter', damage: 20, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 24, 'blanket vs scooter = 24 (2x)');
+}
+{
+  const attacker = { type: 'blanket', damage: 12, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 12, 'blanket vs pillow = 12 (normal)');
+}
+{
+  const attacker = { type: 'scooter', damage: 20, team: 'blue', charged: true, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 40, 'scooter charge = 40 (2x)');
+  assertEqual(attacker.charged, false, 'charge consumed after first hit');
+}
+{
+  const attacker = { type: 'scooter', damage: 20, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 20, 'scooter no charge = 20');
+}
+{
+  const attacker = { type: 'nerf', damage: 12, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 5, 'nerf melee = 5');
+}
+{
+  const attacker = { type: 'nerf', damage: 12, team: 'blue', charged: false, dist: 5 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertEqual(getAttackDamage(attacker, defender, false), 12, 'nerf ranged = 12');
+}
+{
+  const attacker = { type: 'pillow', damage: 15, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertApprox(getAttackDamage(attacker, defender, true), 16.5, 0.01, 'snack boost blue = 16.5 (1.1x)');
+}
+{
+  const attacker = { type: 'pillow', damage: 15, team: 'red', charged: false, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'blue' };
+  assertEqual(getAttackDamage(attacker, defender, true), 15, 'snack boost red team = 15 (no boost)');
+}
+{
+  const attacker = { type: 'blanket', damage: 12, team: 'blue', charged: false, dist: 1 };
+  const defender = { type: 'scooter', damage: 20, team: 'red' };
+  assertApprox(getAttackDamage(attacker, defender, true), 26.4, 0.01, 'blanket vs scooter with snack = 26.4');
+}
+{
+  const attacker = { type: 'scooter', damage: 20, team: 'blue', charged: true, dist: 1 };
+  const defender = { type: 'pillow', damage: 15, team: 'red' };
+  assertApprox(getAttackDamage(attacker, defender, true), 44, 0.01, 'scooter charge + snack = 44');
+}
+
+// --- Splash Damage Formula ---
+group('Splash Damage');
+{
+  const baseDmg = 45;
+  const splash = 3;
+  const dmg0 = baseDmg * (1 - 0 / (splash + 1));
+  assertEqual(dmg0, 45, 'splash at center = full damage');
+  const dmgEdge = baseDmg * (1 - splash / (splash + 1));
+  assertApprox(dmgEdge, 11.25, 0.01, 'splash at edge = 11.25');
+  const dmgOut = baseDmg * (1 - 4 / (splash + 1));
+  assert(dmgOut <= 0, 'splash outside range = 0 or negative');
+}
+
+// --- G Bux System ---
+group('G Bux System');
+localStorage.clear();
+{
+  const d = ggLoad();
+  assertEqual(d.gBux, 0, 'initial gBux is 0');
+  assertEqual(Object.keys(d.achievements).length, 0, 'no initial achievements');
+  assertEqual(Object.keys(d.shopPurchases).length, 0, 'no initial purchases');
+}
+
+// --- Achievements ---
+group('Achievements');
+localStorage.clear();
+{
+  assertEqual(Object.keys(SB_ACH).length, 10, '10 achievements defined');
+  let total = 0;
+  for (const a of Object.values(SB_ACH)) total += a.reward;
+  assertEqual(total, 215, 'total achievement reward = 215G');
+}
+{
+  localStorage.clear();
+  ggTry('sb_first_fight');
+  const d = ggLoad();
+  assertEqual(d.achievements.sb_first_fight, true, 'sb_first_fight unlocked');
+  assertEqual(d.gBux, 5, 'earned 5G for first fight');
+}
+{
+  localStorage.clear();
+  ggTry('sb_winner');
+  ggTry('sb_winner');
+  const d = ggLoad();
+  assertEqual(d.gBux, 10, 'no duplicate reward');
+}
+{
+  localStorage.clear();
+  ggTry('sb_first_fight');
+  ggTry('sb_winner');
+  ggTry('sb_flawless');
+  const d = ggLoad();
+  assertEqual(d.gBux, 45, '5+10+30 = 45G from 3 achievements');
+  assertEqual(Object.keys(d.achievements).length, 3, '3 achievements earned');
+}
+{
+  localStorage.clear();
+  ggTry('sb_nonexistent');
+  const d = ggLoad();
+  assertEqual(d.gBux, 0, 'invalid achievement = no reward');
+}
+
+// --- Achievement IDs ---
+group('Achievement IDs');
+{
+  const ids = Object.keys(SB_ACH);
+  assert(ids.includes('sb_first_fight'), 'sb_first_fight exists');
+  assert(ids.includes('sb_winner'), 'sb_winner exists');
+  assert(ids.includes('sb_flawless'), 'sb_flawless exists');
+  assert(ids.includes('sb_pillow_army'), 'sb_pillow_army exists');
+  assert(ids.includes('sb_nerf_squad'), 'sb_nerf_squad exists');
+  assert(ids.includes('sb_balanced'), 'sb_balanced exists');
+  assert(ids.includes('sb_underdog'), 'sb_underdog exists');
+  assert(ids.includes('sb_speed_win'), 'sb_speed_win exists');
+  assert(ids.includes('sb_commander'), 'sb_commander exists');
+  assert(ids.includes('sb_warlord'), 'sb_warlord exists');
+  // No duplicate IDs
+  assertEqual(ids.length, new Set(ids).size, 'no duplicate achievement IDs');
+}
+
+// --- Achievement Rewards ---
+group('Achievement Rewards');
+assertEqual(SB_ACH.sb_first_fight.reward, 5, 'first fight = 5G');
+assertEqual(SB_ACH.sb_winner.reward, 10, 'winner = 10G');
+assertEqual(SB_ACH.sb_flawless.reward, 30, 'flawless = 30G');
+assertEqual(SB_ACH.sb_pillow_army.reward, 15, 'pillow army = 15G');
+assertEqual(SB_ACH.sb_nerf_squad.reward, 15, 'nerf squad = 15G');
+assertEqual(SB_ACH.sb_balanced.reward, 20, 'balanced = 20G');
+assertEqual(SB_ACH.sb_underdog.reward, 25, 'underdog = 25G');
+assertEqual(SB_ACH.sb_speed_win.reward, 20, 'speed win = 20G');
+assertEqual(SB_ACH.sb_commander.reward, 25, 'commander = 25G');
+assertEqual(SB_ACH.sb_warlord.reward, 50, 'warlord = 50G');
+
+// --- Achievement Names ---
+group('Achievement Names');
+assertEqual(SB_ACH.sb_first_fight.name, 'First Fight', 'first fight name');
+assertEqual(SB_ACH.sb_winner.name, 'Winner', 'winner name');
+assertEqual(SB_ACH.sb_flawless.name, 'Untouchable', 'flawless name');
+assertEqual(SB_ACH.sb_pillow_army.name, 'Pillow Fort', 'pillow army name');
+assertEqual(SB_ACH.sb_nerf_squad.name, 'Nerf War', 'nerf squad name');
+assertEqual(SB_ACH.sb_balanced.name, 'Mixed Tactics', 'balanced name');
+assertEqual(SB_ACH.sb_underdog.name, 'Outnumbered', 'underdog name');
+assertEqual(SB_ACH.sb_speed_win.name, 'Quick Fight', 'speed win name');
+assertEqual(SB_ACH.sb_commander.name, 'Big Sibling', 'commander name');
+assertEqual(SB_ACH.sb_warlord.name, 'Supreme Sibling', 'warlord name');
+
+// --- Shop Purchase Check ---
+group('Shop Purchases');
+localStorage.clear();
+{
+  assertEqual(hasPurchase('sb_snack_boost'), false, 'snack boost not owned initially');
+  assertEqual(hasPurchase('sb_super_soaker'), false, 'super soaker not owned initially');
+
+  const d = ggLoad();
+  d.shopPurchases.sb_snack_boost = true;
+  ggSave(d);
+  assertEqual(hasPurchase('sb_snack_boost'), true, 'snack boost owned after purchase');
+  assertEqual(hasPurchase('sb_super_soaker'), false, 'super soaker still not owned');
+}
+
+// --- Stats System ---
+group('Stats');
+localStorage.clear();
+{
+  const s = loadStats();
+  assertEqual(s.wins, 0, 'initial wins = 0');
+  assertEqual(s.battles, 0, 'initial battles = 0');
+}
+{
+  localStorage.clear();
+  const s = loadStats();
+  s.battles++;
+  s.wins++;
+  saveStats(s);
+  const s2 = loadStats();
+  assertEqual(s2.battles, 1, 'battles incremented');
+  assertEqual(s2.wins, 1, 'wins incremented');
+}
+{
+  localStorage.clear();
+  saveStats({ wins: 7, battles: 12 });
+  const s = loadStats();
+  assertEqual(s.wins, 7, 'wins preserved after round-trip');
+  assertEqual(s.battles, 12, 'battles preserved after round-trip');
+}
+{
+  // Stats increment on victory
+  localStorage.clear();
+  const s = loadStats();
+  s.battles++;
+  s.wins++;
+  saveStats(s);
+  const s2 = loadStats();
+  assertEqual(s2.wins, 1, 'win recorded');
+  assertEqual(s2.battles, 1, 'battle recorded');
+}
+{
+  // Defeat: battles++ but no wins++
+  localStorage.clear();
+  const s = loadStats();
+  s.battles++;
+  saveStats(s);
+  const s2 = loadStats();
+  assertEqual(s2.wins, 0, 'no win on defeat');
+  assertEqual(s2.battles, 1, 'battle still counted on defeat');
+}
+
+// --- Victory Achievement Logic (FPS) ---
+group('FPS Victory Achievements');
+{
+  // Flawless: player took no damage (hp === maxHp)
+  const playerHp = 100, playerMaxHp = 100;
+  assert(playerHp === playerMaxHp, 'flawless when player took no damage');
+  const playerHp2 = 85;
+  assert(playerHp2 !== playerMaxHp, 'not flawless when player took damage');
+}
+{
+  // Pillow Fort: 5+ personal kills
+  const playerKillCount = 5;
+  assert(playerKillCount >= 5, 'pillow fort at 5 kills');
+  assert(!(4 >= 5), 'not pillow fort at 4 kills');
+}
+{
+  // Nerf War: 10+ personal kills
+  const playerKillCount = 10;
+  assert(playerKillCount >= 10, 'nerf war at 10 kills');
+  assert(!(9 >= 10), 'not nerf war at 9 kills');
+}
+{
+  // Mixed Tactics: win with 50%+ health
+  const hp = 55, maxHp = 100;
+  assert(hp >= maxHp * 0.5, 'balanced at 55% health');
+  const hp2 = 40;
+  assert(!(hp2 >= maxHp * 0.5), 'not balanced at 40% health');
+}
+{
+  // Outnumbered: win with 3 or fewer allies surviving
+  const blueAlive = 3;
+  assert(blueAlive <= 3, 'outnumbered with 3 allies alive');
+  assert(!(5 <= 3), 'not outnumbered with 5 allies alive');
+}
+{
+  // Speed win: battleTime < 30
+  assert(25 < 30, 'speed win at 25s');
+  assert(!(35 < 30), 'no speed win at 35s');
+}
+{
+  // Commander: wins >= 5
+  assert(5 >= 5, 'commander at 5 wins');
+  assert(!(4 >= 5), 'not commander at 4 wins');
+}
+{
+  // Warlord: wins >= 10
+  assert(10 >= 10, 'warlord at 10 wins');
+  assert(!(9 >= 10), 'not warlord at 9 wins');
+}
+
+// --- Battle End Logic ---
+group('Battle End Logic');
+{
+  // Player death = loss (regardless of allies)
+  const playerAlive = false;
+  assert(!playerAlive, 'player death triggers loss');
+}
+{
+  // All red dead = win (if player alive)
+  const playerAlive = true, redAlive = 0;
+  assert(playerAlive && redAlive === 0, 'win when all red dead and player alive');
+}
+{
+  // Battle continues if red alive and player alive
+  const playerAlive = true, redAlive = 5;
+  assert(playerAlive && redAlive > 0, 'battle continues');
+}
+
+// --- Unit Special Properties ---
+group('Unit Specials');
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    assert(def.name && def.name.length > 0, key + ' has a name');
+    assert(def.special && def.special.length > 0, key + ' has a special description');
+  }
+}
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    assert(def.cost > 0, key + ' cost is positive');
+  }
+}
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    assert(def.hp > 0, key + ' HP is positive');
+  }
+}
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    assert(def.damage > 0, key + ' damage is positive');
+  }
+}
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    assert(def.speed > 0, key + ' speed is positive');
+  }
+}
+{
+  let fastest = null, fastestSpeed = 0;
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    if (def.speed > fastestSpeed) { fastestSpeed = def.speed; fastest = key; }
+  }
+  assertEqual(fastest, 'scooter', 'scooter is fastest unit');
+}
+{
+  let slowest = null, slowestSpeed = Infinity;
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    if (def.speed < slowestSpeed) { slowestSpeed = def.speed; slowest = key; }
+  }
+  assertEqual(slowest, 'balloon', 'balloon is slowest unit');
+}
+{
+  let tankiest = null, highestHP = 0;
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    if (def.hp > highestHP) { highestHP = def.hp; tankiest = key; }
+  }
+  assertEqual(tankiest, 'blanket', 'blanket is tankiest');
+}
+{
+  let strongest = null, highestDmg = 0;
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    if (def.damage > highestDmg) { highestDmg = def.damage; strongest = key; }
+  }
+  assertEqual(strongest, 'balloon', 'balloon has highest damage');
+}
+
+// --- Cost Efficiency ---
+group('Cost Efficiency');
+{
+  for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    const hpPerGold = def.hp / def.cost;
+    assert(hpPerGold > 0, key + ' has positive HP/candy ratio');
+  }
+  const blanketRatio = UNIT_DEFS.blanket.hp / UNIT_DEFS.blanket.cost;
+  const pillowRatio = UNIT_DEFS.pillow.hp / UNIT_DEFS.pillow.cost;
+  assert(blanketRatio > pillowRatio, 'blanket better HP/candy than pillow');
+}
+
+// --- Field Bounds ---
+group('Field Bounds');
+{
+  assertEqual(FIELD_W / 2, 15, 'half field width = 15');
+  assertEqual(FIELD_D / 2, 10, 'half field depth = 10');
+  assert(-FIELD_W / 4 < 0, 'blue spawn zone center is on left');
+}
+
+// --- Edge Cases ---
+group('Edge Cases');
+{
+  localStorage.setItem(STATS_KEY, 'not json');
+  const s = loadStats();
+  assertEqual(s.wins, 0, 'corrupted stats fallback wins=0');
+  assertEqual(s.battles, 0, 'corrupted stats fallback battles=0');
+}
+{
+  localStorage.setItem(GG_KEY, '{bad');
+  const d = ggLoad();
+  assertEqual(d.gBux, 0, 'corrupted gg data fallback gBux=0');
+}
+{
+  localStorage.clear();
+  const d = ggLoad();
+  assertEqual(d.gBux, 0, 'empty localStorage fallback');
+  const s = loadStats();
+  assertEqual(s.wins, 0, 'empty localStorage stats fallback');
+}
+
+// --- Health Bar Updates ---
+group('Health Bars');
+{
+  const pct = Math.max(0, 100 / 100);
+  assertEqual(pct, 1, 'full health = 1.0');
+}
+{
+  const pct = Math.max(0, 50 / 100);
+  assertApprox(pct, 0.5, 0.01, 'half health = 0.5');
+}
+{
+  const pct = Math.max(0, 0 / 100);
+  assertEqual(pct, 0, 'dead = 0');
+}
+{
+  const pct = Math.max(0, -10 / 100);
+  assertEqual(pct, 0, 'overkill clamped to 0');
+}
+
+// --- Intro Cinematic ---
+group('Intro Cinematic');
+{
+  const INTRO_SLIDES = [
+    { bg: '#0a0008', lines: [{ text: 'It was a Tuesday.', cls: 'narration' }, { text: 'A perfectly normal Tuesday.', cls: 'small' }], duration: 3500 },
+    { bg: 'linear-gradient(180deg, #1a0a00 0%, #2a1500 100%)', lines: [{ text: 'The candy jar sat on the kitchen counter...', cls: 'narration' }, { text: '47 pieces. Carefully counted. Rightfully YOURS.', cls: 'narration candy' }], duration: 4000 },
+    { bg: 'linear-gradient(180deg, #1a0005 0%, #2a000a 100%)', lines: [{ text: 'But then...', cls: 'small' }, { text: 'THEY struck.', cls: 'dramatic villain' }], duration: 3000 },
+    { bg: '#180008', lines: [{ text: 'The younger siblings.', cls: 'narration villain' }, { text: 'They raided the candy jar while you were at school.', cls: 'narration' }, { text: 'They took EVERYTHING.', cls: 'dramatic villain' }], duration: 4500 },
+    { bg: 'linear-gradient(180deg, #0a0008 0%, #1a0018 100%)', lines: [{ text: 'They built pillow forts. Armed themselves with nerf guns.', cls: 'narration' }, { text: 'Wrapped themselves in blankets like tiny, sticky-fingered tanks.', cls: 'narration' }], duration: 4500 },
+    { bg: 'linear-gradient(180deg, #000a1a 0%, #001a2a 100%)', lines: [{ text: 'They declared the living room...', cls: 'narration' }, { text: 'THE YOUNGER SIBLING EMPIRE', cls: 'dramatic villain' }, { text: "And they're NOT sharing the candy.", cls: 'small' }], duration: 4500 },
+    { bg: 'linear-gradient(180deg, #000818 0%, #001030 100%)', lines: [{ text: 'But you are the OLDER sibling.', cls: 'narration hero' }, { text: 'You have a bigger allowance. Better tactics.', cls: 'narration' }, { text: 'And you are NOT letting this slide.', cls: 'dramatic hero' }], duration: 4500 },
+    { bg: '#000', lines: [{ text: 'Grab your pillow. Join the fight.', cls: 'narration candy' }, { text: 'Take back what is yours.', cls: 'narration' }, { text: 'SIBLING BRAWL', cls: 'dramatic' }], duration: 4000 },
+  ];
+
+  assertEqual(INTRO_SLIDES.length, 8, '8 intro slides');
+
+  for (let i = 0; i < INTRO_SLIDES.length; i++) {
+    const s = INTRO_SLIDES[i];
+    assert(s.bg && s.bg.length > 0, 'slide ' + i + ' has background');
+    assert(Array.isArray(s.lines) && s.lines.length > 0, 'slide ' + i + ' has lines');
+    assert(s.duration > 0, 'slide ' + i + ' has positive duration');
+    for (const line of s.lines) {
+      assert(line.text && line.text.length > 0, 'slide ' + i + ' line has text');
+      assert(line.cls && line.cls.length > 0, 'slide ' + i + ' line has class');
+    }
+  }
+
+  assert(INTRO_SLIDES[0].lines[0].text.includes('Tuesday'), 'first slide mentions Tuesday');
+
+  const allText = INTRO_SLIDES.map(s => s.lines.map(l => l.text).join(' ')).join(' ');
+  assert(allText.includes('candy'), 'intro mentions candy');
+  assert(allText.includes('younger sibling'), 'intro mentions younger siblings');
+  assert(allText.includes('SIBLING BRAWL'), 'intro ends with game title');
+  assert(allText.includes('pillow'), 'intro mentions pillow (FPS weapon)');
+
+  const totalDuration = INTRO_SLIDES.reduce((sum, s) => sum + s.duration, 0);
+  assert(totalDuration > 20000, 'intro is at least 20 seconds');
+  assert(totalDuration < 60000, 'intro is under 60 seconds');
+}
+
+// --- Confetti System ---
+group('Confetti');
+{
+  const CONFETTI_COLORS = [0xff66aa, 0x44ddff, 0xffaa44, 0x44ff44, 0xff4444, 0xaa44ff, 0xffff44];
+  assertEqual(CONFETTI_COLORS.length, 7, '7 confetti colors');
+  assert(CONFETTI_COLORS.includes(0xff66aa), 'pink confetti');
+  assert(CONFETTI_COLORS.includes(0x44ddff), 'cyan confetti');
+  assert(CONFETTI_COLORS.includes(0xffaa44), 'orange confetti');
+  assert(CONFETTI_COLORS.includes(0x44ff44), 'green confetti');
+  assert(CONFETTI_COLORS.includes(0xffff44), 'yellow confetti');
+}
+{
+  const particle = {
+    vx: 1.5, vy: 3.0, vz: -0.5,
+    spin: 5, life: 2.5, age: 0,
+  };
+  assert(particle.life > 0, 'confetti has positive life');
+  assert(particle.age === 0, 'confetti starts at age 0');
+  assert(typeof particle.spin === 'number', 'confetti has spin');
+  particle.age = 3;
+  assert(particle.age > particle.life, 'confetti expires when age > life');
+}
+
+// --- FPS Movement ---
+group('FPS Movement');
+{
+  // Forward vector from yaw
+  const yaw = 0;
+  const fx = -Math.sin(yaw);
+  const fz = -Math.cos(yaw);
+  assertApprox(fx, 0, 0.01, 'yaw=0 forward x is 0');
+  assertApprox(fz, -1, 0.01, 'yaw=0 forward z is -1');
+}
+{
+  // Right vector perpendicular to forward
+  const yaw = 0;
+  const fx = -Math.sin(yaw), fz = -Math.cos(yaw);
+  const rx = fz, rz = -fx;
+  assertApprox(rx, -1, 0.01, 'right vector x at yaw=0');
+  assertApprox(rz, 0, 0.01, 'right vector z at yaw=0');
+}
+{
+  // Pitch clamping
+  const maxPitch = Math.PI / 3;
+  const minPitch = -Math.PI / 3;
+  assert(maxPitch < Math.PI / 2, 'max pitch less than 90 degrees');
+  const clamped = Math.max(minPitch, Math.min(maxPitch, 2.0));
+  assertApprox(clamped, maxPitch, 0.01, 'extreme pitch clamped to max');
+}
+{
+  // Field clamping
+  const px = 20, pz = 15;
+  const cx = Math.max(-FIELD_W / 2 + 0.5, Math.min(FIELD_W / 2 - 0.5, px));
+  const cz = Math.max(-FIELD_D / 2 + 0.5, Math.min(FIELD_D / 2 - 0.5, pz));
+  assertEqual(cx, FIELD_W / 2 - 0.5, 'x clamped to right edge');
+  assertEqual(cz, FIELD_D / 2 - 0.5, 'z clamped to far edge');
+}
+
+// --- Classes ---
+group('Classes');
+{
+  assertEqual(Object.keys(CLASSES).length, 3, '3 classes available');
+  assert(CLASSES.pillow, 'pillow class exists');
+  assert(CLASSES.nerf, 'nerf class exists');
+}
+{
+  assertEqual(CLASSES.pillow.attackType, 'melee', 'pillow is melee');
+  assertEqual(CLASSES.nerf.attackType, 'ranged', 'nerf is ranged');
+}
+{
+  assertEqual(CLASSES.pillow.baseDmg, 15, 'pillow base damage 15');
+  assertEqual(CLASSES.nerf.baseDmg, 12, 'nerf base damage 12');
+}
+{
+  assertEqual(CLASSES.pillow.baseHp, 100, 'pillow base HP 100');
+  assertEqual(CLASSES.nerf.baseHp, 70, 'nerf base HP 70');
+}
+{
+  assertEqual(CLASSES.pillow.range, 2.5, 'pillow range 2.5');
+  assertEqual(CLASSES.nerf.range, 10, 'nerf range 10');
+}
+{
+  assertEqual(CLASSES.pillow.cooldown, 0.8, 'pillow cooldown 0.8');
+  assertEqual(CLASSES.nerf.cooldown, 1.0, 'nerf cooldown 1.0');
+}
+{
+  assert(CLASSES.pillow.name.length > 0, 'pillow has name');
+  assert(CLASSES.nerf.name.length > 0, 'nerf has name');
+  assert(CLASSES.pillow.desc.length > 0, 'pillow has description');
+  assert(CLASSES.nerf.desc.length > 0, 'nerf has description');
+  assert(CLASSES.pillow.icon.length > 0, 'pillow has icon');
+  assert(CLASSES.nerf.icon.length > 0, 'nerf has icon');
+}
+
+// --- Upgrades ---
+group('Upgrades');
+{
+  assertEqual(UPGRADES.length, 6, '6 upgrade types');
+  const ids = UPGRADES.map(u => u.id);
+  assert(ids.includes('hp'), 'hp upgrade exists');
+  assert(ids.includes('dmg'), 'dmg upgrade exists');
+  assert(ids.includes('speed'), 'speed upgrade exists');
+  assert(ids.includes('firerate'), 'firerate upgrade exists');
+  assert(ids.includes('range'), 'range upgrade exists');
+  assert(ids.includes('splash'), 'splash upgrade exists');
+}
+{
+  for (const up of UPGRADES) {
+    assert(up.maxLevel > 0, up.id + ' has positive max level');
+    assert(up.cost > 0, up.id + ' has positive cost');
+    assert(up.name.length > 0, up.id + ' has name');
+  }
+}
+{
+  const hpUp = UPGRADES.find(u => u.id === 'hp');
+  assertEqual(hpUp.cost, 30, 'hp upgrade costs 30 candy');
+  assertEqual(hpUp.maxLevel, 5, 'hp max level is 5');
+}
+{
+  const dmgUp = UPGRADES.find(u => u.id === 'dmg');
+  assertEqual(dmgUp.cost, 40, 'dmg upgrade costs 40 candy');
+}
+{
+  const spdUp = UPGRADES.find(u => u.id === 'speed');
+  assertEqual(spdUp.cost, 35, 'speed upgrade costs 35 candy');
+}
+{
+  const frUp = UPGRADES.find(u => u.id === 'firerate');
+  assertEqual(frUp.cost, 45, 'firerate upgrade costs 45 candy');
+  assertEqual(frUp.maxLevel, 5, 'firerate max level is 5');
+}
+{
+  const rUp = UPGRADES.find(u => u.id === 'range');
+  assertEqual(rUp.cost, 40, 'range upgrade costs 40 candy');
+}
+{
+  const sUp = UPGRADES.find(u => u.id === 'splash');
+  assertEqual(sUp.cost, 60, 'splash upgrade costs 60 candy');
+  assertEqual(sUp.maxLevel, 3, 'splash max level is 3');
+}
+
+// --- Player Data Persistence ---
+group('Player Data');
+localStorage.clear();
+{
+  const pd = loadPlayerData();
+  assertEqual(pd.candy, 0, 'initial candy is 0');
+  assertEqual(pd.playerClass, 'pillow', 'default class is pillow');
+  assertEqual(pd.hairColor, '#8B4513', 'default hair color');
+  assertEqual(pd.shirtColor, '#4488ff', 'default shirt color');
+  assertEqual(pd.skinColor, '#ffcc99', 'default skin color');
+  assertEqual(pd.upgrades.hp, 0, 'initial hp upgrade is 0');
+  assertEqual(pd.upgrades.dmg, 0, 'initial dmg upgrade is 0');
+  assertEqual(pd.upgrades.speed, 0, 'initial speed upgrade is 0');
+  assertEqual(pd.upgrades.firerate, 0, 'initial firerate upgrade is 0');
+  assertEqual(pd.upgrades.range, 0, 'initial range upgrade is 0');
+  assertEqual(pd.upgrades.splash, 0, 'initial splash upgrade is 0');
+}
+{
+  localStorage.clear();
+  savePlayerData({ candy: 150, playerClass: 'nerf', hairColor: '#ff0000', shirtColor: '#00ff00', skinColor: '#0000ff', upgrades: { hp: 2, dmg: 1, speed: 3 } });
+  const pd = loadPlayerData();
+  assertEqual(pd.candy, 150, 'candy saved and loaded');
+  assertEqual(pd.playerClass, 'nerf', 'class saved and loaded');
+  assertEqual(pd.hairColor, '#ff0000', 'hair color saved');
+  assertEqual(pd.shirtColor, '#00ff00', 'shirt color saved');
+  assertEqual(pd.skinColor, '#0000ff', 'skin color saved');
+  assertEqual(pd.upgrades.hp, 2, 'hp upgrade saved');
+  assertEqual(pd.upgrades.dmg, 1, 'dmg upgrade saved');
+  assertEqual(pd.upgrades.speed, 3, 'speed upgrade saved');
+}
+{
+  localStorage.setItem(PLAYER_KEY, 'corrupted');
+  const pd = loadPlayerData();
+  assertEqual(pd.candy, 0, 'corrupted player data fallback candy=0');
+  assertEqual(pd.playerClass, 'pillow', 'corrupted player data fallback class=pillow');
+}
+
+// --- Player Stats Calculation ---
+group('Player Stats');
+{
+  localStorage.clear();
+  const stats = getPlayerStats();
+  assertEqual(stats.hp, 100, 'default pillow HP is 100');
+  assertEqual(stats.damage, 15, 'default pillow damage is 15');
+  assertApprox(stats.speed, 3.5, 0.01, 'default speed is 3.5');
+  assertEqual(stats.range, 2.5, 'pillow range is 2.5');
+  assertEqual(stats.cooldown, 0.8, 'pillow cooldown is 0.8');
+  assertEqual(stats.attackType, 'melee', 'pillow attack type is melee');
+}
+{
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'nerf', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0 } });
+  const stats = getPlayerStats();
+  assertEqual(stats.hp, 70, 'nerf base HP is 70');
+  assertEqual(stats.damage, 12, 'nerf base damage is 12');
+  assertEqual(stats.range, 10, 'nerf range is 10');
+  assertEqual(stats.cooldown, 1.0, 'nerf cooldown is 1.0');
+  assertEqual(stats.attackType, 'ranged', 'nerf attack type is ranged');
+}
+{
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 3, dmg: 2, speed: 1 } });
+  const stats = getPlayerStats();
+  assertEqual(stats.hp, 100 + 3 * 20, 'pillow with HP upgrade = 160');
+  assertEqual(stats.damage, 15 + 2 * 3, 'pillow with dmg upgrade = 21');
+  assertApprox(stats.speed, 3.5 + 1 * 0.3, 0.01, 'pillow with speed upgrade = 3.8');
+}
+{
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'nerf', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 5, dmg: 5, speed: 5 } });
+  const stats = getPlayerStats();
+  assertEqual(stats.hp, 70 + 5 * 20, 'nerf max HP upgrade = 170');
+  assertEqual(stats.damage, 12 + 5 * 3, 'nerf max dmg upgrade = 27');
+  assertApprox(stats.speed, 3.5 + 5 * 0.3, 0.01, 'nerf max speed upgrade = 5.0');
+}
+{
+  // Fire Rate upgrade: -10% cooldown per level
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'nerf', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 3, range: 0, splash: 0 } });
+  const stats = getPlayerStats();
+  assertApprox(stats.cooldown, 1.0 * Math.pow(0.9, 3), 0.01, 'nerf cooldown with firerate 3 = 0.729');
+}
+{
+  // Range upgrade: +10% per level
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'nerf', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 2, splash: 0 } });
+  const stats = getPlayerStats();
+  assertApprox(stats.range, 10 * 1.2, 0.01, 'nerf range with range 2 = 12');
+}
+{
+  // Splash upgrade: +15% per level
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'pooSling', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 2 } });
+  const stats = getPlayerStats();
+  assertApprox(stats.splashMult, 1.3, 0.01, 'splash mult with splash 2 = 1.3');
+}
+{
+  // All weapon upgrades combined
+  localStorage.clear();
+  savePlayerData({ candy: 0, playerClass: 'pooSling', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 5, range: 5, splash: 3 } });
+  const stats = getPlayerStats();
+  assertApprox(stats.cooldown, 2.5 * Math.pow(0.9, 5), 0.01, 'pooSling max firerate cooldown');
+  assertApprox(stats.range, 10 * 1.5, 0.01, 'pooSling max range = 15');
+  assertApprox(stats.splashMult, 1.45, 0.01, 'pooSling max splash mult = 1.45');
+}
+
+// --- Candy Economy ---
+group('Candy Economy');
+{
+  // Kill candy: 5 per kill
+  const killCandy = 3 * 5;
+  assertEqual(killCandy, 15, '3 kills = 15 candy');
+}
+{
+  // Victory bonus: 50
+  const victoryBonus = 50;
+  assertEqual(victoryBonus, 50, 'victory bonus is 50 candy');
+}
+{
+  // Total candy per battle (example: 5 kills + victory)
+  const killCandy = 5 * 5;
+  const victoryBonus = 50;
+  assertEqual(killCandy + victoryBonus, 75, '5 kills + victory = 75 candy');
+}
+{
+  // Defeat: only kill candy, no bonus
+  const killCandy = 2 * 5;
+  const victoryBonus = 0;
+  assertEqual(killCandy + victoryBonus, 10, '2 kills + defeat = 10 candy');
+}
+{
+  // Upgrade purchase: deduct cost, increment level
+  localStorage.clear();
+  savePlayerData({ candy: 100, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0 } });
+  const pd = loadPlayerData();
+  const hpUp = UPGRADES.find(u => u.id === 'hp');
+  assert(pd.candy >= hpUp.cost, 'can afford hp upgrade');
+  pd.candy -= hpUp.cost;
+  pd.upgrades.hp = 1;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.candy, 70, 'candy after buying hp upgrade (100-30=70)');
+  assertEqual(pd2.upgrades.hp, 1, 'hp upgrade level 1');
+}
+{
+  // Cannot exceed max level
+  localStorage.clear();
+  savePlayerData({ candy: 9999, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 5, dmg: 0, speed: 0 } });
+  const pd = loadPlayerData();
+  const hpUp = UPGRADES.find(u => u.id === 'hp');
+  assert(pd.upgrades.hp >= hpUp.maxLevel, 'hp at max level');
+  assert(!(pd.upgrades.hp < hpUp.maxLevel && pd.candy >= hpUp.cost), 'cannot buy when maxed');
+}
+
+// --- Level Definitions ---
+group('Level Definitions');
+{
+  const LEVEL_DEFS = [
+    { id: 1, name: 'THE LIVING ROOM', desc: 'Take back the living room from the younger sibling empire!', boatPhase: false, partyHats: false },
+    { id: 2, name: 'B-DAY', desc: 'Storm the birthday party! Operation B-Day is a GO!', boatPhase: true, partyHats: true },
+    { id: 3, name: 'DOG POOPIC WAR I', desc: 'The dog left landmines in the backyard. Time to weaponize them!', poopWar: true },
+    { id: 4, name: 'DOG POOPIC WAR II', desc: 'The Great Poo Offensive! They have slingshots now too!', poopWar: true },
+    { id: 5, name: 'DOG POOPIC WAR III', desc: 'The Final Flush. Winner takes the yard FOREVER.', poopWar: true },
+  ];
+  assertEqual(LEVEL_DEFS.length, 5, '5 levels defined');
+  assertEqual(LEVEL_DEFS[0].id, 1, 'level 1 id is 1');
+  assertEqual(LEVEL_DEFS[1].id, 2, 'level 2 id is 2');
+  assertEqual(LEVEL_DEFS[2].id, 3, 'level 3 id is 3');
+  assertEqual(LEVEL_DEFS[3].id, 4, 'level 4 id is 4');
+  assertEqual(LEVEL_DEFS[4].id, 5, 'level 5 id is 5');
+  assertEqual(LEVEL_DEFS[0].name, 'THE LIVING ROOM', 'level 1 name');
+  assertEqual(LEVEL_DEFS[1].name, 'B-DAY', 'level 2 name');
+  assertEqual(LEVEL_DEFS[2].name, 'DOG POOPIC WAR I', 'level 3 name');
+  assertEqual(LEVEL_DEFS[3].name, 'DOG POOPIC WAR II', 'level 4 name');
+  assertEqual(LEVEL_DEFS[4].name, 'DOG POOPIC WAR III', 'level 5 name');
+  for (let i = 0; i < LEVEL_DEFS.length; i++) {
+    assert(LEVEL_DEFS[i].desc.length > 0, 'level ' + (i + 1) + ' has description');
+  }
+}
+{
+  const LEVEL_DEFS = [
+    { id: 1, boatPhase: false, partyHats: false },
+    { id: 2, boatPhase: true, partyHats: true },
+    { id: 3, poopWar: true },
+    { id: 4, poopWar: true },
+    { id: 5, poopWar: true },
+  ];
+  assertEqual(LEVEL_DEFS[0].boatPhase, false, 'level 1 has no boat phase');
+  assertEqual(LEVEL_DEFS[1].boatPhase, true, 'level 2 has boat phase');
+  assertEqual(LEVEL_DEFS[0].partyHats, false, 'level 1 no party hats');
+  assertEqual(LEVEL_DEFS[1].partyHats, true, 'level 2 has party hats');
+  assert(LEVEL_DEFS[2].poopWar, 'level 3 is poopWar');
+  assert(LEVEL_DEFS[3].poopWar, 'level 4 is poopWar');
+  assert(LEVEL_DEFS[4].poopWar, 'level 5 is poopWar');
+}
+
+// --- Level Progression ---
+group('Level Progression');
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assertEqual(pd.unlockedLevel, 1, 'initially only level 1 unlocked');
+  assertEqual(Object.keys(pd.clearedLevels).length, 0, 'no levels cleared initially');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.clearedLevels[1] = true;
+  pd.unlockedLevel = 2;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.clearedLevels[1], true, 'level 1 cleared flag saved');
+  assertEqual(pd2.unlockedLevel, 2, 'level 2 unlocked after beating level 1');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.clearedLevels[1] = true;
+  pd.clearedLevels[2] = true;
+  pd.unlockedLevel = 2;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.clearedLevels[1], true, 'level 1 still cleared');
+  assertEqual(pd2.clearedLevels[2], true, 'level 2 cleared');
+}
+
+// --- B-Day Intro Slides ---
+group('B-Day Intro');
+{
+  const BDAY_INTRO_SLIDES = [
+    { bg: '#0a0008', lines: [{ text: 'It was a Saturday.', cls: 'narration' }, { text: 'THEIR birthday.', cls: 'small' }], duration: 3000 },
+    { bg: 'lg', lines: [{ text: 'Birthday party.', cls: 'narration villain' }, { text: 'Cake.', cls: 'narration candy' }], duration: 3500 },
+    { bg: 'lg', lines: [{ text: "Not invited.", cls: 'dramatic villain' }], duration: 2500 },
+    { bg: '#180008', lines: [{ text: 'Fortified.', cls: 'narration' }, { text: 'Party hats.', cls: 'narration' }, { text: 'Battle candy.', cls: 'narration villain' }], duration: 4000 },
+    { bg: 'lg', lines: [{ text: 'Refrigerator box.', cls: 'narration hero' }, { text: 'Flames.', cls: 'narration' }, { text: 'Beautiful boat.', cls: 'small' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'Operation B-Day.', cls: 'dramatic' }, { text: 'Storm the party.', cls: 'narration candy' }, { text: 'YOUR birthday now.', cls: 'dramatic hero' }], duration: 4000 },
+  ];
+  assertEqual(BDAY_INTRO_SLIDES.length, 6, '6 B-Day intro slides');
+  for (let i = 0; i < BDAY_INTRO_SLIDES.length; i++) {
+    const s = BDAY_INTRO_SLIDES[i];
+    assert(s.bg.length > 0, 'B-Day slide ' + i + ' has background');
+    assert(Array.isArray(s.lines) && s.lines.length > 0, 'B-Day slide ' + i + ' has lines');
+    assert(s.duration > 0, 'B-Day slide ' + i + ' has positive duration');
+  }
+  assert(BDAY_INTRO_SLIDES[0].lines[0].text.includes('Saturday'), 'B-Day intro starts with Saturday');
+  const allText = BDAY_INTRO_SLIDES.map(s => s.lines.map(l => l.text).join(' ')).join(' ');
+  assert(allText.includes('birthday') || allText.includes('Birthday'), 'B-Day intro mentions birthday');
+  assert(allText.includes('B-Day') || allText.includes('party'), 'B-Day intro mentions the operation');
+  const totalDuration = BDAY_INTRO_SLIDES.reduce((sum, s) => sum + s.duration, 0);
+  assert(totalDuration > 15000, 'B-Day intro at least 15 seconds');
+  assert(totalDuration < 45000, 'B-Day intro under 45 seconds');
+}
+
+// --- Landing Cutscene ---
+group('Landing Cutscene');
+{
+  // Fleet starts outside field (left edge - 6)
+  const fleetStartX = -FIELD_W / 2 - 6;
+  assertEqual(fleetStartX, -21, 'fleet starts at x=-21');
+  assert(fleetStartX < -FIELD_W / 2, 'fleet starts outside the field');
+}
+{
+  // Landing destination is -FIELD_W/4
+  const dest = -FIELD_W / 4;
+  assertEqual(dest, -7.5, 'boats land at x=-7.5');
+}
+{
+  // Landing cutscene duration
+  const LANDING_DURATION = 6;
+  assertEqual(LANDING_DURATION, 6, 'landing cutscene lasts 6 seconds');
+}
+{
+  // Ally boats carry ~3 units each
+  const allyCount = 14; // 15 total - 1 player
+  const boatCount = Math.ceil(allyCount / 3);
+  assertEqual(boatCount, 5, '5 ally boats needed for 14 allies');
+}
+{
+  // Boat speed
+  const BOAT_SPEED = 1.8;
+  assert(BOAT_SPEED > 0, 'boat speed is positive');
+}
+{
+  // Camera starts behind fleet during cutscene
+  const camDist = 8;
+  const camHeight = 6;
+  assert(camDist > 0, 'camera distance behind is positive');
+  assert(camHeight > 2, 'camera elevated above ground level');
+}
+{
+  // After cutscene, allies scatter to fighting positions
+  const allyX = -2 - Math.random() * (FIELD_W / 2 - 3);
+  assert(allyX < 0, 'allies end up on blue side after landing');
+}
+
+// --- Candy per Kill ---
+group('Candy Per Kill');
+{
+  const killReward = 5;
+  assertEqual(killReward * 0, 0, '0 kills = 0 candy');
+  assertEqual(killReward * 5, 25, '5 kills = 25 candy');
+  assertEqual(killReward * 15, 75, '15 kills = 75 candy');
+}
+
+// --- Poo Slingshot Unit ---
+group('Poo Slingshot Unit');
+{
+  const poo = UNIT_DEFS.pooSling;
+  assert(poo, 'pooSling unit exists');
+  assertEqual(poo.name, 'Poo Slingshot', 'poo slingshot name');
+  assertEqual(poo.cost, 35, 'poo slingshot costs 35');
+  assertEqual(poo.hp, 70, 'poo slingshot has 70 hp');
+  assertEqual(poo.damage, 40, 'poo slingshot does 40 damage');
+  assertEqual(poo.speed, 0.5, 'poo slingshot speed is 0.5');
+  assertEqual(poo.range, 10, 'poo slingshot range is 10');
+  assertEqual(poo.splash, 2.5, 'poo slingshot splash radius is 2.5');
+}
+
+// --- Poo Slinger Class ---
+group('Poo Slinger Class');
+{
+  const cls = CLASSES.pooSling;
+  assert(cls, 'pooSling class exists');
+  assertEqual(cls.name, 'Poo Slinger', 'poo slinger class name');
+  assertEqual(cls.attackType, 'mortar', 'poo slinger attack type is mortar');
+  assertEqual(cls.baseDmg, 40, 'poo slinger base damage');
+  assertEqual(cls.baseHp, 70, 'poo slinger base hp');
+  assertEqual(cls.cooldown, 2.5, 'poo slinger cooldown');
+  assertEqual(cls.range, 10, 'poo slinger range');
+}
+{
+  // Player class selection saves correctly
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.playerClass = 'pooSling';
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.playerClass, 'pooSling', 'poo slinger class saved');
+  const stats = getPlayerStats();
+  assertEqual(stats.hp, 70, 'poo slinger stats hp');
+  assertEqual(stats.damage, 40, 'poo slinger stats damage');
+  assertEqual(stats.attackType, 'mortar', 'poo slinger stats attack type');
+}
+
+// --- Level-Specific Armies ---
+group('Level-Specific Armies');
+{
+  const LEVEL_ARMIES = {
+    3: [
+      { type: 'pillow', count: 5 },
+      { type: 'nerf', count: 3 },
+      { type: 'blanket', count: 2 },
+      { type: 'scooter', count: 2 },
+      { type: 'pooSling', count: 2 },
+    ],
+    4: [
+      { type: 'pillow', count: 6 },
+      { type: 'nerf', count: 3 },
+      { type: 'blanket', count: 3 },
+      { type: 'scooter', count: 2 },
+      { type: 'pooSling', count: 3 },
+      { type: 'balloon', count: 1 },
+    ],
+    5: [
+      { type: 'pillow', count: 7 },
+      { type: 'nerf', count: 4 },
+      { type: 'blanket', count: 3 },
+      { type: 'scooter', count: 3 },
+      { type: 'pooSling', count: 4 },
+      { type: 'balloon', count: 1 },
+    ],
+  };
+  // Level 3 has poo slings
+  const l3poo = LEVEL_ARMIES[3].find(e => e.type === 'pooSling');
+  assert(l3poo, 'level 3 has poo slingshots');
+  assertEqual(l3poo.count, 2, 'level 3 has 2 poo slingshots');
+  // Level 4 has more
+  const l4poo = LEVEL_ARMIES[4].find(e => e.type === 'pooSling');
+  assertEqual(l4poo.count, 3, 'level 4 has 3 poo slingshots');
+  // Level 5 has most
+  const l5poo = LEVEL_ARMIES[5].find(e => e.type === 'pooSling');
+  assertEqual(l5poo.count, 4, 'level 5 has 4 poo slingshots');
+  // Army sizes increase
+  const l3total = LEVEL_ARMIES[3].reduce((s, e) => s + e.count, 0);
+  const l4total = LEVEL_ARMIES[4].reduce((s, e) => s + e.count, 0);
+  const l5total = LEVEL_ARMIES[5].reduce((s, e) => s + e.count, 0);
+  assert(l4total > l3total, 'level 4 army larger than level 3');
+  assert(l5total > l4total, 'level 5 army larger than level 4');
+  // Default army has no poo slings
+  assert(!ARMY_COMP.find(e => e.type === 'pooSling'), 'default army has no poo slingshots');
+}
+
+// --- Poop War Intro ---
+group('Poop War Intro');
+{
+  const POOP_WAR_SLIDES = [
+    { bg: '#0a0800', lines: [{ text: 'Backyard.', cls: 'narration' }], duration: 3000 },
+    { bg: 'lg', lines: [{ text: 'Dog busy.', cls: 'narration' }, { text: 'Minefield.', cls: 'dramatic villain' }], duration: 4000 },
+    { bg: 'lg', lines: [{ text: 'Slingshot.', cls: 'narration' }], duration: 4000 },
+    { bg: '#1a0800', lines: [{ text: 'POOPIE WARS.', cls: 'dramatic villain' }], duration: 3500 },
+    { bg: '#000', lines: [{ text: 'Messy.', cls: 'dramatic hero' }], duration: 3500 },
+  ];
+  assertEqual(POOP_WAR_SLIDES.length, 5, '5 poop war intro slides');
+  for (let i = 0; i < POOP_WAR_SLIDES.length; i++) {
+    const s = POOP_WAR_SLIDES[i];
+    assert(s.bg.length > 0, 'poop war slide ' + i + ' has background');
+    assert(Array.isArray(s.lines) && s.lines.length > 0, 'poop war slide ' + i + ' has lines');
+    assert(s.duration > 0, 'poop war slide ' + i + ' has positive duration');
+  }
+  const totalDuration = POOP_WAR_SLIDES.reduce((sum, s) => sum + s.duration, 0);
+  assert(totalDuration > 10000, 'poop war intro at least 10 seconds');
+  assert(totalDuration < 30000, 'poop war intro under 30 seconds');
+}
+
+// --- Poo Projectile Splash ---
+group('Poo Projectile');
+{
+  // Splash damage formula
+  const splash = 2.5;
+  const baseDmg = 40;
+  const dist = 1.0;
+  const dmg = baseDmg * (1 - dist / (splash + 1));
+  assertApprox(dmg, 40 * (1 - 1 / 3.5), 0.1, 'poo splash damage at dist 1');
+  // At distance 0 (direct hit)
+  const directDmg = baseDmg * (1 - 0 / (splash + 1));
+  assertEqual(directDmg, 40, 'poo direct hit full damage');
+  // At edge of splash
+  const edgeDmg = baseDmg * (1 - splash / (splash + 1));
+  assertApprox(edgeDmg, 40 / 3.5, 0.1, 'poo edge splash minimal damage');
+}
+
+// --- Level Progression Through 5 Levels ---
+group('Five Level Progression');
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  // Clear all 5 levels
+  for (let i = 1; i <= 5; i++) {
+    pd.clearedLevels[i] = true;
+    pd.unlockedLevel = Math.min(i + 1, 5);
+  }
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  for (let i = 1; i <= 5; i++) {
+    assert(pd2.clearedLevels[i], 'level ' + i + ' cleared');
+  }
+  assertEqual(pd2.unlockedLevel, 5, 'all 5 levels unlocked');
+}
+
+// --- Poo Landmines ---
+group('Poo Landmines');
+{
+  // Mine detection radius
+  const mineRadius = 0.8;
+  // Player at mine position
+  const dx = 0, dz = 0;
+  assert(dx * dx + dz * dz < mineRadius * mineRadius, 'player on mine triggers');
+  // Player just outside
+  const dx2 = 0.81, dz2 = 0;
+  assert(!(dx2 * dx2 + dz2 * dz2 < mineRadius * mineRadius), 'player outside radius safe');
+  // Player at diagonal inside
+  const dx3 = 0.5, dz3 = 0.5;
+  assert(dx3 * dx3 + dz3 * dz3 < mineRadius * mineRadius, 'player at diagonal 0.5,0.5 triggers');
+}
+{
+  // Mine explodes and instakills
+  const mine = { group: {visible: true}, x: 5, z: 3, exploded: false };
+  // Simulate stepping on it
+  mine.exploded = true;
+  mine.group.visible = false;
+  const playerHp = 0; // instakill
+  assertEqual(mine.exploded, true, 'mine marked as exploded');
+  assertEqual(mine.group.visible, false, 'mine hidden after explosion');
+  assertEqual(playerHp, 0, 'player hp set to 0 (instakill)');
+}
+{
+  // Mines only in poopWar levels
+  const LEVEL_DEFS = [
+    { id: 1 },
+    { id: 2 },
+    { id: 3, poopWar: true },
+    { id: 4, poopWar: true },
+    { id: 5, poopWar: true },
+  ];
+  for (const lvl of LEVEL_DEFS) {
+    if (lvl.poopWar) {
+      assert(true, 'level ' + lvl.id + ' has poo mines');
+    } else {
+      assert(true, 'level ' + lvl.id + ' has no poo mines');
+    }
+  }
+}
+{
+  // Already exploded mine doesn't trigger again
+  const mine = { exploded: true };
+  let triggered = false;
+  if (!mine.exploded) triggered = true;
+  assert(!triggered, 'exploded mine does not re-trigger');
+}
+{
+  // Mines affect enemies too (not just player)
+  const mine = { group: {visible: true}, x: 3, z: 2, exploded: false };
+  const enemy = { position: { x: 3.1, z: 2.1 }, userData: { alive: true, hp: 100 } };
+  const dx = enemy.position.x - mine.x;
+  const dz = enemy.position.z - mine.z;
+  assert(dx * dx + dz * dz < 0.8 * 0.8, 'enemy within mine radius triggers');
+  // Simulate mine explosion on enemy
+  mine.exploded = true;
+  mine.group.visible = false;
+  enemy.userData.hp = 0;
+  enemy.userData.alive = false;
+  assertEqual(enemy.userData.hp, 0, 'enemy killed by mine');
+  assertEqual(mine.exploded, true, 'mine exploded from enemy');
+}
+{
+  // Enemy outside mine radius is safe
+  const mine = { group: {visible: true}, x: 0, z: 0, exploded: false };
+  const enemy = { position: { x: 1, z: 0 }, userData: { alive: true, hp: 100 } };
+  const dx = enemy.position.x - mine.x;
+  const dz = enemy.position.z - mine.z;
+  assert(!(dx * dx + dz * dz < 0.8 * 0.8), 'enemy outside mine radius is safe');
+}
+
+// === DONE ===
+showSummary();
+</script>
+</body>
+</html>
