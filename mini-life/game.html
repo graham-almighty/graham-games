@@ -3056,7 +3056,7 @@ const TOWN_NPC_DEFS = [
   { id: 'chef', name: 'Chef Rosa', x: 152, z: 5.5, skinTone: 3, hairColor: 3, hairStyle: 'short', gender: 'female', outfit: 2 },
   { id: 'arcade_kid', name: 'Gamer Gary', x: 152, z: -11, skinTone: 2, hairColor: 6, hairStyle: 'curly', gender: 'male', outfit: 6 },
   { id: 'sergeant', name: 'Sgt. Briggs', x: 96, z: -22, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
-  { id: 'frycook', name: 'Mic Ronaldz', x: 152, z: -22, skinTone: 1, hairColor: 0, hairStyle: 'short', gender: 'male', outfit: 1, scale: 0.55 },
+  { id: 'frycook', name: 'Mic Ronaldz', x: 152, z: -21.5, skinTone: 1, hairColor: 0, hairStyle: 'short', gender: 'male', outfit: 1, scale: 0.55 },
 ];
 
 function buildCar() {
@@ -3812,71 +3812,64 @@ function buildTown() {
 
   // === MIC. RONALDZ (south-east, X=148-156, Z=-26 to -18) ===
   const micMat = new THREE.MeshLambertMaterial({ color: 0xcc8822 }); // golden arches orange
-  const micInner = new THREE.MeshLambertMaterial({ color: 0xaa6611 });
-  const micFloor = new THREE.MeshLambertMaterial({ color: 0xddccaa });
-  const micRoof = new THREE.MeshLambertMaterial({ color: 0x884411 });
-  makeWall(8.4, 3.5, 0.3, micMat, 152, 1.75, -26);     // Back wall
-  makeWall(0.3, 3.5, 8, micMat, 148, 1.75, -22);        // Left wall
-  makeWall(0.3, 3.5, 8, micMat, 156, 1.75, -22);        // Right wall
-  makeWall(4.2, 3.5, 0.3, micMat, 150, 1.75, -18);      // Front-left
-  makeWall(2, 3.5, 0.3, micMat, 155.1, 1.75, -18);      // Front-right
-  makeWall(1.8, 1.2, 0.3, micMat, 153.1, 2.9, -18);     // Above door
-  makeWall(8, 0.1, 8, micFloor, 152, 0.05, -22);         // Floor
-  makeWall(7.4, 3, 0.05, micInner, 152, 1.5, -25.8);     // Interior wall
-  const mRoof2 = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 9), micRoof);
-  mRoof2.position.set(152, 3.65, -22); g.add(mRoof2);
-  // Mic. Ronaldz sign (cardboard style)
+  // Mic. Ronaldz — comically tiny cardboard box building
+  const cardboardMat = new THREE.MeshLambertMaterial({ color: 0xc4a46c });
+  const cardboardDark = new THREE.MeshLambertMaterial({ color: 0x9a7a4a });
+  const cardboardFloor = new THREE.MeshLambertMaterial({ color: 0xb89a60 });
+  // Tiny box: 3x2x3, centered at (152, -22)
+  makeWall(3.3, 2, 0.15, cardboardMat, 152, 1, -23.5);       // Back wall
+  makeWall(0.15, 2, 3, cardboardMat, 150.35, 1, -22);         // Left wall
+  makeWall(0.15, 2, 3, cardboardMat, 153.65, 1, -22);         // Right wall
+  makeWall(1.1, 2, 0.15, cardboardMat, 151, 1, -20.5);        // Front-left
+  makeWall(0.6, 2, 0.15, cardboardMat, 153.5, 1, -20.5);      // Front-right
+  makeWall(0.6, 0.6, 0.15, cardboardMat, 152.5, 1.7, -20.5);  // Above door
+  makeWall(3, 0.06, 3, cardboardFloor, 152, 0.03, -22);        // Floor
+  // Cardboard flap roof (slightly bigger, overlaps edges)
+  const micRoof = new THREE.Mesh(new THREE.BoxGeometry(3.8, 0.12, 3.8), cardboardDark);
+  micRoof.position.set(152, 2.06, -22); g.add(micRoof);
+  // Tape strips on walls (packing tape look)
+  const tapeMat = new THREE.MeshLambertMaterial({ color: 0xddcc88, transparent: true, opacity: 0.7 });
+  makeWall(2, 0.15, 0.02, tapeMat, 152, 1.2, -20.44);   // Front tape
+  makeWall(2, 0.15, 0.02, tapeMat, 152, 0.6, -20.44);    // Front tape lower
+  makeWall(0.02, 0.15, 2, tapeMat, 153.6, 1.2, -22);     // Right side tape
+  // Mic. Ronaldz sign — hand-scrawled on cardboard
   const micSignC = document.createElement('canvas');
   micSignC.width = 256; micSignC.height = 48;
   const mcCtx = micSignC.getContext('2d');
-  mcCtx.fillStyle = '#cc8822'; mcCtx.fillRect(0, 0, 256, 48);
-  mcCtx.fillStyle = '#ffee00'; mcCtx.font = 'bold 22px sans-serif';
+  mcCtx.fillStyle = '#c4a46c'; mcCtx.fillRect(0, 0, 256, 48);
+  mcCtx.fillStyle = '#cc2222'; mcCtx.font = 'bold 20px Comic Sans MS, cursive';
   mcCtx.textAlign = 'center'; mcCtx.textBaseline = 'middle';
   mcCtx.fillText("Mic. Ronaldz", 128, 26);
-  const micSign = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(micSignC), emissive: 0xffcc00, emissiveIntensity: 0.2 }));
-  micSign.position.set(152, 3, -17.84); g.add(micSign);
-  // Big yellow "M" (cardboard-like)
-  const mArchMat = new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.2 });
-  // Left leg of M
-  const mL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2, 0.15), mArchMat);
-  mL.position.set(151, 2.5, -17.82); mL.rotation.z = 0.15; g.add(mL);
-  // Right leg of M
-  const mR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2, 0.15), mArchMat);
-  mR.position.set(153, 2.5, -17.82); mR.rotation.z = -0.15; g.add(mR);
-  // Counter (order counter)
-  const micCounterMesh = makeWall(5, 1, 0.8, counterMat, 152, 0.5, -19);
-  makeWall(5.2, 0.06, 1, new THREE.MeshLambertMaterial({ color: 0xddbb88 }), 152, 1.04, -19);
-  // Cash register
-  makeWall(0.5, 0.4, 0.4, new THREE.MeshLambertMaterial({ color: 0x333333 }), 153, 1.2, -19);
-  // Menu board on back wall
+  const micSign = new THREE.Mesh(new THREE.BoxGeometry(2, 0.35, 0.06), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(micSignC) }));
+  micSign.position.set(152, 1.8, -20.42); g.add(micSign);
+  // Tiny yellow "M" made of bent cardboard
+  const mArchMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+  const mL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.08), mArchMat);
+  mL.position.set(151.5, 2.5, -20.4); mL.rotation.z = 0.15; g.add(mL);
+  const mR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.8, 0.08), mArchMat);
+  mR.position.set(152.5, 2.5, -20.4); mR.rotation.z = -0.15; g.add(mR);
+  // Tiny counter (a smaller cardboard box inside)
+  const micCounterMesh = makeWall(1.8, 0.6, 0.5, cardboardDark, 152, 0.3, -21);
+  // Menu scrawled on back wall
   const menuC = document.createElement('canvas');
   menuC.width = 256; menuC.height = 128;
   const muCtx = menuC.getContext('2d');
-  muCtx.fillStyle = '#222222'; muCtx.fillRect(0, 0, 256, 128);
-  muCtx.fillStyle = '#ffcc00'; muCtx.font = 'bold 18px sans-serif';
+  muCtx.fillStyle = '#c4a46c'; muCtx.fillRect(0, 0, 256, 128);
+  muCtx.fillStyle = '#cc2222'; muCtx.font = 'bold 16px Comic Sans MS, cursive';
   muCtx.textAlign = 'center';
   muCtx.fillText('MENU', 128, 22);
-  muCtx.font = '14px sans-serif'; muCtx.fillStyle = '#ffffff';
+  muCtx.font = '12px Comic Sans MS, cursive'; muCtx.fillStyle = '#333333';
   muCtx.fillText('Cardboard Burger ... $3', 128, 48);
   muCtx.fillText('Mystery Nuggets ... $2', 128, 68);
   muCtx.fillText('Flat Soda ... $1', 128, 88);
   muCtx.fillText('Soggy Fries ... $2', 128, 108);
-  const menuBoard = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.3, 0.08), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(menuC) }));
-  menuBoard.position.set(152, 2.3, -25.7); g.add(menuBoard);
-  // Tables with fixed seats
-  [150, 154].forEach(tx => {
-    makeWall(1.2, 0.06, 1.2, new THREE.MeshLambertMaterial({ color: 0xddbb88 }), tx, 0.7, -23);
-    makeWall(0.08, 0.7, 0.08, lampMat, tx, 0.35, -23);
-    [-0.7, 0.7].forEach(dz => {
-      makeWall(0.5, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0xcc8822 }), tx, 0.45, -23 + dz);
-      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, -23 + dz);
-    });
-  });
-  // Mic. Ronaldz light (warm fast food glow)
-  const micLight = new THREE.PointLight(0xffddaa, 0.5, 12);
-  micLight.position.set(152, 3.2, -22); g.add(micLight);
+  const menuBoard = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 0.04), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(menuC) }));
+  menuBoard.position.set(152, 1.3, -23.4); g.add(menuBoard);
+  // Mic. Ronaldz light (dim, dangling bulb vibe)
+  const micLight = new THREE.PointLight(0xffddaa, 0.4, 6);
+  micLight.position.set(152, 1.8, -22); g.add(micLight);
   // Fast food interactable (eat cheap)
-  interactables.push({ mesh: micCounterMesh, group: g, type: 'fastfoodEat', label: 'Order Food ($3)', need: 'hunger', usePos: new THREE.Vector3(152, 0.15, -18.5), floor: 0 });
+  interactables.push({ mesh: micCounterMesh, group: g, type: 'fastfoodEat', label: 'Order Food ($3)', need: 'hunger', usePos: new THREE.Vector3(152, 0.15, -20), floor: 0 });
 
   // === BASKETBALL COURT (south, X=126-138, Z=-20 to -26) ===
   const courtMat = new THREE.MeshLambertMaterial({ color: 0xcc7733 });
@@ -4027,12 +4020,12 @@ const TOWN_BUILDINGS = [
   { xMin: 99.8, xMax: 100.2, zMin: -26, zMax: -18 },           // Right
   { xMin: 91.8, xMax: 96.2, zMin: -18.2, zMax: -17.8 },        // Front-left
   { xMin: 98, xMax: 100.2, zMin: -18.2, zMax: -17.8 },         // Front-right
-  // Mic. Ronaldz walls (door gap at X=152.2-154 on Z=-18 face)
-  { xMin: 147.8, xMax: 156.2, zMin: -26.2, zMax: -25.8 },     // Back
-  { xMin: 147.8, xMax: 148.2, zMin: -26, zMax: -18 },          // Left
-  { xMin: 155.8, xMax: 156.2, zMin: -26, zMax: -18 },          // Right
-  { xMin: 147.8, xMax: 152.2, zMin: -18.2, zMax: -17.8 },     // Front-left
-  { xMin: 154, xMax: 156.2, zMin: -18.2, zMax: -17.8 },        // Front-right
+  // Mic. Ronaldz walls — tiny cardboard box (door gap at X=151.6-153.2 on Z=-20.5 face)
+  { xMin: 150.2, xMax: 153.8, zMin: -23.6, zMax: -23.4 },     // Back
+  { xMin: 150.2, xMax: 150.5, zMin: -23.5, zMax: -20.5 },     // Left
+  { xMin: 153.5, xMax: 153.8, zMin: -23.5, zMax: -20.5 },     // Right
+  { xMin: 150.2, xMax: 151.6, zMin: -20.6, zMax: -20.4 },     // Front-left
+  { xMin: 153.2, xMax: 153.8, zMin: -20.6, zMax: -20.4 },     // Front-right
   // Basketball hoop poles
   { xMin: 126.8, xMax: 127.2, zMin: -23.3, zMax: -22.7 },
   { xMin: 136.8, xMax: 137.2, zMin: -23.3, zMax: -22.7 },
@@ -6412,7 +6405,7 @@ function runRestaurantGame(canvas, ctx, onFinish) {
 function runArcadeGame(canvas, ctx, onFinish) {
   const W = canvas.width, H = canvas.height;
   let paddle = { x: W / 2, w: 80 };
-  let ball = { x: W / 2, y: H - 40, dx: 3, dy: -3 };
+  let ball = { x: W / 2, y: H - 40, dx: 2, dy: -2 };
   let bricks = [];
   let score = 0;
   let timeLeft = 20;
@@ -6442,8 +6435,8 @@ function runArcadeGame(canvas, ctx, onFinish) {
     timeLeft -= dt;
 
     // Move paddle
-    if (keysDown['ArrowLeft']) paddle.x = Math.max(paddle.w / 2, paddle.x - 400 * dt);
-    if (keysDown['ArrowRight']) paddle.x = Math.min(W - paddle.w / 2, paddle.x + 400 * dt);
+    if (keysDown['ArrowLeft']) paddle.x = Math.max(paddle.w / 2, paddle.x - 600 * dt);
+    if (keysDown['ArrowRight']) paddle.x = Math.min(W - paddle.w / 2, paddle.x + 600 * dt);
 
     // Move ball
     ball.x += ball.dx;
@@ -6454,14 +6447,14 @@ function runArcadeGame(canvas, ctx, onFinish) {
     // Paddle bounce
     if (ball.y > H - 35 && ball.y < H - 25 && ball.x > paddle.x - paddle.w / 2 && ball.x < paddle.x + paddle.w / 2) {
       ball.dy = -Math.abs(ball.dy);
-      ball.dx = (ball.x - paddle.x) / (paddle.w / 2) * 4;
+      ball.dx = (ball.x - paddle.x) / (paddle.w / 2) * 3;
       SFX.jobCorrect();
     }
     // Floor miss
     if (ball.y > H) {
       ball.x = paddle.x; ball.y = H - 40;
-      ball.dx = (Math.random() - 0.5) * 4;
-      ball.dy = -3;
+      ball.dx = (Math.random() - 0.5) * 3;
+      ball.dy = -2;
     }
     // Brick collision
     bricks.forEach(b => {

@@ -27,9 +27,11 @@
 - Basement stair: X=5.3 to 8, Z=-4.5 to -2.5
 
 **Town** (TOWN_ORIGIN X=122.5, Z=0):
-- Bounds: X=100-145, Z=-15 to 15
-- Road at X=118 (width 6), sidewalks at X=114 and X=122
-- Buildings: Cafe (X=104-112, Z=1-7), Shop (X=104-112, Z=-12 to -4.5), Town Hall (X=127-137, Z=1-7)
+- Bounds: X=88-157, Z=-28 to 28
+- Main road at X=118 (width 6), cross street at Z=-0.5 (width 5), sidewalks at X=114 and X=122
+- **North side buildings (Z=4-10):** Cafe (X=104-112), Library (X=92-100), Town Hall (X=127-137), GG Merch Store (X=139-145), Restaurant (X=148-156)
+- **South side buildings:** Shop (X=104-112, Z=-12 to -4.5), Gym (X=92-100, Z=-8 to -16), Arcade Hall (X=148-156, Z=-8 to -16), Army Fort (X=92-100, Z=-18 to -26), Fast Food "Mic Ronaldz" (X=148-156, Z=-18 to -26)
+- Basketball court: X=130-140, Z=-16 to -26 (with backboards)
 - Parking lot: X=130-140, Z=-12 to -4
 - Park: Z=9-15 (trees, bench, fountain)
 - Player spawn: (135, 0.15, -8)
@@ -74,7 +76,7 @@ actionConfig.typeName = {
 };
 ```
 
-**Instant actions** (return early in `startAction`, no config needed): mirror, jukebox, door, grandPiano, car, townCar, mansionCar.
+**Instant actions** (return early in `startAction`, no config needed): mirror, jukebox, door, grandPiano, car, townCar, mansionCar, merchCounter.
 
 ## All Action Configs
 
@@ -93,6 +95,7 @@ actionConfig.typeName = {
 | lavaLamp | fun | 25 | 2s | $0 | |
 | fishTank | fun | 35 | 3s | $0 | |
 | bed2 | energy | 55 | 5s | $0 | Sleep sound |
+| ggPoster | fun | 15 | 2s | $0 | Second floor, merch store purchase |
 
 **Mansion:**
 | Type | Need | Restore | Duration | Cost | Special |
@@ -110,6 +113,16 @@ actionConfig.typeName = {
 | tennisCourt | fun | 45 | 5s | $0 | +20 energy, -15 hunger |
 | zenGarden | fun | 30 | 4s | $0 | +10 hygiene |
 
+**Town Buildings** (activity mini-games, see Town Activity Mini-games section):
+| Type | Need | Restore | Duration | Cost | Special |
+|------|------|---------|----------|------|---------|
+| libraryRead | fun | 40 | 4s | $0 | Mini-game: type words |
+| gymWorkout | energy | 10 | 3s | $0 | Mini-game: power bar, -15 hunger |
+| restaurantEat | hunger | 50 | 4s | $10 | Mini-game: match dishes |
+| arcadePlay | fun | 50 | 5s | $5 | Mini-game: brick breaker |
+| basketball | fun | 35 | 4s | $0 | Mini-game: free throw, -10 hunger |
+| fastfoodEat | hunger | 35 | 3s | $5 | Mini-game: catch food |
+
 ## Shop Expansion Pattern
 
 To add a new purchasable expansion:
@@ -119,6 +132,22 @@ To add a new purchasable expansion:
 4. Add to `saveGame()` save object
 5. Add to `loadGame()` restoration logic (rebuild if owned)
 6. Add to `restartGame()` teardown (remove group, reset flag, splice interactables, delete action configs)
+
+## Graham Games Merch Store
+
+**Location:** Town, X=139-145, Z=1-7 (east of Town Hall)
+- Red exterior (`0xcc2222`), dark interior, gold/dark sign
+- Door gap at X=141.1-142.9 on Z=7 face
+- Contains: display counter with mannequin wearing GG Merch, folded shirt displays, interior light
+- NPC: "GG Superfan" (merch clerk) inside store
+- **Interactable:** `merchCounter` (instant action) — opens purchase overlay for GG Merch outfit ($40), GG Beaver ($100), GG Poster ($50)
+- GG Merch outfit: `OUTFITS[8]` (red shirt `0xcc2222`, black pants `0x1a1a1a`), `GG_MERCH_IDX = 8`
+- Shirt has canvas texture: "GRAHAM GAMES / is my life" on front, green "G G" logo on back
+- Not shown in regular P-key shop — only purchasable at merch store counter
+- Excluded from "Living Large" achievement requirement
+- **GG Beaver pet** ($100 in-game money): Hip-height beaver with big cute eyes, buck teeth, paddle tail, wearing GG red shirt. +10 fun every 30s. Saved in `hasBeaverPet`. Follows player at home, hidden at town/mansion. Appears in pet menu when owned (works independently of G Bux pet unlock).
+- **GG Poster** ($50, requires second floor): Canvas texture poster showing Mini Life character (curly blonde hair, avg skin tone, male, GG merch outfit) with "GRAHAM" in red on top, "GG" in gold on bottom, gold border, dark wood frame. Located on second floor near bed at (-1, UPPER_Y+1.6, 4.9), floor 1. Interactable `ggPoster` gives +15 fun in 2s. Saved in `hasGGPoster`.
+- **GG Superfan dialogue**: Cycles through fan-themed lines; offers "Browse Merch" button (pre-purchase) or "Equip GG Merch" (post-purchase). Uses `window._merchDialogIdx` for cycling.
 
 ## Driving System
 
@@ -136,7 +165,7 @@ To add a new purchasable expansion:
 
 **Metadata shape:** `[{name, day, money}, null, null]`
 
-**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked.
+**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked, hasBeaverPet, hasGGPoster, militaryTraining.
 
 **Flow:** Creator screen shows 3 slot rows (LOAD/DELETE for occupied, "Empty" for free). First save prompts for name. Subsequent saves auto-save to active slot. Old `minilife-save` auto-migrated to slot 0 on first load.
 
@@ -144,7 +173,7 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 ## NPC & Quest System
 
-**4 NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete. Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
+**11 NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
 
 **4 Quests** (defined in `QUESTS`):
 | Quest | NPC | Condition | Reward |
@@ -153,6 +182,56 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 | Supply Run | merchant | Use workbench | $100 |
 | Town Spirit | mayor | All needs > 70% | $150 |
 | Tall Tales | old_pete | Read 3 books | $50 + 30 fun |
+
+## Town Jobs (TOWN_JOBS)
+
+| NPC ID | Name | Base Pay | Mini-game |
+|--------|------|----------|-----------|
+| barista | Order Rush | $15 | Fill drink orders (A/D select, Space serve) |
+| merchant | Shelf Stocker | $15 | Catch falling items (A/D move) |
+| mayor | Stamp Sorter | $15 | Sort documents (A approve, D deny) |
+| sergeant | Target Practice | $20 | Aim crosshair (WASD) + Space shoot |
+| sergeant_mission | Military Mission | $35 | Side-scrolling combat (A/D move, W jump, Space shoot) |
+| frycook | Fry Cook | $12 | Match orders (1-4 keys) |
+
+**Pay formula:** `basePay + floor(score / 2)`
+**Cooldown:** One job per NPC per day (`jobLastDay[npcId] === day`). `sergeant_mission` shares cooldown with `sergeant`.
+
+## Military Progression
+
+- `militaryTraining` counter (0-4 = training, 5 = missions unlocked)
+- Each target practice completion increments counter (max 5)
+- At 5, sergeant dialogue switches to mission greetings and offers "Deploy!" button
+- Saved/loaded with `militaryTraining` in save data
+
+## Town Activity Mini-games
+
+Activities in town buildings are interactive mini-games (not progress bars):
+| Type | Building | Mini-game | Need | Restore |
+|------|----------|-----------|------|---------|
+| libraryRead | Library | Type words | fun | 40 |
+| gymWorkout | Gym | Power bar timing | energy | 10 |
+| restaurantEat | Restaurant | Match dishes | hunger | 50 |
+| arcadePlay | Arcade Hall | Brick breaker | fun | 50 |
+| basketball | Basketball Court | Free throw | fun | 35 |
+| fastfoodEat | Fast Food | Catch falling food | hunger | 35 |
+
+Intercepted in `beginAction()` via `ACTIVITY_MINIGAMES` array → `startActivityMiniGame()`.
+
+## Character Customization
+
+**`charOpts`:** `{ skinTone, gender, hairStyle, hairColor, outfit, accessory, dress }`
+
+**6 Skin Tones:** Light, Fair, Medium, Olive, Brown, Dark
+**7 Hair Colors:** Black, Brown, Blonde, Red, Orange, White, Blue
+**7 Hair Styles:** Short, Long, Curly (dense ball clusters wrapping head), Buzz Cut, Ponytail (with red hair tie), Bun (sphere on back of head), Curly Long (curly balls cascading from crown to shoulders with side curls)
+**9 Outfits:** Casual Blue (free), Sporty Red ($20), Forest Green ($25), Purple Royale ($30), Sunset Orange ($30), All Black ($35), Pink Pop ($35), Golden Drip ($50), GG Merch ($40 — sold exclusively at Graham Games Merch Store in town, not in regular shop; red shirt with gold "Graham Games is my life" text on front, GG logo on back, black pants)
+**8 Dresses:** Blue ($25), Red ($25), Green ($30), Purple ($35), Orange ($35), Black ($40), Pink ($40), Gold ($55) — each color matches corresponding outfit. Renders bodice + flared skirt + waist seam + hem with skin-colored legs below. Equipping a dress unequips outfit and vice versa. Stored in `ownedDresses` set, `charOpts.dress` (-1 = none).
+**5 Accessories:** None, Backpack (with straps), Purse (crossbody front-right), Satchel (crossbody front-left), Tote Bag (crossbody front-right) — all bags have straps wrapping over shoulder, across front+back, and under opposite arm
+
+`buildCharacter(opts)` creates a `THREE.Group` with head, eyes, torso, arms, legs, hair, and accessory meshes. Gender affects body proportions (bodyW, hipW, armX).
+
+Preview system: separate `prevScene` with `updatePreview()` that rebuilds on any option change.
 
 ## Materials (`mat` object)
 floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, pillow, tv, tvScreen, couch, couchCushion, shower, showerMetal, table, chrome, rubber, water, sand, rug, door, window, monitor, monitorScreen, keyboard.
