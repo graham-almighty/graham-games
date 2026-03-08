@@ -221,6 +221,91 @@
   .team-toggle button.active-blue { border-color: #4488ff; color: #4488ff; background: #4488ff18; }
   .team-toggle button.active-red { border-color: #ff4444; color: #ff4444; background: #ff444418; }
 
+  /* Sandbox Save/Load Modal */
+  #sandbox-save-modal {
+    position: fixed; inset: 0; z-index: 100;
+    background: #000000cc;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #sandbox-save-modal.hidden { display: none; }
+  .save-modal-box {
+    background: #1a1a2e;
+    border: 2px solid #cd7f32;
+    border-radius: 8px;
+    padding: 20px;
+    min-width: 340px;
+    max-width: 420px;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .save-modal-box h3 {
+    font-family: 'Cinzel', serif;
+    color: #cd7f32;
+    text-align: center;
+    margin-bottom: 12px;
+    font-size: 1rem;
+  }
+  .save-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 12px;
+    max-height: 40vh;
+  }
+  .save-entry {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #ffffff08;
+    border: 1px solid #444;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .save-entry:hover { border-color: #cd7f32; background: #cd7f3215; }
+  .save-entry-info { flex: 1; }
+  .save-entry-name { color: #ddd; font-size: 0.85rem; font-weight: bold; }
+  .save-entry-detail { color: #888; font-size: 0.7rem; margin-top: 2px; }
+  .save-entry-del {
+    background: none; border: 1px solid #ff444466;
+    color: #ff4444; cursor: pointer; font-size: 0.7rem;
+    padding: 3px 8px; border-radius: 3px; transition: all 0.15s;
+  }
+  .save-entry-del:hover { background: #ff444422; border-color: #ff4444; }
+  .save-modal-empty { color: #666; text-align: center; padding: 20px; font-size: 0.85rem; }
+  .save-modal-btns {
+    display: flex; gap: 8px; justify-content: center;
+  }
+  .save-modal-btns button {
+    font-family: 'Cinzel', serif;
+    padding: 8px 20px;
+    border: 1px solid #555;
+    background: #ffffff08;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+    border-radius: 4px;
+  }
+  .save-modal-btns button:hover { border-color: #cd7f32; color: #cd7f32; }
+  .sandbox-save-btns button {
+    font-family: 'Cinzel', serif;
+    padding: 8px;
+    border: 1px solid #555;
+    background: #ffffff08;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    transition: all 0.15s;
+  }
+  .sandbox-save-btns button:hover { border-color: #cd7f32; color: #cd7f32; }
+
   /* Battle Screen */
   #battle-screen {
     align-items: stretch;
@@ -532,6 +617,9 @@
   <div class="camp-rewards" id="camp-rewards"></div>
   <div class="camp-end-btns" id="camp-end-btns"></div>
 </div>
+
+<!-- Sandbox Save/Load Modal -->
+<div id="sandbox-save-modal" class="hidden"></div>
 
 <!-- Deploy Screen -->
 <div id="deploy-screen" class="hidden">
@@ -1073,6 +1161,94 @@ function startSandboxMode() {
   campaignState = null;
   showScreen('deploy-screen');
   initDeployment();
+}
+
+// ═══════════════════════════════════════════
+// SANDBOX SAVE/LOAD
+// ═══════════════════════════════════════════
+const SANDBOX_SAVE_KEY = 'aw-sandbox-battles';
+
+function loadSandboxSaves() {
+  try { return JSON.parse(localStorage.getItem(SANDBOX_SAVE_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function storeSandboxSaves(saves) {
+  localStorage.setItem(SANDBOX_SAVE_KEY, JSON.stringify(saves));
+}
+
+function saveSandboxBattle() {
+  const name = prompt('Name this battle:');
+  if (!name || !name.trim()) return;
+  const blue = deployedUnits.map(u => ({ type: u.userData.type, x: u.position.x, z: u.position.z }));
+  const red = enemyUnits.map(u => ({ type: u.userData.type, x: u.position.x, z: u.position.z }));
+  if (blue.length === 0 && red.length === 0) return;
+  const saves = loadSandboxSaves();
+  saves.push({ name: name.trim(), date: new Date().toLocaleDateString(), blue, red });
+  storeSandboxSaves(saves);
+  SFX.place();
+}
+
+function showSandboxLoadModal() {
+  const saves = loadSandboxSaves();
+  const modal = document.getElementById('sandbox-save-modal');
+  let html = '<div class="save-modal-box"><h3>SAVED BATTLES</h3><div class="save-list">';
+  if (saves.length === 0) {
+    html += '<div class="save-modal-empty">No saved battles yet.</div>';
+  } else {
+    for (let i = 0; i < saves.length; i++) {
+      const s = saves[i];
+      html += '<div class="save-entry" onclick="loadSandboxBattle(' + i + ')">' +
+        '<div class="save-entry-info"><div class="save-entry-name">' + s.name + '</div>' +
+        '<div class="save-entry-detail">Blue: ' + s.blue.length + ' | Red: ' + s.red.length + ' &mdash; ' + s.date + '</div></div>' +
+        '<button class="save-entry-del" onclick="event.stopPropagation();deleteSandboxBattle(' + i + ')">DEL</button></div>';
+    }
+  }
+  html += '</div><div class="save-modal-btns"><button onclick="closeSandboxModal()">CLOSE</button></div></div>';
+  modal.innerHTML = html;
+  modal.classList.remove('hidden');
+}
+
+function closeSandboxModal() {
+  document.getElementById('sandbox-save-modal').classList.add('hidden');
+}
+
+function loadSandboxBattle(index) {
+  const saves = loadSandboxSaves();
+  if (index < 0 || index >= saves.length) return;
+  const save = saves[index];
+  // Clear current armies
+  for (const u of deployedUnits) scene.remove(u);
+  for (const u of enemyUnits) scene.remove(u);
+  deployedUnits = [];
+  enemyUnits = [];
+  // Place blue units
+  for (const entry of save.blue) {
+    const unit = buildUnitModel(entry.type, 'blue');
+    unit.position.set(entry.x, 0, entry.z);
+    unit.rotation.y = -Math.PI / 2;
+    scene.add(unit);
+    deployedUnits.push(unit);
+  }
+  // Place red units
+  for (const entry of save.red) {
+    const unit = buildUnitModel(entry.type, 'red');
+    unit.position.set(entry.x, 0, entry.z);
+    unit.rotation.y = Math.PI / 2;
+    scene.add(unit);
+    enemyUnits.push(unit);
+  }
+  updateDeployCount();
+  closeSandboxModal();
+  SFX.place();
+}
+
+function deleteSandboxBattle(index) {
+  const saves = loadSandboxSaves();
+  if (index < 0 || index >= saves.length) return;
+  saves.splice(index, 1);
+  storeSandboxSaves(saves);
+  showSandboxLoadModal(); // Refresh the list
 }
 
 function showLevelSelect() {
@@ -1769,7 +1945,7 @@ function spawnCampaignEnemies(levelDef) {
 function renderDeploySidebar() {
   const sidebar = document.getElementById('deploy-sidebar');
   // Remove any existing campaign info or team toggle sections
-  sidebar.querySelectorAll('.deploy-level-info, .deploy-enemy-preview, .team-toggle').forEach(el => el.remove());
+  sidebar.querySelectorAll('.deploy-level-info, .deploy-enemy-preview, .team-toggle, .sandbox-save-btns').forEach(el => el.remove());
 
   const h3 = sidebar.querySelector('h3');
   if (isSandboxMode) {
@@ -1804,6 +1980,18 @@ function renderDeploySidebar() {
     info.after(preview);
   } else {
     h3.innerHTML = '&#9876; DEPLOY ARMY';
+  }
+
+  // Save/Load buttons for sandbox
+  if (isSandboxMode) {
+    const saveBtns = document.createElement('div');
+    saveBtns.className = 'sandbox-save-btns';
+    saveBtns.style.cssText = 'display:flex;gap:4px;margin-bottom:4px;';
+    saveBtns.innerHTML =
+      '<button style="flex:1" onclick="saveSandboxBattle()">SAVE BATTLE</button>' +
+      '<button style="flex:1" onclick="showSandboxLoadModal()">LOAD BATTLE</button>';
+    const actions = sidebar.querySelector('.deploy-actions');
+    actions.parentNode.insertBefore(saveBtns, actions);
   }
 
   // Update budget display format

@@ -2319,6 +2319,145 @@ group('Dark Dramatic Background Music');
   assertEqual(getMusicText(true), '♫ OFF', 'Button shows OFF when muted');
 }
 
+// ─── SANDBOX: SAVE/LOAD BATTLES ───
+group('Sandbox: Save/Load Battles');
+
+const SANDBOX_SAVE_KEY = 'aw-sandbox-battles';
+
+function loadSandboxSaves() {
+  try { return JSON.parse(localStorage.getItem(SANDBOX_SAVE_KEY)) || []; }
+  catch(e) { return []; }
+}
+
+function storeSandboxSaves(saves) {
+  localStorage.setItem(SANDBOX_SAVE_KEY, JSON.stringify(saves));
+}
+
+// Empty by default
+{
+  resetStorage();
+  const saves = loadSandboxSaves();
+  assert(Array.isArray(saves), 'Default saves is an array');
+  assertEqual(saves.length, 0, 'No saves by default');
+}
+
+// Save a battle
+{
+  resetStorage();
+  const blue = [
+    { type: 'swordsman', x: -5, z: 0 },
+    { type: 'archer', x: -8, z: 3 },
+  ];
+  const red = [
+    { type: 'cavalry', x: 5, z: -2 },
+  ];
+  const saves = loadSandboxSaves();
+  saves.push({ name: 'Test Battle', date: '3/8/2026', blue, red });
+  storeSandboxSaves(saves);
+  const loaded = loadSandboxSaves();
+  assertEqual(loaded.length, 1, 'One save stored');
+  assertEqual(loaded[0].name, 'Test Battle', 'Save name preserved');
+  assertEqual(loaded[0].blue.length, 2, 'Blue army has 2 units');
+  assertEqual(loaded[0].red.length, 1, 'Red army has 1 unit');
+}
+
+// Save round-trips unit data correctly
+{
+  resetStorage();
+  const blue = [{ type: 'elephant', x: -10.5, z: 7.3 }];
+  const red = [{ type: 'catapult', x: 12.1, z: -4.8 }];
+  storeSandboxSaves([{ name: 'Positions', date: '3/8/2026', blue, red }]);
+  const loaded = loadSandboxSaves();
+  assertEqual(loaded[0].blue[0].type, 'elephant', 'Blue unit type round-trips');
+  assertApprox(loaded[0].blue[0].x, -10.5, 0.001, 'Blue unit x position round-trips');
+  assertApprox(loaded[0].blue[0].z, 7.3, 0.001, 'Blue unit z position round-trips');
+  assertApprox(loaded[0].red[0].x, 12.1, 0.001, 'Red unit x position round-trips');
+  assertApprox(loaded[0].red[0].z, -4.8, 0.001, 'Red unit z position round-trips');
+}
+
+// Multiple saves
+{
+  resetStorage();
+  const saves = [];
+  saves.push({ name: 'Battle 1', date: '3/1/2026', blue: [{ type: 'swordsman', x: -3, z: 0 }], red: [{ type: 'swordsman', x: 3, z: 0 }] });
+  saves.push({ name: 'Battle 2', date: '3/2/2026', blue: [{ type: 'cavalry', x: -5, z: 1 }], red: [{ type: 'archer', x: 5, z: -1 }] });
+  saves.push({ name: 'Battle 3', date: '3/3/2026', blue: [], red: [{ type: 'elephant', x: 8, z: 0 }] });
+  storeSandboxSaves(saves);
+  const loaded = loadSandboxSaves();
+  assertEqual(loaded.length, 3, 'Three saves stored');
+  assertEqual(loaded[0].name, 'Battle 1', 'First save name');
+  assertEqual(loaded[1].name, 'Battle 2', 'Second save name');
+  assertEqual(loaded[2].name, 'Battle 3', 'Third save name');
+}
+
+// Delete a save
+{
+  resetStorage();
+  const saves = [
+    { name: 'A', date: '1/1', blue: [], red: [] },
+    { name: 'B', date: '1/2', blue: [], red: [] },
+    { name: 'C', date: '1/3', blue: [], red: [] },
+  ];
+  storeSandboxSaves(saves);
+  const current = loadSandboxSaves();
+  current.splice(1, 1); // delete B
+  storeSandboxSaves(current);
+  const after = loadSandboxSaves();
+  assertEqual(after.length, 2, 'After delete: 2 saves remain');
+  assertEqual(after[0].name, 'A', 'First save is A');
+  assertEqual(after[1].name, 'C', 'Second save is C');
+}
+
+// Delete last save leaves empty array
+{
+  resetStorage();
+  storeSandboxSaves([{ name: 'Only', date: '1/1', blue: [], red: [] }]);
+  const current = loadSandboxSaves();
+  current.splice(0, 1);
+  storeSandboxSaves(current);
+  const after = loadSandboxSaves();
+  assertEqual(after.length, 0, 'Deleting only save leaves empty array');
+}
+
+// Corrupted data returns empty array
+{
+  resetStorage();
+  localStorage.setItem(SANDBOX_SAVE_KEY, 'not-json');
+  const saves = loadSandboxSaves();
+  assert(Array.isArray(saves), 'Corrupted data returns array');
+  assertEqual(saves.length, 0, 'Corrupted data returns empty array');
+}
+
+// Save with all unit types
+{
+  resetStorage();
+  const allTypes = Object.keys(UNIT_DEFS);
+  const blue = allTypes.map((t, i) => ({ type: t, x: -(i + 1) * 2, z: i }));
+  const red = allTypes.map((t, i) => ({ type: t, x: (i + 1) * 2, z: -i }));
+  storeSandboxSaves([{ name: 'All Units', date: '3/8/2026', blue, red }]);
+  const loaded = loadSandboxSaves();
+  assertEqual(loaded[0].blue.length, allTypes.length, 'All unit types saved for blue');
+  assertEqual(loaded[0].red.length, allTypes.length, 'All unit types saved for red');
+  for (let i = 0; i < allTypes.length; i++) {
+    assertEqual(loaded[0].blue[i].type, allTypes[i], 'Blue unit ' + i + ' type = ' + allTypes[i]);
+    assertEqual(loaded[0].red[i].type, allTypes[i], 'Red unit ' + i + ' type = ' + allTypes[i]);
+  }
+}
+
+// Save is independent of other localStorage keys
+{
+  resetStorage();
+  saveCampaignProgress({ unlockedLevels: 5 });
+  saveStats({ wins: 3, battles: 5, bonusGold: 150 });
+  storeSandboxSaves([{ name: 'Independent', date: '3/8/2026', blue: [{ type: 'swordsman', x: -3, z: 0 }], red: [] }]);
+  const saves = loadSandboxSaves();
+  const progress = loadCampaignProgress();
+  const stats = loadStats();
+  assertEqual(saves.length, 1, 'Sandbox saves unaffected by other keys');
+  assertEqual(progress.unlockedLevels, 5, 'Campaign progress unaffected by sandbox saves');
+  assertEqual(stats.bonusGold, 150, 'Stats unaffected by sandbox saves');
+}
+
 // ============================================================
 showSummary();
 </script>

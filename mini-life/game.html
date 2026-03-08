@@ -4962,7 +4962,7 @@ function startTownJob(npcId) {
     hintEl.innerHTML = '<kbd>A</kbd> <kbd>D</kbd> Move  <kbd>W</kbd> Jump  <kbd>SPACE</kbd> Shoot';
     runMilitaryMission(canvas, ctx, (score) => finishTownJob(npcId, score));
   } else if (npcId === 'frycook') {
-    hintEl.innerHTML = '<kbd>1</kbd> Burger  <kbd>2</kbd> Fries  <kbd>3</kbd> Drink  <kbd>4</kbd> Nuggets';
+    hintEl.innerHTML = '<kbd>1</kbd> Burger  <kbd>2</kbd> Fries  <kbd>3</kbd> Drink  <kbd>4</kbd> Nuggets  <kbd>ESC</kbd> End shift';
     runFastFoodJob(canvas, ctx, (score) => finishTownJob(npcId, score));
   }
 }
@@ -4971,7 +4971,7 @@ function finishTownJob(npcId, score) {
   jobMiniGameRunning = false;
   const job = TOWN_JOBS[npcId];
   const finalScore = Math.max(0, score);
-  const pay = job.basePay + Math.floor(finalScore * 0.5);
+  const pay = npcId === 'frycook' ? finalScore : job.basePay + Math.floor(finalScore * 0.5);
   money += pay;
   needs.energy = Math.max(0, needs.energy - 15);
   needs.hunger = Math.max(0, needs.hunger - 10);
@@ -5884,164 +5884,256 @@ function runFastFoodJob(canvas, ctx, onFinish) {
     { key: '3', name: 'Drink', color: '#4488cc', emoji: 'D' },
     { key: '4', name: 'Nuggets', color: '#dd9944', emoji: 'N' },
   ];
-  let orders = [];
-  let score = 0;
-  let timeLeft = 30;
-  let lastTime = performance.now();
-  let spawnTimer = 0;
-  let spawnInterval = 3.5;
+  const TOTAL_CUSTOMERS = 5;
+  const COUNTER_Y = H - 80;
+  const CUSTOMER_SPEED = 180;
+  const CUSTOMER_TARGET_X = W / 2;
+  const SKIN_TONES = ['#f5d0a9','#e8c090','#d4a574','#c68c5a','#a06830','#7a4e2a'];
+  const HAIR_SHADES = ['#222','#553311','#ddaa44','#cc4422','#ff8833','#eee'];
+  const SHIRT_HUES = ['#cc3333','#3366cc','#33aa55','#cc6633','#9933aa','#cc9933'];
+  let customersServed = 0;
+  let orderProgress = 0;
   let flash = null;
   let running = true;
+  let lastTime = performance.now();
+  let bobTime = 0;
+  let customer = null;
+  let customerX = W + 50;
+  let customerState = 'entering';
 
-  function spawnOrder() {
+  function makeCustomer() {
     const count = 1 + Math.floor(Math.random() * 3);
     const items = [];
-    for (let i = 0; i < count; i++) {
-      items.push(ITEMS[Math.floor(Math.random() * ITEMS.length)]);
-    }
-    orders.push({ items: items, progress: 0, timer: 8 + count * 2 });
+    for (let i = 0; i < count; i++) items.push(ITEMS[Math.floor(Math.random() * ITEMS.length)]);
+    return {
+      skin: SKIN_TONES[Math.floor(Math.random() * SKIN_TONES.length)],
+      hair: HAIR_SHADES[Math.floor(Math.random() * HAIR_SHADES.length)],
+      shirt: SHIRT_HUES[Math.floor(Math.random() * SHIRT_HUES.length)],
+      order: items,
+    };
   }
-  spawnOrder();
+  customer = makeCustomer();
 
   function onKey(e) {
     if (!running) return;
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(customersServed * 12);
+      return;
+    }
+    if (customerState !== 'waiting') return;
     const k = e.key;
     if (!['1','2','3','4'].includes(k)) return;
     e.preventDefault();
     const item = ITEMS.find(it => it.key === k);
     flash = { key: k, name: item.name, color: item.color, t: 0.3 };
-    if (orders.length === 0) return;
-    const order = orders[0];
-    if (order.items[order.progress].key === k) {
-      order.progress++;
+    if (customer.order[orderProgress].key === k) {
+      orderProgress++;
       SFX.jobCorrect();
-      if (order.progress >= order.items.length) {
-        score += 5 + order.items.length * 3;
-        orders.shift();
+      if (orderProgress >= customer.order.length) {
+        customersServed++;
+        customerState = 'leaving';
+        SFX.kaChing();
       }
     } else {
-      score = Math.max(0, score - 1);
-      order.progress = 0;
+      orderProgress = 0;
       SFX.jobWrong();
     }
   }
   document.addEventListener('keydown', onKey);
 
+  function drawToddler(x, y, cust, smile) {
+    const headR = 18, bodyW = 22, bodyH = 16, legH = 10;
+    const bob = customerState === 'waiting' ? Math.sin(bobTime * 3) * 2 : 0;
+    const by = y + bob;
+    // Legs
+    ctx.fillStyle = '#5566aa';
+    ctx.fillRect(x - 6, by - legH, 5, legH);
+    ctx.fillRect(x + 1, by - legH, 5, legH);
+    // Shoes
+    ctx.fillStyle = '#444';
+    ctx.fillRect(x - 7, by - 2, 7, 4);
+    ctx.fillRect(x, by - 2, 7, 4);
+    // Body
+    ctx.fillStyle = cust.shirt;
+    ctx.fillRect(x - bodyW / 2, by - legH - bodyH, bodyW, bodyH);
+    // Arms
+    ctx.fillRect(x - bodyW / 2 - 5, by - legH - bodyH + 2, 6, 13);
+    ctx.fillRect(x + bodyW / 2 - 1, by - legH - bodyH + 2, 6, 13);
+    // Hands
+    ctx.fillStyle = cust.skin;
+    ctx.fillRect(x - bodyW / 2 - 5, by - legH - bodyH + 15, 6, 4);
+    ctx.fillRect(x + bodyW / 2 - 1, by - legH - bodyH + 15, 6, 4);
+    // Head
+    ctx.fillStyle = cust.skin;
+    ctx.beginPath();
+    ctx.arc(x, by - legH - bodyH - headR + 2, headR, 0, Math.PI * 2);
+    ctx.fill();
+    // Hair
+    ctx.fillStyle = cust.hair;
+    ctx.beginPath();
+    ctx.arc(x, by - legH - bodyH - headR - 1, headR - 2, Math.PI * 1.15, -0.15 * Math.PI);
+    ctx.fill();
+    // Eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(x - 7, by - legH - bodyH - headR, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 7, by - legH - bodyH - headR, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222';
+    ctx.beginPath();
+    ctx.arc(x - 6, by - legH - bodyH - headR + 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x + 6, by - legH - bodyH - headR + 1, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Mouth
+    ctx.strokeStyle = '#833';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    if (smile) {
+      ctx.arc(x, by - legH - bodyH - headR + 8, 6, 0.1, Math.PI - 0.1);
+    } else {
+      ctx.moveTo(x - 4, by - legH - bodyH - headR + 8);
+      ctx.lineTo(x + 4, by - legH - bodyH - headR + 8);
+    }
+    ctx.stroke();
+    return by - legH - bodyH - headR * 2 + 2;
+  }
+
+  function drawBubble(x, topY, order, progress) {
+    const itemR = 13, pad = 8;
+    const bw = order.length * (itemR * 2 + 6) + pad * 2;
+    const bh = itemR * 2 + pad * 2;
+    const bx = x - bw / 2;
+    const by = topY - bh - 14;
+    // Bubble
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2;
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeRect(bx, by, bw, bh);
+    // Tail
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.moveTo(x - 8, by + bh);
+    ctx.lineTo(x, by + bh + 12);
+    ctx.lineTo(x + 8, by + bh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#aaa';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x - 8, by + bh);
+    ctx.lineTo(x, by + bh + 12);
+    ctx.lineTo(x + 8, by + bh);
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 9, by + bh - 2, 18, 3);
+    // Items
+    order.forEach((item, i) => {
+      const cx = bx + pad + itemR + i * (itemR * 2 + 6);
+      const cy = by + pad + itemR;
+      ctx.fillStyle = i < progress ? '#44aa44' : (i === progress ? item.color : '#ccc');
+      ctx.beginPath();
+      ctx.arc(cx, cy, itemR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(i < progress ? '\u2713' : item.emoji, cx, cy + 5);
+    });
+  }
+
   function draw() {
+    if (!running) return;
     const now = performance.now();
     const dt = Math.min((now - lastTime) / 1000, 0.05);
     lastTime = now;
-    timeLeft -= dt;
-    spawnTimer += dt;
-    if (spawnTimer >= spawnInterval) {
-      spawnTimer = 0;
-      spawnInterval = Math.max(1.8, spawnInterval - 0.12);
-      if (orders.length < 5) spawnOrder();
-    }
-    // Update orders
-    for (let i = orders.length - 1; i >= 0; i--) {
-      orders[i].timer -= dt;
-      if (orders[i].timer <= 0) {
-        score = Math.max(0, score - 2);
-        orders.splice(i, 1);
+    bobTime += dt;
+    // Update customer position
+    if (customerState === 'entering') {
+      customerX -= CUSTOMER_SPEED * dt;
+      if (customerX <= CUSTOMER_TARGET_X) {
+        customerX = CUSTOMER_TARGET_X;
+        customerState = 'waiting';
+      }
+    } else if (customerState === 'leaving') {
+      customerX -= CUSTOMER_SPEED * dt;
+      if (customerX < -60) {
+        if (customersServed >= TOTAL_CUSTOMERS) {
+          running = false;
+          document.removeEventListener('keydown', onKey);
+          onFinish(customersServed * 12);
+          return;
+        }
+        customer = makeCustomer();
+        customerX = W + 50;
+        orderProgress = 0;
+        customerState = 'entering';
       }
     }
     if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
 
-    // Draw background - fast food kitchen
+    // Background
     ctx.fillStyle = '#ffe8cc';
     ctx.fillRect(0, 0, W, H);
-    // Counter top
-    ctx.fillStyle = '#cc8833';
-    ctx.fillRect(0, H - 70, W, 70);
-    ctx.fillStyle = '#ddaa44';
-    ctx.fillRect(0, H - 72, W, 4);
-    // Back wall tiles
-    ctx.fillStyle = '#fff0dd';
+    // Wall tiles
     for (let tx = 0; tx < W; tx += 32) {
-      for (let ty = 0; ty < 40; ty += 32) {
+      for (let ty = 0; ty < COUNTER_Y; ty += 32) {
         ctx.strokeStyle = '#eeddcc';
         ctx.lineWidth = 1;
         ctx.strokeRect(tx, ty, 32, 32);
       }
     }
+    // Counter
+    ctx.fillStyle = '#cc8833';
+    ctx.fillRect(0, COUNTER_Y, W, H - COUNTER_Y);
+    ctx.fillStyle = '#ddaa44';
+    ctx.fillRect(0, COUNTER_Y, W, 4);
 
-    // Order tickets
-    const ticketW = 115, ticketH = 120, gap = 10;
-    const startX = (W - Math.min(orders.length, 5) * (ticketW + gap)) / 2;
-    orders.forEach((order, i) => {
-      if (i >= 5) return;
-      const tx = startX + i * (ticketW + gap);
-      const ty = 50;
-      // Ticket bg
-      ctx.fillStyle = i === 0 ? '#fff5e0' : '#f0e8d8';
-      ctx.fillRect(tx, ty, ticketW, ticketH);
-      ctx.strokeStyle = i === 0 ? '#cc8833' : '#999';
-      ctx.lineWidth = i === 0 ? 2 : 1;
-      ctx.strokeRect(tx, ty, ticketW, ticketH);
-      // Order number
-      ctx.fillStyle = '#666';
-      ctx.font = 'bold 11px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText('ORDER #' + (i + 1), tx + ticketW / 2, ty + 15);
-      // Items
-      order.items.forEach((item, ii) => {
-        const ix = tx + 10 + ii * 30;
-        const iy = ty + 30;
-        ctx.fillStyle = ii < order.progress ? '#44aa44' : (ii === order.progress && i === 0 ? item.color : '#aaa');
-        ctx.beginPath();
-        ctx.arc(ix + 12, iy + 12, 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px monospace';
-        ctx.textAlign = 'center';
-        ctx.fillText(item.emoji, ix + 12, iy + 17);
-      });
-      // Timer bar
-      const barY = ty + ticketH - 16;
-      const pct = Math.max(0, order.timer / (8 + order.items.length * 2));
-      ctx.fillStyle = '#ddd';
-      ctx.fillRect(tx + 5, barY, ticketW - 10, 8);
-      ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
-      ctx.fillRect(tx + 5, barY, (ticketW - 10) * pct, 8);
-    });
+    // Customer
+    if (customer) {
+      const headTop = drawToddler(customerX, COUNTER_Y, customer, customerState === 'leaving');
+      if (customerState === 'waiting') {
+        drawBubble(customerX, headTop, customer.order, orderProgress);
+      }
+    }
 
     // Key flash
     if (flash) {
       ctx.fillStyle = flash.color;
       ctx.globalAlpha = flash.t / 0.3;
-      ctx.font = 'bold 36px monospace';
+      ctx.font = 'bold 32px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(flash.name, W / 2, H - 25);
+      ctx.fillText(flash.name, W / 2, COUNTER_Y + 40);
       ctx.globalAlpha = 1;
     }
-
-    // Item legend at bottom
+    // Item legend
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
     ITEMS.forEach((item, i) => {
-      const lx = W / 2 - 120 + i * 80;
-      ctx.fillStyle = item.color;
-      ctx.fillText(item.key + ':' + item.emoji, lx, H - 55);
+      const lx = W / 2 - 100 + i * 70;
+      ctx.fillStyle = '#fff8ee';
+      ctx.fillText(item.key + ':' + item.emoji, lx, COUNTER_Y + 60);
     });
 
     // HUD
     ctx.fillStyle = '#333';
     ctx.font = 'bold 16px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.fillText('Served: ' + customersServed + '/' + TOTAL_CUSTOMERS, 10, 22);
     ctx.textAlign = 'right';
-    ctx.fillText('$' + (12 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.fillText('$' + (customersServed * 12), W - 10, 22);
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#333';
-    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, 22);
+    ctx.font = '12px monospace';
+    ctx.fillStyle = '#888';
+    ctx.fillText('ESC to end shift', W / 2, 22);
 
-    if (timeLeft <= 0) {
-      running = false;
-      document.removeEventListener('keydown', onKey);
-      onFinish(score);
-      return;
-    }
     requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);

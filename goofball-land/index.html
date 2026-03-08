@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GOOFBALL LAND - Graham Games</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='22' text-anchor='middle' font-family='serif' font-weight='bold' font-size='16' fill='%23c9a84c'>GG</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #ddd;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    height: 42px;
+    background: linear-gradient(180deg, #1a1a2e, #0f0f1a);
+    border-bottom: 1px solid #c9a84c44;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 12px;
+    z-index: 100;
+    position: relative;
+  }
+  .toolbar-logo { width: 28px; height: 28px; }
+  .toolbar-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: #c9a84c;
+    letter-spacing: 0.1em;
+  }
+  .toolbar-spacer { flex: 1; }
+  .toolbar-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid #c9a84c44;
+    color: #c9a84c;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .toolbar-btn:hover { background: #c9a84c15; border-color: #c9a84c; }
+
+  /* Screens */
+  .screen {
+    position: absolute;
+    top: 42px; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: opacity 0.3s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  .screen h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3rem;
+    font-weight: 900;
+    color: #ffcc00;
+    text-shadow: 0 0 20px #ffcc0044, 0 0 40px #ffcc0022, 2px 2px 0 #1a1200;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .title-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: #888;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .title-lore {
+    font-size: 0.8rem;
+    color: #997733;
+    max-width: 500px;
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    font-style: italic;
+  }
+
+  #model-container {
+    width: 300px;
+    height: 300px;
+    margin-bottom: 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: grab;
+  }
+  #model-container:active { cursor: grabbing; }
+
+  .punk-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    padding: 12px 48px;
+    background: linear-gradient(135deg, #ffcc0033, #ffcc0011);
+    border: 2px solid #ffcc00;
+    color: #ffcc00;
+    cursor: pointer;
+    letter-spacing: 0.15em;
+    transition: all 0.2s;
+    margin: 6px;
+  }
+  .punk-btn:hover {
+    background: linear-gradient(135deg, #ffcc0044, #ffcc0022);
+    box-shadow: 0 0 30px #ffcc0033;
+    transform: translateY(-2px);
+  }
+  .punk-btn:active { transform: translateY(0); }
+  .punk-btn.secondary {
+    font-size: 0.8rem; padding: 8px 24px;
+    border-color: #666; color: #888; background: transparent;
+  }
+  .punk-btn.secondary:hover { border-color: #ffcc00; color: #ffcc00; }
+
+  .view-buttons {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    justify-content: center; margin-bottom: 12px;
+  }
+  .view-btn {
+    font-family: 'Cinzel', serif; font-size: 0.65rem;
+    padding: 5px 12px; background: #ffffff08;
+    border: 1px solid #555; color: #aaa;
+    cursor: pointer; letter-spacing: 0.06em;
+    transition: all 0.15s; border-radius: 3px;
+  }
+  .view-btn:hover { border-color: #ffcc00; color: #ffcc00; }
+  .view-btn.active { border-color: #ffcc00; color: #ffcc00; background: #ffcc0018; }
+  .view-hint { color: #555; font-size: 0.7rem; margin-bottom: 6px; }
+
+  /* Game HUD */
+  #game-screen { align-items: stretch; justify-content: stretch; }
+  #game-canvas-wrap { flex: 1; position: relative; }
+  #game-hud {
+    position: absolute; top: 10px; left: 10px; z-index: 10;
+    display: flex; gap: 16px;
+    background: #00000088; backdrop-filter: blur(4px);
+    padding: 8px 16px; border-radius: 8px;
+    border: 1px solid #ffcc0033;
+  }
+  .hud-item { display: flex; align-items: center; gap: 6px; }
+  .hud-label { color: #ffcc00; font-size: 0.75rem; font-weight: bold; }
+  .hud-val { color: #fff; font-size: 0.85rem; }
+  #bump-cooldown {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 10; background: #00000088; backdrop-filter: blur(4px);
+    padding: 8px 20px; border-radius: 8px; border: 1px solid #ffcc0033;
+    font-size: 0.75rem; color: #aaa; text-align: center;
+  }
+  #bump-cooldown .ready { color: #4caf50; }
+  #crosshair {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px; height: 20px; z-index: 10; pointer-events: none;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: #ffcc0088;
+  }
+  #crosshair::before { width: 2px; height: 100%; left: 50%; transform: translateX(-50%); }
+  #crosshair::after { width: 100%; height: 2px; top: 50%; transform: translateY(-50%); }
+
+  #wave-banner {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 15; font-family: 'Cinzel Decorative', serif;
+    font-size: 2.5rem; color: #ffcc00;
+    text-shadow: 0 0 30px #ffcc0066, 2px 2px 0 #000;
+    opacity: 0; transition: opacity 0.5s; pointer-events: none;
+  }
+  #wave-banner.visible { opacity: 1; }
+
+  @media (max-width: 600px) {
+    .screen h1 { font-size: 1.8rem; }
+    #model-container { width: 220px; height: 220px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <svg class="toolbar-logo" viewBox="0 0 100 100">
+    <circle cx="50" cy="50" r="45" fill="none" stroke="#c9a84c" stroke-width="3"/>
+    <text x="50" y="62" text-anchor="middle" font-family="'Cinzel', serif" font-weight="bold" font-size="36" fill="#c9a84c">GG</text>
+  </svg>
+  <span class="toolbar-title">GOOFBALL LAND</span>
+  <div class="toolbar-spacer"></div>
+  <a href="../index.html" class="toolbar-btn">EXIT TO LAUNCHER</a>
+</div>
+
+<!-- Title Screen -->
+<div id="title-screen" class="screen">
+  <h1>GOOFBALL LAND</h1>
+  <div class="title-sub">DEFEND GUB GUB GA LUB GA GUB ISLAND</div>
+  <div id="model-container"></div>
+  <div class="view-hint">DRAG TO ORBIT &bull; SCROLL TO ZOOM</div>
+  <div class="view-buttons">
+    <button class="view-btn active" onclick="setView('front')">FRONT</button>
+    <button class="view-btn" onclick="setView('back')">BACK</button>
+    <button class="view-btn" onclick="setView('left')">LEFT</button>
+    <button class="view-btn" onclick="setView('right')">RIGHT</button>
+    <button class="view-btn" onclick="setView('top')">TOP</button>
+    <button class="view-btn" onclick="setView('bottom')">BOTTOM</button>
+  </div>
+  <div class="title-lore">The Lumpachubs are attacking Gub Gub Ga Lub Ga Gub Island! Fight back with belly bumps and spitballs to defend the Chubalumps!</div>
+  <button class="punk-btn" onclick="startGame()">PLAY</button>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen" class="screen hidden">
+  <div id="game-canvas-wrap">
+    <div id="game-hud">
+      <div class="hud-item"><span class="hud-label">HP:</span><span class="hud-val" id="hud-hp">100</span></div>
+      <div class="hud-item"><span class="hud-label">WAVE:</span><span class="hud-val" id="hud-wave">1</span></div>
+      <div class="hud-item"><span class="hud-label">SCORE:</span><span class="hud-val" id="hud-score">0</span></div>
+      <div class="hud-item"><span class="hud-label">ENEMIES:</span><span class="hud-val" id="hud-enemies">0</span></div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="bump-cooldown"><kbd>SPACE</kbd> BELLY BUMP: <span class="ready">READY</span></div>
+    <div id="wave-banner"></div>
+  </div>
+</div>
+
+<!-- End Screen -->
+<div id="end-screen" class="screen hidden">
+  <h1 id="end-title">GAME OVER</h1>
+  <div id="end-stats" style="font-size:1rem;margin:20px 0;text-align:center;line-height:2;"></div>
+  <button class="punk-btn" onclick="startGame()">PLAY AGAIN</button>
+  <button class="punk-btn secondary" onclick="showScreen('title-screen')">BACK TO MENU</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════
+// G BUX SYSTEM
+// ═══════════════════════════════════════════
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+
+// ═══════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════
+let currentScreen = 'title-screen';
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+  currentScreen = id;
+  if (id === 'title-screen') startTitlePreview();
+}
+
+// ═══════════════════════════════════════════
+// SOUND EFFECTS
+// ═══════════════════════════════════════════
+let audioCtx;
+function ensureAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+
+const SFX = {
+  spit() {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(800, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.15);
+    g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.15);
+  },
+  bump() {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(120, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.3);
+    g.gain.setValueAtTime(0.35, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.3);
+  },
+  hit() {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'square'; o.frequency.setValueAtTime(300, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+    g.gain.setValueAtTime(0.15, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.1);
+  },
+  enemyDie() {
+    ensureAudio();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'sawtooth'; o.frequency.setValueAtTime(400, audioCtx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.4);
+    g.gain.setValueAtTime(0.2, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + 0.4);
+  },
+  waveStart() {
+    ensureAudio();
+    for (let i = 0; i < 3; i++) {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(400 + i * 200, audioCtx.currentTime + i * 0.12);
+      g.gain.setValueAtTime(0.15, audioCtx.currentTime + i * 0.12);
+      g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.12 + 0.2);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + i * 0.12); o.stop(audioCtx.currentTime + i * 0.12 + 0.2);
+    }
+  },
+  gameOver() {
+    ensureAudio();
+    [200, 180, 150].forEach((f, i) => {
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(f, audioCtx.currentTime + i * 0.25);
+      g.gain.setValueAtTime(0.2, audioCtx.currentTime + i * 0.25);
+      g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + i * 0.25 + 0.3);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(audioCtx.currentTime + i * 0.25); o.stop(audioCtx.currentTime + i * 0.25 + 0.3);
+    });
+  },
+};
+
+// ═══════════════════════════════════════════
+// SHARED: BUILD CHUBALUMP MODEL
+// ═══════════════════════════════════════════
+function buildChubalump() {
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshPhongMaterial({ color: 0xffddaa, shininess: 30 });
+  const fingerMat = new THREE.MeshPhongMaterial({ color: 0xffccaa });
+
+  // Belly
+  const belly = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 24), skinMat);
+  belly.scale.set(1.8, 0.95, 1.8);
+  group.add(belly);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.55, 24, 20), skinMat);
+  head.position.set(0, 1.2, 0);
+  group.add(head);
+
+  // Eyes
+  const eyeWhiteMat = new THREE.MeshPhongMaterial({ color: 0xffffff });
+  const pupilMat = new THREE.MeshPhongMaterial({ color: 0x222222 });
+
+  const lEye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), eyeWhiteMat);
+  lEye.position.set(-0.18, 1.28, 0.44);
+  group.add(lEye);
+  const lPupil = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), pupilMat);
+  lPupil.position.set(-0.18, 1.35, 0.49);
+  group.add(lPupil);
+
+  const rEye = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 12), eyeWhiteMat);
+  rEye.position.set(0.18, 1.28, 0.44);
+  group.add(rEye);
+  const rPupil = new THREE.Mesh(new THREE.SphereGeometry(0.09, 12, 10), pupilMat);
+  rPupil.position.set(0.18, 1.21, 0.49);
+  group.add(rPupil);
+
+  // Mouth
+  const smileCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-0.18, 0, 0), new THREE.Vector3(0, -0.12, 0), new THREE.Vector3(0.18, 0, 0)
+  );
+  const mouth = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(smileCurve.getPoints(20)),
+    new THREE.LineBasicMaterial({ color: 0x993333, linewidth: 2 })
+  );
+  mouth.position.set(0, 1.1, 0.52);
+  group.add(mouth);
+
+  // Tongue
+  const tongue = new THREE.Mesh(new THREE.SphereGeometry(0.08, 12, 8), new THREE.MeshPhongMaterial({ color: 0xff5555 }));
+  tongue.scale.set(1, 0.6, 1);
+  tongue.position.set(0, 1.02, 0.56);
+  group.add(tongue);
+
+  // Hair
+  const hairMat = new THREE.MeshPhongMaterial({ color: 0xffdd00 });
+  for (let i = -1; i <= 1; i++) {
+    const strand = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.015, 0.35, 8), hairMat);
+    strand.position.set(i * 0.12, 1.9, -0.05);
+    strand.rotation.z = i * 0.25;
+    strand.rotation.x = -0.15;
+    group.add(strand);
+  }
+
+  // Fingers
+  for (let side = -1; side <= 1; side += 2) {
+    for (let f = -1; f <= 1; f++) {
+      const finger = new THREE.Mesh(new THREE.SphereGeometry(0.14, 10, 8), fingerMat);
+      finger.scale.set(0.8, 0.6, 0.7);
+      finger.position.set(side * 1.8, 0.05, f * 0.25);
+      group.add(finger);
+    }
+  }
+
+  // Toes
+  for (let t = -1; t <= 1; t += 2) {
+    const toe = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), fingerMat);
+    toe.scale.set(0.9, 0.55, 1.1);
+    toe.position.set(t * 0.25, -0.95, 0.35);
+    group.add(toe);
+  }
+
+  return group;
+}
+
+// ═══════════════════════════════════════════
+// BUILD LUMPACHUB (ugly stick figure, no hair)
+// ═══════════════════════════════════════════
+function buildLumpachub() {
+  const group = new THREE.Group();
+  const stickMat = new THREE.MeshPhongMaterial({ color: 0x666655 });
+  const jointMat = new THREE.MeshPhongMaterial({ color: 0x555544 });
+
+  // Head (peach circle)
+  const headMat = new THREE.MeshPhongMaterial({ color: 0xffccaa, shininess: 20 });
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 12), headMat);
+  head.position.set(0, 2.1, 0);
+  group.add(head);
+
+  // Black eyes
+  const eyeMat = new THREE.MeshPhongMaterial({ color: 0x111111 });
+  const lEye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), eyeMat);
+  lEye.position.set(-0.14, 2.15, 0.32);
+  group.add(lEye);
+  const rEye = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), eyeMat);
+  rEye.position.set(0.14, 2.15, 0.32);
+  group.add(rEye);
+
+  // Frowny mouth
+  const frownCurve = new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(-0.12, 0, 0), new THREE.Vector3(0, 0.08, 0), new THREE.Vector3(0.12, 0, 0)
+  );
+  const frown = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(frownCurve.getPoints(12)),
+    new THREE.LineBasicMaterial({ color: 0x332222 })
+  );
+  frown.position.set(0, 1.88, 0.35);
+  group.add(frown);
+
+  // Body (thin stick)
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6), stickMat);
+  body.position.set(0, 1.2, 0);
+  group.add(body);
+
+  // Arms
+  for (let side = -1; side <= 1; side += 2) {
+    const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.8, 5), stickMat);
+    arm.position.set(side * 0.35, 1.5, 0);
+    arm.rotation.z = side * 0.4;
+    group.add(arm);
+    // Fist
+    const fist = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 5), jointMat);
+    fist.position.set(side * 0.65, 1.2, 0);
+    group.add(fist);
+  }
+
+  // Legs
+  for (let side = -1; side <= 1; side += 2) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 5), stickMat);
+    leg.position.set(side * 0.15, 0.35, 0);
+    group.add(leg);
+    // Foot
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.06, 0.2), jointMat);
+    foot.position.set(side * 0.15, 0.02, 0.04);
+    group.add(foot);
+  }
+
+  return group;
+}
+
+// ═══════════════════════════════════════════
+// TITLE SCREEN (3D Preview)
+// ═══════════════════════════════════════════
+let titleScene, titleCamera, titleRenderer, titleGoofball, titleAnimId;
+let titleTime = 0;
+
+function startTitlePreview() {
+  if (titleAnimId) cancelAnimationFrame(titleAnimId);
+  const container = document.getElementById('model-container');
+  container.innerHTML = '';
+
+  titleScene = new THREE.Scene();
+  titleCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  titleRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  titleRenderer.setPixelRatio(window.devicePixelRatio);
+  titleRenderer.setClearColor(0x000000, 0);
+  container.appendChild(titleRenderer.domElement);
+
+  titleScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
+  dl.position.set(3, 5, 4);
+  titleScene.add(dl);
+  titleScene.add(new THREE.HemisphereLight(0xffeedd, 0x222244, 0.4));
+
+  titleGoofball = buildChubalump();
+  titleGoofball.position.y = -0.3;
+  titleScene.add(titleGoofball);
+
+  // Orbit camera state
+  titleCam = { angle: 0, pitch: 0.3, dist: 5.5, tAngle: 0, tPitch: 0.3, tDist: 5.5, auto: true };
+
+  function updateTitleCam() {
+    const c = titleCam;
+    titleCamera.position.set(
+      c.dist * Math.sin(c.angle) * Math.cos(c.pitch),
+      0.4 + c.dist * Math.sin(c.pitch),
+      c.dist * Math.cos(c.angle) * Math.cos(c.pitch)
+    );
+    titleCamera.lookAt(0, 0.4, 0);
+  }
+
+  // Drag orbit
+  let dragging = false, dragX = 0, dragY = 0;
+  container.onmousedown = e => { dragging = true; dragX = e.clientX; dragY = e.clientY; titleCam.auto = false; document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active')); };
+  window.addEventListener('mousemove', e => {
+    if (!dragging || currentScreen !== 'title-screen') return;
+    titleCam.tAngle -= (e.clientX - dragX) * 0.008;
+    titleCam.tPitch = Math.max(-1.47, Math.min(1.47, titleCam.tPitch + (e.clientY - dragY) * 0.008));
+    dragX = e.clientX; dragY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  container.addEventListener('wheel', e => { e.preventDefault(); titleCam.tDist = Math.max(3, Math.min(10, titleCam.tDist + e.deltaY * 0.005)); }, { passive: false });
+
+  // Touch
+  container.ontouchstart = e => { if (e.touches.length === 1) { dragging = true; dragX = e.touches[0].clientX; dragY = e.touches[0].clientY; titleCam.auto = false; } };
+  window.addEventListener('touchmove', e => {
+    if (!dragging || currentScreen !== 'title-screen' || e.touches.length !== 1) return;
+    titleCam.tAngle -= (e.touches[0].clientX - dragX) * 0.008;
+    titleCam.tPitch = Math.max(-1.47, Math.min(1.47, titleCam.tPitch + (e.touches[0].clientY - dragY) * 0.008));
+    dragX = e.touches[0].clientX; dragY = e.touches[0].clientY;
+  }, { passive: true });
+  window.addEventListener('touchend', () => { dragging = false; });
+
+  function resizeTitle() {
+    const w = Math.min(300, window.innerWidth - 40);
+    container.style.width = w + 'px';
+    container.style.height = w + 'px';
+    titleRenderer.setSize(w, w);
+  }
+  window.addEventListener('resize', resizeTitle);
+  resizeTitle();
+
+  // View presets
+  const VIEWS = {
+    front: { a: 0, p: 0.3, d: 5.5 }, back: { a: Math.PI, p: 0.3, d: 5.5 },
+    left: { a: Math.PI/2, p: 0.3, d: 5.5 }, right: { a: -Math.PI/2, p: 0.3, d: 5.5 },
+    top: { a: 0, p: 1.47, d: 6 }, bottom: { a: 0, p: -1.4, d: 6 },
+  };
+  window.setView = name => {
+    const v = VIEWS[name];
+    titleCam.tAngle = v.a; titleCam.tPitch = v.p; titleCam.tDist = v.d;
+    titleCam.auto = false;
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+  };
+
+  function titleLoop() {
+    if (currentScreen !== 'title-screen') return;
+    titleAnimId = requestAnimationFrame(titleLoop);
+    titleTime += 0.01;
+    if (titleCam.auto) titleCam.tAngle += 0.005;
+    titleCam.angle += (titleCam.tAngle - titleCam.angle) * 0.08;
+    titleCam.pitch += (titleCam.tPitch - titleCam.pitch) * 0.08;
+    titleCam.dist += (titleCam.tDist - titleCam.dist) * 0.08;
+    updateTitleCam();
+    titleGoofball.position.y = -0.3 + Math.sin(titleTime * 1.5) * 0.08;
+    titleRenderer.render(titleScene, titleCamera);
+  }
+  titleLoop();
+}
+startTitlePreview();
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+const ISLAND_RADIUS = 30;
+const PLAYER_SPEED = 8;
+const SPIT_SPEED = 30;
+const SPIT_DAMAGE = 25;
+const BUMP_DAMAGE = 40;
+const BUMP_RADIUS = 4;
+const BUMP_COOLDOWN = 2;
+const BUMP_KNOCKBACK = 8;
+const ENEMY_SPEED = 3;
+const ENEMY_DAMAGE = 8;
+const ENEMY_ATTACK_RANGE = 2.5;
+const ENEMY_ATTACK_COOLDOWN = 1.0;
+
+let gameScene, gameCamera, gameRenderer, gameAnimId;
+let player, playerHP, playerAngle, playerPitch;
+let enemies = [], spitballs = [], particles = [];
+let wave, score, enemiesRemaining, enemiesAlive;
+let bumpCooldown;
+let keys = {};
+let gameRunning = false;
+let lastGameTime = 0;
+
+// ═══════════════════════════════════════════
+// BUILD ISLAND
+// ═══════════════════════════════════════════
+function buildIsland(scene) {
+  // Ocean
+  const ocean = new THREE.Mesh(
+    new THREE.PlaneGeometry(200, 200),
+    new THREE.MeshPhongMaterial({ color: 0x2288aa, shininess: 80 })
+  );
+  ocean.rotation.x = -Math.PI / 2;
+  ocean.position.y = -0.5;
+  scene.add(ocean);
+
+  // Island base
+  const island = new THREE.Mesh(
+    new THREE.CylinderGeometry(ISLAND_RADIUS, ISLAND_RADIUS + 2, 1.5, 48),
+    new THREE.MeshPhongMaterial({ color: 0x44aa44 })
+  );
+  island.position.y = -0.25;
+  scene.add(island);
+
+  // Sandy beach ring
+  const beach = new THREE.Mesh(
+    new THREE.RingGeometry(ISLAND_RADIUS - 1, ISLAND_RADIUS + 2, 48),
+    new THREE.MeshPhongMaterial({ color: 0xddcc88, side: THREE.DoubleSide })
+  );
+  beach.rotation.x = -Math.PI / 2;
+  beach.position.y = 0.51;
+  scene.add(beach);
+
+  // Palm trees
+  const trunkMat = new THREE.MeshPhongMaterial({ color: 0x886633 });
+  const leafMat = new THREE.MeshPhongMaterial({ color: 0x33aa33, side: THREE.DoubleSide });
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const r = ISLAND_RADIUS * 0.7 + Math.random() * 5;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 4, 6), trunkMat);
+    trunk.position.set(Math.cos(a) * r, 2, Math.sin(a) * r);
+    trunk.rotation.z = (Math.random() - 0.5) * 0.2;
+    scene.add(trunk);
+    // Leaves
+    for (let l = 0; l < 5; l++) {
+      const la = (l / 5) * Math.PI * 2;
+      const leaf = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.6), leafMat);
+      leaf.position.set(trunk.position.x + Math.cos(la) * 1, 4.2, trunk.position.z + Math.sin(la) * 1);
+      leaf.rotation.x = -0.5;
+      leaf.rotation.y = la;
+      leaf.rotation.z = 0.3;
+      scene.add(leaf);
+    }
+  }
+
+  // Rocks
+  const rockMat = new THREE.MeshPhongMaterial({ color: 0x888888 });
+  for (let i = 0; i < 12; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = Math.random() * (ISLAND_RADIUS - 3);
+    const rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.3 + Math.random() * 0.5, 0), rockMat);
+    rock.position.set(Math.cos(a) * r, 0.3, Math.sin(a) * r);
+    rock.rotation.set(Math.random(), Math.random(), Math.random());
+    scene.add(rock);
+  }
+}
+
+// ═══════════════════════════════════════════
+// SPAWN ENEMY
+// ═══════════════════════════════════════════
+function spawnEnemy() {
+  const angle = Math.random() * Math.PI * 2;
+  const model = buildLumpachub();
+  model.position.set(Math.cos(angle) * (ISLAND_RADIUS + 3), 0.5, Math.sin(angle) * (ISLAND_RADIUS + 3));
+  model.userData = {
+    hp: 50 + wave * 10,
+    maxHp: 50 + wave * 10,
+    speed: ENEMY_SPEED + wave * 0.15,
+    attackCooldown: 0,
+    alive: true,
+    walkPhase: Math.random() * Math.PI * 2,
+  };
+  gameScene.add(model);
+  enemies.push(model);
+}
+
+// ═══════════════════════════════════════════
+// SPAWN SPITBALL
+// ═══════════════════════════════════════════
+function shootSpitball() {
+  const spitGeo = new THREE.SphereGeometry(0.15, 8, 6);
+  const spitMat = new THREE.MeshPhongMaterial({ color: 0x88cc44, emissive: 0x224400 });
+  const spit = new THREE.Mesh(spitGeo, spitMat);
+  spit.position.set(player.position.x, player.position.y + 1.3, player.position.z);
+  const dir = new THREE.Vector3(
+    -Math.sin(playerAngle) * Math.cos(playerPitch),
+    Math.sin(playerPitch),
+    -Math.cos(playerAngle) * Math.cos(playerPitch)
+  ).normalize();
+  spit.userData = { dir, life: 2, speed: SPIT_SPEED };
+  gameScene.add(spit);
+  spitballs.push(spit);
+  SFX.spit();
+}
+
+// ═══════════════════════════════════════════
+// BELLY BUMP
+// ═══════════════════════════════════════════
+function bellyBump() {
+  if (bumpCooldown > 0) return;
+  bumpCooldown = BUMP_COOLDOWN;
+  SFX.bump();
+
+  // Visual: quick scale pulse
+  player.scale.set(2.2, 1.3, 2.2);
+  setTimeout(() => { if (player) player.scale.set(1, 1, 1); }, 200);
+
+  for (const enemy of enemies) {
+    if (!enemy.userData.alive) continue;
+    const dist = player.position.distanceTo(enemy.position);
+    if (dist < BUMP_RADIUS) {
+      const dmg = BUMP_DAMAGE * (1 - dist / BUMP_RADIUS * 0.5);
+      enemy.userData.hp -= dmg;
+      // Knockback
+      const kb = new THREE.Vector3().subVectors(enemy.position, player.position);
+      kb.y = 0;
+      kb.normalize().multiplyScalar(BUMP_KNOCKBACK);
+      enemy.position.add(kb);
+      enemy.position.y = 0.5;
+      if (enemy.userData.hp <= 0) killEnemy(enemy);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════
+function spawnParticles(pos, color, count) {
+  for (let i = 0; i < count; i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1 + Math.random() * 0.1, 6, 4),
+      new THREE.MeshBasicMaterial({ color })
+    );
+    p.position.copy(pos);
+    p.userData = {
+      vel: new THREE.Vector3((Math.random()-0.5)*6, Math.random()*5+2, (Math.random()-0.5)*6),
+      life: 0.8 + Math.random() * 0.5,
+    };
+    gameScene.add(p);
+    particles.push(p);
+  }
+}
+
+function killEnemy(enemy) {
+  enemy.userData.alive = false;
+  spawnParticles(enemy.position, 0x666655, 8);
+  gameScene.remove(enemy);
+  enemiesAlive--;
+  score += 10 + wave * 5;
+  SFX.enemyDie();
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════
+// WAVE SYSTEM
+// ═══════════════════════════════════════════
+let waveSpawnTimer = 0;
+let waveEnemiesTotal = 0;
+let waveEnemiesSpawned = 0;
+let wavePause = 0;
+
+function startWave(n) {
+  wave = n;
+  waveEnemiesTotal = 3 + n * 2;
+  waveEnemiesSpawned = 0;
+  waveSpawnTimer = 0;
+  wavePause = 0;
+  const banner = document.getElementById('wave-banner');
+  banner.textContent = 'WAVE ' + n;
+  banner.classList.add('visible');
+  SFX.waveStart();
+  setTimeout(() => banner.classList.remove('visible'), 2000);
+  updateHUD();
+}
+
+// ═══════════════════════════════════════════
+// HUD
+// ═══════════════════════════════════════════
+function updateHUD() {
+  document.getElementById('hud-hp').textContent = Math.ceil(playerHP);
+  document.getElementById('hud-wave').textContent = wave;
+  document.getElementById('hud-score').textContent = score;
+  document.getElementById('hud-enemies').textContent = enemiesAlive;
+  const bumpEl = document.getElementById('bump-cooldown');
+  if (bumpCooldown <= 0) {
+    bumpEl.innerHTML = '<kbd>SPACE</kbd> BELLY BUMP: <span class="ready">READY</span>';
+  } else {
+    bumpEl.innerHTML = '<kbd>SPACE</kbd> BELLY BUMP: ' + bumpCooldown.toFixed(1) + 's';
+  }
+}
+
+// ═══════════════════════════════════════════
+// START GAME
+// ═══════════════════════════════════════════
+function startGame() {
+  ensureAudio();
+  if (titleAnimId) cancelAnimationFrame(titleAnimId);
+  if (gameAnimId) cancelAnimationFrame(gameAnimId);
+
+  showScreen('game-screen');
+
+  const container = document.getElementById('game-canvas-wrap');
+
+  gameScene = new THREE.Scene();
+  gameScene.background = new THREE.Color(0x88ccee);
+  gameScene.fog = new THREE.Fog(0x88ccee, 40, 80);
+  gameCamera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight - 42), 0.1, 200);
+
+  if (!gameRenderer) {
+    gameRenderer = new THREE.WebGLRenderer({ antialias: true });
+    gameRenderer.shadowMap.enabled = true;
+  }
+  gameRenderer.setSize(window.innerWidth, window.innerHeight - 42);
+  gameRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Clear old canvas if any
+  const oldCanvas = container.querySelector('canvas');
+  if (oldCanvas) oldCanvas.remove();
+  container.appendChild(gameRenderer.domElement);
+
+  // Lighting
+  gameScene.add(new THREE.AmbientLight(0xffffff, 0.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(20, 30, 10);
+  sun.castShadow = true;
+  gameScene.add(sun);
+  gameScene.add(new THREE.HemisphereLight(0x88ccff, 0x446622, 0.4));
+
+  buildIsland(gameScene);
+
+  // Player
+  player = buildChubalump();
+  player.position.set(0, 0.5, 0);
+  gameScene.add(player);
+
+  // Game state
+  playerHP = 100;
+  playerAngle = 0;
+  playerPitch = 0;
+  enemies = [];
+  spitballs = [];
+  particles = [];
+  score = 0;
+  wave = 0;
+  enemiesAlive = 0;
+  bumpCooldown = 0;
+  gameRunning = true;
+  keys = {};
+  lastGameTime = performance.now();
+
+  // Pointer lock
+  gameRenderer.domElement.addEventListener('click', () => {
+    gameRenderer.domElement.requestPointerLock();
+  });
+
+  startWave(1);
+  updateHUD();
+  gameLoop();
+}
+
+// ═══════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════
+document.addEventListener('keydown', e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.code === 'Space' && gameRunning) {
+    e.preventDefault();
+    bellyBump();
+  }
+});
+document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+document.addEventListener('mousemove', e => {
+  if (!gameRunning || document.pointerLockElement !== gameRenderer?.domElement) return;
+  playerAngle -= e.movementX * 0.003;
+  playerPitch -= e.movementY * 0.003;
+  playerPitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, playerPitch));
+});
+
+document.addEventListener('mousedown', e => {
+  if (!gameRunning) return;
+  if (document.pointerLockElement !== gameRenderer?.domElement) return;
+  if (e.button === 0) shootSpitball();
+});
+
+// ═══════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════
+function gameLoop() {
+  if (!gameRunning) return;
+  gameAnimId = requestAnimationFrame(gameLoop);
+
+  const now = performance.now();
+  const dt = Math.min((now - lastGameTime) / 1000, 0.05);
+  lastGameTime = now;
+
+  // ─── PLAYER MOVEMENT ───
+  // A/D turn, W/S move forward/backward
+  const TURN_SPEED = 2.5;
+  if (keys['a']) playerAngle += TURN_SPEED * dt;
+  if (keys['d']) playerAngle -= TURN_SPEED * dt;
+  let moveSpeed = 0;
+  if (keys['w']) moveSpeed = -PLAYER_SPEED;
+  if (keys['s']) moveSpeed = PLAYER_SPEED * 0.6;
+  if (moveSpeed !== 0) {
+    player.position.x += Math.sin(playerAngle) * moveSpeed * dt;
+    player.position.z += Math.cos(playerAngle) * moveSpeed * dt;
+  }
+
+  // Clamp to island
+  const pDist = Math.sqrt(player.position.x ** 2 + player.position.z ** 2);
+  if (pDist > ISLAND_RADIUS - 1) {
+    const clamp = (ISLAND_RADIUS - 1) / pDist;
+    player.position.x *= clamp;
+    player.position.z *= clamp;
+  }
+
+  // Player rotation (model hidden in first person)
+  player.rotation.y = playerAngle;
+  player.visible = false;
+
+  // ─── BUMP COOLDOWN ───
+  if (bumpCooldown > 0) {
+    bumpCooldown = Math.max(0, bumpCooldown - dt);
+    updateHUD();
+  }
+
+  // ─── WAVE SPAWNING ───
+  if (waveEnemiesSpawned < waveEnemiesTotal) {
+    waveSpawnTimer -= dt;
+    if (waveSpawnTimer <= 0) {
+      spawnEnemy();
+      waveEnemiesSpawned++;
+      enemiesAlive++;
+      waveSpawnTimer = 1.2 - wave * 0.05;
+      if (waveSpawnTimer < 0.3) waveSpawnTimer = 0.3;
+      updateHUD();
+    }
+  } else if (enemiesAlive <= 0) {
+    wavePause += dt;
+    if (wavePause >= 2) {
+      startWave(wave + 1);
+    }
+  }
+
+  // ─── ENEMY AI ───
+  for (const enemy of enemies) {
+    if (!enemy.userData.alive) continue;
+
+    // Move toward player
+    const toPlayer = new THREE.Vector3().subVectors(player.position, enemy.position);
+    const dist = toPlayer.length();
+    toPlayer.y = 0;
+    toPlayer.normalize();
+
+    // Face player
+    enemy.rotation.y = Math.atan2(toPlayer.x, toPlayer.z);
+
+    // Walk animation (bob legs)
+    enemy.userData.walkPhase += dt * enemy.userData.speed * 3;
+
+    if (dist > ENEMY_ATTACK_RANGE) {
+      enemy.position.add(toPlayer.multiplyScalar(enemy.userData.speed * dt));
+    } else {
+      // Attack
+      enemy.userData.attackCooldown -= dt;
+      if (enemy.userData.attackCooldown <= 0) {
+        playerHP -= ENEMY_DAMAGE;
+        enemy.userData.attackCooldown = ENEMY_ATTACK_COOLDOWN;
+        SFX.hit();
+        updateHUD();
+        if (playerHP <= 0) {
+          endGame();
+          return;
+        }
+      }
+    }
+
+    // Keep enemies on ground surface
+    enemy.position.y = 0.5;
+
+    // Clamp enemies to island area (allow slightly beyond)
+    const eDist = Math.sqrt(enemy.position.x ** 2 + enemy.position.z ** 2);
+    if (eDist > ISLAND_RADIUS + 5) {
+      const c = (ISLAND_RADIUS + 5) / eDist;
+      enemy.position.x *= c;
+      enemy.position.z *= c;
+    }
+  }
+
+  // ─── SPITBALLS ───
+  for (let i = spitballs.length - 1; i >= 0; i--) {
+    const spit = spitballs[i];
+    spit.position.add(spit.userData.dir.clone().multiplyScalar(spit.userData.speed * dt));
+    spit.userData.life -= dt;
+
+    // Check enemy hits — headshots do double damage
+    let hitEnemy = false;
+    for (const enemy of enemies) {
+      if (!enemy.userData.alive) continue;
+      const headPos = new THREE.Vector3(enemy.position.x, enemy.position.y + 2.1, enemy.position.z);
+      const headDist = spit.position.distanceTo(headPos);
+      const bodyDist = spit.position.distanceTo(new THREE.Vector3(enemy.position.x, enemy.position.y + 1.2, enemy.position.z));
+      if (headDist < 0.6) {
+        // Headshot!
+        enemy.userData.hp -= SPIT_DAMAGE * 2;
+        spawnParticles(spit.position, 0xff4444, 6);
+        SFX.hit();
+        if (enemy.userData.hp <= 0) killEnemy(enemy);
+        hitEnemy = true;
+        break;
+      } else if (bodyDist < 1.0) {
+        // Body hit
+        enemy.userData.hp -= SPIT_DAMAGE;
+        spawnParticles(spit.position, 0x88cc44, 4);
+        SFX.hit();
+        if (enemy.userData.hp <= 0) killEnemy(enemy);
+        hitEnemy = true;
+        break;
+      }
+    }
+
+    if (hitEnemy || spit.userData.life <= 0) {
+      gameScene.remove(spit);
+      spitballs.splice(i, 1);
+    }
+  }
+
+  // ─── PARTICLES ───
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.userData.vel.y -= 15 * dt;
+    p.position.add(p.userData.vel.clone().multiplyScalar(dt));
+    p.userData.life -= dt;
+    if (p.position.y < 0) p.position.y = 0;
+    p.material.opacity = Math.max(0, p.userData.life);
+    p.material.transparent = true;
+    if (p.userData.life <= 0) {
+      gameScene.remove(p);
+      particles.splice(i, 1);
+    }
+  }
+
+  // ─── CAMERA (first person, from eyes) ───
+  const eyeHeight = 1.3;
+  gameCamera.position.set(player.position.x, player.position.y + eyeHeight, player.position.z);
+  const lookX = player.position.x - Math.sin(playerAngle) * Math.cos(playerPitch);
+  const lookY = player.position.y + eyeHeight + Math.sin(playerPitch);
+  const lookZ = player.position.z - Math.cos(playerAngle) * Math.cos(playerPitch);
+  gameCamera.lookAt(lookX, lookY, lookZ);
+
+  // Clean up dead enemies from array
+  enemies = enemies.filter(e => e.userData.alive);
+
+  gameRenderer.render(gameScene, gameCamera);
+}
+
+// ═══════════════════════════════════════════
+// END GAME
+// ═══════════════════════════════════════════
+function endGame() {
+  gameRunning = false;
+  if (document.pointerLockElement) document.exitPointerLock();
+  SFX.gameOver();
+  document.getElementById('end-title').textContent = 'GAME OVER';
+  document.getElementById('end-stats').innerHTML =
+    'You defended Gub Gub Ga Lub Ga Gub Island!<br><br>' +
+    'Waves Survived: <span style="color:#ffcc00">' + (wave - 1) + '</span><br>' +
+    'Score: <span style="color:#ffcc00">' + score + '</span><br>' +
+    'Lumpachubs Defeated: <span style="color:#ffcc00">' + Math.floor(score / (10 + wave * 5)) + '</span>';
+  showScreen('end-screen');
+}
+
+// ═══════════════════════════════════════════
+// RESIZE
+// ═══════════════════════════════════════════
+window.addEventListener('resize', () => {
+  if (gameRenderer && currentScreen === 'game-screen') {
+    gameRenderer.setSize(window.innerWidth, window.innerHeight - 42);
+    gameCamera.aspect = window.innerWidth / (window.innerHeight - 42);
+    gameCamera.updateProjectionMatrix();
+  }
+});
+</script>
+</body>
+</html>
