@@ -1119,7 +1119,15 @@
           <button class="toggle-btn" data-val="long" onclick="setHairStyle('long',this)">Long</button>
           <button class="toggle-btn" data-val="curly" onclick="setHairStyle('curly',this)">Curly</button>
           <button class="toggle-btn" data-val="buzz" onclick="setHairStyle('buzz',this)">Buzz Cut</button>
+          <button class="toggle-btn" data-val="ponytail" onclick="setHairStyle('ponytail',this)">Ponytail</button>
+          <button class="toggle-btn" data-val="bun" onclick="setHairStyle('bun',this)">Bun</button>
+          <button class="toggle-btn" data-val="curlylong" onclick="setHairStyle('curlylong',this)">Curly Long</button>
         </div>
+      </div>
+
+      <div class="creator-row">
+        <label>Accessory</label>
+        <div class="creator-options" id="accessory-options"></div>
       </div>
 
       <div class="creator-row">
@@ -1220,6 +1228,7 @@
 <div class="action-overlay tv-overlay" id="tv-overlay"></div>
 <div class="action-overlay computer-overlay" id="computer-overlay"></div>
 <div class="action-overlay mirror-overlay" id="mirror-overlay"></div>
+<div id="merch-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:300;align-items:center;justify-content:center;flex-direction:column;"></div>
 <div class="action-overlay job-overlay" id="job-overlay"></div>
 
 <!-- Game Over -->
@@ -1339,7 +1348,7 @@ const ML_ACH = {
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 function mlCheckLivingLarge() {
-  if (hasSecondFloor && ownedFurniture.size >= 4 && ownedOutfits.size >= OUTFITS.length) {
+  if (hasSecondFloor && ownedFurniture.size >= 4 && ownedOutfits.size >= OUTFITS.length - 1) { // -1 for GG Merch (separate store)
     mlTry('ml_living_large');
   }
 }
@@ -1349,7 +1358,7 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87ceeb);
 scene.fog = new THREE.Fog(0x87ceeb, 30, 60);
 const HOME_FOG_FAR = 60;
-const TOWN_FOG_FAR = 120;
+const TOWN_FOG_FAR = 160;
 const MANSION_FOG_FAR = 150;
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 100);
@@ -2284,7 +2293,12 @@ function updateJukeboxLabel() {
 let petDogLoaded = false, poolLoaded = false, basementLoaded = false;
 let petDog = null;
 let petCat = null;
-let activePet = 'dog'; // 'dog', 'cat', or 'none'
+let petBeaver = null;
+let hasBeaverPet = false;
+let hasGGPoster = false;
+let ggPosterGroup = null;
+let activePet = 'dog'; // 'dog', 'cat', 'beaver', or 'none'
+let petStay = false; // C key toggle — pet stays in place
 let petBonusTimer = 0;
 let petBodyMeshes = [];
 
@@ -2417,6 +2431,248 @@ function buildPetCat() {
   petCat = catGroup;
   petCat.visible = false; // dog is active by default
   petBodyMeshes.push(body);
+}
+
+function buildPetBeaver() {
+  const bGroup = new THREE.Group();
+  const furMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x5a4010 });
+  const tailMat = new THREE.MeshLambertMaterial({ color: 0x3a2a0a });
+  const noseMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const toothMat = new THREE.MeshLambertMaterial({ color: 0xffffee });
+
+  // Body — stocky, reaching hip height (~0.5 above ground)
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.4, 0.7), furMat);
+  body.position.set(0, 0.45, 0);
+  bGroup.add(body);
+
+  // Dog-style shirt draped over back and sides, open underneath
+  const shirtMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  // Top panel (on the back)
+  const shirtTop = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.02, 0.5), shirtMat);
+  shirtTop.position.set(0, 0.66, 0);
+  bGroup.add(shirtTop);
+  // Left side drape
+  const shirtL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.5), shirtMat);
+  shirtL.position.set(-0.23, 0.56, 0);
+  bGroup.add(shirtL);
+  // Right side drape
+  const shirtR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.5), shirtMat);
+  shirtR.position.set(0.23, 0.56, 0);
+  bGroup.add(shirtR);
+  // Back panel hanging down
+  const shirtBack = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.2, 0.02), shirtMat);
+  shirtBack.position.set(0, 0.56, -0.25);
+  bGroup.add(shirtBack);
+  // Green G G letters on back of shirt (viewed from behind, so mirror X)
+  const ggMat = new THREE.MeshLambertMaterial({ color: 0x2a8a4a });
+  [-0.08, 0.08].forEach(dx => {
+    // Right stroke (appears as left curve when viewed from back)
+    const right = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.09), ggMat);
+    right.position.set(dx + 0.03, 0.675, -0.04);
+    bGroup.add(right);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.015, 0.02), ggMat);
+    top.position.set(dx, 0.675, 0.0);
+    bGroup.add(top);
+    const bot = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.015, 0.02), ggMat);
+    bot.position.set(dx, 0.675, -0.08);
+    bGroup.add(bot);
+    // Left stroke — bottom half only (appears as right notch from back)
+    const left = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.015, 0.05), ggMat);
+    left.position.set(dx - 0.03, 0.675, -0.06);
+    bGroup.add(left);
+    // Middle bar — from left stroke inward
+    const mid = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.02), ggMat);
+    mid.position.set(dx - 0.02, 0.675, -0.04);
+    bGroup.add(mid);
+  });
+
+  // Head — round and big
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), furMat);
+  head.position.set(0, 0.78, 0.35);
+  bGroup.add(head);
+
+  // Big cute eyes — large white with big dark pupils
+  [-0.09, 0.09].forEach(x => {
+    const eyeWhite = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    eyeWhite.position.set(x, 0.82, 0.52);
+    bGroup.add(eyeWhite);
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    pupil.position.set(x, 0.82, 0.56);
+    bGroup.add(pupil);
+    // Cute highlight dot
+    const highlight = new THREE.Mesh(new THREE.SphereGeometry(0.015, 6, 4), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    highlight.position.set(x + 0.02, 0.84, 0.58);
+    bGroup.add(highlight);
+  });
+
+  // Nose
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), noseMat);
+  nose.position.set(0, 0.76, 0.55);
+  bGroup.add(nose);
+
+  // Buck teeth
+  [-0.025, 0.025].forEach(x => {
+    const tooth = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.02), toothMat);
+    tooth.position.set(x, 0.7, 0.54);
+    bGroup.add(tooth);
+  });
+
+  // Small round ears
+  [-0.18, 0.18].forEach(x => {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), darkMat);
+    ear.position.set(x, 0.9, 0.3);
+    bGroup.add(ear);
+  });
+
+  // Legs — short and sturdy
+  [[-0.13, -0.25], [0.13, -0.25], [-0.13, 0.25], [0.13, 0.25]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.12), darkMat);
+    leg.position.set(x, 0.12, z);
+    bGroup.add(leg);
+  });
+
+  // Flat paddle tail — signature beaver tail
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.45), tailMat);
+  tail.position.set(0, 0.32, -0.55);
+  tail.name = 'beaverTail';
+  bGroup.add(tail);
+
+  bGroup.position.set(3, 0.15, -2);
+  scene.add(bGroup);
+  petBeaver = bGroup;
+  petBeaver.visible = false;
+  petBodyMeshes.push(body);
+}
+
+function buildGGPoster() {
+  const g = new THREE.Group();
+
+  // Poster frame (dark wood)
+  const frameMat = new THREE.MeshLambertMaterial({ color: 0x3a2a1a });
+  const frame = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.5, 0.04), frameMat);
+  frame.position.set(0, 0, 0);
+  g.add(frame);
+
+  // Poster canvas with character + text rendered via CanvasTexture
+  const cvs = document.createElement('canvas');
+  cvs.width = 512; cvs.height = 720;
+  const ctx = cvs.getContext('2d');
+
+  // Background — dark blue
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, 512, 720);
+
+  // "GRAHAM" in BIG red at top
+  ctx.fillStyle = '#cc2222';
+  ctx.font = 'bold 76px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('GRAHAM', 256, 80);
+
+  // Draw Mini Life character — large, centered
+  const cx = 256, cy = 340;
+  const s = 2; // scale factor
+
+  // Legs (black pants — GG merch)
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(cx - 18*s, cy + 35*s, 14*s, 40*s);
+  ctx.fillRect(cx + 4*s, cy + 35*s, 14*s, 40*s);
+
+  // Shoes
+  ctx.fillStyle = '#333333';
+  ctx.fillRect(cx - 20*s, cy + 72*s, 18*s, 8*s);
+  ctx.fillRect(cx + 2*s, cy + 72*s, 18*s, 8*s);
+
+  // Body / shirt (red — GG merch)
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(cx - 22*s, cy - 10*s, 44*s, 48*s);
+
+  // "GRAHAM GAMES" text on shirt (gold)
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('GRAHAM', cx, cy + 14*s);
+  ctx.fillText('GAMES', cx, cy + 26*s);
+  ctx.font = '11px sans-serif';
+  ctx.fillText('is my life', cx, cy + 36*s);
+
+  // Arms (red shirt sleeves)
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(cx - 34*s, cy - 5*s, 14*s, 35*s);
+  ctx.fillRect(cx + 20*s, cy - 5*s, 14*s, 35*s);
+
+  // Hands (skin — avg tone)
+  ctx.fillStyle = '#c9956b';
+  ctx.fillRect(cx - 32*s, cy + 28*s, 12*s, 12*s);
+  ctx.fillRect(cx + 22*s, cy + 28*s, 12*s, 12*s);
+
+  // Head (skin)
+  ctx.fillStyle = '#c9956b';
+  ctx.beginPath();
+  ctx.arc(cx, cy - 30*s, 22*s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Curly blonde hair — dense clusters of circles
+  ctx.fillStyle = '#d4a835';
+  [[-12, -48], [0, -52], [12, -48], [-18, -42], [18, -42],
+   [-20, -35], [20, -35], [-15, -50], [15, -50], [0, -56],
+   [-8, -54], [8, -54], [-22, -44], [22, -44],
+   [-6, -56], [6, -56], [-24, -38], [24, -38],
+   [-10, -50], [10, -50], [0, -48], [-16, -46], [16, -46]].forEach(([dx, dy]) => {
+    ctx.beginPath();
+    ctx.arc(cx + dx*s, cy + dy*s, 8*s, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Eyes (white sclera + dark pupil + highlight)
+  [[-8, -32], [8, -32]].forEach(([dx, dy]) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s, cy + dy*s, 5*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222222';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s, cy + dy*s, 3*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s - 1*s, cy + dy*s - 1*s, 1.2*s, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Smile
+  ctx.strokeStyle = '#222222';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 24*s, 8*s, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+
+  // "GG" at bottom in big gold
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 88px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('GG', 256, 660);
+
+  // Gold border
+  ctx.strokeStyle = '#c9a84c';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(12, 12, 488, 696);
+
+  const posterTex = new THREE.CanvasTexture(cvs);
+  const posterMat = new THREE.MeshLambertMaterial({ map: posterTex });
+  const poster = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 1.35), posterMat);
+  poster.rotation.y = Math.PI;
+  poster.position.set(0, 0, -0.025);
+  g.add(poster);
+
+  // Hang on second floor front wall, facing into room
+  g.position.set(-1, UPPER_Y + 1.6, 4.75);
+  scene.add(g);
+  ggPosterGroup = g;
+
+  // Interactable — look at poster for fun
+  interactables.push({ mesh: frame, group: g, type: 'ggPoster', label: 'Admire GG Poster', need: 'fun', usePos: new THREE.Vector3(-1, UPPER_Y, 3.5), floor: 1 });
+  actionConfig.ggPoster = { label: 'Admiring...', duration: 2, restore: 15, cost: 0 };
+  rebuildInteractMeshes();
 }
 
 function buildSwimmingPool() {
@@ -2725,10 +2981,12 @@ const TOWN_JOBS = {
   barista:  { name: 'Order Rush',   basePay: 15, desc: 'Fill drink orders!' },
   merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
   mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
+  sergeant: { name: 'Target Practice', basePay: 20, desc: 'Hit the targets!' },
+  frycook:  { name: 'Fry Cook', basePay: 12, desc: 'Serve fast food orders!' },
 };
 
 const TOWN_ORIGIN = { x: 122.5, z: 0 }; // center of town
-const TOWN_BOUNDS = { xMin: 100, xMax: 145, zMin: -15, zMax: 15 };
+const TOWN_BOUNDS = { xMin: 88, xMax: 157, zMin: -28, zMax: 28 };
 const TOWN_PLAYER_SPAWN = { x: 135, y: 0.15, z: -8 }; // near parking lot
 const HOME_PLAYER_SPAWN = { x: 10, y: 0.15, z: 0.75 }; // near car in yard
 
@@ -2786,10 +3044,17 @@ const QUESTS = {
 
 // NPC definitions
 const TOWN_NPC_DEFS = [
-  { id: 'barista', name: 'Barista Bean', x: 108, z: 2.5, skinTone: 3, hairColor: 2, hairStyle: 'curly', gender: 'female', outfit: 3 },
+  { id: 'barista', name: 'Barista Bean', x: 108, z: 5.5, skinTone: 3, hairColor: 2, hairStyle: 'curly', gender: 'female', outfit: 3 },
   { id: 'merchant', name: 'Merchant Mike', x: 108, z: -10, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
-  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 2.5, skinTone: 1, hairColor: 4, hairStyle: 'short', gender: 'female', outfit: 7 },
+  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 5.5, skinTone: 1, hairColor: 4, hairStyle: 'short', gender: 'female', outfit: 7 },
   { id: 'old_pete', name: 'Old Pete', x: 124, z: 12, skinTone: 0, hairColor: 4, hairStyle: 'long', gender: 'male', outfit: 0 },
+  { id: 'merch_clerk', name: 'GG Superfan', x: 142, z: 6.5, skinTone: 5, hairColor: 6, hairStyle: 'ponytail', gender: 'female', outfit: 8 },
+  { id: 'librarian', name: 'Librarian Linda', x: 96, z: 5.5, skinTone: 1, hairColor: 1, hairStyle: 'bun', gender: 'female', outfit: 4 },
+  { id: 'trainer', name: 'Coach Carl', x: 96, z: -13, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 1 },
+  { id: 'chef', name: 'Chef Rosa', x: 152, z: 5.5, skinTone: 3, hairColor: 3, hairStyle: 'short', gender: 'female', outfit: 2 },
+  { id: 'arcade_kid', name: 'Gamer Gary', x: 152, z: -11, skinTone: 2, hairColor: 6, hairStyle: 'curly', gender: 'male', outfit: 6 },
+  { id: 'sergeant', name: 'Sgt. Briggs', x: 96, z: -22, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
+  { id: 'frycook', name: 'Mic Ronaldz', x: 152, z: -22, skinTone: 1, hairColor: 0, hairStyle: 'short', gender: 'male', outfit: 1, scale: 0.55 },
 ];
 
 function buildCar() {
@@ -2888,13 +3153,14 @@ function performTeleport(destination) {
     character.position.set(TOWN_PLAYER_SPAWN.x, TOWN_PLAYER_SPAWN.y, TOWN_PLAYER_SPAWN.z);
     yaw = Math.PI / 2;
     scene.fog.far = TOWN_FOG_FAR;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 40;
-    sunLight.shadow.camera.bottom = -40;
+    sunLight.shadow.camera.left = -80;
+    sunLight.shadow.camera.right = 80;
+    sunLight.shadow.camera.top = 55;
+    sunLight.shadow.camera.bottom = -55;
     sunLight.shadow.camera.updateProjectionMatrix();
     if (petDog) petDog.visible = false;
     if (petCat) petCat.visible = false;
+    if (petBeaver) petBeaver.visible = false;
   } else if (destination === 'mansion') {
     if (mansionGroup) mansionGroup.visible = true;
     if (townGroup) townGroup.visible = false;
@@ -2911,6 +3177,7 @@ function performTeleport(destination) {
     sunLight.shadow.camera.updateProjectionMatrix();
     if (petDog) petDog.visible = false;
     if (petCat) petCat.visible = false;
+    if (petBeaver) petBeaver.visible = false;
   } else {
     inTown = false;
     inMansion = false;
@@ -2927,6 +3194,7 @@ function performTeleport(destination) {
     if (mansionGroup) mansionGroup.visible = false;
     if (petDog) petDog.visible = activePet === 'dog';
     if (petCat) petCat.visible = activePet === 'cat';
+    if (petBeaver) petBeaver.visible = activePet === 'beaver';
   }
   updatePlayerY();
 }
@@ -2978,28 +3246,47 @@ function buildTown() {
   const lampMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
 
   // Town ground
-  const townGround = new THREE.Mesh(new THREE.PlaneGeometry(50, 35), mat.grass);
+  const townGround = new THREE.Mesh(new THREE.PlaneGeometry(75, 62), mat.grass);
   townGround.rotation.x = -Math.PI / 2;
   townGround.position.set(TOWN_ORIGIN.x, -0.01, TOWN_ORIGIN.z);
   townGround.receiveShadow = true;
   g.add(townGround);
 
   // Main road (runs north-south through center, X=118)
-  const road = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 30), roadMat);
+  const road = new THREE.Mesh(new THREE.BoxGeometry(6, 0.05, 56), roadMat);
   road.position.set(118, 0.02, TOWN_ORIGIN.z);
   road.receiveShadow = true;
   g.add(road);
   // Lane markings
-  for (let z = -14; z <= 14; z += 4) {
+  for (let z = -27; z <= 27; z += 4) {
     const marking = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.01, 1.5), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
     marking.position.set(118, 0.06, z);
     g.add(marking);
   }
-  // Sidewalks
-  const swL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 30), sidewalkMat);
+  // Cross street (runs east-west at Z=-0.5, connecting both sides)
+  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(69, 0.05, 5), roadMat);
+  crossRoad.position.set(TOWN_ORIGIN.x, 0.02, -0.5);
+  crossRoad.receiveShadow = true;
+  g.add(crossRoad);
+  // Cross street lane markings
+  for (let x = 90; x <= 155; x += 4) {
+    if (x > 115 && x < 121) continue; // skip intersection
+    const cm = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.01, 0.2), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
+    cm.position.set(x, 0.06, -0.5);
+    g.add(cm);
+  }
+  // Cross street sidewalks (north and south sides)
+  const cswN = new THREE.Mesh(new THREE.BoxGeometry(69, 0.08, 1.5), sidewalkMat);
+  cswN.position.set(TOWN_ORIGIN.x, 0.04, 2.5);
+  g.add(cswN);
+  const cswS = new THREE.Mesh(new THREE.BoxGeometry(69, 0.08, 1.5), sidewalkMat);
+  cswS.position.set(TOWN_ORIGIN.x, 0.04, -3.5);
+  g.add(cswS);
+  // Sidewalks (extended for longer main road)
+  const swL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 56), sidewalkMat);
   swL.position.set(114, 0.04, TOWN_ORIGIN.z);
   g.add(swL);
-  const swR = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 30), sidewalkMat);
+  const swR = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 56), sidewalkMat);
   swR.position.set(122, 0.04, TOWN_ORIGIN.z);
   g.add(swR);
 
@@ -3023,44 +3310,44 @@ function buildTown() {
   const tableMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
   const deskMat = new THREE.MeshLambertMaterial({ color: 0x553311 });
 
-  // === CAFE (left side, X=104-112, Z=1-7) ===
+  // === CAFE (left side, X=104-112, Z=4-10) ===
   // Walls (0.3 thick, 3.5 tall)
-  makeWall(8.4, 3.5, 0.3, buildingMat1, 108, 1.75, 1);     // Back wall (Z=1)
-  makeWall(0.3, 3.5, 6, buildingMat1, 104, 1.75, 4);         // Left wall (X=104)
-  makeWall(0.3, 3.5, 6, buildingMat1, 112, 1.75, 4);         // Right wall (X=112)
-  makeWall(5.4, 3.5, 0.3, buildingMat1, 106.6, 1.75, 7);     // Front-left (X=104 to 109.3)
-  makeWall(1.2, 3.5, 0.3, buildingMat1, 111.5, 1.75, 7);     // Front-right (X=110.9 to 112)
+  makeWall(8.4, 3.5, 0.3, buildingMat1, 108, 1.75, 4);     // Back wall (Z=4)
+  makeWall(0.3, 3.5, 6, buildingMat1, 104, 1.75, 7);         // Left wall (X=104)
+  makeWall(0.3, 3.5, 6, buildingMat1, 112, 1.75, 7);         // Right wall (X=112)
+  makeWall(5.4, 3.5, 0.3, buildingMat1, 106.6, 1.75, 10);    // Front-left (X=104 to 109.3)
+  makeWall(1.2, 3.5, 0.3, buildingMat1, 111.5, 1.75, 10);    // Front-right (X=110.9 to 112)
   // Door frame top
-  makeWall(1.6, 1.2, 0.3, buildingMat1, 110.1, 2.9, 7);      // Above door gap
+  makeWall(1.6, 1.2, 0.3, buildingMat1, 110.1, 2.9, 10);     // Above door gap
   // Floor
-  makeWall(8, 0.1, 6, floorMat1, 108, 0.05, 4);
+  makeWall(8, 0.1, 6, floorMat1, 108, 0.05, 7);
   // Interior back wall accent
-  makeWall(7.4, 3, 0.05, innerWall1, 108, 1.5, 1.2);
+  makeWall(7.4, 3, 0.05, innerWall1, 108, 1.5, 4.2);
   const cafeRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat);
-  cafeRoof.position.set(108, 3.65, 4);
+  cafeRoof.position.set(108, 3.65, 7);
   g.add(cafeRoof);
   // Cafe sign
   const signMat = new THREE.MeshLambertMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.3 });
   const cafeSign = new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 0.1), signMat);
-  cafeSign.position.set(108, 3.2, 7.16);
+  cafeSign.position.set(108, 3.2, 10.16);
   g.add(cafeSign);
   // Cafe interior: counter along back wall
-  makeWall(5, 1, 0.8, counterMat, 108, 0.5, 1.8);
+  makeWall(5, 1, 0.8, counterMat, 108, 0.5, 4.8);
   // Counter top (lighter)
-  makeWall(5.2, 0.08, 1, new THREE.MeshLambertMaterial({ color: 0x997755 }), 108, 1.04, 1.8);
+  makeWall(5.2, 0.08, 1, new THREE.MeshLambertMaterial({ color: 0x997755 }), 108, 1.04, 4.8);
   // 2 small tables
   [106, 110].forEach(tx => {
-    makeWall(1, 0.06, 1, tableMat, tx, 0.7, 5);       // Table top
-    makeWall(0.1, 0.7, 0.1, tableMat, tx, 0.35, 5);   // Table leg
+    makeWall(1, 0.06, 1, tableMat, tx, 0.7, 8);       // Table top
+    makeWall(0.1, 0.7, 0.1, tableMat, tx, 0.35, 8);   // Table leg
     // 2 stools per table
     [-0.7, 0.7].forEach(dz => {
-      makeWall(0.4, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0x444444 }), tx, 0.45, 5 + dz);
-      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, 5 + dz);
+      makeWall(0.4, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0x444444 }), tx, 0.45, 8 + dz);
+      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, 8 + dz);
     });
   });
   // Cafe interior light
   const cafeLight = new THREE.PointLight(0xffeecc, 0.5, 10);
-  cafeLight.position.set(108, 3.2, 4);
+  cafeLight.position.set(108, 3.2, 7);
   g.add(cafeLight);
 
   // === SHOP (left side, X=104-112, Z=-12 to -4.5) ===
@@ -3103,43 +3390,43 @@ function buildTown() {
   shopLight.position.set(108, 2.8, -8.25);
   g.add(shopLight);
 
-  // === TOWN HALL (right side, X=127-137, Z=1-7) ===
+  // === TOWN HALL (right side, X=127-137, Z=4-10) ===
   // Walls (0.3 thick, 4 tall)
-  makeWall(10.4, 4, 0.3, buildingMat3, 132, 2, 1);           // Back wall (Z=1)
-  makeWall(0.3, 4, 6, buildingMat3, 127, 2, 4);               // Left wall (X=127)
-  makeWall(0.3, 4, 6, buildingMat3, 137, 2, 4);               // Right wall (X=137)
-  makeWall(4.2, 4, 0.3, buildingMat3, 129, 2, 7);             // Front-left (X=127 to 131.1)
-  makeWall(4.2, 4, 0.3, buildingMat3, 135, 2, 7);             // Front-right (X=132.9 to 137)
+  makeWall(10.4, 4, 0.3, buildingMat3, 132, 2, 4);           // Back wall (Z=4)
+  makeWall(0.3, 4, 6, buildingMat3, 127, 2, 7);               // Left wall (X=127)
+  makeWall(0.3, 4, 6, buildingMat3, 137, 2, 7);               // Right wall (X=137)
+  makeWall(4.2, 4, 0.3, buildingMat3, 129, 2, 10);            // Front-left (X=127 to 131.1)
+  makeWall(4.2, 4, 0.3, buildingMat3, 135, 2, 10);            // Front-right (X=132.9 to 137)
   // Door frame top
-  makeWall(1.8, 1.5, 0.3, buildingMat3, 132, 3.25, 7);       // Above door gap
+  makeWall(1.8, 1.5, 0.3, buildingMat3, 132, 3.25, 10);      // Above door gap
   // Floor
-  makeWall(10, 0.1, 6, floorMat3, 132, 0.05, 4);
+  makeWall(10, 0.1, 6, floorMat3, 132, 0.05, 7);
   // Interior back wall accent
-  makeWall(9.4, 3.5, 0.05, innerWall3, 132, 1.75, 1.2);
+  makeWall(9.4, 3.5, 0.05, innerWall3, 132, 1.75, 4.2);
   const hallRoof = new THREE.Mesh(new THREE.BoxGeometry(11, 0.4, 7), roofMat3);
-  hallRoof.position.set(132, 4.2, 4);
+  hallRoof.position.set(132, 4.2, 7);
   g.add(hallRoof);
   // Columns (outside, near door)
   const colMat = new THREE.MeshLambertMaterial({ color: 0xddddcc });
   [-2, 2].forEach(dx => {
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 3.8, 8), colMat);
-    col.position.set(132 + dx, 1.9, 7.3);
+    col.position.set(132 + dx, 1.9, 10.3);
     g.add(col);
   });
   // Town Hall interior: large desk
-  makeWall(3, 0.9, 1.2, deskMat, 132, 0.45, 3);
+  makeWall(3, 0.9, 1.2, deskMat, 132, 0.45, 6);
   // Desk top
-  makeWall(3.2, 0.06, 1.4, new THREE.MeshLambertMaterial({ color: 0x664422 }), 132, 0.93, 3);
+  makeWall(3.2, 0.06, 1.4, new THREE.MeshLambertMaterial({ color: 0x664422 }), 132, 0.93, 6);
   // Bulletin board on back wall
-  makeWall(2.5, 1.5, 0.08, new THREE.MeshLambertMaterial({ color: 0xcc9944 }), 132, 2.2, 1.3);
+  makeWall(2.5, 1.5, 0.08, new THREE.MeshLambertMaterial({ color: 0xcc9944 }), 132, 2.2, 4.3);
   // Chairs
   [130.5, 133.5].forEach(cx => {
-    makeWall(0.5, 0.04, 0.5, new THREE.MeshLambertMaterial({ color: 0x444444 }), cx, 0.45, 4.5);
-    makeWall(0.06, 0.45, 0.06, lampMat, cx, 0.22, 4.5);
+    makeWall(0.5, 0.04, 0.5, new THREE.MeshLambertMaterial({ color: 0x444444 }), cx, 0.45, 7.5);
+    makeWall(0.06, 0.45, 0.06, lampMat, cx, 0.22, 7.5);
   });
   // Town Hall interior light
   const hallLight = new THREE.PointLight(0xffeedd, 0.5, 12);
-  hallLight.position.set(132, 3.5, 4);
+  hallLight.position.set(132, 3.5, 7);
   g.add(hallLight);
 
   // === PARKING LOT (right side, Z=-12 to -5) ===
@@ -3154,24 +3441,30 @@ function buildTown() {
     g.add(line);
   }
 
-  // === PARK (top, Z=9 to 14) ===
-  // Park grass (slightly different shade)
-  const parkGrass = new THREE.Mesh(new THREE.BoxGeometry(40, 0.05, 6), parkMat);
-  parkGrass.position.set(TOWN_ORIGIN.x, 0.01, 12);
+  // === PARK (top, Z=9 to 27) ===
+  // Park grass (expanded)
+  const parkGrass = new THREE.Mesh(new THREE.BoxGeometry(65, 0.05, 19), parkMat);
+  parkGrass.position.set(TOWN_ORIGIN.x, 0.01, 18);
   g.add(parkGrass);
 
-  // Park trees
+  // Park trees (more trees spread across bigger park)
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5C3A1E });
   const leafMat = new THREE.MeshLambertMaterial({ color: 0x2D7A2D });
-  [105, 115, 125, 138].forEach(tx => {
-    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2.5, 6), trunkMat);
-    trunk.position.set(tx, 1.25, 12 + (Math.random() - 0.5) * 2);
-    trunk.castShadow = true;
-    g.add(trunk);
-    const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), leafMat);
-    leaves.position.set(tx, 3, 12 + (Math.random() - 0.5) * 2);
-    leaves.castShadow = true;
-    g.add(leaves);
+  [93, 100, 105, 115, 125, 138, 148, 153].forEach(tx => {
+    [11, 18, 24].forEach(tz => {
+      if (Math.abs(tx - 130) < 3 && tz === 11) return; // skip fountain area
+      if (Math.abs(tx - 110) < 3 && tz === 18) return; // skip playground area
+      if (Math.random() > 0.6) return; // thin out some trees for variety
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2.5, 6), trunkMat);
+      trunk.position.set(tx + (Math.random() - 0.5) * 2, 1.25, tz + (Math.random() - 0.5) * 2);
+      trunk.castShadow = true;
+      g.add(trunk);
+      const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), leafMat);
+      leaves.position.copy(trunk.position);
+      leaves.position.y = 3;
+      leaves.castShadow = true;
+      g.add(leaves);
+    });
   });
 
   // Park bench
@@ -3200,17 +3493,459 @@ function buildTown() {
   fPillar.position.set(130, 0.9, 12);
   g.add(fPillar);
 
-  // Street lamps
-  [110, 115, 126, 134].forEach(lx => {
+  // Street lamps (along main road and cross street)
+  const lampGlowMat = new THREE.MeshLambertMaterial({ color: 0xffeecc, emissive: 0xffcc88, emissiveIntensity: 0.3 });
+  // Main road lamps (south side) — moved X=96→101, X=150→147 to avoid buildings
+  [101, 110, 126, 134, 147].forEach(lx => {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5, 6), lampMat);
     pole.position.set(lx, 1.75, -14);
     g.add(pole);
-    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), new THREE.MeshLambertMaterial({ color: 0xffeecc, emissive: 0xffcc88, emissiveIntensity: 0.3 }));
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lampGlowMat);
     lamp.position.set(lx, 3.6, -14);
     g.add(lamp);
     const pl = new THREE.PointLight(0xffcc88, 0.3, 8);
     pl.position.set(lx, 3.5, -14);
     g.add(pl);
+  });
+  // South district lamps — moved X=96→101, X=150→147 to avoid buildings
+  [101, 110, 134, 147].forEach(lx => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5, 6), lampMat);
+    pole.position.set(lx, 1.75, -27);
+    g.add(pole);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lampGlowMat);
+    lamp.position.set(lx, 3.6, -27);
+    g.add(lamp);
+    const pl = new THREE.PointLight(0xffcc88, 0.3, 8);
+    pl.position.set(lx, 3.5, -27);
+    g.add(pl);
+  });
+  // Park path lamps
+  [105, 122, 140].forEach(lx => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5, 6), lampMat);
+    pole.position.set(lx, 1.75, 16);
+    g.add(pole);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lampGlowMat);
+    lamp.position.set(lx, 3.6, 16);
+    g.add(lamp);
+    const pl = new THREE.PointLight(0xffcc88, 0.2, 8);
+    pl.position.set(lx, 3.5, 16);
+    g.add(pl);
+  });
+
+  // === GRAHAM GAMES MERCH STORE (east of Town Hall, X=139-145, Z=4-10) ===
+  const merchMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 }); // red exterior
+  const merchInner = new THREE.MeshLambertMaterial({ color: 0x2a1a1a }); // dark interior
+  const merchFloor = new THREE.MeshLambertMaterial({ color: 0x1a1a2e }); // dark blue floor
+  const merchRoof = new THREE.MeshLambertMaterial({ color: 0x222222 }); // black roof
+  // Walls
+  makeWall(6.4, 3.5, 0.3, merchMat, 142, 1.75, 4);     // Back wall (Z=4)
+  makeWall(0.3, 3.5, 6, merchMat, 139, 1.75, 7);         // Left wall (X=139)
+  makeWall(0.3, 3.5, 6, merchMat, 145, 1.75, 7);         // Right wall (X=145)
+  makeWall(2, 3.5, 0.3, merchMat, 140.1, 1.75, 10);      // Front-left (X=139 to 141.1)
+  makeWall(2, 3.5, 0.3, merchMat, 143.9, 1.75, 10);      // Front-right (X=142.9 to 145)
+  makeWall(1.8, 1.2, 0.3, merchMat, 142, 2.9, 10);       // Above door gap
+  // Floor
+  makeWall(6, 0.1, 6, merchFloor, 142, 0.05, 7);
+  // Interior back wall accent
+  makeWall(5.4, 3, 0.05, merchInner, 142, 1.5, 4.2);
+  // Roof
+  const mRoof = new THREE.Mesh(new THREE.BoxGeometry(7, 0.3, 7), merchRoof);
+  mRoof.position.set(142, 3.65, 7);
+  g.add(mRoof);
+  // Sign — canvas texture with "Graham Games Merch Shop" text
+  const signCanvas = document.createElement('canvas');
+  signCanvas.width = 512; signCanvas.height = 64;
+  const sCtx = signCanvas.getContext('2d');
+  sCtx.fillStyle = '#c9a84c';
+  sCtx.fillRect(0, 0, 512, 64);
+  sCtx.fillStyle = '#1a1a2e';
+  sCtx.font = 'bold 32px sans-serif';
+  sCtx.textAlign = 'center';
+  sCtx.textBaseline = 'middle';
+  sCtx.fillText('Graham Games Merch Shop', 256, 34);
+  const signTex = new THREE.CanvasTexture(signCanvas);
+  const merchSignMat = new THREE.MeshLambertMaterial({ map: signTex, emissive: 0xc9a84c, emissiveIntensity: 0.2 });
+  const merchSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.7, 0.1), merchSignMat);
+  merchSign.position.set(142, 3.2, 10.16);
+  g.add(merchSign);
+  // Sign backing
+  const merchSignBack = new THREE.Mesh(new THREE.BoxGeometry(4.3, 0.9, 0.08), merchMat);
+  merchSignBack.position.set(142, 3.2, 10.12);
+  g.add(merchSignBack);
+  // Interior: Display counter along back wall
+  const merchCounterMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+  const merchCounterMesh = makeWall(4, 1, 0.8, merchCounterMat, 142, 0.5, 4.8);
+  // Counter top (glass-like)
+  makeWall(4.2, 0.06, 1, new THREE.MeshLambertMaterial({ color: 0x556677 }), 142, 1.04, 4.8);
+  // Display mannequin on counter — small character wearing GG merch
+  const mannequin = buildCharacter({ skinTone: 2, gender: 'male', hairStyle: 'buzz', hairColor: 0, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 });
+  mannequin.position.set(142, 1.1, 4.8);
+  mannequin.scale.set(0.7, 0.7, 0.7);
+  mannequin.rotation.y = Math.PI;
+  g.add(mannequin);
+  // Interior light
+  const merchLight = new THREE.PointLight(0xffeedd, 0.5, 10);
+  merchLight.position.set(142, 3.2, 7);
+  g.add(merchLight);
+  // Merch counter interactable — use visible counter mesh for raycasting
+  interactables.push({ mesh: merchCounterMesh, group: g, type: 'merchCounter', label: 'Browse GG Merch', need: null, usePos: new THREE.Vector3(142, 0.15, 6), floor: 0 });
+
+  // === LIBRARY (west side, X=92-100, Z=4-10) ===
+  const libMat = new THREE.MeshLambertMaterial({ color: 0x886644 }); // warm brown
+  const libInner = new THREE.MeshLambertMaterial({ color: 0x665533 });
+  const libFloor = new THREE.MeshLambertMaterial({ color: 0xaa8855 });
+  const libRoof = new THREE.MeshLambertMaterial({ color: 0x553322 });
+  makeWall(8.4, 4, 0.3, libMat, 96, 2, 4);       // Back wall (Z=4)
+  makeWall(0.3, 4, 6, libMat, 92, 2, 7);           // Left wall
+  makeWall(0.3, 4, 6, libMat, 100, 2, 7);          // Right wall
+  makeWall(4.2, 4, 0.3, libMat, 94, 2, 10);        // Front-left
+  makeWall(2, 4, 0.3, libMat, 99.1, 2, 10);        // Front-right
+  makeWall(1.8, 1.5, 0.3, libMat, 97.1, 3.25, 10); // Above door
+  makeWall(8, 0.1, 6, libFloor, 96, 0.05, 7);      // Floor
+  makeWall(7.4, 3.5, 0.05, libInner, 96, 1.75, 4.2); // Interior wall
+  const lRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), libRoof);
+  lRoof.position.set(96, 4.15, 7); g.add(lRoof);
+  // Library sign
+  const libSignC = document.createElement('canvas');
+  libSignC.width = 256; libSignC.height = 48;
+  const lsCtx = libSignC.getContext('2d');
+  lsCtx.fillStyle = '#c9a84c'; lsCtx.fillRect(0, 0, 256, 48);
+  lsCtx.fillStyle = '#332211'; lsCtx.font = 'bold 28px sans-serif';
+  lsCtx.textAlign = 'center'; lsCtx.textBaseline = 'middle';
+  lsCtx.fillText('LIBRARY', 128, 26);
+  const libSign = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(libSignC) }));
+  libSign.position.set(96, 3.5, 10.16); g.add(libSign);
+  // Bookshelves
+  [93.5, 95.5, 96.5, 98.5].forEach(bx => {
+    makeWall(1.2, 2.5, 0.4, shelfMat, bx, 1.25, 4.6);
+  });
+  // Reading table
+  makeWall(2.5, 0.06, 1.2, tableMat, 96, 0.75, 8.5);
+  makeWall(0.1, 0.75, 0.1, tableMat, 96, 0.37, 8.5);
+  // Library light
+  const libLight = new THREE.PointLight(0xffeedd, 0.5, 12);
+  libLight.position.set(96, 3.5, 7); g.add(libLight);
+  // Library interactable (read books)
+  const libTableMesh = makeWall(2.5, 0.06, 1.2, tableMat, 96, 0.76, 8.5);
+  interactables.push({ mesh: libTableMesh, group: g, type: 'libraryRead', label: 'Read a Book', need: 'fun', usePos: new THREE.Vector3(96, 0.15, 9.2), floor: 0 });
+
+  // === GYM (west side, X=92-100, Z=-16 to -8) ===
+  const gymMat = new THREE.MeshLambertMaterial({ color: 0x555577 }); // steel blue
+  const gymInner = new THREE.MeshLambertMaterial({ color: 0x444455 });
+  const gymFloor = new THREE.MeshLambertMaterial({ color: 0x666666 });
+  const gymRoof = new THREE.MeshLambertMaterial({ color: 0x333344 });
+  makeWall(8.4, 3.5, 0.3, gymMat, 96, 1.75, -16);    // Back wall
+  makeWall(0.3, 3.5, 8, gymMat, 92, 1.75, -12);       // Left wall
+  makeWall(0.3, 3.5, 8, gymMat, 100, 1.75, -12);      // Right wall
+  makeWall(4.2, 3.5, 0.3, gymMat, 94, 1.75, -8);      // Front-left
+  makeWall(2, 3.5, 0.3, gymMat, 99.1, 1.75, -8);      // Front-right
+  makeWall(1.8, 1.2, 0.3, gymMat, 97.1, 2.9, -8);     // Above door
+  makeWall(8, 0.1, 8, gymFloor, 96, 0.05, -12);        // Floor
+  makeWall(7.4, 3, 0.05, gymInner, 96, 1.5, -15.8);    // Interior wall
+  const gRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 9), gymRoof);
+  gRoof.position.set(96, 3.65, -12); g.add(gRoof);
+  // Gym sign
+  const gymSignC = document.createElement('canvas');
+  gymSignC.width = 256; gymSignC.height = 48;
+  const gsCtx = gymSignC.getContext('2d');
+  gsCtx.fillStyle = '#4455cc'; gsCtx.fillRect(0, 0, 256, 48);
+  gsCtx.fillStyle = '#ffffff'; gsCtx.font = 'bold 28px sans-serif';
+  gsCtx.textAlign = 'center'; gsCtx.textBaseline = 'middle';
+  gsCtx.fillText('GYM', 128, 26);
+  const gymSign = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(gymSignC) }));
+  gymSign.position.set(96, 3, -7.84); g.add(gymSign);
+  // Treadmill
+  const treadMesh = makeWall(0.8, 1.2, 1.8, new THREE.MeshLambertMaterial({ color: 0x333333 }), 94, 0.6, -14);
+  // Weight rack
+  makeWall(2.5, 1.8, 0.4, new THREE.MeshLambertMaterial({ color: 0x444444 }), 98, 0.9, -15.5);
+  // Punching bag
+  const bagMat = new THREE.MeshLambertMaterial({ color: 0x993333 });
+  const bag = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8), bagMat);
+  bag.position.set(94, 2.2, -10); g.add(bag);
+  const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.6, 4), lampMat);
+  chain.position.set(94, 3, -10); g.add(chain);
+  // Gym light
+  const gymLight = new THREE.PointLight(0xeeeeff, 0.5, 12);
+  gymLight.position.set(96, 3.2, -12); g.add(gymLight);
+  // Gym interactable (workout)
+  interactables.push({ mesh: treadMesh, group: g, type: 'gymWorkout', label: 'Work Out', need: 'energy', usePos: new THREE.Vector3(94, 0.15, -13), floor: 0 });
+
+  // === RESTAURANT (east side, X=148-156, Z=4-10) ===
+  const restMat = new THREE.MeshLambertMaterial({ color: 0xaa4444 }); // deep red
+  const restInner = new THREE.MeshLambertMaterial({ color: 0x882222 });
+  const restFloor = new THREE.MeshLambertMaterial({ color: 0x996633 });
+  const restRoof = new THREE.MeshLambertMaterial({ color: 0x442222 });
+  makeWall(8.4, 3.5, 0.3, restMat, 152, 1.75, 4);     // Back wall
+  makeWall(0.3, 3.5, 6, restMat, 148, 1.75, 7);        // Left wall
+  makeWall(0.3, 3.5, 6, restMat, 156, 1.75, 7);        // Right wall
+  makeWall(4.2, 3.5, 0.3, restMat, 150, 1.75, 10);     // Front-left
+  makeWall(2, 3.5, 0.3, restMat, 155.1, 1.75, 10);     // Front-right
+  makeWall(1.8, 1.2, 0.3, restMat, 153.1, 2.9, 10);    // Above door
+  makeWall(8, 0.1, 6, restFloor, 152, 0.05, 7);         // Floor
+  makeWall(7.4, 3, 0.05, restInner, 152, 1.5, 4.2);     // Interior wall
+  const rRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), restRoof);
+  rRoof.position.set(152, 3.65, 7); g.add(rRoof);
+  // Restaurant sign
+  const restSignC = document.createElement('canvas');
+  restSignC.width = 256; restSignC.height = 48;
+  const rsCtx = restSignC.getContext('2d');
+  rsCtx.fillStyle = '#cc4444'; rsCtx.fillRect(0, 0, 256, 48);
+  rsCtx.fillStyle = '#ffffff'; rsCtx.font = 'bold 24px sans-serif';
+  rsCtx.textAlign = 'center'; rsCtx.textBaseline = 'middle';
+  rsCtx.fillText('RESTAURANT', 128, 26);
+  const restSign = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(restSignC) }));
+  restSign.position.set(152, 3, 10.16); g.add(restSign);
+  // Tables
+  [150, 154].forEach(tx => {
+    makeWall(1.2, 0.06, 1.2, tableMat, tx, 0.7, 7);
+    makeWall(0.08, 0.7, 0.08, tableMat, tx, 0.35, 7);
+    [-0.8, 0.8].forEach(dz => {
+      makeWall(0.4, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0x444444 }), tx, 0.45, 7 + dz);
+      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, 7 + dz);
+    });
+  });
+  // Counter
+  const restCounterMesh = makeWall(5, 1, 0.6, counterMat, 152, 0.5, 4.8);
+  makeWall(5.2, 0.06, 0.8, new THREE.MeshLambertMaterial({ color: 0x997755 }), 152, 1.04, 4.8);
+  // Restaurant light
+  const restLight = new THREE.PointLight(0xffccaa, 0.5, 12);
+  restLight.position.set(152, 3.2, 7); g.add(restLight);
+  // Restaurant interactable (eat a meal)
+  interactables.push({ mesh: restCounterMesh, group: g, type: 'restaurantEat', label: 'Order Food ($10)', need: 'hunger', usePos: new THREE.Vector3(152, 0.15, 5.5), floor: 0 });
+
+  // === ARCADE (east side, X=148-156, Z=-16 to -8) ===
+  const arcMat = new THREE.MeshLambertMaterial({ color: 0x332266 }); // dark purple
+  const arcInner = new THREE.MeshLambertMaterial({ color: 0x221144 });
+  const arcFloor = new THREE.MeshLambertMaterial({ color: 0x1a1a2e });
+  const arcRoof = new THREE.MeshLambertMaterial({ color: 0x111122 });
+  makeWall(8.4, 3.5, 0.3, arcMat, 152, 1.75, -16);     // Back wall
+  makeWall(0.3, 3.5, 8, arcMat, 148, 1.75, -12);        // Left wall
+  makeWall(0.3, 3.5, 8, arcMat, 156, 1.75, -12);        // Right wall
+  makeWall(4.2, 3.5, 0.3, arcMat, 150, 1.75, -8);       // Front-left
+  makeWall(2, 3.5, 0.3, arcMat, 155.1, 1.75, -8);       // Front-right
+  makeWall(1.8, 1.2, 0.3, arcMat, 153.1, 2.9, -8);      // Above door
+  makeWall(8, 0.1, 8, arcFloor, 152, 0.05, -12);         // Floor
+  makeWall(7.4, 3, 0.05, arcInner, 152, 1.5, -15.8);     // Interior wall
+  const aRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 9), arcRoof);
+  aRoof.position.set(152, 3.65, -12); g.add(aRoof);
+  // Arcade sign (neon style)
+  const arcSignC = document.createElement('canvas');
+  arcSignC.width = 256; arcSignC.height = 48;
+  const asCtx = arcSignC.getContext('2d');
+  asCtx.fillStyle = '#220044'; asCtx.fillRect(0, 0, 256, 48);
+  asCtx.fillStyle = '#ff44ff'; asCtx.font = 'bold 28px sans-serif';
+  asCtx.textAlign = 'center'; asCtx.textBaseline = 'middle';
+  asCtx.fillText('ARCADE', 128, 26);
+  const arcSign = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(arcSignC), emissive: 0xff44ff, emissiveIntensity: 0.3 }));
+  arcSign.position.set(152, 3, -7.84); g.add(arcSign);
+  // Arcade cabinets
+  const cabinetMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x2244ff, emissive: 0x1122cc, emissiveIntensity: 0.5 });
+  [149.5, 151.5, 153.5].forEach(ax => {
+    makeWall(0.9, 1.6, 0.7, cabinetMat, ax, 0.8, -15);
+    makeWall(0.7, 0.8, 0.05, screenMat, ax, 1.3, -14.6);
+  });
+  // Arcade couch
+  makeWall(2.5, 0.5, 0.8, new THREE.MeshLambertMaterial({ color: 0x553388 }), 152, 0.25, -10);
+  // Arcade lights (purple glow)
+  const arcLight = new THREE.PointLight(0xaa44ff, 0.4, 12);
+  arcLight.position.set(152, 3.2, -12); g.add(arcLight);
+  // Arcade interactable (play games)
+  const arcCabinet = makeWall(0.9, 1.6, 0.7, cabinetMat, 151.5, 0.8, -15.01);
+  interactables.push({ mesh: arcCabinet, group: g, type: 'arcadePlay', label: 'Play Arcade ($5)', need: 'fun', usePos: new THREE.Vector3(151.5, 0.15, -14), floor: 0 });
+
+  // === ARMY FORT (south-west, X=92-100, Z=-26 to -18) ===
+  const fortMat = new THREE.MeshLambertMaterial({ color: 0x556644 }); // olive drab
+  const fortInner = new THREE.MeshLambertMaterial({ color: 0x444433 });
+  const fortFloor = new THREE.MeshLambertMaterial({ color: 0x555544 });
+  const fortRoof = new THREE.MeshLambertMaterial({ color: 0x333322 });
+  makeWall(8.4, 4, 0.3, fortMat, 96, 2, -26);       // Back wall
+  makeWall(0.3, 4, 8, fortMat, 92, 2, -22);           // Left wall
+  makeWall(0.3, 4, 8, fortMat, 100, 2, -22);          // Right wall
+  makeWall(4.2, 4, 0.3, fortMat, 94, 2, -18);         // Front-left
+  makeWall(2, 4, 0.3, fortMat, 99.1, 2, -18);         // Front-right
+  makeWall(1.8, 1.5, 0.3, fortMat, 97.1, 3.25, -18);  // Above door
+  makeWall(8, 0.1, 8, fortFloor, 96, 0.05, -22);       // Floor
+  makeWall(7.4, 3.5, 0.05, fortInner, 96, 1.75, -25.8); // Interior wall
+  const fRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 9), fortRoof);
+  fRoof.position.set(96, 4.15, -22); g.add(fRoof);
+  // Fort sign
+  const fortSignC = document.createElement('canvas');
+  fortSignC.width = 256; fortSignC.height = 48;
+  const ftCtx = fortSignC.getContext('2d');
+  ftCtx.fillStyle = '#556644'; ftCtx.fillRect(0, 0, 256, 48);
+  ftCtx.fillStyle = '#ffffff'; ftCtx.font = 'bold 24px sans-serif';
+  ftCtx.textAlign = 'center'; ftCtx.textBaseline = 'middle';
+  ftCtx.fillText('ARMY FORT', 128, 26);
+  const fortSign = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(fortSignC) }));
+  fortSign.position.set(96, 3.5, -17.84); g.add(fortSign);
+  // Flag pole
+  const poleMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  const flagPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5, 6), poleMat);
+  flagPole.position.set(91, 2.5, -18); g.add(flagPole);
+  const flagMat = new THREE.MeshLambertMaterial({ color: 0x223388, side: THREE.DoubleSide });
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.8), flagMat);
+  flag.position.set(91.7, 4.6, -18); g.add(flag);
+  // Camo crates
+  const crateMat = new THREE.MeshLambertMaterial({ color: 0x5a5a3a });
+  makeWall(1, 0.8, 1, crateMat, 93, 0.4, -25);
+  makeWall(1, 0.8, 1, crateMat, 94.2, 0.4, -25);
+  makeWall(0.8, 0.6, 0.8, crateMat, 93.5, 1.1, -25);
+  // Sandbags
+  const sandbagMat = new THREE.MeshLambertMaterial({ color: 0x999977 });
+  for (let i = 0; i < 4; i++) {
+    makeWall(0.6, 0.25, 0.3, sandbagMat, 98 + i * 0.5, 0.12, -24.5);
+  }
+  // Target on back wall
+  const targetMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const targetOuter = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.05, 16), targetMat);
+  targetOuter.rotation.x = Math.PI / 2;
+  targetOuter.position.set(96, 2, -25.7); g.add(targetOuter);
+  const targetInner = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 16), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  targetInner.rotation.x = Math.PI / 2;
+  targetInner.position.set(96, 2, -25.68); g.add(targetInner);
+  // Fort light
+  const fortLight = new THREE.PointLight(0xccddaa, 0.5, 12);
+  fortLight.position.set(96, 3.5, -22); g.add(fortLight);
+
+  // === MIC. RONALDZ (south-east, X=148-156, Z=-26 to -18) ===
+  const micMat = new THREE.MeshLambertMaterial({ color: 0xcc8822 }); // golden arches orange
+  const micInner = new THREE.MeshLambertMaterial({ color: 0xaa6611 });
+  const micFloor = new THREE.MeshLambertMaterial({ color: 0xddccaa });
+  const micRoof = new THREE.MeshLambertMaterial({ color: 0x884411 });
+  makeWall(8.4, 3.5, 0.3, micMat, 152, 1.75, -26);     // Back wall
+  makeWall(0.3, 3.5, 8, micMat, 148, 1.75, -22);        // Left wall
+  makeWall(0.3, 3.5, 8, micMat, 156, 1.75, -22);        // Right wall
+  makeWall(4.2, 3.5, 0.3, micMat, 150, 1.75, -18);      // Front-left
+  makeWall(2, 3.5, 0.3, micMat, 155.1, 1.75, -18);      // Front-right
+  makeWall(1.8, 1.2, 0.3, micMat, 153.1, 2.9, -18);     // Above door
+  makeWall(8, 0.1, 8, micFloor, 152, 0.05, -22);         // Floor
+  makeWall(7.4, 3, 0.05, micInner, 152, 1.5, -25.8);     // Interior wall
+  const mRoof2 = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 9), micRoof);
+  mRoof2.position.set(152, 3.65, -22); g.add(mRoof2);
+  // Mic. Ronaldz sign (cardboard style)
+  const micSignC = document.createElement('canvas');
+  micSignC.width = 256; micSignC.height = 48;
+  const mcCtx = micSignC.getContext('2d');
+  mcCtx.fillStyle = '#cc8822'; mcCtx.fillRect(0, 0, 256, 48);
+  mcCtx.fillStyle = '#ffee00'; mcCtx.font = 'bold 22px sans-serif';
+  mcCtx.textAlign = 'center'; mcCtx.textBaseline = 'middle';
+  mcCtx.fillText("Mic. Ronaldz", 128, 26);
+  const micSign = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.5, 0.1), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(micSignC), emissive: 0xffcc00, emissiveIntensity: 0.2 }));
+  micSign.position.set(152, 3, -17.84); g.add(micSign);
+  // Big yellow "M" (cardboard-like)
+  const mArchMat = new THREE.MeshLambertMaterial({ color: 0xffcc00, emissive: 0xffaa00, emissiveIntensity: 0.2 });
+  // Left leg of M
+  const mL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2, 0.15), mArchMat);
+  mL.position.set(151, 2.5, -17.82); mL.rotation.z = 0.15; g.add(mL);
+  // Right leg of M
+  const mR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 2, 0.15), mArchMat);
+  mR.position.set(153, 2.5, -17.82); mR.rotation.z = -0.15; g.add(mR);
+  // Counter (order counter)
+  const micCounterMesh = makeWall(5, 1, 0.8, counterMat, 152, 0.5, -19);
+  makeWall(5.2, 0.06, 1, new THREE.MeshLambertMaterial({ color: 0xddbb88 }), 152, 1.04, -19);
+  // Cash register
+  makeWall(0.5, 0.4, 0.4, new THREE.MeshLambertMaterial({ color: 0x333333 }), 153, 1.2, -19);
+  // Menu board on back wall
+  const menuC = document.createElement('canvas');
+  menuC.width = 256; menuC.height = 128;
+  const muCtx = menuC.getContext('2d');
+  muCtx.fillStyle = '#222222'; muCtx.fillRect(0, 0, 256, 128);
+  muCtx.fillStyle = '#ffcc00'; muCtx.font = 'bold 18px sans-serif';
+  muCtx.textAlign = 'center';
+  muCtx.fillText('MENU', 128, 22);
+  muCtx.font = '14px sans-serif'; muCtx.fillStyle = '#ffffff';
+  muCtx.fillText('Cardboard Burger ... $3', 128, 48);
+  muCtx.fillText('Mystery Nuggets ... $2', 128, 68);
+  muCtx.fillText('Flat Soda ... $1', 128, 88);
+  muCtx.fillText('Soggy Fries ... $2', 128, 108);
+  const menuBoard = new THREE.Mesh(new THREE.BoxGeometry(2.5, 1.3, 0.08), new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(menuC) }));
+  menuBoard.position.set(152, 2.3, -25.7); g.add(menuBoard);
+  // Tables with fixed seats
+  [150, 154].forEach(tx => {
+    makeWall(1.2, 0.06, 1.2, new THREE.MeshLambertMaterial({ color: 0xddbb88 }), tx, 0.7, -23);
+    makeWall(0.08, 0.7, 0.08, lampMat, tx, 0.35, -23);
+    [-0.7, 0.7].forEach(dz => {
+      makeWall(0.5, 0.04, 0.4, new THREE.MeshLambertMaterial({ color: 0xcc8822 }), tx, 0.45, -23 + dz);
+      makeWall(0.06, 0.45, 0.06, lampMat, tx, 0.22, -23 + dz);
+    });
+  });
+  // Mic. Ronaldz light (warm fast food glow)
+  const micLight = new THREE.PointLight(0xffddaa, 0.5, 12);
+  micLight.position.set(152, 3.2, -22); g.add(micLight);
+  // Fast food interactable (eat cheap)
+  interactables.push({ mesh: micCounterMesh, group: g, type: 'fastfoodEat', label: 'Order Food ($3)', need: 'hunger', usePos: new THREE.Vector3(152, 0.15, -18.5), floor: 0 });
+
+  // === BASKETBALL COURT (south, X=126-138, Z=-20 to -26) ===
+  const courtMat = new THREE.MeshLambertMaterial({ color: 0xcc7733 });
+  const courtFloor = new THREE.Mesh(new THREE.BoxGeometry(12, 0.06, 7), courtMat);
+  courtFloor.position.set(132, 0.03, -23);
+  courtFloor.receiveShadow = true;
+  g.add(courtFloor);
+  // Court lines
+  const lineMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  makeWall(12, 0.01, 0.1, lineMat, 132, 0.07, -19.5);
+  makeWall(12, 0.01, 0.1, lineMat, 132, 0.07, -26.5);
+  makeWall(0.1, 0.01, 7, lineMat, 126, 0.07, -23);
+  makeWall(0.1, 0.01, 7, lineMat, 138, 0.07, -23);
+  // Hoops
+  [127, 137].forEach(hx => {
+    const poleMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const hPole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 3.5, 6), poleMat);
+    hPole.position.set(hx, 1.75, -23); g.add(hPole);
+    const backboard = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 1.2), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
+    backboard.position.set(hx, 3.2, -23); g.add(backboard);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.03, 8, 12), new THREE.MeshLambertMaterial({ color: 0xff4400 }));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.set(hx + (hx < 132 ? 0.4 : -0.4), 3, -23); g.add(rim);
+  });
+  // Court interactable
+  interactables.push({ mesh: courtFloor, group: g, type: 'basketball', label: 'Shoot Hoops', need: 'fun', usePos: new THREE.Vector3(132, 0.15, -22), floor: 0 });
+
+  // === PLAYGROUND (park area, X=105-115, Z=16-23) ===
+  // Sandbox
+  const sandboxMat = new THREE.MeshLambertMaterial({ color: 0xddcc88 });
+  const sandbox = new THREE.Mesh(new THREE.BoxGeometry(4, 0.15, 4), sandboxMat);
+  sandbox.position.set(108, 0.08, 20); g.add(sandbox);
+  // Sandbox border
+  const borderMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  makeWall(4.2, 0.3, 0.15, borderMat, 108, 0.15, 18);
+  makeWall(4.2, 0.3, 0.15, borderMat, 108, 0.15, 22);
+  makeWall(0.15, 0.3, 4, borderMat, 106, 0.15, 20);
+  makeWall(0.15, 0.3, 4, borderMat, 110, 0.15, 20);
+  // Slide
+  const slideMat = new THREE.MeshLambertMaterial({ color: 0x3388ff });
+  const slideBase = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.5, 0.8), lampMat);
+  slideBase.position.set(113, 1.25, 20); g.add(slideBase);
+  const slideSlope = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.08, 3), slideMat);
+  slideSlope.position.set(113, 1.5, 21.8);
+  slideSlope.rotation.x = 0.4;
+  g.add(slideSlope);
+  // Swings
+  const swingMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
+  const swingFrame = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 0.1), lampMat);
+  swingFrame.position.set(108, 3, 24); g.add(swingFrame);
+  [-1, 0, 1].forEach(dx => {
+    const sPole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 3, 6), lampMat);
+    sPole.position.set(108 + dx * 1.3, 1.5, 24); g.add(sPole);
+  });
+  [107, 109].forEach(sx => {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.3), swingMat);
+    seat.position.set(sx, 1.2, 24); g.add(seat);
+    const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.8, 4), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+    rope.position.set(sx, 2.1, 24); g.add(rope);
+  });
+
+  // === ADDITIONAL PARK BENCHES ===
+  [140, 100].forEach(bx => {
+    const bs = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.5), new THREE.MeshLambertMaterial({ color: 0x8B6914 }));
+    bs.position.set(bx, 0.5, 16); g.add(bs);
+    const bb = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 0.08), new THREE.MeshLambertMaterial({ color: 0x8B6914 }));
+    bb.position.set(bx, 0.8, 15.75); g.add(bb);
+    [-0.8, 0.8].forEach(dx => {
+      const bl = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.5), lampMat);
+      bl.position.set(bx + dx, 0.25, 16); g.add(bl);
+    });
   });
 
   // Town car (in parking lot for return trip)
@@ -3234,26 +3969,71 @@ function buildTown() {
 
 // Building collision AABBs for town
 const TOWN_BUILDINGS = [
-  // Cafe walls (door gap at X=109.3-110.9 on Z=7 face)
-  { xMin: 103.8, xMax: 112.2, zMin: 0.8, zMax: 1.2 },     // Back
-  { xMin: 103.8, xMax: 104.2, zMin: 1, zMax: 7 },          // Left
-  { xMin: 111.8, xMax: 112.2, zMin: 1, zMax: 7 },          // Right
-  { xMin: 103.8, xMax: 109.3, zMin: 6.8, zMax: 7.2 },      // Front-left
-  { xMin: 110.9, xMax: 112.2, zMin: 6.8, zMax: 7.2 },      // Front-right
+  // Cafe walls (door gap at X=109.3-110.9 on Z=10 face)
+  { xMin: 103.8, xMax: 112.2, zMin: 3.8, zMax: 4.2 },      // Back
+  { xMin: 103.8, xMax: 104.2, zMin: 4, zMax: 10 },          // Left
+  { xMin: 111.8, xMax: 112.2, zMin: 4, zMax: 10 },          // Right
+  { xMin: 103.8, xMax: 109.3, zMin: 9.8, zMax: 10.2 },      // Front-left
+  { xMin: 110.9, xMax: 112.2, zMin: 9.8, zMax: 10.2 },      // Front-right
   // Shop walls (door gap at X=107.3-108.9 on Z=-4.5 face)
   { xMin: 103.8, xMax: 112.2, zMin: -12.2, zMax: -11.8 },  // Back
   { xMin: 103.8, xMax: 104.2, zMin: -12, zMax: -4.5 },     // Left
   { xMin: 111.8, xMax: 112.2, zMin: -12, zMax: -4.5 },     // Right
   { xMin: 103.8, xMax: 107.3, zMin: -4.7, zMax: -4.3 },    // Front-left
   { xMin: 108.9, xMax: 112.2, zMin: -4.7, zMax: -4.3 },    // Front-right
-  // Town Hall walls (door gap at X=131.1-132.9 on Z=7 face)
-  { xMin: 126.8, xMax: 137.2, zMin: 0.8, zMax: 1.2 },      // Back
-  { xMin: 126.8, xMax: 127.2, zMin: 1, zMax: 7 },           // Left
-  { xMin: 136.8, xMax: 137.2, zMin: 1, zMax: 7 },           // Right
-  { xMin: 126.8, xMax: 131.1, zMin: 6.8, zMax: 7.2 },       // Front-left
-  { xMin: 132.9, xMax: 137.2, zMin: 6.8, zMax: 7.2 },       // Front-right
+  // Town Hall walls (door gap at X=131.1-132.9 on Z=10 face)
+  { xMin: 126.8, xMax: 137.2, zMin: 3.8, zMax: 4.2 },      // Back
+  { xMin: 126.8, xMax: 127.2, zMin: 4, zMax: 10 },          // Left
+  { xMin: 136.8, xMax: 137.2, zMin: 4, zMax: 10 },          // Right
+  { xMin: 126.8, xMax: 131.1, zMin: 9.8, zMax: 10.2 },      // Front-left
+  { xMin: 132.9, xMax: 137.2, zMin: 9.8, zMax: 10.2 },      // Front-right
   // Fountain
   { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 },
+  // Merch store walls (door gap at X=141.1-142.9 on Z=10 face)
+  { xMin: 138.8, xMax: 145.2, zMin: 3.8, zMax: 4.2 },      // Back
+  { xMin: 138.8, xMax: 139.2, zMin: 4, zMax: 10 },          // Left
+  { xMin: 144.8, xMax: 145.2, zMin: 4, zMax: 10 },          // Right
+  { xMin: 138.8, xMax: 141.1, zMin: 9.8, zMax: 10.2 },      // Front-left
+  { xMin: 142.9, xMax: 145.2, zMin: 9.8, zMax: 10.2 },      // Front-right
+  // Library walls (door gap at X=96.2-98 on Z=10 face)
+  { xMin: 91.8, xMax: 100.2, zMin: 3.8, zMax: 4.2 },        // Back
+  { xMin: 91.8, xMax: 92.2, zMin: 4, zMax: 10 },             // Left
+  { xMin: 99.8, xMax: 100.2, zMin: 4, zMax: 10 },            // Right
+  { xMin: 91.8, xMax: 96.2, zMin: 9.8, zMax: 10.2 },         // Front-left
+  { xMin: 98, xMax: 100.2, zMin: 9.8, zMax: 10.2 },          // Front-right
+  // Gym walls (door gap at X=96.2-98 on Z=-8 face)
+  { xMin: 91.8, xMax: 100.2, zMin: -16.2, zMax: -15.8 },     // Back
+  { xMin: 91.8, xMax: 92.2, zMin: -16, zMax: -8 },            // Left
+  { xMin: 99.8, xMax: 100.2, zMin: -16, zMax: -8 },           // Right
+  { xMin: 91.8, xMax: 96.2, zMin: -8.2, zMax: -7.8 },        // Front-left
+  { xMin: 98, xMax: 100.2, zMin: -8.2, zMax: -7.8 },         // Front-right
+  // Restaurant walls (door gap at X=152.2-154 on Z=10 face)
+  { xMin: 147.8, xMax: 156.2, zMin: 3.8, zMax: 4.2 },        // Back
+  { xMin: 147.8, xMax: 148.2, zMin: 4, zMax: 10 },            // Left
+  { xMin: 155.8, xMax: 156.2, zMin: 4, zMax: 10 },            // Right
+  { xMin: 147.8, xMax: 152.2, zMin: 9.8, zMax: 10.2 },        // Front-left
+  { xMin: 154, xMax: 156.2, zMin: 9.8, zMax: 10.2 },          // Front-right
+  // Arcade walls (door gap at X=152.2-154 on Z=-8 face)
+  { xMin: 147.8, xMax: 156.2, zMin: -16.2, zMax: -15.8 },     // Back
+  { xMin: 147.8, xMax: 148.2, zMin: -16, zMax: -8 },           // Left
+  { xMin: 155.8, xMax: 156.2, zMin: -16, zMax: -8 },           // Right
+  { xMin: 147.8, xMax: 152.2, zMin: -8.2, zMax: -7.8 },       // Front-left
+  { xMin: 154, xMax: 156.2, zMin: -8.2, zMax: -7.8 },         // Front-right
+  // Army Fort walls (door gap at X=96.2-98 on Z=-18 face)
+  { xMin: 91.8, xMax: 100.2, zMin: -26.2, zMax: -25.8 },     // Back
+  { xMin: 91.8, xMax: 92.2, zMin: -26, zMax: -18 },            // Left
+  { xMin: 99.8, xMax: 100.2, zMin: -26, zMax: -18 },           // Right
+  { xMin: 91.8, xMax: 96.2, zMin: -18.2, zMax: -17.8 },        // Front-left
+  { xMin: 98, xMax: 100.2, zMin: -18.2, zMax: -17.8 },         // Front-right
+  // Mic. Ronaldz walls (door gap at X=152.2-154 on Z=-18 face)
+  { xMin: 147.8, xMax: 156.2, zMin: -26.2, zMax: -25.8 },     // Back
+  { xMin: 147.8, xMax: 148.2, zMin: -26, zMax: -18 },          // Left
+  { xMin: 155.8, xMax: 156.2, zMin: -26, zMax: -18 },          // Right
+  { xMin: 147.8, xMax: 152.2, zMin: -18.2, zMax: -17.8 },     // Front-left
+  { xMin: 154, xMax: 156.2, zMin: -18.2, zMax: -17.8 },        // Front-right
+  // Basketball hoop poles
+  { xMin: 126.8, xMax: 127.2, zMin: -23.3, zMax: -22.7 },
+  { xMin: 136.8, xMax: 137.2, zMin: -23.3, zMax: -22.7 },
 ];
 
 function buildTownNPCs() {
@@ -3263,9 +4043,10 @@ function buildTownNPCs() {
       hairStyle: def.hairStyle, hairColor: def.hairColor,
       outfit: def.outfit,
     });
-    npcChar.position.set(def.x, 0.15, def.z);
+    if (def.scale) npcChar.scale.set(def.scale, def.scale, def.scale);
+    npcChar.position.set(def.x, def.scale ? 0.15 * def.scale : 0.15, def.z);
     // Face toward building entrance
-    const npcRotations = { barista: 0, merchant: Math.PI, mayor: 0, old_pete: Math.PI };
+    const npcRotations = { barista: 0, merchant: Math.PI, mayor: 0, old_pete: Math.PI, librarian: 0, trainer: Math.PI, chef: 0, arcade_kid: Math.PI, sergeant: 0, frycook: 0 };
     npcChar.rotation.y = npcRotations[def.id] || 0;
     townGroup.add(npcChar);
     // Tag ALL meshes in the NPC group for raycast detection
@@ -3969,10 +4750,89 @@ function openNPCDialogue(npcId) {
   nameEl.textContent = def.name;
   btnsEl.innerHTML = '';
 
+  // Merch clerk special dialogue
+  if (npcId === 'merch_clerk') {
+    const owned = ownedOutfits.has(GG_MERCH_IDX);
+    const equipped = charOpts.outfit === GG_MERCH_IDX && charOpts.dress < 0;
+    const greetings = owned
+      ? [
+          "OMG you're wearing the shirt!! We're basically twins now!",
+          "You know what I love about Graham Games? EVERYTHING.",
+          "I've played every single Graham Games title at least 100 times. No exaggeration.",
+          "Did you know the GG logo is two serpents? How cool is that!",
+          "Welcome back to the best store in town! Need anything else?",
+          "Graham Games changed my life. Literally. I quit my old job to work here.",
+          "I sleep in this shirt. Don't judge me.",
+        ]
+      : [
+          "Welcome to Graham Games Official Merch! We've got THE must-have shirt of the season.",
+          "Oh. My. Gosh. You NEED this shirt. It basically tells the world who you really are.",
+          "Graham Games is my LIFE and this shirt proves it. You should get one too!",
+          "Have you SEEN this shirt?! Red with gold lettering. It's gorgeous. Check the counter!",
+          "Every true Graham Games fan needs this merch. Trust me, I would know.",
+          "I've been a GG superfan since day one. This store is my dream come true!",
+        ];
+    if (!window._merchDialogIdx) window._merchDialogIdx = 0;
+    textEl.textContent = greetings[window._merchDialogIdx % greetings.length];
+    window._merchDialogIdx++;
+    if (owned && !equipped) {
+      addDialogueBtn(btnsEl, 'Equip GG Merch', 'npc-btn-accept', () => { equipOutfit(GG_MERCH_IDX); closeNPCDialogue(); });
+    } else if (!owned) {
+      addDialogueBtn(btnsEl, 'Browse Merch', 'npc-btn-accept', () => { closeNPCDialogue(); openMerchStore(); });
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
+
+  // Generic NPC greetings
+  const npcGreetings = {
+    librarian: ["Shh! Welcome to the library. We have lots of good books!", "Reading expands the mind. Take a seat and enjoy!", "Need a quiet place? You've come to the right spot."],
+    trainer: ["Let's get those gains! The gym is all yours.", "No pain, no gain! Get on that treadmill!", "You look like you could use a good workout!"],
+    chef: ["Welcome! Our special today is absolutely delicious.", "Hungry? We've got the best food in town!", "Grab a seat, the food here will change your life."],
+    arcade_kid: ["Dude, have you tried the new cabinet? It's INSANE.", "I've got the high score on every machine here.", "Welcome to the arcade! Prepare to lose all your coins."],
+  };
+  if (npcGreetings[npcId]) {
+    if (!window._npcGreetIdx) window._npcGreetIdx = {};
+    if (!window._npcGreetIdx[npcId]) window._npcGreetIdx[npcId] = 0;
+    textEl.textContent = npcGreetings[npcId][window._npcGreetIdx[npcId] % npcGreetings[npcId].length];
+    window._npcGreetIdx[npcId]++;
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
+
+  // NPC greetings for job-only NPCs (no quests)
+  const jobGreetings = {
+    sergeant: ["ATTENTION! Welcome to the army fort, civilian!", "Think you've got what it takes? We'll see about that, recruit!", "Drop and give me twenty! ...Just kidding. Want a job?"],
+    frycook: ["Welcome to Mic. Ronaldz! Home of the Cardboard Burger!", "Our food may taste like cardboard, but it's CHEAP cardboard!", "Need a job? The deep fryer's calling your name!"],
+  };
+
   // Find quest for this NPC
   const questEntry = Object.entries(QUESTS).find(([, q]) => q.npc === npcId);
   if (!questEntry) {
-    textEl.textContent = "Hello there!";
+    if (jobGreetings[npcId]) {
+      if (!window._npcGreetIdx) window._npcGreetIdx = {};
+      if (!window._npcGreetIdx[npcId]) window._npcGreetIdx[npcId] = 0;
+      textEl.textContent = jobGreetings[npcId][window._npcGreetIdx[npcId] % jobGreetings[npcId].length];
+      window._npcGreetIdx[npcId]++;
+    } else {
+      textEl.textContent = "Hello there!";
+    }
+    // Still show job button if this NPC has a job
+    const jobForNPC = TOWN_JOBS[npcId];
+    if (jobForNPC) {
+      if (jobLastDay[npcId] === day) {
+        const disBtn = document.createElement('button');
+        disBtn.textContent = 'Already worked today';
+        disBtn.className = 'npc-btn-close';
+        disBtn.disabled = true;
+        disBtn.style.opacity = '0.5';
+        btnsEl.appendChild(disBtn);
+      } else {
+        addDialogueBtn(btnsEl, 'Work: ' + jobForNPC.name + ' ($' + jobForNPC.basePay + '+)', 'npc-btn-accept', () => startTownJob(npcId));
+      }
+    }
     addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     overlay.classList.add('visible');
     return;
@@ -4074,6 +4934,12 @@ function startTownJob(npcId) {
   } else if (npcId === 'mayor') {
     hintEl.innerHTML = '<kbd>A</kbd> Approve  <kbd>D</kbd> Deny';
     runTownHallJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+  } else if (npcId === 'sergeant') {
+    hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> Aim  <kbd>SPACE</kbd> Shoot';
+    runMilitaryJob(canvas, ctx, (score) => finishTownJob(npcId, score));
+  } else if (npcId === 'frycook') {
+    hintEl.innerHTML = '<kbd>1</kbd> Burger  <kbd>2</kbd> Fries  <kbd>3</kbd> Drink  <kbd>4</kbd> Nuggets';
+    runFastFoodJob(canvas, ctx, (score) => finishTownJob(npcId, score));
   }
 }
 
@@ -4577,6 +5443,1101 @@ function runTownHallJob(canvas, ctx, onFinish) {
   requestAnimationFrame(draw);
 }
 
+// --- Military: Target Practice ---
+function runMilitaryJob(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let crosshairX = W / 2;
+  let crosshairY = H / 2;
+  let targets = [];
+  let score = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let spawnInterval = 2.0;
+  let flash = null;
+  let running = true;
+  let keysDown = {};
+
+  function spawnTarget() {
+    const size = 20 + Math.floor(Math.random() * 20);
+    const speed = 40 + Math.random() * 60;
+    const fromLeft = Math.random() < 0.5;
+    targets.push({
+      x: fromLeft ? -size : W + size,
+      y: 60 + Math.random() * (H - 160),
+      size: size,
+      speed: fromLeft ? speed : -speed,
+      timer: 6,
+      hit: false
+    });
+  }
+  spawnTarget();
+
+  function onKey(e) {
+    if (!running) return;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      keysDown[e.key] = true;
+      e.preventDefault();
+    }
+    if (e.key === ' ') {
+      e.preventDefault();
+      flash = { t: 0.15 };
+      SFX.sfxClick && SFX.sfxClick();
+      let hitAny = false;
+      for (let i = targets.length - 1; i >= 0; i--) {
+        const t = targets[i];
+        if (t.hit) continue;
+        const dx = crosshairX - t.x;
+        const dy = crosshairY - t.y;
+        if (Math.sqrt(dx * dx + dy * dy) < t.size) {
+          t.hit = true;
+          const sizeBonus = t.size < 28 ? 15 : 10;
+          score += sizeBonus;
+          hitAny = true;
+          SFX.jobCorrect();
+          break;
+        }
+      }
+      if (!hitAny) {
+        score = Math.max(0, score - 2);
+        SFX.jobWrong();
+      }
+    }
+  }
+  function onKeyUp(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') keysDown[e.key] = false;
+  }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKeyUp);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    spawnTimer += dt;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnInterval = Math.max(0.8, spawnInterval - 0.08);
+      if (targets.length < 6) spawnTarget();
+    }
+
+    // Move crosshair
+    const moveSpeed = 300;
+    if (keysDown['ArrowLeft']) crosshairX = Math.max(10, crosshairX - moveSpeed * dt);
+    if (keysDown['ArrowRight']) crosshairX = Math.min(W - 10, crosshairX + moveSpeed * dt);
+    if (keysDown['ArrowUp']) crosshairY = Math.max(10, crosshairY - moveSpeed * dt);
+    if (keysDown['ArrowDown']) crosshairY = Math.min(H - 10, crosshairY + moveSpeed * dt);
+
+    // Update targets
+    for (let i = targets.length - 1; i >= 0; i--) {
+      const t = targets[i];
+      if (t.hit) {
+        t.timer -= dt * 5;
+        if (t.timer <= 0) targets.splice(i, 1);
+        continue;
+      }
+      t.x += t.speed * dt;
+      t.timer -= dt;
+      if (t.timer <= 0 || t.x < -60 || t.x > W + 60) {
+        targets.splice(i, 1);
+      }
+    }
+
+    // Draw background - outdoor range
+    ctx.fillStyle = '#5a7a3a';
+    ctx.fillRect(0, 0, W, H);
+    // Sky
+    ctx.fillStyle = '#88bbdd';
+    ctx.fillRect(0, 0, W, 50);
+    // Ground
+    ctx.fillStyle = '#6b5a3a';
+    ctx.fillRect(0, H - 50, W, 50);
+    // Sandbags
+    for (let sx = 0; sx < W; sx += 40) {
+      ctx.fillStyle = '#8b7a5a';
+      ctx.fillRect(sx, H - 65, 35, 18);
+    }
+
+    // Draw targets
+    targets.forEach(t => {
+      const alpha = t.hit ? Math.max(0, t.timer / 3) : 1;
+      ctx.globalAlpha = alpha;
+      // Target circle (red/white rings)
+      ctx.fillStyle = '#cc2222';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.size * 0.65, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#cc2222';
+      ctx.beginPath();
+      ctx.arc(t.x, t.y, t.size * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+      if (t.hit) {
+        ctx.fillStyle = '#ffcc00';
+        ctx.font = 'bold 16px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('+' + (t.size < 28 ? 15 : 10), t.x, t.y - t.size - 5);
+      }
+      ctx.globalAlpha = 1;
+    });
+
+    // Crosshair
+    ctx.strokeStyle = flash ? '#ffff00' : '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(crosshairX - 15, crosshairY); ctx.lineTo(crosshairX + 15, crosshairY);
+    ctx.moveTo(crosshairX, crosshairY - 15); ctx.lineTo(crosshairX, crosshairY + 15);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(crosshairX, crosshairY, 10, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Muzzle flash
+    if (flash) {
+      flash.t -= dt;
+      ctx.fillStyle = 'rgba(255,255,100,' + (flash.t / 0.15) + ')';
+      ctx.beginPath();
+      ctx.arc(crosshairX, crosshairY, 20, 0, Math.PI * 2);
+      ctx.fill();
+      if (flash.t <= 0) flash = null;
+    }
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (20 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, H - 20);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Fast Food: Fry Cook ---
+function runFastFoodJob(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const ITEMS = [
+    { key: '1', name: 'Burger', color: '#cc8833', emoji: 'B' },
+    { key: '2', name: 'Fries', color: '#ddaa22', emoji: 'F' },
+    { key: '3', name: 'Drink', color: '#4488cc', emoji: 'D' },
+    { key: '4', name: 'Nuggets', color: '#dd9944', emoji: 'N' },
+  ];
+  let orders = [];
+  let score = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let spawnInterval = 3.5;
+  let flash = null;
+  let running = true;
+
+  function spawnOrder() {
+    const count = 1 + Math.floor(Math.random() * 3);
+    const items = [];
+    for (let i = 0; i < count; i++) {
+      items.push(ITEMS[Math.floor(Math.random() * ITEMS.length)]);
+    }
+    orders.push({ items: items, progress: 0, timer: 8 + count * 2 });
+  }
+  spawnOrder();
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key;
+    if (!['1','2','3','4'].includes(k)) return;
+    e.preventDefault();
+    const item = ITEMS.find(it => it.key === k);
+    flash = { key: k, name: item.name, color: item.color, t: 0.3 };
+    if (orders.length === 0) return;
+    const order = orders[0];
+    if (order.items[order.progress].key === k) {
+      order.progress++;
+      SFX.jobCorrect();
+      if (order.progress >= order.items.length) {
+        score += 5 + order.items.length * 3;
+        orders.shift();
+      }
+    } else {
+      score = Math.max(0, score - 1);
+      order.progress = 0;
+      SFX.jobWrong();
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    spawnTimer += dt;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnInterval = Math.max(1.8, spawnInterval - 0.12);
+      if (orders.length < 5) spawnOrder();
+    }
+    // Update orders
+    for (let i = orders.length - 1; i >= 0; i--) {
+      orders[i].timer -= dt;
+      if (orders[i].timer <= 0) {
+        score = Math.max(0, score - 2);
+        orders.splice(i, 1);
+      }
+    }
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Draw background - fast food kitchen
+    ctx.fillStyle = '#ffe8cc';
+    ctx.fillRect(0, 0, W, H);
+    // Counter top
+    ctx.fillStyle = '#cc8833';
+    ctx.fillRect(0, H - 70, W, 70);
+    ctx.fillStyle = '#ddaa44';
+    ctx.fillRect(0, H - 72, W, 4);
+    // Back wall tiles
+    ctx.fillStyle = '#fff0dd';
+    for (let tx = 0; tx < W; tx += 32) {
+      for (let ty = 0; ty < 40; ty += 32) {
+        ctx.strokeStyle = '#eeddcc';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(tx, ty, 32, 32);
+      }
+    }
+
+    // Order tickets
+    const ticketW = 115, ticketH = 120, gap = 10;
+    const startX = (W - Math.min(orders.length, 5) * (ticketW + gap)) / 2;
+    orders.forEach((order, i) => {
+      if (i >= 5) return;
+      const tx = startX + i * (ticketW + gap);
+      const ty = 50;
+      // Ticket bg
+      ctx.fillStyle = i === 0 ? '#fff5e0' : '#f0e8d8';
+      ctx.fillRect(tx, ty, ticketW, ticketH);
+      ctx.strokeStyle = i === 0 ? '#cc8833' : '#999';
+      ctx.lineWidth = i === 0 ? 2 : 1;
+      ctx.strokeRect(tx, ty, ticketW, ticketH);
+      // Order number
+      ctx.fillStyle = '#666';
+      ctx.font = 'bold 11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('ORDER #' + (i + 1), tx + ticketW / 2, ty + 15);
+      // Items
+      order.items.forEach((item, ii) => {
+        const ix = tx + 10 + ii * 30;
+        const iy = ty + 30;
+        ctx.fillStyle = ii < order.progress ? '#44aa44' : (ii === order.progress && i === 0 ? item.color : '#aaa');
+        ctx.beginPath();
+        ctx.arc(ix + 12, iy + 12, 12, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 13px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(item.emoji, ix + 12, iy + 17);
+      });
+      // Timer bar
+      const barY = ty + ticketH - 16;
+      const pct = Math.max(0, order.timer / (8 + order.items.length * 2));
+      ctx.fillStyle = '#ddd';
+      ctx.fillRect(tx + 5, barY, ticketW - 10, 8);
+      ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#cc4444';
+      ctx.fillRect(tx + 5, barY, (ticketW - 10) * pct, 8);
+    });
+
+    // Key flash
+    if (flash) {
+      ctx.fillStyle = flash.color;
+      ctx.globalAlpha = flash.t / 0.3;
+      ctx.font = 'bold 36px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(flash.name, W / 2, H - 25);
+      ctx.globalAlpha = 1;
+    }
+
+    // Item legend at bottom
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'center';
+    ITEMS.forEach((item, i) => {
+      const lx = W / 2 - 120 + i * 80;
+      ctx.fillStyle = item.color;
+      ctx.fillText(item.key + ':' + item.emoji, lx, H - 55);
+    });
+
+    // HUD
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 22);
+    ctx.textAlign = 'right';
+    ctx.fillText('$' + (12 + Math.floor(Math.max(0, score) * 0.5)), W - 10, 22);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#333';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W / 2, 22);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// ═══ ACTIVITY MINI-GAMES ═══
+function startActivityMiniGame(obj, config) {
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '<div class="job-screen-box"><canvas id="job-canvas" width="640" height="360"></canvas></div>' +
+    '<div class="job-hint" id="job-hint"></div>';
+  overlay.classList.add('visible');
+  const canvas = document.getElementById('job-canvas');
+  const ctx = canvas.getContext('2d');
+  const hintEl = document.getElementById('job-hint');
+  const type = obj.type;
+
+  function onDone(score) {
+    jobMiniGameRunning = false;
+    // Deduct cost
+    if (config.cost) money -= config.cost;
+    // Apply rewards scaled by performance
+    const pct = Math.min(1, Math.max(0.3, score / 50));
+    if (obj.need && config.restore) needs[obj.need] = Math.min(100, needs[obj.need] + Math.round(config.restore * pct));
+    if (config.hungerDrain) needs.hunger = Math.max(0, needs.hunger - config.hungerDrain);
+    if (config.hygieneBonus) needs.hygiene = Math.min(100, needs.hygiene + config.hygieneBonus);
+    if (config.funBonus) needs.fun = Math.min(100, needs.fun + config.funBonus);
+    if (config.energyBonus) needs.energy = Math.min(100, needs.energy + config.energyBonus);
+    if (type === 'libraryRead') { booksRead++; if (booksRead >= 3) mlTry('ml_bookworm'); }
+    SFX.actionComplete();
+    const overlay = document.getElementById('job-overlay');
+    overlay.classList.remove('visible');
+    overlay.innerHTML = '';
+    showTip(score >= 40 ? 'Great job!' : score >= 20 ? 'Not bad!' : 'Better luck next time!');
+  }
+
+  if (type === 'libraryRead') {
+    hintEl.innerHTML = 'Type the highlighted letter!';
+    runLibraryGame(canvas, ctx, onDone);
+  } else if (type === 'gymWorkout') {
+    hintEl.innerHTML = '<kbd>SPACE</kbd> Pump iron!';
+    runGymGame(canvas, ctx, onDone);
+  } else if (type === 'restaurantEat') {
+    hintEl.innerHTML = '<kbd>1</kbd>-<kbd>4</kbd> Pick the right dish!';
+    runRestaurantGame(canvas, ctx, onDone);
+  } else if (type === 'arcadePlay') {
+    hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> Move paddle';
+    runArcadeGame(canvas, ctx, onDone);
+  } else if (type === 'basketball') {
+    hintEl.innerHTML = '<kbd>SPACE</kbd> Shoot at the right moment!';
+    runBasketballGame(canvas, ctx, onDone);
+  } else if (type === 'fastfoodEat') {
+    hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> Catch the food!';
+    runFastFoodCatchGame(canvas, ctx, onDone);
+  }
+}
+
+// --- Library: Speed Reader ---
+function runLibraryGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const WORDS = ['BOOK','READ','PAGE','STORY','NOVEL','CHAPTER','POETRY','FICTION','LIBRARY','WISDOM','GENRE','AUTHOR','PLOT','HERO','MYTH','FABLE','VERSE','SCROLL','TALE','QUEST'];
+  let currentWord = '';
+  let currentIdx = 0;
+  let score = 0;
+  let timeLeft = 20;
+  let lastTime = performance.now();
+  let flash = null;
+  let running = true;
+
+  function nextWord() {
+    currentWord = WORDS[Math.floor(Math.random() * WORDS.length)];
+    currentIdx = 0;
+  }
+  nextWord();
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key.toUpperCase();
+    if (k.length !== 1 || k < 'A' || k > 'Z') return;
+    e.preventDefault();
+    if (k === currentWord[currentIdx]) {
+      currentIdx++;
+      flash = { color: '#44aa44', t: 0.15 };
+      SFX.jobCorrect();
+      if (currentIdx >= currentWord.length) {
+        score += 5 + currentWord.length;
+        nextWord();
+      }
+    } else {
+      score = Math.max(0, score - 1);
+      flash = { color: '#cc4444', t: 0.15 };
+      SFX.jobWrong();
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Background - warm library
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(0, 0, W, H);
+    // Book shelf bg
+    ctx.fillStyle = '#5a3a1a';
+    ctx.fillRect(20, 20, W - 40, H - 100);
+    ctx.strokeStyle = '#8a6a3a';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(20, 20, W - 40, H - 100);
+
+    // Word display
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 48px monospace';
+    for (let i = 0; i < currentWord.length; i++) {
+      if (i < currentIdx) ctx.fillStyle = '#44aa44';
+      else if (i === currentIdx) ctx.fillStyle = flash && flash.color === '#cc4444' ? '#cc4444' : '#ffcc44';
+      else ctx.fillStyle = '#887766';
+      ctx.fillText(currentWord[i], W / 2 - (currentWord.length - 1) * 20 + i * 40, H / 2 + 10);
+    }
+
+    // Score & time
+    ctx.fillStyle = '#ddc';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 30, 50);
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W - 30, 50);
+
+    if (timeLeft <= 0) { running = false; document.removeEventListener('keydown', onKey); onFinish(score); return; }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Gym: Pump Iron ---
+function runGymGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let power = 0;
+  let reps = 0;
+  let score = 0;
+  let timeLeft = 15;
+  let lastTime = performance.now();
+  let barDirection = 1;
+  let barPos = 0; // 0 to 1
+  let greenZone = { start: 0.35, end: 0.65 };
+  let flash = null;
+  let running = true;
+
+  function onKey(e) {
+    if (!running) return;
+    if (e.key === ' ') {
+      e.preventDefault();
+      // Check if bar is in green zone
+      if (barPos >= greenZone.start && barPos <= greenZone.end) {
+        reps++;
+        score += 10;
+        flash = { color: '#44aa44', t: 0.2 };
+        SFX.jobCorrect();
+        // Move green zone for next rep
+        greenZone.start = 0.15 + Math.random() * 0.5;
+        greenZone.end = greenZone.start + 0.2 + Math.random() * 0.1;
+      } else {
+        score = Math.max(0, score - 3);
+        flash = { color: '#cc4444', t: 0.2 };
+        SFX.jobWrong();
+      }
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Move bar
+    const speed = 1.2 + reps * 0.1;
+    barPos += barDirection * speed * dt;
+    if (barPos >= 1) { barPos = 1; barDirection = -1; }
+    if (barPos <= 0) { barPos = 0; barDirection = 1; }
+
+    // Background
+    ctx.fillStyle = '#333344';
+    ctx.fillRect(0, 0, W, H);
+    // Floor
+    ctx.fillStyle = '#444455';
+    ctx.fillRect(0, H - 40, W, 40);
+
+    // Power bar background
+    const barX = 100, barY = 60, barW = W - 200, barH = 40;
+    ctx.fillStyle = '#222';
+    ctx.fillRect(barX, barY, barW, barH);
+    // Green zone
+    ctx.fillStyle = '#2a6a2a';
+    ctx.fillRect(barX + greenZone.start * barW, barY, (greenZone.end - greenZone.start) * barW, barH);
+    // Indicator
+    ctx.fillStyle = flash ? flash.color : '#ffcc44';
+    ctx.fillRect(barX + barPos * barW - 3, barY - 5, 6, barH + 10);
+    // Border
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    // Dumbbell visualization
+    const cx = W / 2, cy = H / 2 + 40;
+    const lift = flash && flash.color === '#44aa44' ? 20 : 0;
+    ctx.fillStyle = '#888';
+    ctx.fillRect(cx - 60, cy - 5 - lift, 120, 10);
+    ctx.fillStyle = '#555';
+    ctx.fillRect(cx - 70, cy - 15 - lift, 15, 30);
+    ctx.fillRect(cx + 55, cy - 15 - lift, 15, 30);
+
+    // Reps counter
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('REPS: ' + reps, W / 2, H - 60);
+
+    // HUD
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 30);
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W - 10, 30);
+
+    if (timeLeft <= 0) { running = false; document.removeEventListener('keydown', onKey); onFinish(score); return; }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Restaurant: Order Match ---
+function runRestaurantGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const DISHES = [
+    { key: '1', name: 'Steak', color: '#8b4513' },
+    { key: '2', name: 'Pasta', color: '#dda520' },
+    { key: '3', name: 'Salad', color: '#228b22' },
+    { key: '4', name: 'Soup', color: '#cd853f' },
+  ];
+  let currentDish = null;
+  let score = 0;
+  let timeLeft = 15;
+  let lastTime = performance.now();
+  let flash = null;
+  let running = true;
+  let streak = 0;
+
+  function nextDish() {
+    currentDish = DISHES[Math.floor(Math.random() * DISHES.length)];
+  }
+  nextDish();
+
+  function onKey(e) {
+    if (!running || !currentDish) return;
+    if (!['1','2','3','4'].includes(e.key)) return;
+    e.preventDefault();
+    if (e.key === currentDish.key) {
+      streak++;
+      score += 8 + streak * 2;
+      flash = { color: '#44aa44', name: currentDish.name, t: 0.3 };
+      SFX.jobCorrect();
+      nextDish();
+    } else {
+      streak = 0;
+      score = Math.max(0, score - 2);
+      flash = { color: '#cc4444', name: 'Wrong!', t: 0.3 };
+      SFX.jobWrong();
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Background
+    ctx.fillStyle = '#4a2a1a';
+    ctx.fillRect(0, 0, W, H);
+    // Table
+    ctx.fillStyle = '#8b6914';
+    ctx.fillRect(100, 100, W - 200, H - 160);
+    ctx.strokeStyle = '#6b4914';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(100, 100, W - 200, H - 160);
+
+    // Current dish plate
+    if (currentDish) {
+      // Plate
+      ctx.fillStyle = '#eee';
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2 - 10, 60, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ccc';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Food
+      ctx.fillStyle = currentDish.color;
+      ctx.beginPath();
+      ctx.arc(W / 2, H / 2 - 10, 35, 0, Math.PI * 2);
+      ctx.fill();
+      // Label
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 28px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(currentDish.name + '?', W / 2, 80);
+    }
+
+    // Key legend
+    ctx.font = 'bold 14px monospace';
+    DISHES.forEach((d, i) => {
+      ctx.fillStyle = d.color;
+      const lx = 120 + i * 120;
+      ctx.fillRect(lx, H - 50, 20, 20);
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left';
+      ctx.fillText(d.key + ': ' + d.name, lx + 25, H - 35);
+    });
+
+    // Flash
+    if (flash) {
+      ctx.fillStyle = flash.color;
+      ctx.globalAlpha = flash.t / 0.3;
+      ctx.font = 'bold 32px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(flash.name, W / 2, H / 2 + 60);
+      ctx.globalAlpha = 1;
+    }
+
+    // Streak
+    if (streak > 1) {
+      ctx.fillStyle = '#ffcc44';
+      ctx.font = 'bold 18px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Streak: ' + streak + 'x', W / 2, 55);
+    }
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 25);
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W - 10, 25);
+
+    if (timeLeft <= 0) { running = false; document.removeEventListener('keydown', onKey); onFinish(score); return; }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Arcade: Brick Breaker ---
+function runArcadeGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let paddle = { x: W / 2, w: 80 };
+  let ball = { x: W / 2, y: H - 40, dx: 3, dy: -3 };
+  let bricks = [];
+  let score = 0;
+  let timeLeft = 20;
+  let lastTime = performance.now();
+  let running = true;
+  let keysDown = {};
+  const COLORS = ['#ff4444', '#44aa44', '#4488cc', '#ffcc44', '#ff44ff', '#44ffff'];
+
+  // Init bricks
+  for (let r = 0; r < 4; r++) {
+    for (let c = 0; c < 10; c++) {
+      bricks.push({ x: 20 + c * 60, y: 20 + r * 22, w: 55, h: 18, color: COLORS[r % COLORS.length], alive: true });
+    }
+  }
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { keysDown[e.key] = true; e.preventDefault(); }
+  }
+  function onKeyUp(e) { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') keysDown[e.key] = false; }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKeyUp);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+
+    // Move paddle
+    if (keysDown['ArrowLeft']) paddle.x = Math.max(paddle.w / 2, paddle.x - 400 * dt);
+    if (keysDown['ArrowRight']) paddle.x = Math.min(W - paddle.w / 2, paddle.x + 400 * dt);
+
+    // Move ball
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+    // Wall bounce
+    if (ball.x < 5 || ball.x > W - 5) ball.dx = -ball.dx;
+    if (ball.y < 5) ball.dy = -ball.dy;
+    // Paddle bounce
+    if (ball.y > H - 35 && ball.y < H - 25 && ball.x > paddle.x - paddle.w / 2 && ball.x < paddle.x + paddle.w / 2) {
+      ball.dy = -Math.abs(ball.dy);
+      ball.dx = (ball.x - paddle.x) / (paddle.w / 2) * 4;
+      SFX.jobCorrect();
+    }
+    // Floor miss
+    if (ball.y > H) {
+      ball.x = paddle.x; ball.y = H - 40;
+      ball.dx = (Math.random() - 0.5) * 4;
+      ball.dy = -3;
+    }
+    // Brick collision
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      if (ball.x > b.x && ball.x < b.x + b.w && ball.y > b.y && ball.y < b.y + b.h) {
+        b.alive = false;
+        ball.dy = -ball.dy;
+        score += 5;
+        SFX.jobCorrect();
+      }
+    });
+
+    // Draw
+    ctx.fillStyle = '#111122';
+    ctx.fillRect(0, 0, W, H);
+    // Bricks
+    bricks.forEach(b => {
+      if (!b.alive) return;
+      ctx.fillStyle = b.color;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(b.x, b.y, b.w, b.h);
+    });
+    // Paddle
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(paddle.x - paddle.w / 2, H - 30, paddle.w, 10);
+    // Ball
+    ctx.fillStyle = '#ffcc44';
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, H - 5);
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W - 10, H - 5);
+
+    if (timeLeft <= 0 || bricks.every(b => !b.alive)) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+      if (bricks.every(b => !b.alive)) score += 20;
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Basketball: Free Throw ---
+function runBasketballGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let power = 0;
+  let powerDir = 1;
+  let angle = 0;
+  let angleDir = 1;
+  let phase = 'power'; // 'power' -> 'angle' -> 'flying'
+  let score = 0;
+  let shots = 0;
+  let maxShots = 10;
+  let ballX = 0, ballY = 0, ballVX = 0, ballVY = 0;
+  let flash = null;
+  let running = true;
+  let lastTime = performance.now();
+  const hoopX = W / 2, hoopY = 80;
+
+  function onKey(e) {
+    if (!running) return;
+    if (e.key === ' ') {
+      e.preventDefault();
+      if (phase === 'power') {
+        phase = 'angle';
+      } else if (phase === 'angle') {
+        // Launch ball
+        phase = 'flying';
+        ballX = W / 2;
+        ballY = H - 60;
+        const speed = 5 + power * 8;
+        const a = -Math.PI / 2 + (angle - 0.5) * 0.8;
+        ballVX = Math.cos(a) * speed;
+        ballVY = Math.sin(a) * speed;
+      }
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Update phase
+    if (phase === 'power') {
+      power += powerDir * 1.5 * dt;
+      if (power >= 1) { power = 1; powerDir = -1; }
+      if (power <= 0) { power = 0; powerDir = 1; }
+    } else if (phase === 'angle') {
+      angle += angleDir * 1.2 * dt;
+      if (angle >= 1) { angle = 1; angleDir = -1; }
+      if (angle <= 0) { angle = 0; angleDir = 1; }
+    } else if (phase === 'flying') {
+      ballVY += 15 * dt; // gravity
+      ballX += ballVX;
+      ballY += ballVY;
+      // Check hoop
+      if (Math.abs(ballX - hoopX) < 20 && Math.abs(ballY - hoopY) < 15 && ballVY > 0) {
+        score += 10;
+        flash = { color: '#44aa44', text: 'SWISH!', t: 0.5 };
+        SFX.jobCorrect();
+        shots++;
+        phase = 'power'; power = 0; powerDir = 1; angle = 0; angleDir = 1;
+      }
+      // Miss
+      if (ballY > H + 20 || ballX < -20 || ballX > W + 20) {
+        flash = { color: '#cc4444', text: 'MISS', t: 0.3 };
+        SFX.jobWrong();
+        shots++;
+        phase = 'power'; power = 0; powerDir = 1; angle = 0; angleDir = 1;
+      }
+    }
+
+    // Draw background
+    ctx.fillStyle = '#4a6a3a';
+    ctx.fillRect(0, 0, W, H);
+    // Court
+    ctx.fillStyle = '#cc7733';
+    ctx.fillRect(0, H - 30, W, 30);
+
+    // Backboard & hoop
+    ctx.fillStyle = '#eee';
+    ctx.fillRect(hoopX - 25, hoopY - 30, 50, 5);
+    ctx.strokeStyle = '#ff4400';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(hoopX, hoopY, 15, 0, Math.PI * 2);
+    ctx.stroke();
+    // Net lines
+    ctx.strokeStyle = '#ccc';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(hoopX - 15, hoopY); ctx.lineTo(hoopX - 10, hoopY + 25);
+    ctx.moveTo(hoopX + 15, hoopY); ctx.lineTo(hoopX + 10, hoopY + 25);
+    ctx.moveTo(hoopX, hoopY + 5); ctx.lineTo(hoopX, hoopY + 25);
+    ctx.stroke();
+
+    // Power bar
+    if (phase === 'power' || phase === 'angle') {
+      ctx.fillStyle = '#333';
+      ctx.fillRect(30, H - 200, 30, 150);
+      ctx.fillStyle = power > 0.7 ? '#44aa44' : power > 0.3 ? '#ccaa44' : '#cc4444';
+      ctx.fillRect(30, H - 200 + (1 - power) * 150, 30, power * 150);
+      ctx.strokeStyle = '#888';
+      ctx.strokeRect(30, H - 200, 30, 150);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('PWR', 45, H - 205);
+    }
+
+    // Angle indicator
+    if (phase === 'angle') {
+      ctx.fillStyle = '#333';
+      ctx.fillRect(W - 60, H - 200, 30, 150);
+      ctx.fillStyle = '#4488cc';
+      ctx.fillRect(W - 60, H - 200 + (1 - angle) * 150, 30, angle * 150);
+      ctx.strokeStyle = '#888';
+      ctx.strokeRect(W - 60, H - 200, 30, 150);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('AIM', W - 45, H - 205);
+    }
+
+    // Ball
+    if (phase === 'flying') {
+      ctx.fillStyle = '#ff8833';
+      ctx.beginPath();
+      ctx.arc(ballX, ballY, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#333';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = '#ff8833';
+      ctx.beginPath();
+      ctx.arc(W / 2, H - 60, 8, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Flash
+    if (flash) {
+      ctx.fillStyle = flash.color;
+      ctx.globalAlpha = flash.t / 0.5;
+      ctx.font = 'bold 36px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(flash.text, W / 2, H / 2);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 25);
+    ctx.textAlign = 'right';
+    ctx.fillText('Shots: ' + shots + '/' + maxShots, W - 10, 25);
+    ctx.textAlign = 'center';
+    if (phase === 'power') ctx.fillText('Press SPACE to set power', W / 2, H - 5);
+    else if (phase === 'angle') ctx.fillText('Press SPACE to set angle', W / 2, H - 5);
+
+    if (shots >= maxShots) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Fast Food Catch: Catch falling food ---
+function runFastFoodCatchGame(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let tray = { x: W / 2, w: 70 };
+  let items = [];
+  let score = 0;
+  let timeLeft = 15;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let running = true;
+  let keysDown = {};
+  const FOODS = [
+    { name: 'B', color: '#cc8833' },
+    { name: 'F', color: '#ddaa22' },
+    { name: 'D', color: '#4488cc' },
+    { name: 'N', color: '#dd9944' },
+  ];
+  const JUNK = { name: 'X', color: '#666666' };
+
+  function spawnItem() {
+    const isJunk = Math.random() < 0.2;
+    const food = isJunk ? JUNK : FOODS[Math.floor(Math.random() * FOODS.length)];
+    items.push({ x: 20 + Math.random() * (W - 40), y: -10, food: food, speed: 100 + Math.random() * 80 });
+  }
+
+  function onKey(e) {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { keysDown[e.key] = true; e.preventDefault(); }
+  }
+  function onKeyUp(e) { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') keysDown[e.key] = false; }
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', onKeyUp);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    spawnTimer += dt;
+    if (spawnTimer > 0.6) { spawnTimer = 0; spawnItem(); }
+
+    // Move tray
+    if (keysDown['ArrowLeft']) tray.x = Math.max(tray.w / 2, tray.x - 350 * dt);
+    if (keysDown['ArrowRight']) tray.x = Math.min(W - tray.w / 2, tray.x + 350 * dt);
+
+    // Update items
+    for (let i = items.length - 1; i >= 0; i--) {
+      items[i].y += items[i].speed * dt;
+      // Catch
+      if (items[i].y > H - 40 && items[i].y < H - 20 && Math.abs(items[i].x - tray.x) < tray.w / 2) {
+        if (items[i].food === JUNK) { score = Math.max(0, score - 5); SFX.jobWrong(); }
+        else { score += 5; SFX.jobCorrect(); }
+        items.splice(i, 1);
+        continue;
+      }
+      if (items[i].y > H + 10) {
+        if (items[i].food !== JUNK) score = Math.max(0, score - 1);
+        items.splice(i, 1);
+      }
+    }
+
+    // Draw
+    ctx.fillStyle = '#ffe8cc';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#cc8833';
+    ctx.fillRect(0, H - 20, W, 20);
+
+    // Items
+    items.forEach(it => {
+      ctx.fillStyle = it.food.color;
+      ctx.beginPath();
+      ctx.arc(it.x, it.y, 12, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 12px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(it.food.name, it.x, it.y + 4);
+    });
+
+    // Tray
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(tray.x - tray.w / 2, H - 35, tray.w, 8);
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(tray.x - 3, H - 27, 6, 12);
+
+    // HUD
+    ctx.fillStyle = '#333';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 25);
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.ceil(Math.max(0, timeLeft)) + 's', W - 10, 25);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', onKeyUp);
+      onFinish(score);
+      return;
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
 function purchaseFurniture(id) {
   const item = SHOP_FURNITURE.find(f => f.id === id);
   if (!item || ownedFurniture.has(id) || money < item.cost) return;
@@ -4606,6 +6567,7 @@ const HAIR_COLORS = [
   { name: 'Brown',   hex: 0x4a3222 },
   { name: 'Blonde',  hex: 0xd4a843 },
   { name: 'Red',     hex: 0x8b2a1a },
+  { name: 'Orange',  hex: 0xdd6622 },
   { name: 'White',   hex: 0xdddddd },
   { name: 'Blue',    hex: 0x3366cc },
 ];
@@ -4619,10 +6581,32 @@ const OUTFITS = [
   { name: 'All Black',      shirt: 0x222222, pants: 0x1a1a1a, cost: 35 },
   { name: 'Pink Pop',       shirt: 0xdd55aa, pants: 0xeeeedd, cost: 35 },
   { name: 'Golden Drip',    shirt: 0xccaa33, pants: 0x1a1a1a, cost: 50 },
+  { name: 'GG Merch',       shirt: 0xcc2222, pants: 0x1a1a1a, cost: 40 },
 ];
+const GG_MERCH_IDX = 8;
 let ownedOutfits = new Set([0]); // index 0 (Casual Blue) is free
 
-let charOpts = { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 1, outfit: 0 };
+const DRESSES = [
+  { name: 'Blue Dress',     color: 0x4488cc, cost: 25 },
+  { name: 'Red Dress',      color: 0xcc3333, cost: 25 },
+  { name: 'Green Dress',    color: 0x338844, cost: 30 },
+  { name: 'Purple Dress',   color: 0x7744aa, cost: 35 },
+  { name: 'Orange Dress',   color: 0xdd7722, cost: 35 },
+  { name: 'Black Dress',    color: 0x222222, cost: 40 },
+  { name: 'Pink Dress',     color: 0xdd55aa, cost: 40 },
+  { name: 'Gold Dress',     color: 0xccaa33, cost: 55 },
+];
+let ownedDresses = new Set();
+
+const ACCESSORIES = [
+  { name: 'None',      color: null },
+  { name: 'Backpack',  color: 0x555544 },
+  { name: 'Purse',     color: 0x8b4513 },
+  { name: 'Satchel',   color: 0x2a4a2a },
+  { name: 'Tote Bag',  color: 0xcc6688 },
+];
+
+let charOpts = { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 1, outfit: 0, accessory: 0, dress: -1 };
 
 function buildCharacter(opts) {
   const group = new THREE.Group();
@@ -4638,28 +6622,107 @@ function buildCharacter(opts) {
   const hipW = isFemale ? 0.28 : 0.25;
   const armX = isFemale ? 0.32 : 0.35;
 
-  // Legs
-  const legL = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
-  legL.position.set(-0.15, 0.25, 0);
-  legL.castShadow = true;
-  group.add(legL);
-  const legR = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
-  legR.position.set(0.15, 0.25, 0);
-  legR.castShadow = true;
-  group.add(legR);
+  const wearingDress = opts.dress >= 0 && opts.dress < DRESSES.length;
+  const dressDef = wearingDress ? DRESSES[opts.dress] : null;
+  const dressMat = dressDef ? new THREE.MeshLambertMaterial({ color: dressDef.color }) : null;
 
-  // Body
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(bodyW, 0.6, 0.3), shirtMat);
-  torso.position.set(0, 0.8, 0);
-  torso.castShadow = true;
-  group.add(torso);
+  if (wearingDress) {
+    // Dress: single piece from shoulders to below knees
+    // Upper bodice
+    const bodice = new THREE.Mesh(new THREE.BoxGeometry(bodyW, 0.55, 0.3), dressMat);
+    bodice.position.set(0, 0.82, 0);
+    bodice.castShadow = true;
+    group.add(bodice);
+    // Skirt — wider, flares out
+    const skirtW = bodyW + 0.2;
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(skirtW, 0.45, 0.35), dressMat);
+    skirt.position.set(0, 0.38, 0);
+    skirt.castShadow = true;
+    group.add(skirt);
+    // Waist seam / belt line
+    const seamMat = new THREE.MeshLambertMaterial({ color: dressDef.color * 0.7 | 0 });
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.02, 0.03, 0.31), seamMat);
+    seam.position.set(0, 0.58, 0);
+    group.add(seam);
+    // Hem at bottom of skirt
+    const hem = new THREE.Mesh(new THREE.BoxGeometry(skirtW + 0.02, 0.025, 0.36), seamMat);
+    hem.position.set(0, 0.155, 0);
+    group.add(hem);
+    // Legs peeking out below (skin colored, thinner)
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
+    legL.position.set(-0.1, 0.08, 0);
+    group.add(legL);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
+    legR.position.set(0.1, 0.08, 0);
+    group.add(legR);
+  } else {
+    // Regular outfit: separate shirt + pants
+    // Legs
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
+    legL.position.set(-0.15, 0.25, 0);
+    legL.castShadow = true;
+    group.add(legL);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
+    legR.position.set(0.15, 0.25, 0);
+    legR.castShadow = true;
+    group.add(legR);
+
+    // Body
+    const torso = new THREE.Mesh(new THREE.BoxGeometry(bodyW, 0.6, 0.3), shirtMat);
+    torso.position.set(0, 0.8, 0);
+    torso.castShadow = true;
+    group.add(torso);
+
+    // GG Merch shirt — canvas textures for front text + back logo
+    if (opts.outfit === GG_MERCH_IDX) {
+      // Front: "GRAHAM GAMES is my life"
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      f.fillStyle = '#cc2222';
+      f.fillRect(0, 0, 128, 160);
+      f.textAlign = 'center';
+      f.fillStyle = '#c9a84c';
+      f.font = 'bold 22px sans-serif';
+      f.fillText('GRAHAM', 64, 50);
+      f.fillText('GAMES', 64, 76);
+      f.fillStyle = '#eeeeee';
+      f.font = 'italic 16px sans-serif';
+      f.fillText('is my life', 64, 105);
+      const frontTex = new THREE.CanvasTexture(fc);
+
+      // Back: GG serpent-style logo
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#cc2222';
+      b.fillRect(0, 0, 128, 160);
+      // Draw two green G letters
+      b.fillStyle = '#2a8a4a';
+      b.font = 'bold 56px serif';
+      b.textAlign = 'center';
+      b.fillText('G G', 64, 95);
+      // Underline accent
+      b.fillStyle = '#c9a84c';
+      b.fillRect(24, 105, 80, 3);
+      const backTex = new THREE.CanvasTexture(bc);
+
+      // Apply multi-material: [+x, -x, +y, -y, +z (front), -z (back)]
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: frontTex }),
+        new THREE.MeshLambertMaterial({ map: backTex }),
+      ];
+    }
+  }
 
   // Arms
-  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), shirtMat);
+  const armMat = wearingDress ? dressMat : shirtMat;
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), armMat);
   armL.position.set(-armX, 0.75, 0);
   armL.castShadow = true;
   group.add(armL);
-  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), shirtMat);
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), armMat);
   armR.position.set(armX, 0.75, 0);
   armR.castShadow = true;
   group.add(armR);
@@ -4683,20 +6746,175 @@ function buildCharacter(opts) {
     back.position.set(0, 1.1, -0.15);
     group.add(back);
   } else if (opts.hairStyle === 'curly') {
-    const positions = [
+    // Top crown curls
+    [
       [0, 1.55, 0], [-0.12, 1.52, 0.05], [0.12, 1.52, 0.05],
       [-0.08, 1.52, -0.1], [0.08, 1.52, -0.1], [0, 1.52, 0.12],
       [-0.15, 1.45, 0], [0.15, 1.45, 0], [0, 1.45, -0.15],
-    ];
-    positions.forEach(p => {
+    ].forEach(p => {
       const curl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), hairMat);
       curl.position.set(p[0], p[1], p[2]);
       group.add(curl);
+    });
+    // Fill sides of head (ear level, wrapping around)
+    [
+      [-0.18, 1.42, 0.06], [0.18, 1.42, 0.06],     // side-front upper
+      [-0.2, 1.38, 0], [0.2, 1.38, 0],               // sides mid
+      [-0.18, 1.38, -0.1], [0.18, 1.38, -0.1],       // side-back upper
+      [-0.16, 1.34, 0.08], [0.16, 1.34, 0.08],       // side-front lower
+      [-0.19, 1.32, -0.02], [0.19, 1.32, -0.02],     // sides at ear
+      [-0.16, 1.32, -0.14], [0.16, 1.32, -0.14],     // side-back lower
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Fill back of head
+    [
+      [0, 1.42, -0.2], [-0.1, 1.4, -0.18], [0.1, 1.4, -0.18],
+      [0, 1.35, -0.22], [-0.12, 1.34, -0.2], [0.12, 1.34, -0.2],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Forehead fringe curls
+    [
+      [-0.06, 1.48, 0.14], [0.06, 1.48, 0.14],
+      [0, 1.46, 0.16],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
     });
   } else if (opts.hairStyle === 'buzz') {
     const h = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2.5), hairMat);
     h.position.set(0, 1.35, 0);
     group.add(h);
+  } else if (opts.hairStyle === 'ponytail') {
+    // Top cap
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    top.position.set(0, 1.35, 0);
+    group.add(top);
+    // Ponytail tail hanging down from back of head
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.45, 8), hairMat);
+    tail.position.set(0, 1.1, -0.22);
+    tail.rotation.x = 0.15;
+    group.add(tail);
+    // Hair tie band
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 12), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
+    band.position.set(0, 1.28, -0.22);
+    band.rotation.x = Math.PI / 2;
+    group.add(band);
+  } else if (opts.hairStyle === 'bun') {
+    // Top cap
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    top.position.set(0, 1.35, 0);
+    group.add(top);
+    // Bun sphere on top-back of head
+    const bun = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), hairMat);
+    bun.position.set(0, 1.48, -0.15);
+    group.add(bun);
+  } else if (opts.hairStyle === 'curlylong') {
+    // Top crown curls
+    [
+      [0, 1.55, 0], [-0.12, 1.52, 0.05], [0.12, 1.52, 0.05],
+      [-0.08, 1.52, -0.1], [0.08, 1.52, -0.1], [0, 1.52, 0.12],
+      [-0.15, 1.45, 0], [0.15, 1.45, 0], [0, 1.45, -0.15],
+    ].forEach(p => {
+      const curl = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), hairMat);
+      curl.position.set(p[0], p[1], p[2]);
+      group.add(curl);
+    });
+    // Forehead fringe curls
+    [
+      [-0.06, 1.48, 0.14], [0.06, 1.48, 0.14], [0, 1.46, 0.16],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Upper side curls — fill around ears between crown and transition
+    [
+      [-0.18, 1.42, 0.06], [0.18, 1.42, 0.06],
+      [-0.2, 1.38, 0], [0.2, 1.38, 0],
+      [-0.16, 1.34, 0.08], [0.16, 1.34, 0.08],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Transition curls — wrap around sides and back of head
+    [
+      [-0.16, 1.4, -0.12], [0.16, 1.4, -0.12], [0, 1.42, -0.18],
+      [-0.18, 1.38, -0.08], [0.18, 1.38, -0.08],
+      [-0.1, 1.4, -0.18], [0.1, 1.4, -0.18],
+      [-0.14, 1.36, -0.17], [0.14, 1.36, -0.17], [0, 1.38, -0.22],
+      [-0.19, 1.34, -0.1], [0.19, 1.34, -0.1],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.075, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Upper back row
+    [
+      [-0.12, 1.3, -0.21], [0, 1.32, -0.24], [0.12, 1.3, -0.21],
+      [-0.17, 1.3, -0.14], [0.17, 1.3, -0.14],
+      [-0.06, 1.31, -0.23], [0.06, 1.31, -0.23],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Mid-upper row
+    [
+      [-0.14, 1.24, -0.19], [-0.04, 1.26, -0.22], [0.04, 1.26, -0.22], [0.14, 1.24, -0.19],
+      [-0.17, 1.24, -0.1], [0.17, 1.24, -0.1],
+      [0, 1.25, -0.23],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Neck level row
+    [
+      [-0.14, 1.16, -0.17], [-0.04, 1.18, -0.2], [0.04, 1.18, -0.2], [0.14, 1.16, -0.17],
+      [-0.16, 1.16, -0.1], [0.16, 1.16, -0.1],
+      [0, 1.17, -0.21],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Shoulder level row
+    [
+      [-0.12, 1.08, -0.15], [-0.02, 1.1, -0.18], [0.02, 1.1, -0.18], [0.12, 1.08, -0.15],
+      [0, 1.09, -0.19],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Bottom tips (trailing off smaller)
+    [
+      [-0.08, 0.98, -0.13], [0, 1.0, -0.16], [0.08, 0.98, -0.13],
+      [-0.04, 0.99, -0.15], [0.04, 0.99, -0.15],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
+    // Side curls framing face — cascade down alongside
+    [
+      [-0.19, 1.34, 0.06], [0.19, 1.34, 0.06],
+      [-0.18, 1.26, 0.04], [0.18, 1.26, 0.04],
+      [-0.16, 1.18, 0.02], [0.16, 1.18, 0.02],
+      [-0.14, 1.1, 0.0], [0.14, 1.1, 0.0],
+    ].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]);
+      group.add(c);
+    });
   }
 
   // Eyes
@@ -4706,6 +6924,190 @@ function buildCharacter(opts) {
   const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
   eyeR.position.set(0.08, 1.35, 0.2);
   group.add(eyeR);
+
+  // Accessory
+  const accDef = ACCESSORIES[opts.accessory || 0];
+  if (accDef && accDef.color !== null) {
+    const accMat = new THREE.MeshLambertMaterial({ color: accDef.color });
+    if (accDef.name === 'Backpack') {
+      // Main body — rounded box shape
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.38, 0.16), accMat);
+      body.position.set(0, 0.82, -0.24);
+      body.castShadow = true;
+      group.add(body);
+      // Top flap (slightly wider, covers top)
+      const darkMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.8 | 0 });
+      const flap = new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.08, 0.17), darkMat);
+      flap.position.set(0, 1.02, -0.24);
+      group.add(flap);
+      // Front pocket
+      const pocketMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.9 | 0 });
+      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.16, 0.03), pocketMat);
+      pocket.position.set(0, 0.72, -0.33);
+      group.add(pocket);
+      // Pocket zipper line
+      const zipMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+      const zip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.012, 0.005), zipMat);
+      zip.position.set(0, 0.81, -0.345);
+      group.add(zip);
+      // Straps — go over shoulders and connect to top
+      const strapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.7 | 0 });
+      // Left strap — over shoulder
+      const stL1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.32), strapMat);
+      stL1.position.set(-0.1, 1.02, -0.08);
+      group.add(stL1);
+      // Left strap — down front of shoulder
+      const stL2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.04), strapMat);
+      stL2.position.set(-0.1, 0.92, 0.06);
+      group.add(stL2);
+      // Right strap — over shoulder
+      const stR1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.32), strapMat);
+      stR1.position.set(0.1, 1.02, -0.08);
+      group.add(stR1);
+      // Right strap — down front of shoulder
+      const stR2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.04), strapMat);
+      stR2.position.set(0.1, 0.92, 0.06);
+      group.add(stR2);
+      // Top handle loop
+      const handleMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.7 | 0 });
+      const handle = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.012, 6, 8, Math.PI), handleMat);
+      handle.position.set(0, 1.08, -0.24);
+      handle.rotation.x = Math.PI;
+      handle.rotation.z = Math.PI;
+      group.add(handle);
+    } else if (accDef.name === 'Purse') {
+      const strapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.7 | 0 });
+      const purseX = armX * 0.5;
+      const purseZ = 0.18;
+      const purseY = 0.58;
+      // Strap: over left shoulder
+      const strapShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.08, 0.3), strapMat);
+      strapShoulder.position.set(-armX + 0.05, 1.05, 0);
+      group.add(strapShoulder);
+      // Strap: down the front diagonally from left shoulder to purse
+      const strapFront = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.55, 0.015), strapMat);
+      strapFront.position.set(-armX * 0.2 + purseX * 0.6, 0.82, purseZ - 0.02);
+      strapFront.rotation.z = 0.45;
+      group.add(strapFront);
+      // Strap: across the back from left shoulder down to right side
+      const strapBack = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.55, 0.015), strapMat);
+      strapBack.position.set(-armX * 0.2 + purseX * 0.6, 0.82, -0.16);
+      strapBack.rotation.z = 0.45;
+      group.add(strapBack);
+      // Strap: under right arm connecting back to purse
+      const strapUnder = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.06, 0.2), strapMat);
+      strapUnder.position.set(armX - 0.08, 0.62, 0.02);
+      group.add(strapUnder);
+      // Purse body — front-right of body
+      const purseBody = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.13, 0.08), accMat);
+      purseBody.position.set(purseX, purseY, purseZ);
+      purseBody.castShadow = true;
+      group.add(purseBody);
+      // Purse flap
+      const flapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.85 | 0 });
+      const flap = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.04, 0.09), flapMat);
+      flap.position.set(purseX, purseY + 0.07, purseZ);
+      group.add(flap);
+      // Gold clasp
+      const claspMat = new THREE.MeshLambertMaterial({ color: 0xccaa44 });
+      const clasp = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.025, 0.015), claspMat);
+      clasp.position.set(purseX, purseY + 0.06, purseZ + 0.045);
+      group.add(clasp);
+      // Stitching line
+      const stitchMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.6 | 0 });
+      const stitch = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.008, 0.005), stitchMat);
+      stitch.position.set(purseX, purseY, purseZ + 0.043);
+      group.add(stitch);
+    } else if (accDef.name === 'Satchel') {
+      // Messenger satchel on front-left, strap from right shoulder wrapping around
+      const strapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.7 | 0 });
+      const bagX = -armX * 0.5;
+      const bagZ = 0.18;
+      const bagY = 0.55;
+      // Strap: over right shoulder
+      const strapShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.08, 0.3), strapMat);
+      strapShoulder.position.set(armX - 0.05, 1.05, 0);
+      group.add(strapShoulder);
+      // Strap: down front diagonally from right shoulder to bag
+      const strapFront = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.55, 0.015), strapMat);
+      strapFront.position.set(armX * 0.2 + bagX * 0.3, 0.82, bagZ - 0.02);
+      strapFront.rotation.z = -0.45;
+      group.add(strapFront);
+      // Strap: across back from right shoulder to left side (mirrors front angle)
+      const strapBack = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.55, 0.015), strapMat);
+      strapBack.position.set(armX * 0.2 + bagX * 0.3, 0.82, -0.16);
+      strapBack.rotation.z = -0.45;
+      group.add(strapBack);
+      // Strap: under left arm connecting back to bag
+      const strapUnder = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.2), strapMat);
+      strapUnder.position.set(-armX + 0.08, 0.62, 0.02);
+      group.add(strapUnder);
+      // Bag body — front-left
+      const bagBody = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.2, 0.09), accMat);
+      bagBody.position.set(bagX, bagY, bagZ);
+      bagBody.castShadow = true;
+      group.add(bagBody);
+      // Flap that folds over
+      const flapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.85 | 0 });
+      const flap = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.1), flapMat);
+      flap.position.set(bagX, bagY + 0.12, bagZ);
+      flap.rotation.x = 0.15;
+      group.add(flap);
+      // Gold buckle on flap
+      const buckleMat = new THREE.MeshLambertMaterial({ color: 0xccaa44 });
+      const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.04, 0.015), buckleMat);
+      buckle.position.set(bagX, bagY + 0.06, bagZ + 0.05);
+      group.add(buckle);
+      // Side gusset
+      const gusset = new THREE.Mesh(new THREE.BoxGeometry(0.01, 0.18, 0.07), accMat);
+      gusset.position.set(bagX - 0.08, bagY, bagZ);
+      group.add(gusset);
+    } else if (accDef.name === 'Tote Bag') {
+      // Tote bag on front-right, strap from left shoulder wrapping around
+      const strapMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.7 | 0 });
+      const bagX = armX * 0.4;
+      const bagZ = 0.18;
+      const bagY = 0.45;
+      // Strap: over left shoulder
+      const strapShoulder = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.08, 0.3), strapMat);
+      strapShoulder.position.set(-armX + 0.05, 1.05, 0);
+      group.add(strapShoulder);
+      // Strap: down front diagonally from left shoulder to bag
+      const strapFront = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.6, 0.015), strapMat);
+      strapFront.position.set(-armX * 0.2 + bagX * 0.6, 0.8, bagZ - 0.02);
+      strapFront.rotation.z = 0.4;
+      group.add(strapFront);
+      // Strap: across back from left shoulder to right side (mirrors front angle)
+      const strapBack = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.6, 0.015), strapMat);
+      strapBack.position.set(-armX * 0.2 + bagX * 0.6, 0.8, -0.16);
+      strapBack.rotation.z = 0.4;
+      group.add(strapBack);
+      // Strap: under right arm connecting back to bag
+      const strapUnder = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.2), strapMat);
+      strapUnder.position.set(armX - 0.08, 0.58, 0.02);
+      group.add(strapUnder);
+      // Bag body — front-right
+      const bagBody = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.28, 0.08), accMat);
+      bagBody.position.set(bagX, bagY, bagZ);
+      bagBody.castShadow = true;
+      group.add(bagBody);
+      // Inner lining visible at top
+      const liningMat = new THREE.MeshLambertMaterial({ color: 0xddccbb });
+      const lining = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.03, 0.06), liningMat);
+      lining.position.set(bagX, bagY + 0.15, bagZ);
+      group.add(lining);
+      // Front pocket
+      const pocketMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.85 | 0 });
+      const pocket = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.01), pocketMat);
+      pocket.position.set(bagX, bagY - 0.04, bagZ + 0.045);
+      group.add(pocket);
+      // Bottom reinforcement
+      const bottomMat = new THREE.MeshLambertMaterial({ color: accDef.color * 0.75 | 0 });
+      const bottom = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.03, 0.08), bottomMat);
+      bottom.position.set(bagX, bagY - 0.14, bagZ);
+      group.add(bottom);
+    }
+  }
 
   return group;
 }
@@ -4788,6 +7190,21 @@ function setHairStyle(val, btn) {
   updatePreview();
 }
 
+// Populate accessory options
+const accContainer = document.getElementById('accessory-options');
+ACCESSORIES.forEach((acc, i) => {
+  const btn = document.createElement('button');
+  btn.className = 'toggle-btn' + (i === charOpts.accessory ? ' selected' : '');
+  btn.textContent = acc.name;
+  btn.onclick = () => {
+    charOpts.accessory = i;
+    accContainer.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    updatePreview();
+  };
+  accContainer.appendChild(btn);
+});
+
 let gameStarted = false;
 
 function startGame() {
@@ -4865,6 +7282,10 @@ document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
   if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
+  if (e.code === 'KeyC' && gameStarted && !gameOver && activePet !== 'none') {
+    petStay = !petStay;
+    showTip(petStay ? 'Stay!' : 'Come!');
+  }
   if (mirrorOpen) { closeMirror(); return; }
 });
 document.addEventListener('keyup', (e) => { keys[e.code] = false; });
@@ -4939,6 +7360,12 @@ const actionConfig = {
   tv:       { label: 'Watching TV...', duration: 4, restore: 45, cost: 0 },
   shower:   { label: 'Showering...', duration: 3.5, restore: 50, cost: 2 },
   computer: { label: 'Gaming...', duration: 10, restore: 0, cost: 0, earn: 10, funDrain: 10 },
+  libraryRead: { label: 'Reading...', duration: 5, restore: 50, cost: 0 },
+  gymWorkout: { label: 'Working out...', duration: 4, restore: 15, cost: 0, hungerDrain: 15 },
+  restaurantEat: { label: 'Eating a meal...', duration: 4, restore: 70, cost: 10 },
+  arcadePlay: { label: 'Playing arcade...', duration: 5, restore: 55, cost: 5 },
+  basketball: { label: 'Shooting hoops...', duration: 4, restore: 40, cost: 0, hungerDrain: 10 },
+  fastfoodEat: { label: 'Eating junk food...', duration: 2.5, restore: 30, cost: 3 },
 };
 
 let miniGameScore = 0;
@@ -5002,6 +7429,12 @@ function startAction(obj) {
     return;
   }
 
+  // Merch store counter — opens merch purchase overlay
+  if (obj.type === 'merchCounter') {
+    openMerchStore();
+    return;
+  }
+
   // Grand Piano is instant — fun boost
   if (obj.type === 'grandPiano') {
     needs.fun = Math.min(100, needs.fun + 50);
@@ -5026,8 +7459,16 @@ function startAction(obj) {
   currentAction = { obj, config, phase: 'walking' };
 }
 
+const ACTIVITY_MINIGAMES = ['libraryRead', 'gymWorkout', 'restaurantEat', 'arcadePlay', 'basketball', 'fastfoodEat'];
+
 function beginAction(action) {
   const { config } = action;
+  // Town activity mini-games
+  if (ACTIVITY_MINIGAMES.includes(action.obj.type)) {
+    startActivityMiniGame(action.obj, config);
+    currentAction = null;
+    return;
+  }
   if (action.obj.type === 'fridge') money -= config.cost;
   action.phase = 'doing';
   actionProgress = 0;
@@ -5838,7 +8279,7 @@ let petMenuOpen = false;
 
 function togglePetMenu() {
   if (gameOver || !gameStarted || currentAction) return;
-  if (!petDogLoaded) return;
+  if (!petDogLoaded && !hasBeaverPet) return;
   petMenuOpen = !petMenuOpen;
   shopOpen = false;
   document.getElementById('shop-overlay').classList.remove('visible');
@@ -5855,11 +8296,15 @@ function togglePetMenu() {
 function renderPetOptions() {
   const container = document.getElementById('pet-options');
   container.innerHTML = '';
-  const pets = [
-    { id: 'dog', name: 'Dog', icon: '\u{1F415}', desc: 'Loyal golden retriever. Follows close behind you.' },
-    { id: 'cat', name: 'Cat', icon: '\u{1F408}', desc: 'Independent grey cat. Wanders at your side.' },
-    { id: 'none', name: 'No Pet', icon: '\u{1F6AB}', desc: 'Dismiss your pet for now.' },
-  ];
+  const pets = [];
+  if (petDogLoaded) {
+    pets.push({ id: 'dog', name: 'Dog', icon: '\u{1F415}', desc: 'Loyal golden retriever. Follows close behind you.' });
+    pets.push({ id: 'cat', name: 'Cat', icon: '\u{1F408}', desc: 'Independent grey cat. Wanders at your side.' });
+  }
+  if (hasBeaverPet) {
+    pets.push({ id: 'beaver', name: 'GG Beaver', icon: '\u{1F9AB}', desc: 'Adorable beaver in a GG shirt. A true fan!' });
+  }
+  pets.push({ id: 'none', name: 'No Pet', icon: '\u{1F6AB}', desc: 'Dismiss your pet for now.' });
   pets.forEach(pet => {
     const div = document.createElement('div');
     div.className = 'pet-option' + (activePet === pet.id ? ' active' : '');
@@ -5879,9 +8324,11 @@ function renderPetOptions() {
 function selectPet(petId) {
   activePet = petId;
   petBonusTimer = 0;
+  petStay = false;
   if (petDog) petDog.visible = petId === 'dog';
   if (petCat) petCat.visible = petId === 'cat';
-  const names = { dog: 'Dog', cat: 'Cat', none: 'No Pet' };
+  if (petBeaver) petBeaver.visible = petId === 'beaver';
+  const names = { dog: 'Dog', cat: 'Cat', beaver: 'GG Beaver', none: 'No Pet' };
   showTip(petId === 'none' ? 'Pet dismissed!' : 'Equipped: ' + names[petId] + '!');
 }
 
@@ -5949,9 +8396,9 @@ function renderShopItems() {
   container.appendChild(outfitLabel);
 
   OUTFITS.forEach((fit, i) => {
-    if (i === 0) return; // skip default free outfit
+    if (i === 0 || i === GG_MERCH_IDX) return; // skip default free outfit and GG Merch (sold at merch store)
     const owned = ownedOutfits.has(i);
-    const equipped = charOpts.outfit === i;
+    const equipped = charOpts.outfit === i && charOpts.dress < 0;
     const div = document.createElement('div');
     div.className = 'shop-item';
     // Color swatches
@@ -5986,6 +8433,69 @@ function renderShopItems() {
     div.appendChild(btn);
     container.appendChild(div);
   });
+
+  // --- Dresses ---
+  const dressLabel = document.createElement('div');
+  dressLabel.style.cssText = 'color:#aaa; font-size:0.75rem; margin:14px 0 6px; text-transform:uppercase; letter-spacing:0.08em;';
+  dressLabel.textContent = 'Dresses';
+  container.appendChild(dressLabel);
+
+  DRESSES.forEach((dr, i) => {
+    const owned = ownedDresses.has(i);
+    const equipped = charOpts.dress === i;
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    // Color swatch
+    const swatches = document.createElement('div');
+    swatches.style.cssText = 'display:flex; gap:4px; margin-right:10px;';
+    const sw = document.createElement('div');
+    sw.style.cssText = 'width:18px; height:40px; border-radius:3px 3px 6px 6px; border:1px solid #555; background:#' + dr.color.toString(16).padStart(6, '0');
+    swatches.appendChild(sw);
+    div.appendChild(swatches);
+    // Info
+    const info = document.createElement('div');
+    info.className = 'shop-item-info';
+    info.innerHTML = '<div class="shop-item-name">' + dr.name + '</div>';
+    div.appendChild(info);
+    // Button
+    const btn = document.createElement('button');
+    if (equipped) {
+      btn.className = 'shop-item-btn bought'; btn.textContent = 'WEARING';
+    } else if (owned) {
+      btn.className = 'shop-item-btn buy'; btn.textContent = 'EQUIP';
+      btn.onclick = () => { equipDress(i); renderShopItems(); };
+    } else if (money < dr.cost) {
+      btn.className = 'shop-item-btn bought'; btn.textContent = '$' + dr.cost;
+    } else {
+      btn.className = 'shop-item-btn buy'; btn.textContent = '$' + dr.cost;
+      btn.onclick = () => { buyDress(i); renderShopItems(); };
+    }
+    div.appendChild(btn);
+    container.appendChild(div);
+  });
+}
+
+function buyDress(idx) {
+  const dr = DRESSES[idx];
+  if (!dr || money < dr.cost || ownedDresses.has(idx)) return;
+  money -= dr.cost;
+  ownedDresses.add(idx);
+  SFX.kaChing();
+  equipDress(idx);
+  mlTry('ml_fashion_icon');
+  mlCheckLivingLarge();
+}
+
+function equipDress(idx) {
+  charOpts.dress = idx;
+  const pos = character.position.clone();
+  const vis = character.visible;
+  scene.remove(character);
+  character = buildCharacter(charOpts);
+  character.position.copy(pos);
+  character.visible = vis;
+  scene.add(character);
+  showTip('Wearing: ' + DRESSES[idx].name);
 }
 
 function buyOutfit(idx) {
@@ -6001,7 +8511,7 @@ function buyOutfit(idx) {
 
 function equipOutfit(idx) {
   charOpts.outfit = idx;
-  // Rebuild the in-game character with new outfit
+  charOpts.dress = -1; // take off dress when equipping outfit
   const pos = character.position.clone();
   const vis = character.visible;
   scene.remove(character);
@@ -6075,6 +8585,183 @@ function closeMirror() {
   }, 300);
 }
 document.getElementById('mirror-overlay').addEventListener('click', closeMirror);
+
+// ═══ MERCH STORE ═══
+let merchStoreOpen = false;
+
+function openMerchStore() {
+  merchStoreOpen = true;
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = '';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:360px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.3rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = 'Graham Games Official Merch';
+  panel.appendChild(title);
+
+  const subtitle = document.createElement('div');
+  subtitle.style.cssText = 'color:#888;font-size:0.75rem;margin-bottom:16px;';
+  subtitle.textContent = 'Exclusive apparel for true fans';
+  panel.appendChild(subtitle);
+
+  // Preview: red shirt swatch + black pants swatch
+  const preview = document.createElement('div');
+  preview.style.cssText = 'display:flex;justify-content:center;gap:6px;margin-bottom:12px;';
+  const s1 = document.createElement('div');
+  s1.style.cssText = 'width:40px;height:50px;border-radius:5px 5px 0 0;border:1px solid #555;background:#cc2222;display:flex;align-items:center;justify-content:center;color:#c9a84c;font-size:0.55rem;font-weight:bold;text-align:center;line-height:1.1;';
+  s1.textContent = 'GG is my life';
+  const s2 = document.createElement('div');
+  s2.style.cssText = 'width:40px;height:36px;border-radius:0 0 5px 5px;border:1px solid #555;border-top:none;background:#1a1a1a;';
+  const col = document.createElement('div');
+  col.appendChild(s1); col.appendChild(s2);
+  preview.appendChild(col);
+  panel.appendChild(preview);
+
+  const desc = document.createElement('div');
+  desc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:16px;line-height:1.4;';
+  desc.innerHTML = '<b style="color:#cc2222">Red T-Shirt</b> — "Graham Games is my life" on front, GG logo on back<br><b>Black Pants</b> included';
+  panel.appendChild(desc);
+
+  const owned = ownedOutfits.has(GG_MERCH_IDX);
+  const equipped = charOpts.outfit === GG_MERCH_IDX && charOpts.dress < 0;
+
+  const btn = document.createElement('button');
+  btn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (equipped) {
+    btn.style.background = '#444';
+    btn.style.color = '#aaa';
+    btn.textContent = 'WEARING';
+  } else if (owned) {
+    btn.style.background = '#c9a84c';
+    btn.style.color = '#1a1a2e';
+    btn.textContent = 'EQUIP';
+    btn.onclick = () => { equipOutfit(GG_MERCH_IDX); closeMerchStore(); };
+  } else if (money < 40) {
+    btn.style.background = '#444';
+    btn.style.color = '#aaa';
+    btn.textContent = '$40 — Not enough money';
+  } else {
+    btn.style.background = '#c9a84c';
+    btn.style.color = '#1a1a2e';
+    btn.textContent = 'BUY — $40';
+    btn.onclick = () => {
+      money -= 40;
+      ownedOutfits.add(GG_MERCH_IDX);
+      SFX.kaChing();
+      equipOutfit(GG_MERCH_IDX);
+      mlTry('ml_fashion_icon');
+      closeMerchStore();
+      showTip('Got the GG Merch outfit!');
+    };
+  }
+  panel.appendChild(btn);
+
+  // --- GG Beaver Pet ---
+  const divider = document.createElement('div');
+  divider.style.cssText = 'border-top:1px solid #333;margin:16px 0;';
+  panel.appendChild(divider);
+
+  const beaverIcon = document.createElement('div');
+  beaverIcon.style.cssText = 'font-size:2.5rem;margin-bottom:6px;';
+  beaverIcon.textContent = '\u{1F9AB}';
+  panel.appendChild(beaverIcon);
+
+  const beaverDesc = document.createElement('div');
+  beaverDesc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:12px;line-height:1.4;';
+  beaverDesc.innerHTML = '<b style="color:#8B6914">GG Beaver</b> — Adorable beaver with big cute eyes, wearing a GG shirt!<br>+10 fun every 30 seconds';
+  panel.appendChild(beaverDesc);
+
+  const beaverBtn = document.createElement('button');
+  beaverBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (hasBeaverPet) {
+    beaverBtn.style.background = '#444';
+    beaverBtn.style.color = '#aaa';
+    beaverBtn.textContent = 'OWNED';
+  } else if (money < 100) {
+    beaverBtn.style.background = '#444';
+    beaverBtn.style.color = '#aaa';
+    beaverBtn.textContent = '$100 — Not enough money';
+  } else {
+    beaverBtn.style.background = '#c9a84c';
+    beaverBtn.style.color = '#1a1a2e';
+    beaverBtn.textContent = 'BUY — $100';
+    beaverBtn.onclick = () => {
+      money -= 100;
+      hasBeaverPet = true;
+      buildPetBeaver();
+      selectPet('beaver');
+      document.getElementById('pet-menu-btn').style.display = '';
+      SFX.kaChing();
+      closeMerchStore();
+      showTip('You adopted a GG Beaver!');
+    };
+  }
+  panel.appendChild(beaverBtn);
+
+  // --- GG Poster ---
+  const divider2 = document.createElement('div');
+  divider2.style.cssText = 'border-top:1px solid #333;margin:16px 0;';
+  panel.appendChild(divider2);
+
+  const posterIcon = document.createElement('div');
+  posterIcon.style.cssText = 'font-size:2.5rem;margin-bottom:6px;';
+  posterIcon.textContent = '\u{1F5BC}\uFE0F';
+  panel.appendChild(posterIcon);
+
+  const posterDesc = document.createElement('div');
+  posterDesc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:12px;line-height:1.4;';
+  posterDesc.innerHTML = '<b style="color:#c9a84c">GG Poster</b> — Mini Life character poster with "GRAHAM" header and GG logo. Hang it on your wall!<br>+15 fun when admired';
+  panel.appendChild(posterDesc);
+
+  const posterBtn = document.createElement('button');
+  posterBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (hasGGPoster) {
+    posterBtn.style.background = '#444';
+    posterBtn.style.color = '#aaa';
+    posterBtn.textContent = 'OWNED';
+  } else if (!hasSecondFloor) {
+    posterBtn.style.background = '#444';
+    posterBtn.style.color = '#aaa';
+    posterBtn.textContent = '$50 — Requires second floor';
+  } else if (money < 50) {
+    posterBtn.style.background = '#444';
+    posterBtn.style.color = '#aaa';
+    posterBtn.textContent = '$50 — Not enough money';
+  } else {
+    posterBtn.style.background = '#c9a84c';
+    posterBtn.style.color = '#1a1a2e';
+    posterBtn.textContent = 'BUY — $50';
+    posterBtn.onclick = () => {
+      money -= 50;
+      hasGGPoster = true;
+      buildGGPoster();
+      SFX.kaChing();
+      closeMerchStore();
+      showTip('GG Poster hung upstairs near your bed!');
+    };
+  }
+  panel.appendChild(posterBtn);
+
+  const close = document.createElement('div');
+  close.style.cssText = 'color:#888;font-size:0.75rem;margin-top:8px;cursor:pointer;';
+  close.textContent = 'Click anywhere to close';
+  panel.appendChild(close);
+
+  overlay.appendChild(panel);
+  overlay.onclick = (e) => { if (e.target === overlay) closeMerchStore(); };
+}
+
+function closeMerchStore() {
+  merchStoreOpen = false;
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'none';
+  overlay.innerHTML = '';
+}
 
 function purchaseSecondFloor() {
   if (hasSecondFloor || money < 200) return;
@@ -6339,12 +9026,13 @@ function update() {
   }
 
   // Pet happiness bonus (+10 fun every 30 real seconds with a pet)
-  if (activePet !== 'none' && petDogLoaded) {
+  if (activePet !== 'none' && (petDogLoaded || (activePet === 'beaver' && hasBeaverPet))) {
     petBonusTimer += dt;
     if (petBonusTimer >= 30) {
       petBonusTimer -= 30;
       needs.fun = Math.min(100, needs.fun + 10);
-      showTip(activePet === 'dog' ? 'Your dog makes you happy!' : 'Your cat purrs contentedly!');
+      const petTips = { dog: 'Your dog makes you happy!', cat: 'Your cat purrs contentedly!', beaver: 'Your beaver slaps its tail happily!' };
+      showTip(petTips[activePet] || 'Your pet makes you happy!');
     }
   }
 
@@ -6490,27 +9178,44 @@ function update() {
     doorPivot.rotation.y = doorAngle;
   }
 
-  // Active pet follow (only at home)
+  // Active pet follow (only at home, only when player moves, not when staying)
   if (!inTown && !inMansion) {
+    const playerMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || moveTarget;
     if (petDog && activePet === 'dog') {
-      const target = character.position.clone();
-      target.x += Math.sin(yaw + 2) * 1.5;
-      target.z += Math.cos(yaw + 2) * 1.5;
-      target.y = character.position.y;
-      petDog.position.lerp(target, 0.03);
-      petDog.lookAt(character.position.x, petDog.position.y, character.position.z);
+      if (playerMoving && !petStay) {
+        const target = character.position.clone();
+        target.x += Math.sin(yaw + 2) * 1.5;
+        target.z += Math.cos(yaw + 2) * 1.5;
+        target.y = character.position.y;
+        petDog.position.lerp(target, 0.03);
+      }
+      if (!petStay) petDog.lookAt(character.position.x, petDog.position.y, character.position.z);
       const tail = petDog.getObjectByName('dogTail');
-      if (tail) tail.rotation.y = Math.sin(performance.now() * 0.008) * 0.5;
+      if (tail) tail.rotation.y = (playerMoving && !petStay) ? Math.sin(performance.now() * 0.008) * 0.5 : 0;
     }
     if (petCat && activePet === 'cat') {
-      const catTarget = character.position.clone();
-      catTarget.x += Math.sin(yaw - 2) * 1.8;
-      catTarget.z += Math.cos(yaw - 2) * 1.8;
-      catTarget.y = character.position.y;
-      petCat.position.lerp(catTarget, 0.02);
-      petCat.lookAt(character.position.x, petCat.position.y, character.position.z);
+      if (playerMoving && !petStay) {
+        const catTarget = character.position.clone();
+        catTarget.x += Math.sin(yaw - 2) * 1.8;
+        catTarget.z += Math.cos(yaw - 2) * 1.8;
+        catTarget.y = character.position.y;
+        petCat.position.lerp(catTarget, 0.02);
+      }
+      if (!petStay) petCat.lookAt(character.position.x, petCat.position.y, character.position.z);
       const catTail = petCat.getObjectByName('catTail');
-      if (catTail) catTail.rotation.y = Math.sin(performance.now() * 0.006) * 0.7;
+      if (catTail) catTail.rotation.y = (playerMoving && !petStay) ? Math.sin(performance.now() * 0.006) * 0.7 : 0;
+    }
+    if (petBeaver && activePet === 'beaver') {
+      if (playerMoving && !petStay) {
+        const bTarget = character.position.clone();
+        bTarget.x += Math.sin(yaw + 1) * 1.3;
+        bTarget.z += Math.cos(yaw + 1) * 1.3;
+        bTarget.y = character.position.y;
+        petBeaver.position.lerp(bTarget, 0.025);
+      }
+      if (!petStay) petBeaver.lookAt(character.position.x, petBeaver.position.y, character.position.z);
+      const bTail = petBeaver.getObjectByName('beaverTail');
+      if (bTail) bTail.rotation.y = (playerMoving && !petStay) ? Math.sin(performance.now() * 0.005) * 0.4 : 0;
     }
   }
 
@@ -6591,25 +9296,57 @@ function updateHUD() {
 }
 
 function triggerGameOver(need) {
-  gameOver = true;
+  // Respawn instead of game over — restore needs, send player home
+  const reasons = {
+    hunger: 'You passed out from hunger! Woke up at home...',
+    energy: 'You collapsed from exhaustion! Woke up at home...',
+    fun: 'You blacked out from boredom! Woke up at home...',
+    hygiene: 'You passed out... let\'s not talk about why. Woke up at home...',
+  };
+
+  // Stop any current action / overlays
+  currentAction = null;
+  actionProgress = 0;
+  moveTarget = null;
+  document.getElementById('action-bar-wrap').classList.remove('visible');
+  SFX.stopLoops();
+  closeMirror();
+  closeMerchStore();
+  closeNPCDialogue();
   shopOpen = false;
   petMenuOpen = false;
-  closeMirror();
-  closeNPCDialogue();
   document.getElementById('shop-overlay').classList.remove('visible');
   document.getElementById('pet-menu-overlay').classList.remove('visible');
   hideDriveOverlay();
-  SFX.stopLoops();
-  SFX.stopMusic();
+  clearAnimIntervals();
+  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay'].forEach(id => {
+    const el = document.getElementById(id);
+    el.style.background = '';
+    el.classList.remove('visible');
+    el.innerHTML = '';
+  });
+
+  // Restore needs partially
+  needs.hunger = 40;
+  needs.energy = 40;
+  needs.fun = 40;
+  needs.hygiene = 40;
+
+  // Money penalty
+  const penalty = Math.min(money, 25);
+  money -= penalty;
+
+  // Send player home
+  if (inTown && townGroup) { townGroup.visible = false; inTown = false; }
+  if (inMansion && mansionGroup) { mansionGroup.visible = false; inMansion = false; }
+  character.position.set(0, 0.15, 0);
+  currentFloor = 0;
+  yaw = Math.PI;
+  pitch = 0;
+  scene.fog.far = HOME_FOG_FAR;
+
   SFX.gameOver();
-  const reasons = {
-    hunger: 'You starved!',
-    energy: 'You collapsed from exhaustion!',
-    fun: 'You died of boredom!',
-    hygiene: 'You... well, let\'s not talk about it.',
-  };
-  document.getElementById('game-over-reason').textContent = reasons[need];
-  document.getElementById('game-over').classList.add('visible');
+  showTip(reasons[need] + (penalty > 0 ? ' (-$' + penalty + ')' : ''));
 }
 
 function restartGame() {
@@ -6634,6 +9371,7 @@ function restartGame() {
   miniGameScore = 0;
   clearAnimIntervals();
   closeMirror();
+  closeMerchStore();
   ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay', 'name-prompt-overlay'].forEach(id => {
     const el = document.getElementById(id);
     el.style.background = '';
@@ -6681,11 +9419,32 @@ function restartGame() {
   rebuildInteractMeshes();
   // Reset outfits
   ownedOutfits = new Set([0]);
+  ownedDresses = new Set();
   charOpts.outfit = 0;
+  charOpts.dress = -1;
   booksRead = 0;
   treadmillUses = 0;
   activePet = 'dog';
   petBonusTimer = 0;
+  // Reset beaver pet
+  if (petBeaver) {
+    const bBody = petBeaver.children[0];
+    const idx = petBodyMeshes.indexOf(bBody);
+    if (idx >= 0) petBodyMeshes.splice(idx, 1);
+    scene.remove(petBeaver);
+    petBeaver = null;
+  }
+  hasBeaverPet = false;
+  // Reset GG Poster
+  if (ggPosterGroup) {
+    scene.remove(ggPosterGroup);
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].type === 'ggPoster') interactables.splice(i, 1);
+    }
+    ggPosterGroup = null;
+  }
+  hasGGPoster = false;
+  delete actionConfig.ggPoster;
   // Reset town/car state
   if (carGroup) { scene.remove(carGroup); carGroup = null; }
   if (townGroup) { scene.remove(townGroup); townGroup = null; }
@@ -6711,7 +9470,7 @@ function restartGame() {
   const mansionTypes = ['mansionCar', 'mansionKitchen', 'grandPiano', 'homeTheater', 'mansionSpa',
     'kingBed', 'mansionLibrary', 'artEasel', 'mansionArcade', 'hotTub', 'wineRack', 'tennisCourt', 'zenGarden'];
   for (let i = interactables.length - 1; i >= 0; i--) {
-    if (['car', 'townCar'].includes(interactables[i].type) || mansionTypes.includes(interactables[i].type)) interactables.splice(i, 1);
+    if (['car', 'townCar', 'merchCounter'].includes(interactables[i].type) || mansionTypes.includes(interactables[i].type)) interactables.splice(i, 1);
   }
   mansionTypes.forEach(k => delete actionConfig[k]);
   npcBodyMeshes = [];
@@ -6794,6 +9553,7 @@ function buildSaveData() {
     day,
     charOpts: { ...charOpts },
     ownedOutfits: [...ownedOutfits],
+    ownedDresses: [...ownedDresses],
     ownedFurniture: [...ownedFurniture],
     currentTrackId: SFX.currentTrackId,
     doorOpen,
@@ -6813,6 +9573,8 @@ function buildSaveData() {
     questsCompleted,
     jobLastDay: { ...jobLastDay },
     totalShiftsWorked,
+    hasBeaverPet,
+    hasGGPoster,
   };
 }
 
@@ -6865,7 +9627,10 @@ function loadSlot(index) {
   charOpts.hairStyle = save.charOpts.hairStyle;
   charOpts.hairColor = save.charOpts.hairColor;
   charOpts.outfit = save.charOpts.outfit;
+  charOpts.accessory = save.charOpts.accessory || 0;
+  charOpts.dress = save.charOpts.dress !== undefined ? save.charOpts.dress : -1;
   ownedOutfits = new Set(save.ownedOutfits);
+  ownedDresses = new Set(save.ownedDresses || []);
 
   // Start the game first (hides creator, builds character)
   startGame();
@@ -6881,6 +9646,15 @@ function loadSlot(index) {
   booksRead = save.booksRead || 0;
   treadmillUses = save.treadmillUses || 0;
   activePet = save.activePet || 'dog';
+  hasBeaverPet = save.hasBeaverPet || false;
+  if (hasBeaverPet && !petBeaver) {
+    buildPetBeaver();
+    document.getElementById('pet-menu-btn').style.display = '';
+  }
+  // Re-set pet visibility after restoring activePet (startGame set it before activePet was loaded)
+  if (petDog) petDog.visible = activePet === 'dog';
+  if (petCat) petCat.visible = activePet === 'cat';
+  if (petBeaver) petBeaver.visible = activePet === 'beaver';
   yaw = save.yaw;
   pitch = save.pitch;
   character.position.set(save.playerPos.x, save.playerPos.y, save.playerPos.z);
@@ -6898,6 +9672,11 @@ function loadSlot(index) {
     secondFloorGroup = buildSecondFloor();
     scene.add(secondFloorGroup);
     rebuildInteractMeshes();
+    // Rebuild poster if owned (on second floor)
+    if (save.hasGGPoster) {
+      hasGGPoster = true;
+      buildGGPoster();
+    }
   }
   currentFloor = save.currentFloor;
 
@@ -6952,10 +9731,10 @@ function loadSlot(index) {
     townGroup.visible = true;
     inTown = true;
     scene.fog.far = TOWN_FOG_FAR;
-    sunLight.shadow.camera.left = -60;
-    sunLight.shadow.camera.right = 60;
-    sunLight.shadow.camera.top = 40;
-    sunLight.shadow.camera.bottom = -40;
+    sunLight.shadow.camera.left = -80;
+    sunLight.shadow.camera.right = 80;
+    sunLight.shadow.camera.top = 55;
+    sunLight.shadow.camera.bottom = -55;
     sunLight.shadow.camera.updateProjectionMatrix();
   }
 

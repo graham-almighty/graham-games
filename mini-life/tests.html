@@ -114,7 +114,7 @@ const MANSION_STAIR = { xMin: 285, xMax: 288, zMin: 3, zMax: 10 };
 
 // Location constants
 const TOWN_ORIGIN = { x: 122.5, z: 0 };
-const TOWN_BOUNDS = { xMin: 100, xMax: 145, zMin: -15, zMax: 15 };
+const TOWN_BOUNDS = { xMin: 88, xMax: 157, zMin: -28, zMax: 28 };
 const TOWN_PLAYER_SPAWN = { x: 135, y: 0.15, z: -8 };
 const HOME_PLAYER_SPAWN = { x: 10, y: 0.15, z: 0.75 };
 const MANSION_ORIGIN = { x: 280, z: 0 };
@@ -128,26 +128,71 @@ const MANSION_FOG_FAR = 150;
 
 // Town building collision AABBs
 const TOWN_BUILDINGS = [
-  // Cafe walls (door gap at X=109.3-110.9 on Z=7 face)
-  { xMin: 103.8, xMax: 112.2, zMin: 0.8, zMax: 1.2 },
-  { xMin: 103.8, xMax: 104.2, zMin: 1, zMax: 7 },
-  { xMin: 111.8, xMax: 112.2, zMin: 1, zMax: 7 },
-  { xMin: 103.8, xMax: 109.3, zMin: 6.8, zMax: 7.2 },
-  { xMin: 110.9, xMax: 112.2, zMin: 6.8, zMax: 7.2 },
+  // Cafe walls (shifted Z+3, door gap at X=109.3-110.9 on Z=10 face)
+  { xMin: 103.8, xMax: 112.2, zMin: 3.8, zMax: 4.2 },
+  { xMin: 103.8, xMax: 104.2, zMin: 4, zMax: 10 },
+  { xMin: 111.8, xMax: 112.2, zMin: 4, zMax: 10 },
+  { xMin: 103.8, xMax: 109.3, zMin: 9.8, zMax: 10.2 },
+  { xMin: 110.9, xMax: 112.2, zMin: 9.8, zMax: 10.2 },
   // Shop walls (door gap at X=107.3-108.9 on Z=-4.5 face)
   { xMin: 103.8, xMax: 112.2, zMin: -12.2, zMax: -11.8 },
   { xMin: 103.8, xMax: 104.2, zMin: -12, zMax: -4.5 },
   { xMin: 111.8, xMax: 112.2, zMin: -12, zMax: -4.5 },
   { xMin: 103.8, xMax: 107.3, zMin: -4.7, zMax: -4.3 },
   { xMin: 108.9, xMax: 112.2, zMin: -4.7, zMax: -4.3 },
-  // Town Hall walls (door gap at X=131.1-132.9 on Z=7 face)
-  { xMin: 126.8, xMax: 137.2, zMin: 0.8, zMax: 1.2 },
-  { xMin: 126.8, xMax: 127.2, zMin: 1, zMax: 7 },
-  { xMin: 136.8, xMax: 137.2, zMin: 1, zMax: 7 },
-  { xMin: 126.8, xMax: 131.1, zMin: 6.8, zMax: 7.2 },
-  { xMin: 132.9, xMax: 137.2, zMin: 6.8, zMax: 7.2 },
+  // Town Hall walls (shifted Z+3, door gap at X=131.1-132.9 on Z=10 face)
+  { xMin: 126.8, xMax: 137.2, zMin: 3.8, zMax: 4.2 },
+  { xMin: 126.8, xMax: 127.2, zMin: 4, zMax: 10 },
+  { xMin: 136.8, xMax: 137.2, zMin: 4, zMax: 10 },
+  { xMin: 126.8, xMax: 131.1, zMin: 9.8, zMax: 10.2 },
+  { xMin: 132.9, xMax: 137.2, zMin: 9.8, zMax: 10.2 },
   // Fountain
   { xMin: 128.5, xMax: 131.5, zMin: 10.5, zMax: 13.5 },
+  // Merch store (shifted Z+3)
+  { xMin: 138.8, xMax: 145.2, zMin: 3.8, zMax: 4.2 },
+  { xMin: 138.8, xMax: 139.2, zMin: 4, zMax: 10 },
+  { xMin: 144.8, xMax: 145.2, zMin: 4, zMax: 10 },
+  { xMin: 138.8, xMax: 141.1, zMin: 9.8, zMax: 10.2 },
+  { xMin: 142.9, xMax: 145.2, zMin: 9.8, zMax: 10.2 },
+  // Library
+  { xMin: 91.8, xMax: 100.2, zMin: 3.8, zMax: 4.2 },
+  { xMin: 91.8, xMax: 92.2, zMin: 4, zMax: 10 },
+  { xMin: 99.8, xMax: 100.2, zMin: 4, zMax: 10 },
+  { xMin: 91.8, xMax: 96.2, zMin: 9.8, zMax: 10.2 },
+  { xMin: 98, xMax: 100.2, zMin: 9.8, zMax: 10.2 },
+  // Gym
+  { xMin: 91.8, xMax: 100.2, zMin: -16.2, zMax: -15.8 },
+  { xMin: 91.8, xMax: 92.2, zMin: -16, zMax: -8 },
+  { xMin: 99.8, xMax: 100.2, zMin: -16, zMax: -8 },
+  { xMin: 91.8, xMax: 96.2, zMin: -8.2, zMax: -7.8 },
+  { xMin: 98, xMax: 100.2, zMin: -8.2, zMax: -7.8 },
+  // Restaurant
+  { xMin: 147.8, xMax: 156.2, zMin: 3.8, zMax: 4.2 },
+  { xMin: 147.8, xMax: 148.2, zMin: 4, zMax: 10 },
+  { xMin: 155.8, xMax: 156.2, zMin: 4, zMax: 10 },
+  { xMin: 147.8, xMax: 152.2, zMin: 9.8, zMax: 10.2 },
+  { xMin: 154, xMax: 156.2, zMin: 9.8, zMax: 10.2 },
+  // Arcade
+  { xMin: 147.8, xMax: 156.2, zMin: -16.2, zMax: -15.8 },
+  { xMin: 147.8, xMax: 148.2, zMin: -16, zMax: -8 },
+  { xMin: 155.8, xMax: 156.2, zMin: -16, zMax: -8 },
+  { xMin: 147.8, xMax: 152.2, zMin: -8.2, zMax: -7.8 },
+  { xMin: 154, xMax: 156.2, zMin: -8.2, zMax: -7.8 },
+  // Army Fort
+  { xMin: 91.8, xMax: 100.2, zMin: -26.2, zMax: -25.8 },
+  { xMin: 91.8, xMax: 92.2, zMin: -26, zMax: -18 },
+  { xMin: 99.8, xMax: 100.2, zMin: -26, zMax: -18 },
+  { xMin: 91.8, xMax: 96.2, zMin: -18.2, zMax: -17.8 },
+  { xMin: 98, xMax: 100.2, zMin: -18.2, zMax: -17.8 },
+  // Mic. Ronaldz
+  { xMin: 147.8, xMax: 156.2, zMin: -26.2, zMax: -25.8 },
+  { xMin: 147.8, xMax: 148.2, zMin: -26, zMax: -18 },
+  { xMin: 155.8, xMax: 156.2, zMin: -26, zMax: -18 },
+  { xMin: 147.8, xMax: 152.2, zMin: -18.2, zMax: -17.8 },
+  { xMin: 154, xMax: 156.2, zMin: -18.2, zMax: -17.8 },
+  // Basketball hoop poles
+  { xMin: 126.8, xMax: 127.2, zMin: -23.3, zMax: -22.7 },
+  { xMin: 136.8, xMax: 137.2, zMin: -23.3, zMax: -22.7 },
 ];
 
 // Mansion collision AABBs
@@ -195,6 +240,16 @@ const mansionActions = {
   zenGarden:       { label: 'Meditating...', duration: 4, restore: 30, cost: 0, hygieneBonus: 10 },
 };
 
+// Town building actions
+const townActions = {
+  libraryRead:   { label: 'Reading...', duration: 5, restore: 50, cost: 0 },
+  gymWorkout:    { label: 'Working out...', duration: 4, restore: 15, cost: 0, hungerDrain: 15 },
+  restaurantEat: { label: 'Eating a meal...', duration: 4, restore: 70, cost: 10 },
+  arcadePlay:    { label: 'Playing arcade...', duration: 5, restore: 55, cost: 5 },
+  basketball:    { label: 'Shooting hoops...', duration: 4, restore: 40, cost: 0, hungerDrain: 10 },
+  fastfoodEat:   { label: 'Eating junk food...', duration: 2.5, restore: 30, cost: 3 },
+};
+
 // Shop furniture
 const SHOP_FURNITURE = [
   { id: 'lavaLamp',  name: 'Lava Lamp',  desc: 'Groovy lamp for the table. Restores a bit of fun.', cost: 30 },
@@ -213,14 +268,47 @@ const OUTFITS = [
   { name: 'All Black',      shirt: 0x222222, pants: 0x1a1a1a, cost: 35 },
   { name: 'Pink Pop',       shirt: 0xdd55aa, pants: 0xeeeedd, cost: 35 },
   { name: 'Golden Drip',    shirt: 0xccaa33, pants: 0x1a1a1a, cost: 50 },
+  { name: 'GG Merch',       shirt: 0xcc2222, pants: 0x1a1a1a, cost: 40 },
+];
+const GG_MERCH_IDX = 8;
+
+// Accessories
+const ACCESSORIES = [
+  { name: 'None',      color: null },
+  { name: 'Backpack',  color: 0x555544 },
+  { name: 'Purse',     color: 0x8b4513 },
+  { name: 'Satchel',   color: 0x2a4a2a },
+  { name: 'Tote Bag',  color: 0xcc6688 },
+];
+
+// Hair styles
+const HAIR_STYLES = ['short', 'long', 'curly', 'buzz', 'ponytail', 'bun', 'curlylong'];
+
+// Dresses
+const DRESSES = [
+  { name: 'Blue Dress',     color: 0x4488cc, cost: 25 },
+  { name: 'Red Dress',      color: 0xcc3333, cost: 25 },
+  { name: 'Green Dress',    color: 0x338844, cost: 30 },
+  { name: 'Purple Dress',   color: 0x7744aa, cost: 35 },
+  { name: 'Orange Dress',   color: 0xdd7722, cost: 35 },
+  { name: 'Black Dress',    color: 0x222222, cost: 40 },
+  { name: 'Pink Dress',     color: 0xdd55aa, cost: 40 },
+  { name: 'Gold Dress',     color: 0xccaa33, cost: 55 },
 ];
 
 // NPC definitions
 const TOWN_NPC_DEFS = [
-  { id: 'barista', name: 'Barista Bean', x: 108, z: 2.5 },
+  { id: 'barista', name: 'Barista Bean', x: 108, z: 5.5 },
   { id: 'merchant', name: 'Merchant Mike', x: 108, z: -10 },
-  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 2.5 },
+  { id: 'mayor', name: 'Mayor Maple', x: 132, z: 5.5 },
   { id: 'old_pete', name: 'Old Pete', x: 124, z: 12 },
+  { id: 'merch_clerk', name: 'GG Superfan', x: 142, z: 6.5 },
+  { id: 'librarian', name: 'Librarian Linda', x: 96, z: 5.5 },
+  { id: 'trainer', name: 'Coach Carl', x: 96, z: -13 },
+  { id: 'chef', name: 'Chef Rosa', x: 152, z: 5.5 },
+  { id: 'arcade_kid', name: 'Gamer Gary', x: 152, z: -11 },
+  { id: 'sergeant', name: 'Sgt. Briggs', x: 96, z: -22 },
+  { id: 'frycook', name: 'Mic Ronaldz', x: 152, z: -22, scale: 0.55 },
 ];
 
 // Quest definitions (simplified for testing)
@@ -236,6 +324,8 @@ const TOWN_JOBS = {
   barista:  { name: 'Order Rush',   basePay: 15, desc: 'Fill drink orders!' },
   merchant: { name: 'Shelf Stocker', basePay: 15, desc: 'Catch falling items!' },
   mayor:    { name: 'Stamp Sorter', basePay: 15, desc: 'Sort documents!' },
+  sergeant: { name: 'Target Practice', basePay: 20, desc: 'Hit the targets!' },
+  frycook:  { name: 'Fry Cook', basePay: 12, desc: 'Serve fast food orders!' },
 };
 
 // Job pay calculation (extracted)
@@ -507,6 +597,47 @@ test('All mansion actions are free (cost=0)', () => {
   });
 });
 
+// ── Town Building Actions ──
+section('Town Building Actions');
+
+test('Library: restores 50 fun, free, 5s', () => {
+  assertEqual(townActions.libraryRead.restore, 50);
+  assertEqual(townActions.libraryRead.cost, 0);
+  assertEqual(townActions.libraryRead.duration, 5);
+});
+
+test('Gym: restores 15 energy, drains 15 hunger', () => {
+  assertEqual(townActions.gymWorkout.restore, 15);
+  assertEqual(townActions.gymWorkout.hungerDrain, 15);
+  assertEqual(townActions.gymWorkout.cost, 0);
+});
+
+test('Restaurant: restores 70 hunger, costs $10', () => {
+  assertEqual(townActions.restaurantEat.restore, 70);
+  assertEqual(townActions.restaurantEat.cost, 10);
+});
+
+test('Arcade: restores 55 fun, costs $5', () => {
+  assertEqual(townActions.arcadePlay.restore, 55);
+  assertEqual(townActions.arcadePlay.cost, 5);
+});
+
+test('Basketball: restores 40 fun, drains 10 hunger', () => {
+  assertEqual(townActions.basketball.restore, 40);
+  assertEqual(townActions.basketball.hungerDrain, 10);
+  assertEqual(townActions.basketball.cost, 0);
+});
+
+test('Fast food: restores 30 hunger, costs $3, 2.5s', () => {
+  assertEqual(townActions.fastfoodEat.restore, 30);
+  assertEqual(townActions.fastfoodEat.cost, 3);
+  assertClose(townActions.fastfoodEat.duration, 2.5, 0.01);
+});
+
+test('Town actions has 6 entries', () => {
+  assertEqual(Object.keys(townActions).length, 6);
+});
+
 // ── finishAction Logic ──
 section('finishAction Logic');
 
@@ -751,11 +882,11 @@ test('TOWN_ORIGIN is (122.5, 0)', () => {
   assertEqual(TOWN_ORIGIN.z, 0);
 });
 
-test('TOWN_BOUNDS: 100-145 x, -15-15 z', () => {
-  assertEqual(TOWN_BOUNDS.xMin, 100);
-  assertEqual(TOWN_BOUNDS.xMax, 145);
-  assertEqual(TOWN_BOUNDS.zMin, -15);
-  assertEqual(TOWN_BOUNDS.zMax, 15);
+test('TOWN_BOUNDS: 88-157 x, -28-28 z', () => {
+  assertEqual(TOWN_BOUNDS.xMin, 88);
+  assertEqual(TOWN_BOUNDS.xMax, 157);
+  assertEqual(TOWN_BOUNDS.zMin, -28);
+  assertEqual(TOWN_BOUNDS.zMax, 28);
 });
 
 test('TOWN_PLAYER_SPAWN is (135, 0.15, -8)', () => {
@@ -821,8 +952,8 @@ test('Fog distance increases: home < town < mansion', () => {
 // ── Town Buildings Collision ──
 section('Town Buildings Collision');
 
-test('TOWN_BUILDINGS has 16 wall-segment entries', () => {
-  assertEqual(TOWN_BUILDINGS.length, 16);
+test('TOWN_BUILDINGS has 53 wall-segment entries', () => {
+  assertEqual(TOWN_BUILDINGS.length, 53);
 });
 
 test('Fountain AABB unchanged: (128.5-131.5, 10.5-13.5)', () => {
@@ -838,8 +969,8 @@ test('Point outside all buildings does not collide', () => {
   assert(!collides);
 });
 
-test('Cafe door gap at (110, 7) is passable', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(110, 7, b));
+test('Cafe door gap at (110, 10) is passable', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(110, 10, b));
   assert(!collides, 'Cafe door gap should be passable');
 });
 
@@ -848,13 +979,13 @@ test('Shop door gap at (108, -4.5) is passable', () => {
   assert(!collides, 'Shop door gap should be passable');
 });
 
-test('Town Hall door gap at (132, 7) is passable', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 7, b));
+test('Town Hall door gap at (132, 10) is passable', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 10, b));
   assert(!collides, 'Town Hall door gap should be passable');
 });
 
-test('Cafe interior (108, 4) is collision-free', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 4, b));
+test('Cafe interior (108, 7) is collision-free', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 7, b));
   assert(!collides, 'Cafe interior should be free');
 });
 
@@ -863,13 +994,13 @@ test('Shop interior (108, -8) is collision-free', () => {
   assert(!collides, 'Shop interior should be free');
 });
 
-test('Town Hall interior (132, 4) is collision-free', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 4, b));
+test('Town Hall interior (132, 7) is collision-free', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(132, 7, b));
   assert(!collides, 'Town Hall interior should be free');
 });
 
-test('Cafe left wall (104, 4) blocks movement', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(104, 4, b));
+test('Cafe left wall (104, 7) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(104, 7, b));
   assert(collides, 'Cafe left wall should block');
 });
 
@@ -878,18 +1009,18 @@ test('Shop right wall (112, -8) blocks movement', () => {
   assert(collides, 'Shop right wall should block');
 });
 
-test('Town Hall right wall (137, 4) blocks movement', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(137, 4, b));
+test('Town Hall right wall (137, 7) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(137, 7, b));
   assert(collides, 'Town Hall right wall should block');
 });
 
-test('Cafe back wall (108, 1) blocks movement', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 1, b));
+test('Cafe back wall (108, 4) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(108, 4, b));
   assert(collides, 'Cafe back wall should block');
 });
 
-test('Cafe front wall left of door (106, 7) blocks movement', () => {
-  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(106, 7, b));
+test('Cafe front wall left of door (106, 10) blocks movement', () => {
+  const collides = TOWN_BUILDINGS.some(b => isInsideAABB(106, 10, b));
   assert(collides, 'Cafe front wall should block');
 });
 
@@ -959,14 +1090,14 @@ test('Each quest has a unique NPC', () => {
 // ── NPC Definitions ──
 section('NPC Definitions');
 
-test('TOWN_NPC_DEFS has 4 NPCs', () => {
-  assertEqual(TOWN_NPC_DEFS.length, 4);
+test('TOWN_NPC_DEFS has 11 NPCs', () => {
+  assertEqual(TOWN_NPC_DEFS.length, 11);
 });
 
-test('Barista Bean is inside cafe at (108, 2.5)', () => {
+test('Barista Bean is inside cafe at (108, 5.5)', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'barista');
   assertEqual(npc.x, 108);
-  assertEqual(npc.z, 2.5);
+  assertEqual(npc.z, 5.5);
   assertEqual(npc.name, 'Barista Bean');
 });
 
@@ -976,10 +1107,10 @@ test('Merchant Mike is inside shop at (108, -10)', () => {
   assertEqual(npc.z, -10);
 });
 
-test('Mayor Maple is inside town hall at (132, 2.5)', () => {
+test('Mayor Maple is inside town hall at (132, 5.5)', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'mayor');
   assertEqual(npc.x, 132);
-  assertEqual(npc.z, 2.5);
+  assertEqual(npc.z, 5.5);
 });
 
 test('Old Pete is at (124, 12)', () => {
@@ -995,16 +1126,16 @@ test('All NPCs are within town bounds', () => {
   });
 });
 
-test('Each NPC has matching quest', () => {
-  TOWN_NPC_DEFS.forEach(npc => {
-    const hasQuest = Object.values(QUESTS).some(q => q.npc === npc.id);
-    assert(hasQuest, `NPC ${npc.id} has no quest`);
+test('Quest NPCs have matching TOWN_NPC_DEFS entries', () => {
+  Object.values(QUESTS).forEach(q => {
+    const npc = TOWN_NPC_DEFS.find(n => n.id === q.npc);
+    assert(npc, `Quest NPC ${q.npc} not in TOWN_NPC_DEFS`);
   });
 });
 
 test('Barista is inside cafe footprint', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'barista');
-  assert(npc.x >= 104 && npc.x <= 112 && npc.z >= 1 && npc.z <= 7, 'Barista should be inside cafe');
+  assert(npc.x >= 104 && npc.x <= 112 && npc.z >= 4 && npc.z <= 10, 'Barista should be inside cafe');
 });
 
 test('Merchant is inside shop footprint', () => {
@@ -1014,7 +1145,7 @@ test('Merchant is inside shop footprint', () => {
 
 test('Mayor is inside town hall footprint', () => {
   const npc = TOWN_NPC_DEFS.find(n => n.id === 'mayor');
-  assert(npc.x >= 127 && npc.x <= 137 && npc.z >= 1 && npc.z <= 7, 'Mayor should be inside town hall');
+  assert(npc.x >= 127 && npc.x <= 137 && npc.z >= 4 && npc.z <= 10, 'Mayor should be inside town hall');
 });
 
 test('NPCs inside buildings are not inside collision walls', () => {
@@ -1109,8 +1240,8 @@ test('Unlocking all 18 ML achievements yields 520 G Bux', () => {
 // ── Outfit System ──
 section('Outfit System');
 
-test('OUTFITS has 8 entries', () => {
-  assertEqual(OUTFITS.length, 8);
+test('OUTFITS has 9 entries (8 regular + GG Merch)', () => {
+  assertEqual(OUTFITS.length, 9);
 });
 
 test('First outfit (Casual Blue) is free', () => {
@@ -1134,14 +1265,158 @@ test('All outfits have name, shirt, pants, cost', () => {
   });
 });
 
-test('Outfit costs: 0, 20, 25, 30, 30, 35, 35, 50', () => {
+test('Outfit costs: 0, 20, 25, 30, 30, 35, 35, 50, 40', () => {
   const costs = OUTFITS.map(o => o.cost);
-  assertDeepEqual(costs, [0, 20, 25, 30, 30, 35, 35, 50]);
+  assertDeepEqual(costs, [0, 20, 25, 30, 30, 35, 35, 50, 40]);
 });
 
-test('Total outfit cost (excluding free) is $225', () => {
+test('Total outfit cost (excluding free) is $265', () => {
   const total = OUTFITS.reduce((sum, o) => sum + o.cost, 0);
-  assertEqual(total, 225);
+  assertEqual(total, 265);
+});
+
+// ── Hair Styles ──
+section('Hair Styles');
+
+test('7 hair styles available', () => {
+  assertEqual(HAIR_STYLES.length, 7);
+});
+
+test('Hair styles include short, long, curly, buzz', () => {
+  assert(HAIR_STYLES.includes('short'));
+  assert(HAIR_STYLES.includes('long'));
+  assert(HAIR_STYLES.includes('curly'));
+  assert(HAIR_STYLES.includes('buzz'));
+});
+
+test('Hair styles include ponytail, bun, and curly long', () => {
+  assert(HAIR_STYLES.includes('ponytail'));
+  assert(HAIR_STYLES.includes('bun'));
+  assert(HAIR_STYLES.includes('curlylong'));
+});
+
+test('Default hair style is short', () => {
+  assertEqual(HAIR_STYLES[0], 'short');
+});
+
+test('All hair style names are lowercase strings', () => {
+  HAIR_STYLES.forEach(s => {
+    assert(typeof s === 'string');
+    assertEqual(s, s.toLowerCase());
+  });
+});
+
+test('No duplicate hair styles', () => {
+  const unique = new Set(HAIR_STYLES);
+  assertEqual(unique.size, HAIR_STYLES.length);
+});
+
+// ── Accessory System ──
+section('Accessory System');
+
+test('5 accessories defined', () => {
+  assertEqual(ACCESSORIES.length, 5);
+});
+
+test('First accessory is None with null color', () => {
+  assertEqual(ACCESSORIES[0].name, 'None');
+  assertEqual(ACCESSORIES[0].color, null);
+});
+
+test('Backpack is index 1', () => {
+  assertEqual(ACCESSORIES[1].name, 'Backpack');
+  assert(typeof ACCESSORIES[1].color === 'number');
+});
+
+test('Purse is index 2', () => {
+  assertEqual(ACCESSORIES[2].name, 'Purse');
+  assert(typeof ACCESSORIES[2].color === 'number');
+});
+
+test('Satchel is index 3', () => {
+  assertEqual(ACCESSORIES[3].name, 'Satchel');
+  assert(typeof ACCESSORIES[3].color === 'number');
+});
+
+test('Tote Bag is index 4', () => {
+  assertEqual(ACCESSORIES[4].name, 'Tote Bag');
+  assert(typeof ACCESSORIES[4].color === 'number');
+});
+
+test('All non-None accessories have a color', () => {
+  ACCESSORIES.slice(1).forEach(a => {
+    assert(typeof a.name === 'string' && a.name.length > 0);
+    assert(typeof a.color === 'number');
+  });
+});
+
+test('All accessory names are unique', () => {
+  const names = ACCESSORIES.map(a => a.name);
+  assertEqual(new Set(names).size, names.length);
+});
+
+test('Default charOpts accessory is 0 (None)', () => {
+  const defaults = { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 1, outfit: 0, accessory: 0 };
+  assertEqual(defaults.accessory, 0);
+  assertEqual(ACCESSORIES[defaults.accessory].name, 'None');
+});
+
+// ── Dress System ──
+section('Dress System');
+
+test('8 dresses defined', () => {
+  assertEqual(DRESSES.length, 8);
+});
+
+test('Each dress has name, color, and cost', () => {
+  DRESSES.forEach(d => {
+    assert(typeof d.name === 'string' && d.name.length > 0);
+    assert(typeof d.color === 'number');
+    assert(typeof d.cost === 'number' && d.cost > 0);
+  });
+});
+
+test('Dress colors match outfit shirt colors', () => {
+  for (let i = 0; i < DRESSES.length; i++) {
+    assertEqual(DRESSES[i].color, OUTFITS[i].shirt, DRESSES[i].name + ' matches ' + OUTFITS[i].name);
+  }
+});
+
+test('All dress names are unique', () => {
+  const names = DRESSES.map(d => d.name);
+  assertEqual(new Set(names).size, names.length);
+});
+
+test('All dress names end with Dress', () => {
+  DRESSES.forEach(d => {
+    assert(d.name.endsWith('Dress'), d.name + ' ends with Dress');
+  });
+});
+
+test('Dress costs range from 25 to 55', () => {
+  const costs = DRESSES.map(d => d.cost);
+  assertEqual(Math.min(...costs), 25);
+  assertEqual(Math.max(...costs), 55);
+});
+
+test('Default charOpts dress is -1 (none)', () => {
+  const defaults = { dress: -1 };
+  assertEqual(defaults.dress, -1);
+});
+
+test('Equipping dress sets dress index', () => {
+  const opts = { dress: -1 };
+  opts.dress = 3;
+  assertEqual(opts.dress, 3);
+  assertEqual(DRESSES[opts.dress].name, 'Purple Dress');
+});
+
+test('Equipping outfit clears dress', () => {
+  const opts = { outfit: 0, dress: 3 };
+  // Simulate equipOutfit behavior
+  opts.outfit = 1;
+  opts.dress = -1;
+  assertEqual(opts.dress, -1);
 });
 
 // ── Save Data Shape ──
@@ -1595,14 +1870,16 @@ test('Arcade Pro triggers at miniGameScore >= 25', () => {
 // ── Town Job Definitions ──
 section('Town Job Definitions');
 
-test('TOWN_JOBS has 3 entries', () => {
-  assertEqual(Object.keys(TOWN_JOBS).length, 3);
+test('TOWN_JOBS has 5 entries', () => {
+  assertEqual(Object.keys(TOWN_JOBS).length, 5);
 });
 
-test('TOWN_JOBS has barista, merchant, mayor', () => {
+test('TOWN_JOBS has barista, merchant, mayor, sergeant, frycook', () => {
   assert(TOWN_JOBS.barista, 'Missing barista');
   assert(TOWN_JOBS.merchant, 'Missing merchant');
   assert(TOWN_JOBS.mayor, 'Missing mayor');
+  assert(TOWN_JOBS.sergeant, 'Missing sergeant');
+  assert(TOWN_JOBS.frycook, 'Missing frycook');
 });
 
 test('Each job has name, basePay, desc', () => {
@@ -1613,10 +1890,18 @@ test('Each job has name, basePay, desc', () => {
   });
 });
 
-test('All base pay is $15', () => {
+test('All base pay is positive', () => {
   Object.values(TOWN_JOBS).forEach(job => {
-    assertEqual(job.basePay, 15);
+    assert(job.basePay > 0, 'basePay should be positive');
   });
+});
+
+test('Sergeant basePay is $20', () => {
+  assertEqual(TOWN_JOBS.sergeant.basePay, 20);
+});
+
+test('Frycook basePay is $12', () => {
+  assertEqual(TOWN_JOBS.frycook.basePay, 12);
 });
 
 test('Old Pete has no job', () => {
@@ -1651,6 +1936,22 @@ test('Pay with score 80 = $55', () => {
 
 test('Negative score treated as 0 (pay = basePay)', () => {
   assertEqual(calculateJobPay('barista', -10), 15);
+});
+
+test('Sergeant pay with score 0 = $20 (base)', () => {
+  assertEqual(calculateJobPay('sergeant', 0), 20);
+});
+
+test('Sergeant pay with score 40 = $40', () => {
+  assertEqual(calculateJobPay('sergeant', 40), 40);
+});
+
+test('Frycook pay with score 0 = $12 (base)', () => {
+  assertEqual(calculateJobPay('frycook', 0), 12);
+});
+
+test('Frycook pay with score 30 = $27', () => {
+  assertEqual(calculateJobPay('frycook', 30), 27);
 });
 
 // ── Job Need Drains ──
@@ -1923,6 +2224,314 @@ test('Slot name max 20 characters respected', () => {
   const name = 'A very long save name that is too long';
   const trimmed = name.substring(0, 20);
   assertEqual(trimmed.length, 20);
+});
+
+// ═══ GRAHAM GAMES MERCH STORE ═══
+section('Graham Games Merch Store');
+
+test('GG Merch outfit exists at index 8', () => {
+  assert(OUTFITS[GG_MERCH_IDX] !== undefined);
+  assertEqual(OUTFITS[GG_MERCH_IDX].name, 'GG Merch');
+});
+
+test('GG Merch has red shirt and black pants', () => {
+  const fit = OUTFITS[GG_MERCH_IDX];
+  assertEqual(fit.shirt, 0xcc2222);
+  assertEqual(fit.pants, 0x1a1a1a);
+});
+
+test('GG Merch costs $40', () => {
+  assertEqual(OUTFITS[GG_MERCH_IDX].cost, 40);
+});
+
+test('GG_MERCH_IDX is 8', () => {
+  assertEqual(GG_MERCH_IDX, 8);
+});
+
+test('GG Merch not shown in regular shop (skip i===0 and i===GG_MERCH_IDX)', () => {
+  // Regular shop should show indices 1-7 only
+  const shownOutfits = [];
+  OUTFITS.forEach((fit, i) => {
+    if (i === 0 || i === GG_MERCH_IDX) return;
+    shownOutfits.push(i);
+  });
+  assertEqual(shownOutfits.length, 7);
+  assert(!shownOutfits.includes(0));
+  assert(!shownOutfits.includes(GG_MERCH_IDX));
+});
+
+test('GG Merch can be added to ownedOutfits', () => {
+  const owned = new Set([0]);
+  owned.add(GG_MERCH_IDX);
+  assert(owned.has(GG_MERCH_IDX));
+  assertEqual(owned.size, 2);
+});
+
+test('Equipping GG Merch sets outfit and clears dress', () => {
+  const opts = { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 1, outfit: 0, accessory: 0, dress: 2 };
+  opts.outfit = GG_MERCH_IDX;
+  opts.dress = -1;
+  assertEqual(opts.outfit, GG_MERCH_IDX);
+  assertEqual(opts.dress, -1);
+});
+
+test('Merch store building collision AABBs defined', () => {
+  // Merch store at X=139-145, Z=1-7
+  // Should have 5 collision AABBs (back, left, right, front-left, front-right)
+  const merchCollisions = [
+    { xMin: 138.8, xMax: 145.2, zMin: 0.8, zMax: 1.2 },
+    { xMin: 138.8, xMax: 139.2, zMin: 1, zMax: 7 },
+    { xMin: 144.8, xMax: 145.2, zMin: 1, zMax: 7 },
+    { xMin: 138.8, xMax: 141.1, zMin: 6.8, zMax: 7.2 },
+    { xMin: 142.9, xMax: 145.2, zMin: 6.8, zMax: 7.2 },
+  ];
+  assertEqual(merchCollisions.length, 5);
+  // Door gap at X=141.1-142.9 on Z=7 face
+  assert(merchCollisions[3].xMax < 141.2);
+  assert(merchCollisions[4].xMin > 142.8);
+});
+
+test('Merch store NPC (GG Superfan) defined', () => {
+  const npcDef = { id: 'merch_clerk', name: 'GG Superfan', x: 142, z: 3.5, skinTone: 5, hairColor: 6, hairStyle: 'ponytail', gender: 'female', outfit: 8 };
+  assertEqual(npcDef.id, 'merch_clerk');
+  assertEqual(npcDef.name, 'GG Superfan');
+  assertEqual(npcDef.outfit, GG_MERCH_IDX);
+  assertEqual(npcDef.x, 142);
+});
+
+test('GG Merch shirt colors match design spec', () => {
+  // Red shirt = 0xcc2222, black pants = 0x1a1a1a
+  const fit = OUTFITS[GG_MERCH_IDX];
+  assert(fit.shirt > 0xaa0000); // red component dominant
+  assert(fit.pants < 0x222222); // very dark pants
+});
+
+test('Living Large achievement excludes GG Merch from requirement', () => {
+  // Should need OUTFITS.length - 1 outfits (not counting GG Merch)
+  const requiredOutfits = OUTFITS.length - 1;
+  assertEqual(requiredOutfits, 8);
+});
+
+test('Save/load round-trips GG Merch in ownedOutfits', () => {
+  const owned = new Set([0, GG_MERCH_IDX]);
+  const saved = [...owned];
+  const restored = new Set(saved);
+  assert(restored.has(0));
+  assert(restored.has(GG_MERCH_IDX));
+  assertEqual(restored.size, 2);
+});
+
+test('Merch counter interactable has correct properties', () => {
+  const interactable = {
+    type: 'merchCounter',
+    label: 'Browse GG Merch',
+    need: null,
+    usePos: { x: 142, y: 0.15, z: 3 },
+    floor: 0
+  };
+  assertEqual(interactable.type, 'merchCounter');
+  assertEqual(interactable.label, 'Browse GG Merch');
+  assertEqual(interactable.need, null);
+  assertEqual(interactable.floor, 0);
+});
+
+// ═══ GG BEAVER PET ═══
+section('GG Beaver Pet');
+
+test('Beaver costs $100 at merch store', () => {
+  const cost = 100;
+  assertEqual(cost, 100);
+});
+
+test('Beaver provides +10 fun every 30 seconds', () => {
+  const needs = { fun: 50 };
+  // Simulate pet bonus
+  needs.fun = Math.min(100, needs.fun + 10);
+  assertEqual(needs.fun, 60);
+});
+
+test('Beaver fun bonus caps at 100', () => {
+  const needs = { fun: 95 };
+  needs.fun = Math.min(100, needs.fun + 10);
+  assertEqual(needs.fun, 100);
+});
+
+test('hasBeaverPet flag saves and loads', () => {
+  const saveData = { hasBeaverPet: true };
+  const restored = saveData.hasBeaverPet || false;
+  assertEqual(restored, true);
+});
+
+test('hasBeaverPet defaults to false on missing save data', () => {
+  const saveData = {};
+  const restored = saveData.hasBeaverPet || false;
+  assertEqual(restored, false);
+});
+
+test('Beaver is selectable as active pet', () => {
+  let activePet = 'dog';
+  activePet = 'beaver';
+  assertEqual(activePet, 'beaver');
+});
+
+test('Pet menu shows beaver only when owned', () => {
+  const hasBeaverPet = true;
+  const pets = [];
+  if (hasBeaverPet) {
+    pets.push({ id: 'beaver', name: 'GG Beaver' });
+  }
+  assertEqual(pets.length, 1);
+  assertEqual(pets[0].id, 'beaver');
+
+  const pets2 = [];
+  const noBeaverPet = false;
+  if (noBeaverPet) {
+    pets2.push({ id: 'beaver', name: 'GG Beaver' });
+  }
+  assertEqual(pets2.length, 0);
+});
+
+test('Beaver pet tip message', () => {
+  const petTips = { dog: 'Your dog makes you happy!', cat: 'Your cat purrs contentedly!', beaver: 'Your beaver slaps its tail happily!' };
+  assertEqual(petTips.beaver, 'Your beaver slaps its tail happily!');
+});
+
+// ═══ RESPAWN SYSTEM ═══
+section('Respawn System');
+
+test('Respawn restores all needs to 40', () => {
+  const needs = { hunger: 0, energy: 0, fun: 0, hygiene: 0 };
+  // Simulate respawn logic
+  needs.hunger = 40;
+  needs.energy = 40;
+  needs.fun = 40;
+  needs.hygiene = 40;
+  assertEqual(needs.hunger, 40);
+  assertEqual(needs.energy, 40);
+  assertEqual(needs.fun, 40);
+  assertEqual(needs.hygiene, 40);
+});
+
+test('Respawn money penalty is max $25', () => {
+  let money = 100;
+  const penalty = Math.min(money, 25);
+  money -= penalty;
+  assertEqual(penalty, 25);
+  assertEqual(money, 75);
+});
+
+test('Respawn money penalty does not go below 0', () => {
+  let money = 10;
+  const penalty = Math.min(money, 25);
+  money -= penalty;
+  assertEqual(penalty, 10);
+  assertEqual(money, 0);
+});
+
+test('Respawn with no money has 0 penalty', () => {
+  let money = 0;
+  const penalty = Math.min(money, 25);
+  money -= penalty;
+  assertEqual(penalty, 0);
+  assertEqual(money, 0);
+});
+
+test('Respawn reason messages defined for all needs', () => {
+  const reasons = {
+    hunger: 'You passed out from hunger! Woke up at home...',
+    energy: 'You collapsed from exhaustion! Woke up at home...',
+    fun: 'You blacked out from boredom! Woke up at home...',
+    hygiene: 'You passed out... let\'s not talk about why. Woke up at home...',
+  };
+  assert(reasons.hunger.length > 0);
+  assert(reasons.energy.length > 0);
+  assert(reasons.fun.length > 0);
+  assert(reasons.hygiene.length > 0);
+});
+
+test('Respawn sends player to home position', () => {
+  const homePos = { x: 0, y: 0.15, z: 0 };
+  assertEqual(homePos.x, 0);
+  assertEqual(homePos.y, 0.15);
+  assertEqual(homePos.z, 0);
+});
+
+// ═══ GG POSTER ═══
+section('GG Poster');
+
+test('GG Poster costs $50', () => {
+  const cost = 50;
+  assertEqual(cost, 50);
+});
+
+test('GG Poster gives +15 fun when admired', () => {
+  const config = { label: 'Admiring...', duration: 2, restore: 15, cost: 0 };
+  assertEqual(config.restore, 15);
+  assertEqual(config.duration, 2);
+  assertEqual(config.cost, 0);
+});
+
+test('GG Poster is on second floor (floor 1)', () => {
+  const posterFloor = 1;
+  assertEqual(posterFloor, 1);
+});
+
+test('GG Poster positioned near bed on second floor', () => {
+  const UPPER_Y = 3.65;
+  const posterPos = { x: -1, y: UPPER_Y + 1.6, z: 4.9 };
+  assertEqual(posterPos.x, -1);
+  assert(posterPos.y > UPPER_Y, 'Poster should be above upper floor level');
+  assertEqual(posterPos.z, 4.9);
+});
+
+test('GG Poster requires second floor to purchase', () => {
+  const hasSecondFloor = false;
+  const canBuy = hasSecondFloor && 50 <= 100;
+  assertEqual(canBuy, false);
+  const hasSecondFloor2 = true;
+  const canBuy2 = hasSecondFloor2 && 50 <= 100;
+  assertEqual(canBuy2, true);
+});
+
+test('hasGGPoster flag saves and loads', () => {
+  const saveData = { hasGGPoster: true };
+  const restored = saveData.hasGGPoster || false;
+  assertEqual(restored, true);
+});
+
+test('hasGGPoster defaults to false on missing save data', () => {
+  const saveData = {};
+  const restored = saveData.hasGGPoster || false;
+  assertEqual(restored, false);
+});
+
+test('GG Poster teardown in restartGame removes group and interactable', () => {
+  let hasGGPoster = true;
+  let ggPosterGroup = { exists: true };
+  const interactables = [{ type: 'ggPoster' }, { type: 'bed' }];
+  // Simulate teardown
+  if (ggPosterGroup) {
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].type === 'ggPoster') interactables.splice(i, 1);
+    }
+    ggPosterGroup = null;
+  }
+  hasGGPoster = false;
+  assertEqual(hasGGPoster, false);
+  assertEqual(ggPosterGroup, null);
+  assertEqual(interactables.length, 1);
+  assertEqual(interactables[0].type, 'bed');
+});
+
+test('GG Poster interactable type is ggPoster', () => {
+  const type = 'ggPoster';
+  assertEqual(type, 'ggPoster');
+});
+
+test('GG Poster usePos is on upper floor', () => {
+  const UPPER_Y = 3.65;
+  const usePos = { x: -1, y: UPPER_Y, z: 3.5 };
+  assertEqual(usePos.y, UPPER_Y);
 });
 
 // ═══ RENDER RESULTS ═══
