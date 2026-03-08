@@ -130,12 +130,12 @@ const CLASS_DEFS = {
 };
 
 const WEAPON_DEFS = {
-  sword:  { name: 'Sword',  type: 'melee',  baseDmg: 12, range: 1.5, cooldown: 0.5,  arc: 90,  color: '#cccccc' },
-  axe:    { name: 'Axe',    type: 'melee',  baseDmg: 20, range: 1.3, cooldown: 0.9,  arc: 120, color: '#888888' },
-  scythe: { name: 'Scythe', type: 'melee',  baseDmg: 9,  range: 2.8, cooldown: 0.4,  arc: 110, color: '#b0b0cc' },
-  spear:  { name: 'Spear',  type: 'melee',  baseDmg: 14, range: 2.0, cooldown: 0.65, arc: 45,  color: '#bbaa77' },
-  bow:    { name: 'Bow',    type: 'ranged', baseDmg: 10, range: 8,   cooldown: 0.6,  projSpeed: 8, color: '#886633' },
-  staff:  { name: 'Staff',  type: 'ranged', baseDmg: 14, range: 7,   cooldown: 0.8,  projSpeed: 6, color: '#9944ff', pierce: true },
+  sword:  { name: 'Sword',  abbrev: 'SWD', type: 'melee',  baseDmg: 12, range: 1.5, cooldown: 0.5,  arc: 90,  color: '#cccccc' },
+  axe:    { name: 'Axe',    abbrev: 'AXE', type: 'melee',  baseDmg: 20, range: 1.3, cooldown: 0.9,  arc: 120, color: '#888888' },
+  scythe: { name: 'Scythe', abbrev: 'SCY', type: 'melee',  baseDmg: 9,  range: 2.8, cooldown: 0.4,  arc: 110, color: '#b0b0cc' },
+  spear:  { name: 'Spear',  abbrev: 'SPR', type: 'melee',  baseDmg: 14, range: 2.0, cooldown: 0.65, arc: 45,  color: '#bbaa77' },
+  bow:    { name: 'Bow',    abbrev: 'BOW', type: 'ranged', baseDmg: 10, range: 8,   cooldown: 0.6,  projSpeed: 8, color: '#886633' },
+  staff:  { name: 'Staff',  abbrev: 'STF', type: 'ranged', baseDmg: 14, range: 7,   cooldown: 0.8,  projSpeed: 6, color: '#9944ff', pierce: true },
 };
 
 const RARITIES = [
@@ -163,9 +163,9 @@ const BOSS_DEFS = {
 };
 
 const POTION_DEFS = [
-  { name: 'Small Potion',  heal: 25,  color: '#ff4444', icon: '\uD83E\uDDEA', weight: 10 },
-  { name: 'Medium Potion', heal: 50,  color: '#ff6644', icon: '\uD83E\uDDEA', weight: 5 },
-  { name: 'Large Potion',  heal: 100, color: '#ff8844', icon: '\uD83E\uDDEA', weight: 2 },
+  { name: 'Small Potion',  abbrev: 'SP', heal: 25,  color: '#ff4444', icon: '\uD83E\uDDEA', weight: 10 },
+  { name: 'Medium Potion', abbrev: 'MP', heal: 50,  color: '#ff6644', icon: '\uD83E\uDDEA', weight: 5 },
+  { name: 'Large Potion',  abbrev: 'LP', heal: 100, color: '#ff8844', icon: '\uD83E\uDDEA', weight: 2 },
 ];
 
 const SHOP_ITEMS = [
@@ -206,7 +206,7 @@ function makeWeapon(floor, forceRarity) {
   return {
     base, rarity, type: 'weapon',
     damage: Math.round(def.baseDmg * rar.multiplier),
-    name: rar.name + ' ' + def.name, color: rar.color,
+    name: rar.name + ' ' + def.name, abbrev: def.abbrev, color: rar.color,
   };
 }
 
@@ -215,14 +215,15 @@ function makePotion() {
   let r = Math.random() * totalWeight;
   for (const p of POTION_DEFS) {
     r -= p.weight;
-    if (r <= 0) return { type: 'potion', name: p.name, heal: p.heal, color: p.color, icon: p.icon };
+    if (r <= 0) return { type: 'potion', name: p.name, abbrev: p.abbrev, heal: p.heal, color: p.color, icon: p.icon };
   }
-  return { type: 'potion', ...POTION_DEFS[0] };
+  const p0 = POTION_DEFS[0];
+  return { type: 'potion', name: p0.name, abbrev: p0.abbrev, heal: p0.heal, color: p0.color, icon: p0.icon };
 }
 
 function makeArmor(floor) {
   const defense = 5 + Math.floor(Math.random() * Math.min(floor, 5)) * 2;
-  return { type: 'armor', name: 'Armor +' + defense + '%', defense, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' };
+  return { type: 'armor', name: 'Armor +' + defense + '%', abbrev: 'ARM', defense, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' };
 }
 
 // Dungeon generation (extracted)
@@ -873,12 +874,12 @@ localStorage.clear();
 group('Inventory');
 
 {
-  const inv = [null, null, null, null, null];
-  assertEqual(inv.length, 5, 'Inventory has 5 slots');
+  const inv = new Array(20).fill(null);
+  assertEqual(inv.length, 20, 'Inventory has 20 slots');
 
   // Add item to first empty slot
   function addToInv(inv, item) {
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       if (!inv[i]) { inv[i] = item; return true; }
     }
     return false;
@@ -891,7 +892,8 @@ group('Inventory');
 
 {
   // Potion use
-  const inv = [{ type: 'potion', heal: 25, name: 'Small Potion' }, null, null, null, null];
+  const inv = new Array(20).fill(null);
+  inv[0] = { type: 'potion', heal: 25, name: 'Small Potion' };
   let hp = 80, maxHp = 100;
   const item = inv[0];
   if (item && item.type === 'potion') {
@@ -912,9 +914,9 @@ group('Inventory');
 
 {
   // Full inventory
-  const inv = [{ type: 'potion' }, { type: 'potion' }, { type: 'potion' }, { type: 'potion' }, { type: 'potion' }];
+  const inv = new Array(20).fill(null).map(() => ({ type: 'potion' }));
   function addToInv(inv, item) {
-    for (let i = 0; i < 5; i++) { if (!inv[i]) { inv[i] = item; return true; } }
+    for (let i = 0; i < 20; i++) { if (!inv[i]) { inv[i] = item; return true; } }
     return false;
   }
   const result = addToInv(inv, { type: 'potion' });
@@ -1062,10 +1064,10 @@ localStorage.clear();
     className: 'warrior', color: '#4488ff', radius: 8,
     weapon: { base: 'sword', rarity: 1, type: 'weapon', damage: 16, name: 'Uncommon Sword', color: '#44cc44' },
     inventory: [
-      { type: 'potion', name: 'Small Potion', heal: 25, color: '#ff4444', icon: '\uD83E\uDDEA' },
+      { type: 'potion', name: 'Small Potion', abbrev: 'SP', heal: 25, color: '#ff4444', icon: '\uD83E\uDDEA' },
       null,
-      { type: 'armor', name: 'Armor +10%', defense: 10, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' },
-      null, null
+      { type: 'armor', name: 'Armor +10%', abbrev: 'ARM', defense: 10, color: '#8888aa', icon: '\uD83D\uDEE1\uFE0F' },
+      null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null
     ],
     attackTimer: 0, invulnTimer: 0, gold: 123, floor: 3, kills: 15, bossKills: 0,
     damageTakenThisBoss: 0, floorStartTime: 99999, facingAngle: 1.2,
@@ -1215,8 +1217,8 @@ localStorage.clear();
   const mockPlayer2 = {
     x: 100, y: 100, hp: 80, maxHp: 100, defense: 0, speed: 3.0,
     className: 'archer', color: '#44bb44', radius: 8,
-    weapon: { base: 'bow', rarity: 0, type: 'weapon', damage: 10, name: 'Common Bow', color: '#886633' },
-    inventory: [null, null, null, null, null],
+    weapon: { base: 'bow', rarity: 0, type: 'weapon', damage: 10, name: 'Common Bow', abbrev: 'BOW', color: '#886633' },
+    inventory: new Array(20).fill(null),
     attackTimer: 0, invulnTimer: 0, gold: 50, floor: 5, kills: 30, bossKills: 0,
     damageTakenThisBoss: 0, floorStartTime: 0, facingAngle: 0,
     swingTimer: 0, swingDuration: 0, swingDir: 1,
@@ -1264,12 +1266,12 @@ group('Between-Floor Shop');
 
 {
   // Buy deducts gold and adds to inventory
-  const mockPlayer = { gold: 100, inventory: [null, null, null, null, null], hp: 50, maxHp: 100 };
+  const mockPlayer = { gold: 100, inventory: new Array(20).fill(null), hp: 50, maxHp: 100 };
   const si = SHOP_ITEMS[0]; // Small Potion, 25g
   // Simulate buyShopItem logic
   if (mockPlayer.gold >= si.price) {
     const item = { type: 'potion', name: si.name, heal: si.heal };
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       if (!mockPlayer.inventory[i]) { mockPlayer.inventory[i] = item; break; }
     }
     mockPlayer.gold -= si.price;
@@ -1281,12 +1283,12 @@ group('Between-Floor Shop');
 
 {
   // Cannot buy when inventory is full
-  const mockPlayer = { gold: 100, inventory: [{}, {}, {}, {}, {}] };
+  const mockPlayer = { gold: 100, inventory: new Array(20).fill(null).map(() => ({})) };
   const si = SHOP_ITEMS[0];
   let bought = false;
   if (mockPlayer.gold >= si.price) {
     let added = false;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       if (!mockPlayer.inventory[i]) { added = true; break; }
     }
     if (added) { mockPlayer.gold -= si.price; bought = true; }
@@ -1297,7 +1299,7 @@ group('Between-Floor Shop');
 
 {
   // Cannot buy when gold insufficient
-  const mockPlayer = { gold: 10, inventory: [null, null, null, null, null] };
+  const mockPlayer = { gold: 10, inventory: new Array(20).fill(null) };
   const si = SHOP_ITEMS[1]; // Large Potion, 50g
   let bought = false;
   if (mockPlayer.gold >= si.price) { bought = true; }
@@ -1306,20 +1308,20 @@ group('Between-Floor Shop');
 
 {
   // Can buy multiple potions until gold or inventory runs out
-  const mockPlayer = { gold: 200, inventory: [null, null, null, null, null] };
+  const mockPlayer = { gold: 600, inventory: new Array(20).fill(null) };
   const si = SHOP_ITEMS[0]; // 25g each
   let buyCount = 0;
   while (mockPlayer.gold >= si.price) {
     let added = false;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 20; i++) {
       if (!mockPlayer.inventory[i]) { mockPlayer.inventory[i] = { type: 'potion' }; added = true; break; }
     }
     if (!added) break;
     mockPlayer.gold -= si.price;
     buyCount++;
   }
-  assertEqual(buyCount, 5, 'Can buy 5 potions to fill inventory');
-  assertEqual(mockPlayer.gold, 75, 'Gold after 5 purchases: 200 - 125 = 75');
+  assertEqual(buyCount, 20, 'Can buy 20 potions to fill inventory');
+  assertEqual(mockPlayer.gold, 100, 'Gold after 20 purchases: 600 - 500 = 100');
 }
 
 // ─── WEAPON INVENTORY ───
@@ -1327,10 +1329,10 @@ group('Weapon Inventory');
 
 {
   // Store weapon in inventory
-  const inv = [null, null, null, null, null];
+  const inv = new Array(20).fill(null);
   const weapon = { type: 'weapon', base: 'sword', name: 'Common Sword', damage: 12, rarity: 0, color: '#aaa' };
   let stored = false;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 20; i++) {
     if (!inv[i]) { inv[i] = weapon; stored = true; break; }
   }
   assertEqual(stored, true, 'Weapon stored in inventory');
@@ -1360,11 +1362,9 @@ group('Weapon Inventory');
 
 {
   // Mixed inventory: potions and weapons
-  const inv = [
-    { type: 'potion', name: 'Small Potion', heal: 25 },
-    { type: 'weapon', base: 'bow', name: 'Uncommon Bow', damage: 13, rarity: 1 },
-    null, null, null
-  ];
+  const inv = new Array(20).fill(null);
+  inv[0] = { type: 'potion', name: 'Small Potion', heal: 25 };
+  inv[1] = { type: 'weapon', base: 'bow', name: 'Uncommon Bow', damage: 13, rarity: 1 };
   assertEqual(inv[0].type, 'potion', 'Slot 0 is potion');
   assertEqual(inv[1].type, 'weapon', 'Slot 1 is weapon');
 
@@ -1392,9 +1392,9 @@ group('Weapon Inventory');
 
 {
   // Cannot store weapon when inventory full
-  const inv = [{}, {}, {}, {}, {}];
+  const inv = new Array(20).fill(null).map(() => ({}));
   let stored = false;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 20; i++) {
     if (!inv[i]) { stored = true; break; }
   }
   assertEqual(stored, false, 'Cannot store weapon in full inventory');
@@ -1414,7 +1414,8 @@ group('Drop From Inventory');
 
 {
   // Drop potion from inventory
-  const inv = [{ type: 'potion', name: 'Small Potion', heal: 25, icon: '\uD83E\uDDEA' }, null, null, null, null];
+  const inv = new Array(20).fill(null);
+  inv[0] = { type: 'potion', name: 'Small Potion', heal: 25, icon: '\uD83E\uDDEA' };
   const dropped = [];
   // Simulate dropInventorySlot
   const idx = 0;
@@ -1430,7 +1431,8 @@ group('Drop From Inventory');
 {
   // Drop weapon from inventory
   const weapon = { type: 'weapon', base: 'axe', name: 'Rare Axe', damage: 32, rarity: 2, color: '#4488ff' };
-  const inv = [null, weapon, null, null, null];
+  const inv = new Array(20).fill(null);
+  inv[1] = weapon;
   const dropped = [];
   const idx = 1;
   const item = inv[idx];
@@ -1443,7 +1445,7 @@ group('Drop From Inventory');
 
 {
   // Drop from empty slot does nothing
-  const inv = [null, null, null, null, null];
+  const inv = new Array(20).fill(null);
   const idx = 2;
   const item = inv[idx];
   assertEqual(item, null, 'Empty slot returns null — no drop');
@@ -1451,7 +1453,8 @@ group('Drop From Inventory');
 
 {
   // Drop and re-pickup: item available on ground
-  const inv = [{ type: 'potion', name: 'Large Potion', heal: 100 }, null, null, null, null];
+  const inv = new Array(20).fill(null);
+  inv[0] = { type: 'potion', name: 'Large Potion', heal: 100 };
   const ground = [];
   // Drop
   ground.push({ x: 0, y: 0, item: inv[0] });
@@ -1459,7 +1462,7 @@ group('Drop From Inventory');
   // Re-pickup
   const gi = ground[0];
   let added = false;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 20; i++) {
     if (!inv[i]) { inv[i] = gi.item; added = true; break; }
   }
   ground.splice(0, 1);
@@ -1469,12 +1472,14 @@ group('Drop From Inventory');
 }
 
 {
-  // Selected slot tracking: pressing 1-5 sets selected slot
+  // Selected slot tracking: pressing 1-9, 0 sets selected slot
   let sel = -1;
   sel = 0; assertEqual(sel, 0, 'Press 1 selects slot 0');
-  sel = 4; assertEqual(sel, 4, 'Press 5 selects slot 4');
+  sel = 9; assertEqual(sel, 9, 'Press 0 selects slot 9');
   // R drops from selected
-  const inv = [null, null, null, null, { type: 'potion', name: 'Test', heal: 25 }];
+  sel = 4;
+  const inv = new Array(20).fill(null);
+  inv[4] = { type: 'potion', name: 'Test', heal: 25 };
   const item = inv[sel];
   assert(item !== null, 'Selected slot 4 has item');
   inv[sel] = null;
@@ -1503,6 +1508,40 @@ group('Shop State Transition');
     assert(si.heal > 0, si.name + ' has positive heal');
     assert(si.icon !== undefined, si.name + ' has icon');
   }
+}
+
+// ─── ITEM ABBREVIATIONS ───
+group('Item Abbreviations');
+
+{
+  // Potion abbreviations
+  assertEqual(POTION_DEFS[0].abbrev, 'SP', 'Small Potion abbrev is SP');
+  assertEqual(POTION_DEFS[1].abbrev, 'MP', 'Medium Potion abbrev is MP');
+  assertEqual(POTION_DEFS[2].abbrev, 'LP', 'Large Potion abbrev is LP');
+}
+
+{
+  // Weapon abbreviations
+  assertEqual(WEAPON_DEFS.sword.abbrev, 'SWD', 'Sword abbrev is SWD');
+  assertEqual(WEAPON_DEFS.axe.abbrev, 'AXE', 'Axe abbrev is AXE');
+  assertEqual(WEAPON_DEFS.scythe.abbrev, 'SCY', 'Scythe abbrev is SCY');
+  assertEqual(WEAPON_DEFS.spear.abbrev, 'SPR', 'Spear abbrev is SPR');
+  assertEqual(WEAPON_DEFS.bow.abbrev, 'BOW', 'Bow abbrev is BOW');
+  assertEqual(WEAPON_DEFS.staff.abbrev, 'STF', 'Staff abbrev is STF');
+}
+
+{
+  // Generated items carry abbreviations
+  const w = makeWeapon(1);
+  assert(w.abbrev !== undefined, 'Generated weapon has abbrev');
+  assert(w.abbrev.length >= 3, 'Weapon abbrev is at least 3 chars');
+
+  const p = makePotion();
+  assert(p.abbrev !== undefined, 'Generated potion has abbrev');
+  assert(['SP', 'MP', 'LP'].indexOf(p.abbrev) >= 0, 'Potion abbrev is SP, MP, or LP');
+
+  const a = makeArmor(3);
+  assertEqual(a.abbrev, 'ARM', 'Armor abbrev is ARM');
 }
 
 // ============================================================

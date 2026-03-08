@@ -653,7 +653,7 @@ localStorage.clear();
 // ============================================================
 // SCHOOL MODE FUNCTIONS (replicated from index.html)
 // ============================================================
-const BLOCKED_GAMES = ['combat', 'ancient-warfare'];
+const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros'];
 
 function getSchoolMode() {
   const data = ggLoad();
@@ -971,9 +971,11 @@ localStorage.clear();
 group('School Mode: Blocked Games');
 
 {
-  assertEqual(BLOCKED_GAMES.length, 2, 'Two games are blocked');
+  assertEqual(BLOCKED_GAMES.length, 4, 'Four games are blocked');
   assert(BLOCKED_GAMES.includes('combat'), 'Combat is in blocked list');
   assert(BLOCKED_GAMES.includes('ancient-warfare'), 'Ancient Warfare is in blocked list');
+  assert(BLOCKED_GAMES.includes('rogue-depths'), 'Rogue Depths is in blocked list');
+  assert(BLOCKED_GAMES.includes('battle-bros'), 'Battle Bros is in blocked list');
   assert(!BLOCKED_GAMES.includes('hurgvibbit'), 'Hurgvibbit is NOT blocked');
   assert(!BLOCKED_GAMES.includes('flying-ace'), 'Flying Ace is NOT blocked');
   assert(!BLOCKED_GAMES.includes('mini-life'), 'Mini Life is NOT blocked');

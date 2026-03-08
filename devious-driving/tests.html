@@ -102,8 +102,6 @@ const DD_ACH = {
   dd_all_maps:     { name: 'World Tour',       reward: 25 },
   dd_no_walls:     { name: 'Clean Driver',     reward: 20 },
   dd_drift_king:   { name: 'Drift King',       reward: 15 },
-  dd_oil_slick:    { name: 'Dirty Tricks',     reward: 10 },
-  dd_speed_demon:  { name: 'Speed Demon',      reward: 15 },
   dd_photo_finish: { name: 'Photo Finish',     reward: 20 },
   dd_unbeatable:   { name: 'Unbeatable',       reward: 30 },
   dd_human_victor: { name: 'Rivalry',          reward: 50 },
@@ -131,14 +129,46 @@ const DRIFT_THRESHOLD = 120;
 const DRIFT_FACTOR = 0.92;
 const TRACK_WIDTH = 120;
 const TOTAL_LAPS = 3;
-const POWERUP_RESPAWN = 10;
-const BOOST_DURATION = 2;
-const BOOST_MULTIPLIER = 1.6;
-const SHIELD_DURATION = 5;
-const OIL_LIFETIME = 15;
-const SPINOUT_DURATION = 1.0;
+const POWERUP_RESPAWN = 6;
+const NITRO_DURATION = 2;
+const NITRO_BOOST = 150;
+const BOMB_RADIUS = 22;
+const BOMB_RESPAWN_TIME = 5;
+const POWERUP_PICKUP_RADIUS = 20;
 const CAR_COLORS = ['#e91e63', '#2196f3', '#4caf50', '#ff9800'];
 const CAR_NAMES = ['Pink', 'Blue', 'Green', 'Orange'];
+
+const CAR_DESIGNS = [
+  { id: 'stock',   name: 'Stock Racer',  color: '#e91e63', unlockText: '', unlock: null },
+  { id: 'sedan',   name: 'Sedan',        color: '#9e9e9e', unlockText: '', unlock: null },
+  { id: 'muscle',  name: 'Muscle Car',   color: '#2962ff', unlockText: '', unlock: null },
+  { id: 'speeder', name: 'Speed Demon',  color: '#ff5722', unlockText: 'Win 1 race', unlock: { wins: 1 } },
+  { id: 'hotrod',  name: 'Hot Rod',      color: '#ff9800', unlockText: 'Win 3 races', unlock: { wins: 3 } },
+  { id: 'rally',   name: 'Rally',        color: '#4caf50', unlockText: 'Win on 2 maps', unlock: { maps: 2 } },
+  { id: 'tank',    name: 'Tank',         color: '#607d8b', unlockText: 'Win 5 races', unlock: { wins: 5 } },
+  { id: 'cop',     name: 'Cop Car',      color: '#1a237e', unlockText: 'Win on 4 maps', unlock: { maps: 4 } },
+  { id: 'f1',      name: 'F1',           color: '#d50000', unlockText: 'Win on all maps', unlock: { maps: 6 } },
+  { id: 'monster', name: 'Monster',      color: '#8bc34a', unlockText: 'Win 10 races', unlock: { wins: 10 } },
+  { id: 'ghost',   name: 'Ghost',        color: '#b0bec5', unlockText: 'Win 15 races', unlock: { wins: 15 } },
+  { id: 'golden',  name: 'Golden',       color: '#ffc107', unlockText: 'Win 20 races', unlock: { wins: 20 } },
+];
+
+function isCarUnlocked(design) {
+  if (!design.unlock) return true;
+  const stats = ddLoadStats();
+  if (design.unlock.wins && (stats.wins || 0) < design.unlock.wins) return false;
+  if (design.unlock.maps && Object.keys(stats.mapWins || {}).length < design.unlock.maps) return false;
+  return true;
+}
+
+function getEquippedCar() {
+  const stats = ddLoadStats();
+  return stats.equippedCar || 'stock';
+}
+
+function getDesign(id) {
+  return CAR_DESIGNS.find(d => d.id === id) || CAR_DESIGNS[0];
+}
 
 // ============================================================
 // EXTRACTED SOURCE — MAPS
@@ -211,6 +241,15 @@ const MAPS = [
       [600, 500], [750, 500], [750, 570], [400, 570],
       [400, 400], [200, 400], [200, 570], [100, 570],
       [100, 350], [250, 350], [250, 250], [100, 250],
+    ],
+    walls: [
+      { x: 155, y: 155, w: 140, h: 40 },
+      { x: 405, y: 155, w: 140, h: 40 },
+      { x: 155, y: 305, w: 40, h: 40 },
+      { x: 305, y: 360, w: 40, h: 30 },
+      { x: 145, y: 455, w: 10, h: 60 },
+      { x: 455, y: 415, w: 90, h: 100 },
+      { x: 660, y: 400, w: 35, h: 50 },
     ],
   },
   {
@@ -290,8 +329,10 @@ function nearestWaypoint(map, x, y) {
 // ============================================================
 let currentMap = 0;
 let cars = [];
+let powerUpItems = [];
+let particles = [];
 
-function createCar(index, isPlayer, controlScheme) {
+function createCar(index, isPlayer, controlScheme, designId) {
   const map = MAPS[currentMap];
   const wp = map.waypoints;
   const startAngle = getTrackAngle(map, 0);
@@ -300,13 +341,15 @@ function createCar(index, isPlayer, controlScheme) {
   const offsetY = Math.sin(perp) * (index - 1.5) * 16;
   const backX = -Math.cos(startAngle) * index * 28;
   const backY = -Math.sin(startAngle) * index * 28;
+  const design = getDesign(designId);
   return {
     x: wp[0][0] + offsetX + backX,
     y: wp[0][1] + offsetY + backY,
     angle: startAngle,
     speed: 0,
-    color: CAR_COLORS[index],
-    name: CAR_NAMES[index],
+    color: design.color,
+    name: design.name,
+    designId: design.id,
     index,
     isPlayer,
     controlScheme,
@@ -315,14 +358,18 @@ function createCar(index, isPlayer, controlScheme) {
     prevWayIdx: -1,
     finishTime: 0,
     finished: false,
-    powerup: null,
-    boostTimer: 0,
-    shieldTimer: 0,
-    spinTimer: 0,
+    powerUp: null,
+    nitroTimer: 0,
+    brakeWasDown: false,
+    brakeHoldTime: 0,
     driftTimer: 0,
     isDrifting: false,
     skidVX: 0,
     skidVY: 0,
+    destroyed: false,
+    respawnTimer: 0,
+    respawnX: 0,
+    respawnY: 0,
   };
 }
 
@@ -338,7 +385,6 @@ function getInput(car) {
       brake: keys['s'],
       left: keys['a'],
       right: keys['d'],
-      usePowerup: keys[' '],
     };
   } else if (car.controlScheme === 'arrows') {
     return {
@@ -346,7 +392,6 @@ function getInput(car) {
       brake: keys['ArrowDown'],
       left: keys['ArrowLeft'],
       right: keys['ArrowRight'],
-      usePowerup: keys['enter'],
     };
   } else if (car.controlScheme === 'ijkl') {
     return {
@@ -354,7 +399,6 @@ function getInput(car) {
       brake: keys['k'],
       left: keys['j'],
       right: keys['l'],
-      usePowerup: keys['b'],
     };
   } else if (car.controlScheme === 'numpad') {
     return {
@@ -362,10 +406,9 @@ function getInput(car) {
       brake: keys['5'],
       left: keys['4'],
       right: keys['6'],
-      usePowerup: keys['0'],
     };
   }
-  return { accel: false, brake: false, left: false, right: false, usePowerup: false };
+  return { accel: false, brake: false, left: false, right: false };
 }
 
 function getPosition(car) {
@@ -380,15 +423,79 @@ function getPosition(car) {
 }
 
 // ============================================================
+// EXTRACTED SOURCE — POWER-UP SYSTEM
+// ============================================================
+function rollPowerUp() {
+  const r = Math.random() * 100;
+  if (r < 47) return 'bomb';
+  if (r < 95) return 'nitro';
+  return 'teleport'; // 5% — very rare
+}
+
+function getLeader(excludeCar) {
+  const sorted = cars.filter(c => !c.finished && c !== excludeCar)
+    .sort((a, b) => (b.lap * 1000 + b.wayIdx) - (a.lap * 1000 + a.wayIdx));
+  return sorted[0] || null;
+}
+
+function usePowerUp(car) {
+  if (car.powerUp === 'bomb') {
+    // Instant explosion behind car
+    const backAngle = car.angle + Math.PI;
+    const bx = car.x + Math.cos(backAngle) * 20;
+    const by = car.y + Math.sin(backAngle) * 20;
+    // Explosion particles
+    for (let j = 0; j < 15; j++) {
+      const a = Math.random() * Math.PI * 2;
+      particles.push({
+        x: bx, y: by, life: 0.8, type: 'flame',
+        size: 5 + Math.random() * 5,
+        color: ['#ff6600', '#ffcc00', '#ff2200'][Math.floor(Math.random() * 3)],
+        vx: Math.cos(a) * 120, vy: Math.sin(a) * 120,
+      });
+    }
+    // Destroy any car in blast radius
+    for (const other of cars) {
+      if (other === car || other.finished || other.destroyed) continue;
+      if (Math.hypot(other.x - bx, other.y - by) < BOMB_RADIUS) {
+        other.destroyed = true;
+        other.respawnTimer = BOMB_RESPAWN_TIME;
+        other.respawnX = bx;
+        other.respawnY = by;
+        other.speed = 0;
+      }
+    }
+  } else if (car.powerUp === 'nitro') {
+    car.nitroTimer = NITRO_DURATION;
+  } else if (car.powerUp === 'teleport') {
+    // Swap with leader — if no one ahead, power-up is wasted
+    const pos = getPosition(car);
+    if (pos > 1) {
+      const leader = getLeader(car);
+      if (leader) {
+        const tmpX = car.x, tmpY = car.y, tmpAngle = car.angle;
+        car.x = leader.x; car.y = leader.y; car.angle = leader.angle;
+        leader.x = tmpX; leader.y = tmpY; leader.angle = tmpAngle;
+      }
+    }
+    // Always consumed, even if wasted
+  }
+}
+
+function shouldAIUsePowerUp(car) {
+  if (car.powerUp === 'bomb') return Math.random() < 0.015;
+  if (car.powerUp === 'nitro') return Math.random() < 0.02;
+  if (car.powerUp === 'teleport') return getPosition(car) > 1 && getLeader(car) && Math.random() < 0.01;
+  return false;
+}
+
+// ============================================================
 // EXTRACTED SOURCE — AI
 // ============================================================
-let oilSlicks = [];
-
 function getAIInput(car) {
   const map = MAPS[currentMap];
   const wp = map.waypoints;
 
-  // Follow the track centerline
   const followDist = 60 + (car.speed / MAX_SPEED) * 120;
   let remaining = followDist;
   let segIdx = car.wayIdx;
@@ -423,7 +530,7 @@ function getAIInput(car) {
   while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-  const input = { accel: true, brake: false, left: false, right: false, usePowerup: false };
+  const input = { accel: true, brake: false, left: false, right: false };
   if (angleDiff > 0.05) input.right = true;
   else if (angleDiff < -0.05) input.left = true;
 
@@ -439,44 +546,6 @@ function getAIInput(car) {
 
   if (Math.abs(upcomingTurn) > 0.4 && car.speed > MAX_SPEED * 0.6) input.brake = true;
   if (Math.abs(angleDiff) > 0.6 && car.speed > MAX_SPEED * 0.4) input.brake = true;
-
-  if (car.powerup) {
-    if (car.powerup.type === 'boost' && Math.abs(angleDiff) < 0.2 && car.speed > MAX_SPEED * 0.5) {
-      input.usePowerup = true;
-    } else if (car.powerup.type === 'oil') {
-      for (const other of cars) {
-        if (other === car || other.finished) continue;
-        const behindDist = Math.hypot(car.x - other.x, car.y - other.y);
-        if (behindDist < 60 && other.wayIdx <= car.wayIdx + 2) {
-          input.usePowerup = true;
-          break;
-        }
-      }
-    } else if (car.powerup.type === 'shield') {
-      for (const other of cars) {
-        if (other === car || other.finished) continue;
-        if (Math.hypot(car.x - other.x, car.y - other.y) < 40) {
-          input.usePowerup = true;
-          break;
-        }
-      }
-    }
-  }
-
-  for (const oil of oilSlicks) {
-    if (oil.owner === car.index) continue;
-    const oilDist = Math.hypot(car.x - oil.x, car.y - oil.y);
-    if (oilDist < 50) {
-      const oilAngle = Math.atan2(oil.y - car.y, oil.x - car.x);
-      let oilDiff = oilAngle - car.angle;
-      while (oilDiff > Math.PI) oilDiff -= Math.PI * 2;
-      while (oilDiff < -Math.PI) oilDiff += Math.PI * 2;
-      if (Math.abs(oilDiff) < 0.8) {
-        if (oilDiff > 0) input.left = true;
-        else input.right = true;
-      }
-    }
-  }
 
   return input;
 }
@@ -505,7 +574,15 @@ assertEqual(MAPS[1].name, 'Figure Eight', 'Map 1 is Figure Eight');
 assertEqual(MAPS[2].name, 'Seaside Circuit', 'Map 2 is Seaside Circuit');
 assertEqual(MAPS[3].name, 'Mountain Pass', 'Map 3 is Mountain Pass');
 assertEqual(MAPS[4].name, 'Downtown', 'Map 4 is Downtown');
+assert(Array.isArray(MAPS[4].walls), 'Downtown has walls array');
+assert(MAPS[4].walls.length >= 5, 'Downtown has at least 5 wall blocks');
+for (const w of MAPS[4].walls) {
+  assert(typeof w.x === 'number' && typeof w.y === 'number', 'Wall has x,y position');
+  assert(w.w > 0 && w.h > 0, 'Wall has positive width and height');
+}
 assertEqual(MAPS[5].name, 'Highway', 'Map 5 is Highway');
+assert(!MAPS[0].walls, 'Speedway has no walls');
+assert(!MAPS[5].walls, 'Highway has no walls');
 
 // --- CONSTANTS ---
 group('Game Constants');
@@ -517,12 +594,12 @@ assertEqual(TURN_SPEED, 3.2, 'TURN_SPEED is 3.2');
 assertEqual(DRIFT_THRESHOLD, 120, 'DRIFT_THRESHOLD is 120');
 assertEqual(TRACK_WIDTH, 120, 'TRACK_WIDTH is 120');
 assertEqual(TOTAL_LAPS, 3, 'TOTAL_LAPS is 3');
-assertEqual(BOOST_DURATION, 2, 'BOOST_DURATION is 2');
-assertEqual(BOOST_MULTIPLIER, 1.6, 'BOOST_MULTIPLIER is 1.6');
-assertEqual(SHIELD_DURATION, 5, 'SHIELD_DURATION is 5');
-assertEqual(OIL_LIFETIME, 15, 'OIL_LIFETIME is 15');
-assertEqual(SPINOUT_DURATION, 1.0, 'SPINOUT_DURATION is 1.0');
-assertEqual(POWERUP_RESPAWN, 10, 'POWERUP_RESPAWN is 10');
+assertEqual(POWERUP_RESPAWN, 6, 'POWERUP_RESPAWN is 6');
+assertEqual(NITRO_DURATION, 2, 'NITRO_DURATION is 2');
+assertEqual(NITRO_BOOST, 150, 'NITRO_BOOST is 150');
+assertEqual(BOMB_RADIUS, 22, 'BOMB_RADIUS is 22');
+assertEqual(BOMB_RESPAWN_TIME, 5, 'BOMB_RESPAWN_TIME is 5');
+assertEqual(POWERUP_PICKUP_RADIUS, 20, 'POWERUP_PICKUP_RADIUS is 20');
 assertEqual(CAR_COLORS.length, 4, '4 car colors');
 assertEqual(CAR_NAMES.length, 4, '4 car names');
 assertEqual(CANVAS_W, 832, 'Canvas width is 832');
@@ -578,27 +655,30 @@ currentMap = 0;
 const car0 = createCar(0, true, 'wasd');
 assert(car0.isPlayer === true, 'Car 0 is player');
 assertEqual(car0.controlScheme, 'wasd', 'Car 0 uses WASD');
-assertEqual(car0.color, '#e91e63', 'Car 0 is pink');
-assertEqual(car0.name, 'Pink', 'Car 0 name is Pink');
+assertEqual(car0.color, '#e91e63', 'Car 0 uses stock design color');
+assertEqual(car0.name, 'Stock Racer', 'Car 0 name is design name');
+assertEqual(car0.designId, 'stock', 'Car 0 has design id');
 assertEqual(car0.lap, 0, 'Car starts on lap 0');
 assertEqual(car0.speed, 0, 'Car starts at speed 0');
 assertEqual(car0.wayIdx, 0, 'Car starts at waypoint 0');
-assert(car0.powerup === null, 'Car starts with no powerup');
-assertEqual(car0.boostTimer, 0, 'Car starts with no boost');
-assertEqual(car0.shieldTimer, 0, 'Car starts with no shield');
-assertEqual(car0.spinTimer, 0, 'Car starts with no spin');
+assert(car0.powerUp === null, 'Car starts with no powerUp');
+assertEqual(car0.nitroTimer, 0, 'Car starts with no nitro');
+assertEqual(car0.brakeWasDown, false, 'Car starts with brakeWasDown false');
+assertEqual(car0.brakeHoldTime, 0, 'Car starts with brakeHoldTime 0');
 assertEqual(car0.finished, false, 'Car starts unfinished');
+assertEqual(car0.destroyed, false, 'Car starts not destroyed');
+assertEqual(car0.respawnTimer, 0, 'Car starts with respawnTimer 0');
 
-const car1 = createCar(1, false, 'cpu');
+const car1 = createCar(1, false, 'cpu', 'sedan');
 assert(car1.isPlayer === false, 'Car 1 is not player');
 assertEqual(car1.controlScheme, 'cpu', 'Car 1 is CPU');
-assertEqual(car1.color, '#2196f3', 'Car 1 is blue');
-assertEqual(car1.name, 'Blue', 'Car 1 name is Blue');
+assertEqual(car1.color, '#9e9e9e', 'Car 1 uses sedan color');
+assertEqual(car1.name, 'Sedan', 'Car 1 name is Sedan');
 
-const car2 = createCar(2, false, 'cpu');
-assertEqual(car2.color, '#4caf50', 'Car 2 is green');
-const car3 = createCar(3, false, 'cpu');
-assertEqual(car3.color, '#ff9800', 'Car 3 is orange');
+const car2 = createCar(2, false, 'cpu', 'rally');
+assertEqual(car2.color, '#4caf50', 'Car 2 uses rally color');
+const car3 = createCar(3, false, 'cpu', 'hotrod');
+assertEqual(car3.color, '#ff9800', 'Car 3 uses hotrod color');
 
 // Cars start near waypoint 0
 const wp0 = MAPS[0].waypoints[0];
@@ -651,10 +731,6 @@ keys = { d: true };
 const inputD = getInput(wasdCar);
 assertEqual(inputD.right, true, 'D key: right is true');
 
-keys = { ' ': true };
-const inputSpace = getInput(wasdCar);
-assertEqual(inputSpace.usePowerup, true, 'Space: usePowerup is true');
-
 // Arrow keys
 const arrowCar = createCar(1, true, 'arrows');
 keys = { ArrowUp: true };
@@ -665,8 +741,6 @@ keys = { ArrowLeft: true };
 assertEqual(getInput(arrowCar).left, true, 'ArrowLeft: left is true');
 keys = { ArrowRight: true };
 assertEqual(getInput(arrowCar).right, true, 'ArrowRight: right is true');
-keys = { enter: true };
-assertEqual(getInput(arrowCar).usePowerup, true, 'Enter: usePowerup is true');
 
 // IJKL keys
 const ijklCar = createCar(2, true, 'ijkl');
@@ -678,8 +752,6 @@ keys = { j: true };
 assertEqual(getInput(ijklCar).left, true, 'J key: left is true');
 keys = { l: true };
 assertEqual(getInput(ijklCar).right, true, 'L key: right is true');
-keys = { b: true };
-assertEqual(getInput(ijklCar).usePowerup, true, 'B key: usePowerup is true');
 
 // Numpad keys
 const numCar = createCar(3, true, 'numpad');
@@ -691,11 +763,13 @@ keys = { '4': true };
 assertEqual(getInput(numCar).left, true, 'Numpad 4: left is true');
 keys = { '6': true };
 assertEqual(getInput(numCar).right, true, 'Numpad 6: right is true');
-keys = { '0': true };
-assertEqual(getInput(numCar).usePowerup, true, 'Numpad 0: usePowerup is true');
+
+// No usePowerup field — power-ups fire via brake button
+keys = {};
+const inputNoField = getInput(wasdCar);
+assert(!('usePowerup' in inputNoField), 'Input has no usePowerup field (power-ups fire via brake)');
 
 // CPU car returns no input from getInput
-keys = {};
 const cpuCar = createCar(2, false, 'cpu');
 const cpuInput = getInput(cpuCar);
 assert(!cpuInput.accel && !cpuInput.brake && !cpuInput.left && !cpuInput.right, 'CPU car getInput returns all false');
@@ -741,6 +815,318 @@ oCar2.lap = 0; oCar2.wayIdx = 15;
 oCar3.lap = 0; oCar3.wayIdx = 10;
 assertEqual(getPosition(pCar), 2, 'Player at waypoint 20, one ahead = 2nd');
 
+// --- POWER-UP SYSTEM ---
+group('Power-Up System');
+
+// rollPowerUp distribution (statistical)
+let bombCount = 0, nitroCount = 0, teleportCount = 0;
+const ROLLS = 10000;
+for (let i = 0; i < ROLLS; i++) {
+  const pu = rollPowerUp();
+  if (pu === 'bomb') bombCount++;
+  else if (pu === 'nitro') nitroCount++;
+  else if (pu === 'teleport') teleportCount++;
+}
+assert(bombCount > ROLLS * 0.35 && bombCount < ROLLS * 0.57, 'Bomb appears ~47% of the time (' + (bombCount / ROLLS * 100).toFixed(1) + '%)');
+assert(nitroCount > ROLLS * 0.38 && nitroCount < ROLLS * 0.58, 'Nitro appears ~48% of the time (' + (nitroCount / ROLLS * 100).toFixed(1) + '%)');
+assert(teleportCount > 0 && teleportCount < ROLLS * 0.10, 'Teleport appears ~5% of the time (' + (teleportCount / ROLLS * 100).toFixed(1) + '%)');
+
+// Only valid power-up types returned
+const validTypes = new Set();
+for (let i = 0; i < 500; i++) validTypes.add(rollPowerUp());
+assertEqual(validTypes.size, 3, 'rollPowerUp returns exactly 3 types');
+assert(validTypes.has('bomb'), 'rollPowerUp can return bomb');
+assert(validTypes.has('nitro'), 'rollPowerUp can return nitro');
+assert(validTypes.has('teleport'), 'rollPowerUp can return teleport');
+
+// --- getLeader ---
+group('getLeader');
+cars = [];
+const leaderCar1 = createCar(0, true, 'wasd');
+const leaderCar2 = createCar(1, false, 'cpu');
+const leaderCar3 = createCar(2, false, 'cpu');
+cars = [leaderCar1, leaderCar2, leaderCar3];
+
+leaderCar1.lap = 0; leaderCar1.wayIdx = 5;
+leaderCar2.lap = 0; leaderCar2.wayIdx = 20;
+leaderCar3.lap = 0; leaderCar3.wayIdx = 10;
+assertEqual(getLeader(leaderCar1), leaderCar2, 'getLeader returns car with highest progress');
+assertEqual(getLeader(leaderCar2), leaderCar3, 'getLeader excludes the given car');
+
+// When car is the leader, getLeader returns 2nd place
+leaderCar1.lap = 1; leaderCar1.wayIdx = 0;
+assertEqual(getLeader(leaderCar1), leaderCar2, 'getLeader returns 2nd place when excluding the leader');
+
+// Finished cars are excluded
+leaderCar2.finished = true;
+assertEqual(getLeader(leaderCar1), leaderCar3, 'getLeader excludes finished cars');
+leaderCar2.finished = false;
+
+// --- usePowerUp: Bomb (Instant Explosion) ---
+group('usePowerUp: Bomb (Instant Explosion)');
+particles = [];
+const bombCar = createCar(0, true, 'wasd');
+const bombVictim = createCar(1, false, 'cpu');
+bombCar.x = 200; bombCar.y = 200; bombCar.angle = 0;
+// Place victim directly behind bombCar (where explosion happens)
+const bombBackAngle = bombCar.angle + Math.PI;
+const bombExpX = bombCar.x + Math.cos(bombBackAngle) * 20;
+const bombExpY = bombCar.y + Math.sin(bombBackAngle) * 20;
+bombVictim.x = bombExpX; bombVictim.y = bombExpY;
+cars = [bombCar, bombVictim];
+bombCar.powerUp = 'bomb';
+usePowerUp(bombCar);
+assert(particles.length > 0, 'Bomb creates explosion particles');
+assert(bombVictim.destroyed, 'Bomb destroys car in blast radius');
+assertEqual(bombVictim.respawnTimer, BOMB_RESPAWN_TIME, 'Victim gets respawn timer');
+assertEqual(bombVictim.speed, 0, 'Victim speed set to 0');
+assertApprox(bombVictim.respawnX, bombExpX, 1, 'Victim respawns at explosion X');
+assertApprox(bombVictim.respawnY, bombExpY, 1, 'Victim respawns at explosion Y');
+// Bomb does NOT destroy the user
+assert(!bombCar.destroyed, 'Bomb does not destroy the user who fired it');
+
+// Bomb misses car outside radius
+particles = [];
+const bombFarCar = createCar(2, false, 'cpu');
+bombFarCar.x = 200 + BOMB_RADIUS + 50; bombFarCar.y = 200;
+cars = [bombCar, bombFarCar];
+bombCar.powerUp = 'bomb';
+usePowerUp(bombCar);
+assert(!bombFarCar.destroyed, 'Bomb does not destroy car outside blast radius');
+
+// --- usePowerUp: Nitro ---
+group('usePowerUp: Nitro');
+const nitroCar = createCar(0, true, 'wasd');
+nitroCar.powerUp = 'nitro';
+assertEqual(nitroCar.nitroTimer, 0, 'Nitro timer starts at 0');
+usePowerUp(nitroCar);
+assertEqual(nitroCar.nitroTimer, NITRO_DURATION, 'Nitro sets timer to NITRO_DURATION');
+
+// Nitro speed cap
+const maxSpdNitro = MAX_SPEED + NITRO_BOOST;
+assertEqual(maxSpdNitro, 400, 'Nitro max speed is MAX_SPEED + NITRO_BOOST = 400');
+
+// --- usePowerUp: Teleport ---
+group('usePowerUp: Teleport');
+cars = [];
+const tpCar = createCar(0, true, 'wasd');
+const tpLeader = createCar(1, false, 'cpu');
+cars = [tpCar, tpLeader];
+tpCar.x = 100; tpCar.y = 100; tpCar.angle = 0;
+tpCar.lap = 0; tpCar.wayIdx = 5;
+tpLeader.x = 500; tpLeader.y = 300; tpLeader.angle = 1.5;
+tpLeader.lap = 0; tpLeader.wayIdx = 20;
+tpCar.powerUp = 'teleport';
+usePowerUp(tpCar);
+assertEqual(tpCar.x, 500, 'Teleport moves car to leader X');
+assertEqual(tpCar.y, 300, 'Teleport moves car to leader Y');
+assertApprox(tpCar.angle, 1.5, 0.01, 'Teleport sets car angle to leader angle');
+assertEqual(tpLeader.x, 100, 'Teleport moves leader to car X');
+assertEqual(tpLeader.y, 100, 'Teleport moves leader to car Y');
+assertApprox(tpLeader.angle, 0, 0.01, 'Teleport sets leader angle to car angle');
+
+// Teleport with no one ahead: wasted but always consumed
+const lonelyCar = createCar(0, true, 'wasd');
+cars = [lonelyCar];
+lonelyCar.x = 100; lonelyCar.y = 100; lonelyCar.angle = 0;
+lonelyCar.powerUp = 'teleport';
+lonelyCar.lap = 0; lonelyCar.wayIdx = 10;
+usePowerUp(lonelyCar);
+assertEqual(lonelyCar.x, 100, 'Teleport with no other cars: position unchanged');
+
+// Teleport when already in 1st: wasted but always consumed
+const firstCar = createCar(0, true, 'wasd');
+const behindCar = createCar(1, false, 'cpu');
+cars = [firstCar, behindCar];
+firstCar.x = 100; firstCar.y = 100; firstCar.lap = 1; firstCar.wayIdx = 20;
+behindCar.x = 500; behindCar.y = 300; behindCar.lap = 0; behindCar.wayIdx = 5;
+firstCar.powerUp = 'teleport';
+usePowerUp(firstCar);
+assertEqual(firstCar.x, 100, 'Teleport in 1st place: position unchanged (wasted)');
+
+// --- BRAKE FIRES POWER-UP (Quick tap to fire, Hold to reverse) ---
+group('Power-Up Activation (Quick tap = fire, Hold = reverse)');
+
+// Quick tap: press brake briefly (<0.2s) then release → fires power-up
+const brakePuCar = createCar(0, true, 'wasd');
+brakePuCar.powerUp = 'nitro';
+brakePuCar.brakeWasDown = false;
+brakePuCar.brakeHoldTime = 0;
+
+// Frame 1: brake pressed, hold time starts accumulating
+let input1 = { brake: true };
+let actualBrake1 = input1.brake;
+if (input1.brake) brakePuCar.brakeHoldTime += 0.016; // ~1 frame at 60fps
+// During short hold with power-up, brake is suppressed (not reversing yet)
+if (brakePuCar.powerUp && brakePuCar.brakeHoldTime < 0.2) actualBrake1 = false;
+assertEqual(actualBrake1, false, 'Brake suppressed during short hold when power-up held');
+assertEqual(brakePuCar.powerUp, 'nitro', 'Power-up NOT fired yet while key still held');
+brakePuCar.brakeWasDown = true;
+
+// Frame 2: brake released after quick tap → power-up fires
+let input2 = { brake: false };
+if (brakePuCar.brakeWasDown && brakePuCar.brakeHoldTime < 0.2 && brakePuCar.powerUp) {
+  usePowerUp(brakePuCar);
+  brakePuCar.powerUp = null;
+}
+brakePuCar.brakeHoldTime = 0;
+brakePuCar.brakeWasDown = false;
+assert(brakePuCar.powerUp === null, 'Power-up consumed after quick tap release');
+assertEqual(brakePuCar.nitroTimer, NITRO_DURATION, 'Nitro activated by quick brake tap');
+
+// Hold brake long (>0.2s) then release → power-up NOT fired, reverse works
+const holdCar = createCar(0, true, 'wasd');
+holdCar.powerUp = 'nitro';
+holdCar.brakeWasDown = false;
+holdCar.brakeHoldTime = 0;
+
+// Simulate holding for 0.3s (many frames)
+holdCar.brakeHoldTime = 0.3;
+holdCar.brakeWasDown = true;
+// Brake should work for reverse after 0.2s threshold
+let holdBrake = true;
+if (holdCar.powerUp && holdCar.brakeHoldTime < 0.2) holdBrake = false;
+assertEqual(holdBrake, true, 'Brake works for reverse after holding > 0.2s');
+
+// Release after long hold → power-up NOT fired
+if (holdCar.brakeWasDown && holdCar.brakeHoldTime < 0.2 && holdCar.powerUp) {
+  usePowerUp(holdCar);
+  holdCar.powerUp = null;
+}
+holdCar.brakeHoldTime = 0;
+assertEqual(holdCar.powerUp, 'nitro', 'Power-up NOT consumed after long hold release');
+
+// Without power-up, brake always works normally for reverse
+const noPuCar = createCar(0, true, 'wasd');
+noPuCar.powerUp = null;
+noPuCar.brakeHoldTime = 0.05; // short hold
+let normalBrake = true;
+if (noPuCar.powerUp && noPuCar.brakeHoldTime < 0.2) normalBrake = false;
+assertEqual(normalBrake, true, 'Brake works normally when no power-up held');
+
+// --- AI POWER-UP USAGE ---
+group('AI Power-Up Usage');
+
+// AI uses power-ups independently (not via brake)
+const aiPuCar = createCar(0, false, 'cpu');
+aiPuCar.powerUp = 'nitro';
+
+// shouldAIUsePowerUp returns boolean
+const aiResult = shouldAIUsePowerUp(aiPuCar);
+assert(typeof aiResult === 'boolean', 'shouldAIUsePowerUp returns boolean');
+
+// AI with no power-up never uses
+aiPuCar.powerUp = null;
+assertEqual(shouldAIUsePowerUp(aiPuCar), false, 'AI with no power-up returns false');
+
+// AI teleport only used when not in 1st
+cars = [aiPuCar];
+aiPuCar.powerUp = 'teleport';
+aiPuCar.lap = 1; aiPuCar.wayIdx = 30;
+// When alone, position is 1, so teleport should not trigger
+const tpResult = shouldAIUsePowerUp(aiPuCar);
+// getPosition returns 1 when alone, so condition (pos > 1) is false
+assertEqual(tpResult, false, 'AI teleport not used when in 1st place (alone)');
+
+// --- POWER-UP ITEM SPAWNING ---
+group('Power-Up Item Spawning');
+currentMap = 0;
+const spawnMap = MAPS[0];
+const spawnWp = spawnMap.waypoints;
+const itemInterval = Math.max(3, Math.floor(spawnWp.length / 6));
+powerUpItems = [];
+for (let i = itemInterval; i < spawnWp.length; i += itemInterval) {
+  powerUpItems.push({ x: spawnWp[i][0], y: spawnWp[i][1], active: true, respawnTimer: 0 });
+}
+assert(powerUpItems.length > 0, 'Power-up items spawned on track');
+assert(powerUpItems.length <= Math.floor(spawnWp.length / itemInterval), 'Correct number of power-up items');
+powerUpItems.forEach((item, i) => {
+  assert(typeof item.x === 'number' && typeof item.y === 'number', 'Item ' + i + ' has position');
+  assertEqual(item.active, true, 'Item ' + i + ' starts active');
+  assertEqual(item.respawnTimer, 0, 'Item ' + i + ' starts with 0 respawn timer');
+});
+
+// --- POWER-UP PICKUP ---
+group('Power-Up Pickup');
+const pickupCar = createCar(0, true, 'wasd');
+pickupCar.powerUp = null;
+const testItem = { x: 200, y: 200, active: true, respawnTimer: 0 };
+
+// Within pickup radius
+pickupCar.x = 200 + POWERUP_PICKUP_RADIUS - 1;
+pickupCar.y = 200;
+const withinRange = Math.hypot(pickupCar.x - testItem.x, pickupCar.y - testItem.y) < POWERUP_PICKUP_RADIUS;
+assert(withinRange, 'Car within pickup radius detects item');
+
+// Outside pickup radius
+pickupCar.x = 200 + POWERUP_PICKUP_RADIUS + 5;
+const outsideRange = Math.hypot(pickupCar.x - testItem.x, pickupCar.y - testItem.y) < POWERUP_PICKUP_RADIUS;
+assert(!outsideRange, 'Car outside pickup radius does not detect item');
+
+// Already has power-up: no pickup
+pickupCar.powerUp = 'bomb';
+pickupCar.x = 200;
+const hasOne = pickupCar.powerUp !== null;
+assert(hasOne, 'Car with existing power-up cannot pick up another');
+
+// Inactive item not picked up
+testItem.active = false;
+assert(!testItem.active, 'Inactive item not available for pickup');
+
+// After pickup, item deactivates and gets respawn timer
+testItem.active = true;
+testItem.respawnTimer = POWERUP_RESPAWN;
+testItem.active = false;
+assertEqual(testItem.active, false, 'Item deactivates after pickup');
+assertEqual(testItem.respawnTimer, POWERUP_RESPAWN, 'Item gets respawn timer after pickup');
+
+// --- BOMB EXPLOSION MECHANICS ---
+group('Bomb Explosion Mechanics');
+
+// Explosion position is behind the car
+const bTestCar = createCar(0, true, 'wasd');
+bTestCar.x = 300; bTestCar.y = 300; bTestCar.angle = Math.PI / 4;
+const bBackAngle = bTestCar.angle + Math.PI;
+const bExpectedX = bTestCar.x + Math.cos(bBackAngle) * 20;
+const bExpectedY = bTestCar.y + Math.sin(bBackAngle) * 20;
+assert(bExpectedX < bTestCar.x, 'Explosion position is behind the car (x)');
+assert(bExpectedY < bTestCar.y, 'Explosion position is behind the car (y)');
+
+// Bomb destroys nearby car, sets respawn fields
+const bTestVictim = createCar(1, false, 'cpu');
+bTestVictim.x = bExpectedX + 5; bTestVictim.y = bExpectedY + 5;
+cars = [bTestCar, bTestVictim];
+particles = [];
+bTestCar.powerUp = 'bomb';
+usePowerUp(bTestCar);
+assert(bTestVictim.destroyed, 'Bomb destroys nearby car');
+assertEqual(bTestVictim.respawnTimer, BOMB_RESPAWN_TIME, 'Destroyed car gets 5s respawn timer');
+assertApprox(bTestVictim.respawnX, bExpectedX, 1, 'Respawn X matches explosion position');
+assertApprox(bTestVictim.respawnY, bExpectedY, 1, 'Respawn Y matches explosion position');
+
+// Already destroyed cars are not re-destroyed
+const bAlreadyDead = createCar(2, false, 'cpu');
+bAlreadyDead.x = bExpectedX; bAlreadyDead.y = bExpectedY;
+bAlreadyDead.destroyed = true;
+bAlreadyDead.respawnTimer = 3; // partially through respawn
+cars = [bTestCar, bAlreadyDead];
+bTestCar.powerUp = 'bomb';
+usePowerUp(bTestCar);
+assertEqual(bAlreadyDead.respawnTimer, 3, 'Already-destroyed car respawn timer unchanged');
+
+// Destroyed car respawn timer countdown
+const destroyedCar = createCar(1, false, 'cpu');
+destroyedCar.destroyed = true;
+destroyedCar.respawnTimer = BOMB_RESPAWN_TIME;
+destroyedCar.respawnX = 200;
+destroyedCar.respawnY = 200;
+assertEqual(destroyedCar.respawnTimer, 5, 'Respawn timer starts at 5s');
+// Simulate countdown
+destroyedCar.respawnTimer -= 5;
+assert(destroyedCar.respawnTimer <= 0, 'Car respawns after 5 seconds');
+destroyedCar.destroyed = false;
+assertEqual(destroyedCar.destroyed, false, 'Car no longer destroyed after respawn');
+
 // --- AI SYSTEM ---
 group('AI System');
 currentMap = 0;
@@ -761,7 +1147,7 @@ assertEqual(aiInput.accel, true, 'AI accelerates by default');
 const aiBrakeCar = createCar(1, false, 'cpu');
 aiBrakeCar.x = MAPS[0].waypoints[0][0];
 aiBrakeCar.y = MAPS[0].waypoints[0][1];
-aiBrakeCar.angle = getTrackAngle(MAPS[0], 0) + Math.PI; // facing wrong way
+aiBrakeCar.angle = getTrackAngle(MAPS[0], 0) + Math.PI;
 aiBrakeCar.speed = MAX_SPEED * 0.8;
 const aiBrakeInput = getAIInput(aiBrakeCar);
 assertEqual(aiBrakeInput.brake, true, 'AI brakes when angle diff > 0.6 and speed > 40% max');
@@ -770,49 +1156,10 @@ assertEqual(aiBrakeInput.brake, true, 'AI brakes when angle diff > 0.6 and speed
 const aiSteerCar = createCar(1, false, 'cpu');
 aiSteerCar.x = MAPS[0].waypoints[0][0];
 aiSteerCar.y = MAPS[0].waypoints[0][1];
-// Get the AI's target point by calling getAIInput with correct angle, then offset
-const steerTarget = getAIInput(aiSteerCar); // just to confirm it works
-aiSteerCar.angle = getTrackAngle(MAPS[0], 0) - 0.5; // off to the left
+aiSteerCar.angle = getTrackAngle(MAPS[0], 0) - 0.5;
 const aiSteerInput = getAIInput(aiSteerCar);
 assertEqual(aiSteerInput.right, true, 'AI steers right when pointing left of track');
 
-// AI uses boost when aligned with its own target (angleDiff < 0.2)
-// First call AI without boost to find its target angle, then align and give boost
-currentMap = 0;
-const aiBoostCar = createCar(1, false, 'cpu');
-aiBoostCar.x = MAPS[0].waypoints[10][0];
-aiBoostCar.y = MAPS[0].waypoints[10][1];
-aiBoostCar.wayIdx = 10;
-aiBoostCar.speed = MAX_SPEED * 0.7;
-// Get AI's target by running it once to see where it steers
-const probeInput = getAIInput(aiBoostCar);
-// Now align car perfectly: if neither left nor right, car is aligned
-// Instead, compute the target point directly and aim at it
-const bFollowDist = 60 + (aiBoostCar.speed / MAX_SPEED) * 120;
-let bRemaining = bFollowDist, bSegIdx = aiBoostCar.wayIdx, btx, bty;
-const bwp = MAPS[0].waypoints;
-while (bRemaining > 0) {
-  const ni = (bSegIdx + 1) % bwp.length;
-  const segLen = Math.hypot(bwp[ni][0] - bwp[bSegIdx][0], bwp[ni][1] - bwp[bSegIdx][1]);
-  if (bRemaining <= segLen && segLen > 0) { const t = bRemaining / segLen; btx = bwp[bSegIdx][0] + (bwp[ni][0] - bwp[bSegIdx][0]) * t; bty = bwp[bSegIdx][1] + (bwp[ni][1] - bwp[bSegIdx][1]) * t; break; }
-  bRemaining -= segLen; bSegIdx = ni;
-}
-aiBoostCar.angle = Math.atan2(bty - aiBoostCar.y, btx - aiBoostCar.x);
-aiBoostCar.powerup = { type: 'boost' };
-const aiBoostInput = getAIInput(aiBoostCar);
-assertEqual(aiBoostInput.usePowerup, true, 'AI uses boost when aligned with its target at speed');
-
-// AI avoids oil slicks
-const aiAvoidCar = createCar(1, false, 'cpu');
-aiAvoidCar.x = MAPS[0].waypoints[5][0];
-aiAvoidCar.y = MAPS[0].waypoints[5][1];
-aiAvoidCar.angle = getTrackAngle(MAPS[0], 5);
-oilSlicks = [{ x: aiAvoidCar.x + Math.cos(aiAvoidCar.angle + 0.3) * 30, y: aiAvoidCar.y + Math.sin(aiAvoidCar.angle + 0.3) * 30, owner: 0 }];
-const aiAvoidInput = getAIInput(aiAvoidCar);
-assertEqual(aiAvoidInput.left, true, 'AI steers away from oil slick ahead-right');
-oilSlicks = [];
-
-// AI look-ahead increases with speed
 // AI follow distance increases with speed
 const followSlow = 60 + (0 / MAX_SPEED) * 120;
 const followFast = 60 + (MAX_SPEED / MAX_SPEED) * 120;
@@ -824,12 +1171,12 @@ assert(followFast > followSlow, 'AI looks further ahead at higher speed');
 group('G Bux Integration');
 localStorage.clear();
 
-assertEqual(Object.keys(DD_ACH).length, 10, '10 achievements defined');
+assertEqual(Object.keys(DD_ACH).length, 8, '8 achievements defined');
 
 // Total reward check
 let totalReward = 0;
 for (const id in DD_ACH) totalReward += DD_ACH[id].reward;
-assertEqual(totalReward, 200, 'Total achievement reward is 200 G Bux');
+assertEqual(totalReward, 175, 'Total achievement reward is 175 G Bux');
 
 // Individual achievement rewards
 assertEqual(DD_ACH.dd_first_race.reward, 5, 'dd_first_race reward is 5');
@@ -837,8 +1184,6 @@ assertEqual(DD_ACH.dd_first_win.reward, 10, 'dd_first_win reward is 10');
 assertEqual(DD_ACH.dd_all_maps.reward, 25, 'dd_all_maps reward is 25');
 assertEqual(DD_ACH.dd_no_walls.reward, 20, 'dd_no_walls reward is 20');
 assertEqual(DD_ACH.dd_drift_king.reward, 15, 'dd_drift_king reward is 15');
-assertEqual(DD_ACH.dd_oil_slick.reward, 10, 'dd_oil_slick reward is 10');
-assertEqual(DD_ACH.dd_speed_demon.reward, 15, 'dd_speed_demon reward is 15');
 assertEqual(DD_ACH.dd_photo_finish.reward, 20, 'dd_photo_finish reward is 20');
 assertEqual(DD_ACH.dd_unbeatable.reward, 30, 'dd_unbeatable reward is 30');
 assertEqual(DD_ACH.dd_human_victor.reward, 50, 'dd_human_victor reward is 50');
@@ -923,25 +1268,6 @@ const fallback = ggLoad();
 assertEqual(fallback.gBux, 0, 'Corrupt localStorage: returns default gBux');
 assertEqual(Object.keys(fallback.achievements).length, 0, 'Corrupt localStorage: returns empty achievements');
 
-// --- POWERUP TYPES ---
-group('Powerup Types');
-assert(['boost', 'oil', 'shield'].length === 3, '3 powerup types exist');
-
-// Boost timer
-const boostCar = createCar(0, true, 'wasd');
-boostCar.boostTimer = BOOST_DURATION;
-assert(boostCar.boostTimer === 2, 'Boost timer starts at BOOST_DURATION (2s)');
-
-// Shield timer
-const shieldCar = createCar(0, true, 'wasd');
-shieldCar.shieldTimer = SHIELD_DURATION;
-assert(shieldCar.shieldTimer === 5, 'Shield timer starts at SHIELD_DURATION (5s)');
-
-// Spinout timer
-const spinCar = createCar(0, true, 'wasd');
-spinCar.spinTimer = SPINOUT_DURATION;
-assert(spinCar.spinTimer === 1.0, 'Spinout timer starts at SPINOUT_DURATION (1.0s)');
-
 // --- DRIFT DETECTION ---
 group('Drift Detection');
 const driftCar = createCar(0, true, 'wasd');
@@ -964,14 +1290,11 @@ group('Track Coverage');
 // All maps have valid closed tracks
 MAPS.forEach((m, i) => {
   const wp = m.waypoints;
-  // First and last waypoints should be different (track loops via closePath)
   assert(wp.length >= 10, 'Map ' + i + ' has >= 10 waypoints');
 
-  // All waypoints on the canvas area (roughly)
   const allInBounds = wp.every(p => p[0] >= -100 && p[0] <= 1700 && p[1] >= -100 && p[1] <= 1100);
   assert(allInBounds, 'Map ' + i + ' waypoints are within reasonable bounds');
 
-  // Track should be navigable (consecutive waypoints not too far apart)
   for (let j = 0; j < wp.length; j++) {
     const k = (j + 1) % wp.length;
     const d = Math.hypot(wp[k][0] - wp[j][0], wp[k][1] - wp[j][1]);
@@ -994,9 +1317,9 @@ assertEqual(testSpeed, -REVERSE_MAX, 'Speed clamped to -REVERSE_MAX');
 
 assertApprox(REVERSE_MAX, 87.5, 0.1, 'Reverse max is 35% of MAX_SPEED');
 
-// Boost multiplier effect
-const boostedMax = MAX_SPEED * BOOST_MULTIPLIER;
-assertEqual(boostedMax, 400, 'Boosted max speed is 400');
+// Nitro speed cap
+const nitroMax = MAX_SPEED + NITRO_BOOST;
+assertEqual(nitroMax, 400, 'Nitro max speed is 400');
 
 // Turn rate proportional to absolute speed
 const turnAtFull = TURN_SPEED * (Math.abs(MAX_SPEED) / MAX_SPEED);
@@ -1014,31 +1337,31 @@ assert(turnAtReverse > 0, 'Turn rate is positive when reversing');
 
 // --- ACCELERATION & DECELERATION ---
 group('Acceleration & Deceleration');
-const dt = 1/60; // typical frame dt
+const adt = 1/60;
 
 // Accelerating
 let speed = 0;
-speed += ACCEL * dt;
+speed += ACCEL * adt;
 assertApprox(speed, 3, 0.1, 'One frame of acceleration adds ~3 speed');
 
 // Braking
 speed = 100;
-speed -= BRAKE * dt;
-assertApprox(speed, 100 - BRAKE * dt, 0.01, 'Braking subtracts BRAKE * dt');
+speed -= BRAKE * adt;
+assertApprox(speed, 100 - BRAKE * adt, 0.01, 'Braking subtracts BRAKE * dt');
 
 // Friction
 speed = 100;
-speed -= FRICTION * dt;
-assertApprox(speed, 100 - FRICTION * dt, 0.01, 'Friction subtracts FRICTION * dt');
+speed -= FRICTION * adt;
+assertApprox(speed, 100 - FRICTION * adt, 0.01, 'Friction subtracts FRICTION * dt');
 
 // Braking stronger than friction
 assert(BRAKE > FRICTION, 'Braking is stronger than friction');
 
 // Reverse: braking at 0 speed goes negative
 speed = 0;
-speed -= ACCEL * 0.4 * dt;
+speed -= ACCEL * 0.4 * adt;
 assert(speed < 0, 'Braking from standstill goes into reverse');
-assertApprox(speed, -ACCEL * 0.4 * dt, 0.01, 'Reverse acceleration is 40% of forward');
+assertApprox(speed, -ACCEL * 0.4 * adt, 0.01, 'Reverse acceleration is 40% of forward');
 
 // Reverse speed is capped
 speed = -REVERSE_MAX - 50;
@@ -1053,17 +1376,33 @@ const lapCar = createCar(0, true, 'wasd');
 assertEqual(lapCar.lap, 0, 'Starts on lap 0');
 assertEqual(lapCar.wayIdx, 0, 'Starts at waypoint 0');
 
-// Simulate advancing through waypoints
 const mapWpCount = MAPS[0].waypoints.length;
 lapCar.prevWayIdx = mapWpCount - 2;
 lapCar.wayIdx = mapWpCount - 1;
-// Simulate crossing start (wayIdx goes to 0 from near end)
 lapCar.prevWayIdx = mapWpCount - 1;
 lapCar.wayIdx = 0;
-if (lapCar.wayIdx === 0 && lapCar.prevWayIdx >= mapWpCount - 3) {
+if (lapCar.wayIdx <= 1 && lapCar.prevWayIdx >= mapWpCount - 3) {
   lapCar.lap++;
 }
-assertEqual(lapCar.lap, 1, 'Lap increments when crossing start line');
+assertEqual(lapCar.lap, 1, 'Lap increments when crossing start line (wayIdx=0)');
+
+// Simulate fast car skipping waypoint 0
+const lapCar2 = createCar(1, true, 'wasd');
+lapCar2.prevWayIdx = mapWpCount - 1;
+lapCar2.wayIdx = 1;
+if (lapCar2.wayIdx <= 1 && lapCar2.prevWayIdx >= mapWpCount - 3) {
+  lapCar2.lap++;
+}
+assertEqual(lapCar2.lap, 1, 'Lap increments when fast car skips wp 0 (wayIdx=1)');
+
+// No false lap when advancing normally
+const lapCar3 = createCar(2, true, 'wasd');
+lapCar3.prevWayIdx = 0;
+lapCar3.wayIdx = 1;
+if (lapCar3.wayIdx <= 1 && lapCar3.prevWayIdx >= mapWpCount - 3) {
+  lapCar3.lap++;
+}
+assertEqual(lapCar3.lap, 0, 'No false lap when advancing normally from wp 0 to 1');
 
 // Finish condition
 lapCar.lap = TOTAL_LAPS;
@@ -1075,13 +1414,11 @@ group('Car-Car Collision');
 const collCar1 = createCar(0, true, 'wasd');
 const collCar2 = createCar(1, false, 'cpu');
 
-// Place cars overlapping
 collCar1.x = 100; collCar1.y = 100;
 collCar2.x = 110; collCar2.y = 100;
 const collDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
 assert(collDist < 18, 'Cars placed within collision distance (18 units)');
 
-// Simulate collision push
 const pushAngle = Math.atan2(collCar2.y - collCar1.y, collCar2.x - collCar1.x);
 const overlap = 18 - collDist;
 collCar1.x -= Math.cos(pushAngle) * overlap * 0.5;
@@ -1089,12 +1426,10 @@ collCar2.x += Math.cos(pushAngle) * overlap * 0.5;
 const newDist = Math.hypot(collCar1.x - collCar2.x, collCar1.y - collCar2.y);
 assert(newDist >= collDist, 'After collision push, cars are further apart');
 
-// Faster car sends slower one skidding
 collCar1.speed = 200; collCar2.speed = 100;
 collCar1.skidVX = 0; collCar1.skidVY = 0;
 collCar2.skidVX = 0; collCar2.skidVY = 0;
 const skidForce = 300;
-// car1 is faster, so car2 gets skidded
 collCar2.skidVX = Math.cos(pushAngle) * skidForce * (collCar1.speed / MAX_SPEED + 0.3);
 collCar2.skidVY = Math.sin(pushAngle) * skidForce * (collCar1.speed / MAX_SPEED + 0.3);
 collCar2.speed *= 0.5;
@@ -1103,71 +1438,35 @@ assert(Math.abs(collCar2.skidVX) > 0, 'Slower car gets skid velocity from collis
 assertApprox(collCar1.speed, 170, 0.1, 'Faster car loses 15% speed on impact');
 assertApprox(collCar2.speed, 50, 0.1, 'Slower car loses 50% speed on impact');
 
-// Skid decays
 collCar2.skidVX *= 0.92;
 collCar2.skidVY *= 0.92;
 assert(Math.abs(collCar2.skidVX) > 0, 'Skid velocity decays but persists');
 
-// Skid stops at low velocity
 collCar2.skidVX = 0.5; collCar2.skidVY = 0.5;
 if (Math.abs(collCar2.skidVX) < 1 && Math.abs(collCar2.skidVY) < 1) { collCar2.skidVX = 0; collCar2.skidVY = 0; }
 assertEqual(collCar2.skidVX, 0, 'Skid stops when velocity below threshold');
 
-// Car starts with no skid
 const freshCar = createCar(0, true, 'wasd');
 assertEqual(freshCar.skidVX, 0, 'New car has no skid X velocity');
 assertEqual(freshCar.skidVY, 0, 'New car has no skid Y velocity');
-
-// --- OIL SLICK MECHANICS ---
-group('Oil Slick Mechanics');
-const oilSlick = {
-  x: 200, y: 200, owner: 0, life: OIL_LIFETIME,
-};
-assertEqual(oilSlick.life, 15, 'Oil slick starts with 15s lifetime');
-
-// Simulate life decay
-oilSlick.life -= 1;
-assertEqual(oilSlick.life, 14, 'Oil slick life decreases');
-
-// Oil doesn't affect owner
-assert(oilSlick.owner === 0, 'Oil slick has owner index');
-
-// Oil collision with another car
-const oilTarget = createCar(1, false, 'cpu');
-oilTarget.x = 201; oilTarget.y = 200;
-const oilDist = Math.hypot(oilTarget.x - oilSlick.x, oilTarget.y - oilSlick.y);
-assert(oilDist < 18, 'Target within oil slick radius');
-assert(oilSlick.owner !== oilTarget.index, 'Oil does not belong to target');
-
-// Shield blocks oil
-const shieldedCar = createCar(2, false, 'cpu');
-shieldedCar.shieldTimer = 3;
-assert(shieldedCar.shieldTimer > 0, 'Shielded car has active shield');
-// Shield absorbs hit: shieldTimer set to 0
-shieldedCar.shieldTimer = 0;
-assertEqual(shieldedCar.shieldTimer, 0, 'Shield consumed after blocking hit');
 
 // --- OFF-ROAD DETECTION ---
 group('Off-Road Detection');
 currentMap = 0;
 const offRoadMap = MAPS[0];
 
-// On track = small distance
 const onTrack = distToTrack(offRoadMap, offRoadMap.waypoints[5][0], offRoadMap.waypoints[5][1]);
 assert(onTrack < TRACK_WIDTH / 2, 'Point on waypoint is within track width');
 
-// Off track = large distance
 const offTrack = distToTrack(offRoadMap, 0, 0);
 assert(offTrack > TRACK_WIDTH / 2, 'Point at origin is off track');
 
-// Off-road speed multiplier
 const offRoadSpeed = 200 * 0.96;
 assertApprox(offRoadSpeed, 192, 0.1, 'Off-road speed multiplier: 200 * 0.96 = 192');
 
 // --- RACE MODE SETUP ---
 group('Race Mode Setup');
 
-// 1 player mode: 1 human, 3 CPU
 currentMap = 0;
 const schemes = ['wasd', 'arrows', 'ijkl', 'numpad'];
 function buildRace(numPlayers) {
@@ -1185,20 +1484,17 @@ assertEqual(mode1.filter(c => c.isPlayer).length, 1, '1P mode: 1 player car');
 assertEqual(mode1.filter(c => c.controlScheme === 'cpu').length, 3, '1P mode: 3 CPU cars');
 assertEqual(mode1[0].controlScheme, 'wasd', '1P mode: P1 uses WASD');
 
-// 2 player mode
 const mode2 = buildRace(2);
 assertEqual(mode2.filter(c => c.isPlayer).length, 2, '2P mode: 2 player cars');
 assertEqual(mode2.filter(c => c.controlScheme === 'cpu').length, 2, '2P mode: 2 CPU cars');
 assertEqual(mode2[0].controlScheme, 'wasd', '2P mode: P1 uses WASD');
 assertEqual(mode2[1].controlScheme, 'arrows', '2P mode: P2 uses arrows');
 
-// 3 player mode
 const mode3 = buildRace(3);
 assertEqual(mode3.filter(c => c.isPlayer).length, 3, '3P mode: 3 player cars');
 assertEqual(mode3.filter(c => c.controlScheme === 'cpu').length, 1, '3P mode: 1 CPU car');
 assertEqual(mode3[2].controlScheme, 'ijkl', '3P mode: P3 uses IJKL');
 
-// 4 player mode
 const mode4 = buildRace(4);
 assertEqual(mode4.filter(c => c.isPlayer).length, 4, '4P mode: 4 player cars');
 assertEqual(mode4.filter(c => c.controlScheme === 'cpu').length, 0, '4P mode: 0 CPU cars');
@@ -1229,12 +1525,6 @@ assert(testDriftTime >= 5, 'dd_drift_king condition: driftTime >= 5');
 testDriftTime = 4.9;
 assert(testDriftTime < 5, 'dd_drift_king rejected: driftTime < 5');
 
-// dd_speed_demon: boostsUsed >= 5
-let testBoosts = 5;
-assert(testBoosts >= 5, 'dd_speed_demon condition: boostsUsed >= 5');
-testBoosts = 4;
-assert(testBoosts < 5, 'dd_speed_demon rejected: boostsUsed < 5');
-
 // dd_photo_finish: time diff < 1 second
 const timeDiff = 0.8;
 assert(timeDiff < 1, 'dd_photo_finish condition: time diff < 1s');
@@ -1250,10 +1540,6 @@ assert(loaded.wins >= 10, 'dd_unbeatable condition: wins >= 10');
 const allMapsStats = { wins: 6, mapWins: { 0: true, 1: true, 2: true, 3: true, 4: true, 5: true } };
 assert(Object.keys(allMapsStats.mapWins).length >= MAPS.length, 'dd_all_maps condition: all maps won');
 
-// dd_oil_slick: oilHits > 0
-let testOilHits = 1;
-assert(testOilHits > 0, 'dd_oil_slick condition: oilHits > 0');
-
 // dd_human_victor: numPlayers >= 2
 let testNumPlayers = 2;
 assert(testNumPlayers >= 2, 'dd_human_victor condition: 2+ players');
@@ -1265,7 +1551,6 @@ group('Track Point Wrapping');
 const wrapMap = MAPS[0];
 const wrapLen = wrapMap.waypoints.length;
 
-// t wraps around
 const ptWrap = getTrackPoint(wrapMap, wrapLen);
 assertApprox(ptWrap[0], wrapMap.waypoints[0][0], 0.01, 'getTrackPoint wraps at length');
 
@@ -1284,7 +1569,6 @@ MAPS.forEach((m, mi) => {
 // --- MULTIPLAYER CAMERA ---
 group('Multiplayer Camera');
 
-// Single player: camera centers on that player
 const camCars1 = buildRace(1);
 const humanCars1 = camCars1.filter(c => c.isPlayer);
 let avgX1 = 0, avgY1 = 0;
@@ -1294,7 +1578,6 @@ avgY1 /= humanCars1.length;
 assertApprox(avgX1, camCars1[0].x, 0.01, '1P camera centers on P1 X');
 assertApprox(avgY1, camCars1[0].y, 0.01, '1P camera centers on P1 Y');
 
-// Two players: camera centers between them
 const camCars2 = buildRace(2);
 camCars2[0].x = 100; camCars2[0].y = 200;
 camCars2[1].x = 300; camCars2[1].y = 400;
@@ -1306,25 +1589,21 @@ avgY2 /= humanCars2.length;
 assertApprox(avgX2, 200, 0.01, '2P camera centers between players X');
 assertApprox(avgY2, 300, 0.01, '2P camera centers between players Y');
 
-// Zoom stays at 1 for single player
 assertEqual(humanCars1.length, 1, '1P has 1 human car');
 let targetZoom1 = 1;
-if (humanCars1.length > 1) targetZoom1 = 0.5; // would zoom out
+if (humanCars1.length > 1) targetZoom1 = 0.5;
 assertEqual(targetZoom1, 1, '1P zoom stays at 1.0');
 
-// Zoom reduces when players spread apart
-const spreadX = 800; // far apart
+const spreadX = 800;
 const spreadY = 600;
 const fitZoom = Math.min(1, Math.min(CANVAS_W / (spreadX + 400), CANVAS_H / (spreadY + 300)));
 assert(fitZoom < 1, 'Zoom < 1 when players spread far apart (got ' + fitZoom.toFixed(2) + ')');
 assert(fitZoom >= 0.3, 'Zoom has minimum of 0.3');
 
-// Zoom stays at 1 when players are close
 const closeSpreadX = 100; const closeSpreadY = 100;
 const closeZoom = Math.min(1, Math.min(CANVAS_W / (closeSpreadX + 400), CANVAS_H / (closeSpreadY + 300)));
 assertEqual(closeZoom, 1, 'Zoom stays 1.0 when players are close together');
 
-// Four players: camera includes all
 const camCars4 = buildRace(4);
 camCars4[0].x = 50; camCars4[0].y = 50;
 camCars4[1].x = 750; camCars4[1].y = 50;
@@ -1338,10 +1617,9 @@ avgY4 /= humanCars4.length;
 assertApprox(avgX4, 400, 0.01, '4P camera centers at average X');
 assertApprox(avgY4, 300, 0.01, '4P camera centers at average Y');
 
-// CPU cars do not affect camera
 const camMixed = buildRace(1);
 camMixed[0].x = 100; camMixed[0].y = 100;
-camMixed[1].x = 900; camMixed[1].y = 900; // CPU far away
+camMixed[1].x = 900; camMixed[1].y = 900;
 const humanMixed = camMixed.filter(c => c.isPlayer);
 let avgMX = 0, avgMY = 0;
 for (const c of humanMixed) { avgMX += c.x; avgMY += c.y; }
@@ -1360,6 +1638,108 @@ assertEqual(labelCars[3].isPlayer, false, 'Car 4 is CPU (no label)');
 assertEqual(labelCars[0].index, 0, 'P1 index is 0');
 assertEqual(labelCars[1].index, 1, 'P2 index is 1');
 assertEqual(labelCars[2].index, 2, 'P3 index is 2');
+
+// --- DOWNTOWN WALL COLLISION ---
+group('Downtown Wall Collision');
+
+const dtMap = MAPS[4];
+assert(dtMap.name === 'Downtown', 'Downtown map found');
+
+const wallTestCar = createCar(0, true, 'wasd');
+const testWall = dtMap.walls[0];
+wallTestCar.x = testWall.x + testWall.w / 2;
+wallTestCar.y = testWall.y + testWall.h / 2;
+wallTestCar.speed = 100;
+
+const carR = 10;
+const cx = Math.max(testWall.x, Math.min(wallTestCar.x, testWall.x + testWall.w));
+const cy = Math.max(testWall.y, Math.min(wallTestCar.y, testWall.y + testWall.h));
+const ddx = wallTestCar.x - cx, ddy = wallTestCar.y - cy;
+const dd = Math.hypot(ddx, ddy);
+assert(dd < carR, 'Car center inside wall registers as collision');
+
+const farCar = createCar(1, true, 'wasd');
+farCar.x = testWall.x - 50;
+farCar.y = testWall.y - 50;
+const cx2 = Math.max(testWall.x, Math.min(farCar.x, testWall.x + testWall.w));
+const cy2 = Math.max(testWall.y, Math.min(farCar.y, testWall.y + testWall.h));
+const dd2 = Math.hypot(farCar.x - cx2, farCar.y - cy2);
+assert(dd2 >= carR, 'Car far from wall has no collision');
+
+for (let i = 0; i < dtMap.walls.length; i++) {
+  const w = dtMap.walls[i];
+  assert(w.x >= 0 && w.x + w.w <= CANVAS_W, 'Wall ' + i + ' x bounds within canvas');
+  assert(w.y >= 0 && w.y + w.h <= CANVAS_H, 'Wall ' + i + ' y bounds within canvas');
+}
+
+for (const w of dtMap.walls) {
+  for (let wi = 0; wi < dtMap.waypoints.length; wi++) {
+    const wp = dtMap.waypoints[wi];
+    const inside = wp[0] >= w.x && wp[0] <= w.x + w.w && wp[1] >= w.y && wp[1] <= w.y + w.h;
+    assert(!inside, 'Wall does not overlap waypoint ' + wi);
+  }
+}
+
+// --- CAR DESIGNS ---
+group('Car Designs');
+assertEqual(CAR_DESIGNS.length, 12, '12 car designs');
+
+CAR_DESIGNS.forEach(d => {
+  assert(typeof d.id === 'string' && d.id.length > 0, d.id + ' has id');
+  assert(typeof d.name === 'string' && d.name.length > 0, d.id + ' has name');
+  assert(typeof d.color === 'string' && d.color.startsWith('#'), d.id + ' has color');
+});
+
+const designIds = CAR_DESIGNS.map(d => d.id);
+assertEqual(new Set(designIds).size, 12, 'All design IDs are unique');
+
+assert(!CAR_DESIGNS[0].unlock, 'Stock is always unlocked');
+assert(!CAR_DESIGNS[1].unlock, 'Sedan is always unlocked');
+assert(!CAR_DESIGNS[2].unlock, 'Muscle Car is always unlocked');
+
+assert(CAR_DESIGNS[3].unlock && CAR_DESIGNS[3].unlock.wins === 1, 'Speed Demon needs 1 win');
+assert(CAR_DESIGNS[4].unlock && CAR_DESIGNS[4].unlock.wins === 3, 'Hot Rod needs 3 wins');
+assert(CAR_DESIGNS[5].unlock && CAR_DESIGNS[5].unlock.maps === 2, 'Rally needs 2 maps');
+
+// --- CAR UNLOCK SYSTEM ---
+group('Car Unlock System');
+localStorage.clear();
+
+assert(isCarUnlocked(CAR_DESIGNS[0]), 'Stock unlocked with no stats');
+assert(isCarUnlocked(CAR_DESIGNS[1]), 'Sedan unlocked with no stats');
+assert(isCarUnlocked(CAR_DESIGNS[2]), 'Muscle Car unlocked with no stats');
+assert(!isCarUnlocked(CAR_DESIGNS[3]), 'Speed Demon locked with no stats');
+
+ddSaveStats({ wins: 1, mapWins: { 0: true } });
+assert(isCarUnlocked(CAR_DESIGNS[3]), 'Speed Demon unlocked with 1 win');
+assert(!isCarUnlocked(CAR_DESIGNS[4]), 'Hot Rod still locked with 1 win');
+
+ddSaveStats({ wins: 3, mapWins: { 0: true, 1: true } });
+assert(isCarUnlocked(CAR_DESIGNS[4]), 'Hot Rod unlocked with 3 wins');
+assert(isCarUnlocked(CAR_DESIGNS[5]), 'Rally unlocked with 2 maps');
+assert(!isCarUnlocked(CAR_DESIGNS[6]), 'Tank still locked with 3 wins');
+
+// --- CAR EQUIP / SAVE ---
+group('Car Equip & Save');
+localStorage.clear();
+
+assertEqual(getEquippedCar(), 'stock', 'Default equipped car is stock');
+
+ddSaveStats({ wins: 5, mapWins: {}, equippedCar: 'muscle' });
+assertEqual(getEquippedCar(), 'muscle', 'Equipped car persists');
+
+assertEqual(getDesign('stock').name, 'Stock Racer', 'getDesign finds stock');
+assertEqual(getDesign('f1').name, 'F1', 'getDesign finds f1');
+assertEqual(getDesign('invalid').id, 'stock', 'getDesign fallback to stock');
+
+localStorage.clear();
+const designCar = createCar(0, true, 'wasd', 'muscle');
+assertEqual(designCar.designId, 'muscle', 'Created car has correct designId');
+assertEqual(designCar.color, '#2962ff', 'Created car uses design color');
+assertEqual(designCar.name, 'Muscle Car', 'Created car uses design name');
+
+const defaultCar = createCar(1, false, 'cpu');
+assertEqual(defaultCar.designId, 'stock', 'Default design is stock');
 
 // ============================================================
 // SUMMARY

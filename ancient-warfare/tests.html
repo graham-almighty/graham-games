@@ -2194,6 +2194,79 @@ group('Skirmish Enemy Budget Bonus');
   }
 }
 
+// ─── BLOOD EFFECTS ───
+group('Blood Effects');
+
+{
+  // Blood toggle persists to localStorage
+  const AW_BLOOD_KEY = 'aw-blood';
+
+  // Default: off
+  localStorage.removeItem(AW_BLOOD_KEY);
+  let bloodEnabled = localStorage.getItem(AW_BLOOD_KEY) === 'true';
+  assertEqual(bloodEnabled, false, 'Blood defaults to off');
+
+  // Enable
+  localStorage.setItem(AW_BLOOD_KEY, 'true');
+  bloodEnabled = localStorage.getItem(AW_BLOOD_KEY) === 'true';
+  assertEqual(bloodEnabled, true, 'Blood enabled after setting true');
+
+  // Disable
+  localStorage.setItem(AW_BLOOD_KEY, 'false');
+  bloodEnabled = localStorage.getItem(AW_BLOOD_KEY) === 'true';
+  assertEqual(bloodEnabled, false, 'Blood disabled after setting false');
+
+  localStorage.removeItem(AW_BLOOD_KEY);
+}
+
+{
+  // Blood particles spawn only when enabled
+  let bloodEnabled = false;
+  let particles = [];
+  function mockSpawnBlood(pos, enabled) {
+    if (!enabled) return;
+    const count = 60 + Math.floor(Math.random() * 60);
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: pos.x, y: pos.y + 0.5, z: pos.z,
+        vx: (Math.random() - 0.5) * 4,
+        vy: 2 + Math.random() * 3,
+        vz: (Math.random() - 0.5) * 4,
+        life: 1.5 + Math.random(),
+      });
+    }
+  }
+
+  // Blood off: no particles
+  mockSpawnBlood({ x: 0, y: 0, z: 0 }, false);
+  assertEqual(particles.length, 0, 'No blood particles when disabled');
+
+  // Blood on: particles spawn
+  mockSpawnBlood({ x: 5, y: 0, z: 3 }, true);
+  assert(particles.length >= 60 && particles.length <= 120, 'Blood spawns 60-120 particles when enabled (' + particles.length + ')');
+  assert(particles[0].vy > 0, 'Blood particles have upward velocity');
+  assert(particles[0].life > 1, 'Blood particles have lifetime > 1s');
+}
+
+{
+  // Blood particles fall with gravity and settle on ground
+  let bp = { y: 1.0, vy: 3, vx: 1, vz: 1, settled: false };
+  const dt = 0.1;
+
+  // Simulate one step
+  bp.vy -= 9.8 * dt;
+  bp.y += bp.vy * dt;
+  assert(bp.vy < 3, 'Gravity reduces vy');
+  assertEqual(bp.settled, false, 'Particle not settled while airborne');
+
+  // Ground clamp + settled flag
+  bp.y = -0.1;
+  if (bp.y < 0.02) { bp.y = 0.02; bp.vy = 0; bp.vx = 0; bp.vz = 0; bp.settled = true; }
+  assertEqual(bp.y, 0.02, 'Blood particle clamped to ground');
+  assertEqual(bp.vy, 0, 'Blood velocity zeroed at ground');
+  assertEqual(bp.settled, true, 'Particle marked settled on ground');
+}
+
 // ============================================================
 showSummary();
 </script>

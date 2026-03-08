@@ -536,6 +536,40 @@
     border-radius: 8px;
   }
 
+  /* MEGA IO card */
+  .game-card.mega-io {
+    border-left-color: #44ddff;
+  }
+  .game-card.mega-io:hover {
+    border-color: #44ddff;
+    box-shadow: 0 0 30px #44ddff15, -5px 0 20px #44ddff10;
+  }
+  .game-card.mega-io::before {
+    background: linear-gradient(90deg, #44ddff08 0%, transparent 50%);
+  }
+  .game-card.mega-io .game-icon {
+    background: linear-gradient(135deg, #0a1a2a, #0a2a3a);
+    border: 1px solid #44ddff44;
+    border-radius: 8px;
+  }
+
+  /* SIBLING BRAWL card */
+  .game-card.sibling-brawl {
+    border-left-color: #ff66aa;
+  }
+  .game-card.sibling-brawl:hover {
+    border-color: #ff66aa;
+    box-shadow: 0 0 30px #ff66aa15, -5px 0 20px #ff66aa10;
+  }
+  .game-card.sibling-brawl::before {
+    background: linear-gradient(90deg, #ff66aa08 0%, transparent 50%);
+  }
+  .game-card.sibling-brawl .game-icon {
+    background: linear-gradient(135deg, #1a081a, #2a0a1a);
+    border: 1px solid #ff66aa44;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -1271,9 +1305,9 @@ for (let i = 0; i < 30; i++) {
           <rect x="15" y="18" width="20" height="24" rx="4" fill="#1a080e" stroke="#e91e63" stroke-width="1.5"/>
           <!-- windshield -->
           <rect x="19" y="21" width="12" height="5" rx="1" fill="#e91e63" opacity="0.4"/>
-          <!-- eyes on windshield -->
-          <circle cx="22" cy="23" r="1.5" fill="#fff" opacity="0.8"/>
-          <circle cx="28" cy="23" r="1.5" fill="#fff" opacity="0.8"/>
+          <!-- headlights -->
+          <circle cx="22" cy="20" r="1.5" fill="#ffe066" opacity="0.6"/>
+          <circle cx="28" cy="20" r="1.5" fill="#ffe066" opacity="0.6"/>
           <!-- wheels -->
           <rect x="12" y="22" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
           <rect x="34" y="22" width="4" height="7" rx="1.5" fill="#e91e63" opacity="0.6"/>
@@ -1335,6 +1369,55 @@ for (let i = 0; i < 30; i++) {
       <div class="game-info">
         <div class="game-title">BATTLE BROS</div>
         <div class="game-desc">8-bit pixel fighting</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- MEGA IO -->
+    <a href="mega-io/index.html" class="game-card mega-io" data-preview="previews/mega-io.mp4">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1a2a" stroke="#44ddff" stroke-width="2"/>
+          <rect x="10" y="10" width="12" height="12" fill="#4488ff" opacity="0.5" rx="1"/>
+          <rect x="22" y="10" width="8" height="8" fill="#ff4444" opacity="0.4" rx="1"/>
+          <rect x="14" y="22" width="10" height="10" fill="#4488ff" opacity="0.3" rx="1"/>
+          <rect x="28" y="18" width="12" height="14" fill="#44cc44" opacity="0.4" rx="1"/>
+          <rect x="10" y="32" width="14" height="8" fill="#ffaa00" opacity="0.4" rx="1"/>
+          <rect x="30" y="32" width="10" height="8" fill="#cc44cc" opacity="0.4" rx="1"/>
+          <circle cx="16" cy="16" r="3" fill="#4488ff"/>
+          <circle cx="34" cy="24" r="3" fill="#44cc44"/>
+          <circle cx="35" cy="36" r="3" fill="#cc44cc"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">MEGA IO</div>
+        <div class="game-desc">Territory capture arena</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- SIBLING BRAWL -->
+    <a href="sibling-brawl/index.html" class="game-card sibling-brawl" data-preview="previews/sibling-brawl.mp4">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a081a" stroke="#ff66aa" stroke-width="2"/>
+          <!-- pillow -->
+          <rect x="10" y="14" width="14" height="10" rx="3" fill="#ff66aa" opacity="0.5"/>
+          <line x1="12" y1="17" x2="22" y2="17" stroke="#ff66aa" stroke-width="0.8" opacity="0.3"/>
+          <line x1="12" y1="20" x2="22" y2="20" stroke="#ff66aa" stroke-width="0.8" opacity="0.3"/>
+          <!-- nerf dart -->
+          <rect x="30" y="16" width="3" height="10" rx="1" fill="#ffaa44" opacity="0.7"/>
+          <rect x="29" y="14" width="5" height="3" rx="1" fill="#ff6644" opacity="0.6"/>
+          <!-- VS -->
+          <text x="25" y="38" text-anchor="middle" font-size="8" fill="#ff66aa" font-family="monospace" font-weight="bold">VS</text>
+          <!-- stick figures -->
+          <circle cx="14" cy="34" r="2" fill="#4488ff" opacity="0.7"/>
+          <circle cx="36" cy="34" r="2" fill="#ff4444" opacity="0.7"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">SIBLING BRAWL</div>
+        <div class="game-desc">Goofy indoor battle simulator</div>
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
@@ -1533,6 +1616,30 @@ const ALL_ACHIEVEMENTS = [
     { id: 'bb_speed_ko',      name: 'Speed Demon',        desc: 'KO opponent in under 10 seconds',     reward: 15 },
     { id: 'bb_2p_match',      name: 'Friendly Rival',     desc: 'Complete a 2P local match',           reward: 50 },
   ]},
+  { group: 'MEGA IO', items: [
+    { id: 'mio_first_capture', name: 'First Claim',       desc: 'Capture territory for the first time',  reward: 5 },
+    { id: 'mio_10_percent',    name: 'Land Grab',          desc: 'Own 10% of the map',                    reward: 10 },
+    { id: 'mio_25_percent',    name: 'Territory Lord',     desc: 'Own 25% of the map',                    reward: 20 },
+    { id: 'mio_50_percent',    name: 'Domination',         desc: 'Own 50% of the map',                    reward: 30 },
+    { id: 'mio_kill',          name: 'Eliminated',          desc: 'Eliminate a bot',                       reward: 10 },
+    { id: 'mio_5_kills',       name: 'Serial Eliminator',  desc: 'Eliminate 5 bots in one game',          reward: 25 },
+    { id: 'mio_survive_5min',  name: 'Survivor',           desc: 'Survive for 5 minutes',                 reward: 15 },
+    { id: 'mio_comeback',      name: 'Comeback',           desc: 'Capture territory after dying',         reward: 20 },
+    { id: 'mio_speed_capture', name: 'Quick Claim',        desc: 'Capture 20+ cells in a single trail',   reward: 15 },
+    { id: 'mio_champion',      name: 'Champion',           desc: 'Own the most territory when time ends', reward: 50 },
+  ]},
+  { group: 'SIBLING BRAWL', items: [
+    { id: 'sb_first_fight',  name: 'First Fight',      desc: 'Complete a battle',                   reward: 5 },
+    { id: 'sb_winner',       name: 'Winner',            desc: 'Win a battle',                        reward: 10 },
+    { id: 'sb_flawless',     name: 'Untouchable',       desc: 'Win without losing a unit',           reward: 30 },
+    { id: 'sb_pillow_army',  name: 'Pillow Fort',       desc: 'Win with 5+ pillow fighters',         reward: 15 },
+    { id: 'sb_nerf_squad',   name: 'Nerf War',          desc: 'Win with 5+ nerf gunners',            reward: 15 },
+    { id: 'sb_balanced',     name: 'Mixed Tactics',     desc: 'Win using all 5 unit types',          reward: 20 },
+    { id: 'sb_underdog',     name: 'Outnumbered',       desc: 'Win outnumbered 2:1',                 reward: 25 },
+    { id: 'sb_speed_win',    name: 'Quick Fight',       desc: 'Win in under 30 seconds',             reward: 20 },
+    { id: 'sb_commander',    name: 'Big Sibling',       desc: 'Win 5 battles',                       reward: 25 },
+    { id: 'sb_warlord',      name: 'Supreme Sibling',   desc: 'Win 10 battles',                      reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1553,6 +1660,10 @@ const SHOP_ITEMS = [
   { id: 'bm_stat_scanner',  name: 'Monster Scanner',   desc: 'See enemy stats and move types in battle',   cost: 50, icon: '&#128269;', game: 'Brawl Monsters' },
   { id: 'bb_shadow_mode',  name: 'Shadow Mode',       desc: 'CRT scanlines and fighter after-image trails', cost: 75, icon: '&#128065;', game: 'Battle Bros' },
   { id: 'bb_boss_fighter', name: 'Boss Fighter',      desc: 'Unlock the hidden fighter Omega',              cost: 50, icon: '&#11088;',  game: 'Battle Bros' },
+  { id: 'mio_speed_boost', name: 'Speed Boost',      desc: 'Move 20% faster in Mega IO',                  cost: 50, icon: '&#9889;',   game: 'Mega IO' },
+  { id: 'mio_trail_shield', name: 'Trail Shield',    desc: 'Trail is safe for 2s after leaving territory', cost: 75, icon: '&#128737;', game: 'Mega IO' },
+  { id: 'sb_super_soaker',  name: 'Super Soaker',    desc: 'Unlocks the Super Soaker unit type',           cost: 75, icon: '&#128166;', game: 'Sibling Brawl' },
+  { id: 'sb_snack_boost',   name: 'Snack Boost',     desc: '+10% damage for blue team for first 10s',      cost: 50, icon: '&#127852;', game: 'Sibling Brawl' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══
@@ -1633,13 +1744,19 @@ const NEWS_TAG_COLORS = {
   'ancient-warfare':  { bg: '#cd7f3222', border: '#cd7f32', color: '#cd7f32' },
   'rogue-depths':     { bg: '#8b5e3c22', border: '#8b5e3c', color: '#8b5e3c' },
   'battle-bros':      { bg: '#00e5ff22', border: '#00e5ff', color: '#00e5ff' },
+  'mega-io':          { bg: '#44ddff22', border: '#44ddff', color: '#44ddff' },
+  'sibling-brawl':    { bg: '#ff66aa22', border: '#ff66aa', color: '#ff66aa' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
+  'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-03-07', title: 'Sibling Brawl Launches!', desc: 'New goofy indoor battle simulator! Deploy pillow fighters, nerf gunners, blanket tanks, scooter riders, and water balloons to defeat the evil younger sibling empire!', game: 'sibling-brawl' },
+  { date: '2026-03-07', title: 'Mega IO Launches!', desc: 'New territory capture arena game! Move around the map, leave trails, and capture territory by completing loops. Compete against 4 AI bots to dominate the map before time runs out!', game: 'mega-io' },
+  { date: '2026-03-07', title: 'Cool Stuff Update 1', desc: 'Rogue Depths: expanded inventory to 20 slots with item labels so you can see what you\'re carrying at a glance. Ancient Warfare: new blood effects toggle — watch the battlefield get messy! School Mode now also blocks Rogue Depths and Battle Bros.', game: 'all' },
   { date: '2026-03-04', title: 'Bug Fix and Cool Stuff 5', desc: 'Bug fixes and cool stuff for all games! Next up: some cool launcher related stuff.', game: 'all' },
   { date: '2026-03-01', title: 'Bug Fix 4', desc: 'A bunch of bugs have been fixed for Battle Bros. Next up we will be patching up bugs from every game, that have been very annoying lately.', game: 'battle-bros' },
   { date: '2026-02-28', title: 'Battle Bros Launches!', desc: 'New 8-bit pixel fighting game with 8 unique fighters, VS CPU and 2P local modes, special moves, and best-of-3 rounds!', game: 'battle-bros' },
@@ -1681,7 +1798,7 @@ window.addEventListener('pageshow', refreshGBux);
 refreshGBux();
 
 // ═══ SCHOOL MODE ═══
-const BLOCKED_GAMES = ['combat', 'ancient-warfare'];
+const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros', 'sibling-brawl'];
 
 function getSchoolMode() {
   const data = ggLoad();

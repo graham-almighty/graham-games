@@ -39,6 +39,7 @@
   brawl-monsters/index.html    — 2D monster catching/battling RPG
   battle-bros/index.html       — 2D 8-bit platform fighter
   rogue-depths/index.html      — 2D roguelike dungeon crawler
+  sibling-brawl/index.html     — 3D first-person sibling battle game (Three.js r128)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   CLAUDE.md                    — This file (cross-game overview)
@@ -82,7 +83,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (95 total, 2160G earnable)
+### Achievement Summary (105 total, 2345G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -93,10 +94,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Devious Driving | 8 | 175G |
 | Brawl Monsters | 19 | 430G |
 | Battle Bros | 10 | 210G |
+| Sibling Brawl | 10 | 185G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 
-### G Bux Shop (17 items, 1175G total)
+### G Bux Shop (19 items, 1300G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -116,6 +118,8 @@ See each game's `CLAUDE.md` for full achievement tables.
 | bm_stat_scanner | Monster Scanner | 50G | Brawl Monsters | See enemy stats in battle |
 | bb_shadow_mode | Shadow Mode | 75G | Battle Bros | CRT scanlines + after-images |
 | bb_boss_fighter | Boss Fighter | 50G | Battle Bros | Unlocks hidden fighter Omega |
+| sb_super_soaker | Super Soaker | 75G | Sibling Brawl | Unlocks Super Soaker unit |
+| sb_snack_boost | Snack Boost | 50G | Sibling Brawl | +10% damage for first 10s |
 
 ---
 

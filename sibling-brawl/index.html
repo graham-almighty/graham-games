@@ -140,6 +140,12 @@ body { background: #1a1020; font-family: 'Cinzel', serif; overflow: hidden; colo
   width: 36px; height: 24px; border: 1px solid #ff66aa44; border-radius: 4px;
   background: none; cursor: pointer; padding: 0;
 }
+.color-reset {
+  background: none; border: 1px solid #ff66aa44; border-radius: 4px;
+  color: #ff66aa; font-size: 14px; cursor: pointer; padding: 2px 6px;
+  line-height: 1;
+}
+.color-reset:hover { background: #ff66aa22; }
 .upgrade-row {
   display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
   padding: 6px; border: 1px solid #ffffff11; border-radius: 4px;
@@ -156,6 +162,32 @@ body { background: #1a1020; font-family: 'Cinzel', serif; overflow: hidden; colo
 .loadout-go {
   margin-top: 16px; width: 100%; text-align: center;
 }
+#mirror-canvas {
+  width: 100%; height: 200px; border: 1px solid #ff66aa44; border-radius: 6px;
+  background: #0a0a1a; margin-bottom: 12px;
+}
+.hair-toggle {
+  display: flex; gap: 6px; margin-bottom: 8px;
+}
+.hair-btn {
+  flex: 1; padding: 6px; border: 2px solid #ffffff22; border-radius: 4px;
+  background: none; color: #ccc; font-family: 'Bangers', cursive; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+}
+.hair-btn:hover { border-color: #ff66aa66; }
+.hair-btn.selected { border-color: #ff66aa; background: #ff66aa22; color: #fff; }
+.outfit-option {
+  display: flex; align-items: center; gap: 8px; padding: 8px;
+  border: 2px solid #ffffff22; border-radius: 4px; cursor: pointer;
+  margin-bottom: 6px; transition: all 0.2s;
+}
+.outfit-option:hover { border-color: #ff66aa66; background: #ff66aa11; }
+.outfit-option.selected { border-color: #ff66aa; background: #ff66aa22; }
+.outfit-option.locked { opacity: 0.4; cursor: default; }
+.outfit-option.locked:hover { border-color: #ffffff22; background: none; }
+.outfit-name { font-family: 'Bangers', cursive; font-size: 14px; color: #fff; }
+.outfit-desc { font-size: 10px; color: #888; }
+.outfit-lock { color: #ff6644; font-size: 10px; font-family: 'Bangers', cursive; }
 
 /* === LEVEL SELECT === */
 #level-screen {
@@ -296,9 +328,14 @@ body { background: #1a1020; font-family: 'Cinzel', serif; overflow: hidden; colo
       <div class="color-row"><label>Hair</label><input type="color" id="color-hair" value="#8B4513"></div>
       <div class="color-row"><label>Shirt</label><input type="color" id="color-shirt" value="#4488ff"></div>
       <div class="color-row"><label>Skin</label><input type="color" id="color-skin" value="#ffcc99"></div>
+      <div class="hair-toggle" id="hair-toggle"></div>
+      <h3 style="margin-top:12px">OUTFIT</h3>
+      <div id="outfit-picker"></div>
     </div>
     <div class="loadout-panel">
-      <h3>UPGRADES</h3>
+      <h3>MIRROR</h3>
+      <canvas id="mirror-canvas"></canvas>
+      <h3 style="margin-top:12px">UPGRADES</h3>
       <div id="upgrade-list"></div>
     </div>
   </div>
@@ -324,7 +361,7 @@ body { background: #1a1020; font-family: 'Cinzel', serif; overflow: hidden; colo
   <div id="damage-flash"></div>
   <div id="click-start" class="hidden">
     <div class="start-title">CLICK TO START</div>
-    <div class="start-hint">WASD to move | Mouse to look | Left click to attack</div>
+    <div class="start-hint">WASD to move | Space to jump | Mouse to look | Left click to attack</div>
   </div>
 </div>
 
@@ -405,7 +442,9 @@ const PLAYER_KEY = 'sb-player';
 const CLASSES = {
   pillow: { name: 'Pillow Fighter', desc: 'Melee brawler. Smack enemies with your pillow!', icon: '🛏️', baseDmg: 15, baseHp: 100, range: 2.5, cooldown: 0.8, attackType: 'melee' },
   nerf:   { name: 'Nerf Gunner', desc: 'Ranged shooter. Pop enemies from a distance!', icon: '🔫', baseDmg: 12, baseHp: 70, range: 10, cooldown: 1.0, attackType: 'ranged' },
+  soaker: { name: 'Super Soaker', desc: 'Rapid-fire water blaster! Soak them all!', icon: '💦', baseDmg: 10, baseHp: 75, range: 12, cooldown: 0.3, attackType: 'ranged', shopRequired: 'sb_super_soaker' },
   pooSling: { name: 'Poo Slinger', desc: 'Mortar bombardier. Lob stinky payloads!', icon: '💩', baseDmg: 40, baseHp: 70, range: 10, cooldown: 2.5, attackType: 'mortar' },
+  cricket: { name: 'Cricket Launcher', desc: 'Launch live crickets at your enemies!', icon: '🦗', baseDmg: 18, baseHp: 75, range: 9, cooldown: 1.2, attackType: 'ranged' },
 };
 const UPGRADES = [
   { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
@@ -425,17 +464,36 @@ function loadPlayerData() {
       hairColor: d.hairColor || '#8B4513',
       shirtColor: d.shirtColor || '#4488ff',
       skinColor: d.skinColor || '#ffcc99',
+      hairStyle: d.hairStyle || 'short',
+      outfit: d.outfit || 'none',
+      showHat: d.showHat !== false,
       upgrades: Object.assign({ hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, d.upgrades || {}),
       unlockedLevel: d.unlockedLevel || 1,
       clearedLevels: d.clearedLevels || {},
     };
-  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
+  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', hairStyle: 'short', outfit: 'none', showHat: true, upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
 }
 function savePlayerData(d) { localStorage.setItem(PLAYER_KEY, JSON.stringify(d)); }
 
+const OUTFITS = [
+  { id: 'none', name: 'None', desc: 'No outfit', unlockLevel: 0 },
+  { id: 'roman', name: 'Roman', desc: 'Galea helmet, lorica armor, scutum shield', unlockLevel: 3 },
+  { id: 'carthaginian', name: 'Carthaginian', desc: 'Bronze helmet, leather cuirass, round shield', unlockLevel: 3 },
+  { id: 'union', name: 'Union', desc: 'Navy kepi, brass-buttoned coat', unlockLevel: 6 },
+  { id: 'confederate', name: 'Confederate', desc: 'Slouch hat, butternut coat', unlockLevel: 6 },
+  { id: 'greek', name: 'Greek', desc: 'Corinthian helmet, bronze cuirass, hoplon shield', unlockLevel: 8 },
+];
+function isOutfitUnlocked(outfitId, pd) {
+  const outfit = OUTFITS.find(o => o.id === outfitId);
+  if (!outfit || outfit.unlockLevel === 0) return true;
+  return !!pd.clearedLevels[outfit.unlockLevel];
+}
+
 function getPlayerStats() {
   const pd = loadPlayerData();
-  const cls = CLASSES[pd.playerClass];
+  let cls = CLASSES[pd.playerClass];
+  // Fall back to pillow if class requires shop purchase not owned
+  if (cls && cls.shopRequired && !hasPurchase(cls.shopRequired)) { pd.playerClass = 'pillow'; cls = CLASSES.pillow; }
   const firerateMult = Math.pow(0.9, pd.upgrades.firerate || 0); // -10% per level
   const rangeMult = 1 + (pd.upgrades.range || 0) * 0.1; // +10% per level
   const splashMult = 1 + (pd.upgrades.splash || 0) * 0.15; // +15% per level
@@ -461,6 +519,9 @@ const LEVEL_DEFS = [
   { id: 3, name: 'DOG POOPIC WAR I', desc: 'The dog left landmines in the backyard. Time to weaponize them!', poopWar: true },
   { id: 4, name: 'DOG POOPIC WAR II', desc: 'The Great Poo Offensive! They have slingshots now too!', poopWar: true },
   { id: 5, name: 'DOG POOPIC WAR III', desc: 'The Final Flush. Winner takes the yard FOREVER.', poopWar: true },
+  { id: 6, name: "CRICKET'S CHARGE", desc: 'Hold the line! They have cricket launchers and they are NOT happy!', cricketCharge: true },
+  { id: 7, name: 'MEDIUM FLAT TOP', desc: 'Hold the hilltop! Confederate forces are surrounding the mountain!', flatTop: true },
+  { id: 8, name: 'SIEGE OF TOYS', desc: 'Break through the toy block walls and storm the fortress!', siegeOfToys: true },
 ];
 
 function showLevelSelect() {
@@ -572,6 +633,27 @@ const SFX = (() => {
       const g = c.createGain(); g.gain.value = 0.3;
       n.connect(f); f.connect(g); g.connect(c.destination); n.start();
     }); },
+    cricketLaunch() { play(c => {
+      // Chirpy cricket + thwip launch sound
+      const o = c.createOscillator(); const g = c.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(4000, c.currentTime);
+      o.frequency.setValueAtTime(5000, c.currentTime + 0.03);
+      o.frequency.setValueAtTime(3500, c.currentTime + 0.06);
+      o.frequency.setValueAtTime(4500, c.currentTime + 0.09);
+      g.gain.setValueAtTime(0.12, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.12);
+      o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.12);
+    }); },
+    wallCrumble() { play(c => {
+      // Low rumble + crumbling debris
+      const n = c.createBufferSource();
+      const buf = c.createBuffer(1, c.sampleRate * 0.4, c.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.4;
+      n.buffer = buf;
+      const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 400;
+      const g = c.createGain(); g.gain.setValueAtTime(0.3, c.currentTime); g.gain.exponentialRampToValueAtTime(0.01, c.currentTime + 0.4);
+      n.connect(f); f.connect(g); g.connect(c.destination); n.start();
+    }); },
   };
 })();
 
@@ -588,6 +670,8 @@ const UNIT_DEFS = {
   scooter:{ name: 'Scooter Rider', cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '*', special: 'Fast charge attack' },
   balloon:{ name: 'Water Balloon', cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '*', special: 'Splash damage!', splash: 3 },
   pooSling:{ name: 'Poo Slingshot', cost: 35, hp: 70,  damage: 40, speed: 0.5, range: 10,  icon: '*', special: 'Mortar poo bombardment!', splash: 2.5 },
+  cricket: { name: 'Cricket Launcher', cost: 30, hp: 75, damage: 18, speed: 0.6, range: 9, icon: '*', special: 'Launches live crickets!' },
+  soaker: { name: 'Super Soaker', cost: 0, hp: 75, damage: 10, speed: 1.3, range: 12, icon: '*', special: 'Rapid-fire water blaster!' },
 };
 
 // Army composition — varies by level
@@ -622,6 +706,29 @@ const LEVEL_ARMIES = {
     { type: 'scooter', count: 3 },
     { type: 'pooSling', count: 4 },
     { type: 'balloon', count: 1 },
+  ],
+  6: [ // Cricket's Charge — defenders with balloons, attackers with cricket launchers
+    { type: 'pillow', count: 4 },
+    { type: 'nerf', count: 3 },
+    { type: 'blanket', count: 2 },
+    { type: 'balloon', count: 4 },
+    { type: 'cricket', count: 5 },
+  ],
+  7: [ // Medium Flat Top — hilltop defense, outnumbered
+    { type: 'pillow', count: 5 },
+    { type: 'nerf', count: 4 },
+    { type: 'blanket', count: 3 },
+    { type: 'balloon', count: 3 },
+    { type: 'cricket', count: 3 },
+    { type: 'scooter', count: 3 },
+  ],
+  8: [ // Siege of Toys — siege attackers vs fortified defenders
+    { type: 'pillow', count: 5 },
+    { type: 'nerf', count: 5 },
+    { type: 'blanket', count: 3 },
+    { type: 'balloon', count: 4 },
+    { type: 'cricket', count: 3 },
+    { type: 'scooter', count: 2 },
   ],
 };
 
@@ -673,7 +780,7 @@ let fieldGroup;
 
 function buildBattlefield() {
   const lvl = LEVEL_DEFS.find(l => l.id === currentLevel);
-  const outdoor = lvl && lvl.poopWar;
+  const outdoor = lvl && (lvl.poopWar || lvl.cricketCharge || lvl.flatTop || lvl.siegeOfToys);
 
   fieldGroup = new THREE.Group();
   scene.add(fieldGroup);
@@ -945,6 +1052,683 @@ function addPartyHat(unitGroup) {
   );
   pom.position.y = hatY + 0.15;
   unitGroup.add(pom);
+}
+
+function addRomanOutfit(unitGroup, showHat) {
+  const type = unitGroup.userData.type;
+  if (type === 'balloon') return; // skip vehicles
+  if (showHat === undefined) showHat = true;
+
+  // Head Y and body Y per unit type
+  let headY = 1.4, bodyY = 0.85, bodyW = 0.5, bodyH = 0.7;
+  if (type === 'nerf' || type === 'soaker') { headY = 1.35; bodyY = 0.82; bodyW = 0.45; bodyH = 0.65; }
+  else if (type === 'blanket') { headY = 1.5; bodyY = 0.9; bodyW = 0.6; bodyH = 0.8; }
+  else if (type === 'scooter') { headY = 1.15; bodyY = 0.75; bodyW = 0.4; bodyH = 0.5; }
+  else if (type === 'pooSling') { headY = 1.3; bodyY = 0.8; bodyW = 0.45; bodyH = 0.6; }
+
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x888899 });
+  const redMat = new THREE.MeshStandardMaterial({ color: 0xcc2222 });
+  const leatherMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+
+  if (showHat) {
+    // Galea helmet — dome with cheek guards
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.6), ironMat);
+    helmet.position.y = headY + 0.06;
+    unitGroup.add(helmet);
+
+    // Red crest (transverse for centurion look)
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.18, 0.35), redMat);
+    crest.position.set(0, headY + 0.25, 0);
+    unitGroup.add(crest);
+  }
+
+  // Lorica segmentata — horizontal armor bands over chest
+  for (let i = 0; i < 3; i++) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.06, 0.06, 0.35), ironMat);
+    band.position.set(0, bodyY + bodyH * 0.15 + i * 0.14, 0);
+    unitGroup.add(band);
+  }
+
+  // Leather pteruges (skirt strips)
+  for (let i = -2; i <= 2; i++) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.15, 0.04), leatherMat);
+    strip.position.set(i * 0.08, bodyY - bodyH * 0.35, 0.12);
+    unitGroup.add(strip);
+  }
+
+  // Scutum shield (rectangular, on left side)
+  const shieldMat = new THREE.MeshStandardMaterial({ color: 0xcc2222 });
+  const shield = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.5, 0.3), shieldMat);
+  shield.position.set(-0.35, bodyY + 0.1, 0);
+  unitGroup.add(shield);
+  // Shield boss (metal center bump)
+  const boss = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 6), ironMat);
+  boss.position.set(-0.38, bodyY + 0.1, 0);
+  unitGroup.add(boss);
+}
+
+function addCarthaginianOutfit(unitGroup, showHat) {
+  const type = unitGroup.userData.type;
+  if (type === 'balloon') return; // skip vehicles
+  if (showHat === undefined) showHat = true;
+
+  let headY = 1.4, bodyY = 0.85, bodyW = 0.5, bodyH = 0.7;
+  if (type === 'nerf' || type === 'soaker') { headY = 1.35; bodyY = 0.82; bodyW = 0.45; bodyH = 0.65; }
+  else if (type === 'blanket') { headY = 1.5; bodyY = 0.9; bodyW = 0.6; bodyH = 0.8; }
+  else if (type === 'scooter') { headY = 1.15; bodyY = 0.75; bodyW = 0.4; bodyH = 0.5; }
+  else if (type === 'pooSling') { headY = 1.3; bodyY = 0.8; bodyW = 0.45; bodyH = 0.6; }
+
+  const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32 });
+  const purpleMat = new THREE.MeshStandardMaterial({ color: 0x6b2fa0 });
+  const leatherMat = new THREE.MeshStandardMaterial({ color: 0x6b4226 });
+
+  if (showHat) {
+    // Bronze helmet — rounded with nose guard
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.21, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.55), bronzeMat);
+    helmet.position.y = headY + 0.06;
+    unitGroup.add(helmet);
+
+    // Purple horsehair crest (Carthaginian purple)
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.2, 0.3), purpleMat);
+    crest.position.set(0, headY + 0.24, 0);
+    unitGroup.add(crest);
+  }
+
+  // Leather cuirass (chest plate)
+  const cuirass = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.04, bodyH * 0.6, 0.34), leatherMat);
+  cuirass.position.set(0, bodyY + bodyH * 0.1, 0);
+  unitGroup.add(cuirass);
+
+  // Bronze chest disc (Carthaginian style)
+  const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.03, 12), bronzeMat);
+  disc.rotation.x = Math.PI / 2;
+  disc.position.set(0, bodyY + bodyH * 0.15, 0.18);
+  unitGroup.add(disc);
+
+  // Purple sash across body
+  const sash = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.08, 0.06, 0.36), purpleMat);
+  sash.position.set(0, bodyY + bodyH * 0.35, 0);
+  unitGroup.add(sash);
+
+  // Round shield (on left side — Carthaginian round shield)
+  const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.04, 16), bronzeMat);
+  shield.rotation.z = Math.PI / 2;
+  shield.position.set(-0.35, bodyY + 0.1, 0);
+  unitGroup.add(shield);
+  // Shield center boss
+  const boss = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 6),
+    new THREE.MeshStandardMaterial({ color: 0xffd700 }));
+  boss.position.set(-0.38, bodyY + 0.1, 0);
+  unitGroup.add(boss);
+}
+
+function addUnionOutfit(unitGroup, showHat) {
+  const type = unitGroup.userData.type;
+  if (type === 'balloon') return;
+  if (showHat === undefined) showHat = true;
+
+  let headY = 1.4, bodyY = 0.85, bodyW = 0.5, bodyH = 0.7;
+  if (type === 'nerf' || type === 'soaker') { headY = 1.35; bodyY = 0.82; bodyW = 0.45; bodyH = 0.65; }
+  else if (type === 'blanket') { headY = 1.5; bodyY = 0.9; bodyW = 0.6; bodyH = 0.8; }
+  else if (type === 'scooter') { headY = 1.15; bodyY = 0.75; bodyW = 0.4; bodyH = 0.5; }
+  else if (type === 'pooSling') { headY = 1.3; bodyY = 0.8; bodyW = 0.45; bodyH = 0.6; }
+  else if (type === 'cricket') { headY = 1.4; bodyY = 0.85; bodyW = 0.5; bodyH = 0.7; }
+
+  const navyMat = new THREE.MeshStandardMaterial({ color: 0x1a2744 });
+  const brassBtn = new THREE.MeshStandardMaterial({ color: 0xccaa44 });
+
+  if (showHat) {
+    // Kepi hat (flat-top with short brim)
+    const kepi = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.14, 8), navyMat);
+    kepi.position.y = headY + 0.18;
+    unitGroup.add(kepi);
+    // Kepi brim
+    const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.02, 8), navyMat);
+    brim.position.set(0, headY + 0.1, 0.08);
+    brim.rotation.x = -0.2;
+    unitGroup.add(brim);
+  }
+
+  // Navy coat with brass buttons
+  const coat = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.06, bodyH * 0.8, 0.34), navyMat);
+  coat.position.set(0, bodyY + bodyH * 0.05, 0);
+  unitGroup.add(coat);
+  // Brass buttons (center line)
+  for (let i = 0; i < 4; i++) {
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), brassBtn);
+    btn.position.set(0, bodyY + bodyH * 0.3 - i * 0.1, 0.18);
+    unitGroup.add(btn);
+  }
+
+  // Belt with buckle
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x3a2a1a });
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.08, 0.05, 0.36), beltMat);
+  belt.position.set(0, bodyY - bodyH * 0.15, 0);
+  unitGroup.add(belt);
+  const buckle = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.02), brassBtn);
+  buckle.position.set(0, bodyY - bodyH * 0.15, 0.19);
+  unitGroup.add(buckle);
+}
+
+function addConfederateOutfit(unitGroup, showHat) {
+  const type = unitGroup.userData.type;
+  if (type === 'balloon') return;
+  if (showHat === undefined) showHat = true;
+
+  let headY = 1.4, bodyY = 0.85, bodyW = 0.5, bodyH = 0.7;
+  if (type === 'nerf' || type === 'soaker') { headY = 1.35; bodyY = 0.82; bodyW = 0.45; bodyH = 0.65; }
+  else if (type === 'blanket') { headY = 1.5; bodyY = 0.9; bodyW = 0.6; bodyH = 0.8; }
+  else if (type === 'scooter') { headY = 1.15; bodyY = 0.75; bodyW = 0.4; bodyH = 0.5; }
+  else if (type === 'pooSling') { headY = 1.3; bodyY = 0.8; bodyW = 0.45; bodyH = 0.6; }
+  else if (type === 'cricket') { headY = 1.4; bodyY = 0.85; bodyW = 0.5; bodyH = 0.7; }
+
+  const greyMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const butternut = new THREE.MeshStandardMaterial({ color: 0xaa8844 });
+  const pewterBtn = new THREE.MeshStandardMaterial({ color: 0x999999 });
+
+  if (showHat) {
+    // Slouch hat (wider brim, pinched)
+    const hatTop = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.15, 8), greyMat);
+    hatTop.position.y = headY + 0.19;
+    unitGroup.add(hatTop);
+    // Wide brim
+    const hatBrim = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.02, 12), greyMat);
+    hatBrim.position.y = headY + 0.11;
+    unitGroup.add(hatBrim);
+  }
+
+  // Grey/butternut coat
+  const coat = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.06, bodyH * 0.8, 0.34), butternut);
+  coat.position.set(0, bodyY + bodyH * 0.05, 0);
+  unitGroup.add(coat);
+  // Pewter buttons
+  for (let i = 0; i < 3; i++) {
+    const btn = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 6), pewterBtn);
+    btn.position.set(0, bodyY + bodyH * 0.25 - i * 0.12, 0.18);
+    unitGroup.add(btn);
+  }
+
+  // Belt
+  const beltMat = new THREE.MeshStandardMaterial({ color: 0x4a3a2a });
+  const belt = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.08, 0.05, 0.36), beltMat);
+  belt.position.set(0, bodyY - bodyH * 0.15, 0);
+  unitGroup.add(belt);
+  // Oval CS buckle
+  const buckle = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.02, 8), pewterBtn);
+  buckle.rotation.x = Math.PI / 2;
+  buckle.position.set(0, bodyY - bodyH * 0.15, 0.19);
+  unitGroup.add(buckle);
+}
+
+function addGreekOutfit(unitGroup, showHat) {
+  const type = unitGroup.userData.type;
+  if (type === 'balloon') return;
+  if (showHat === undefined) showHat = true;
+
+  let headY = 1.4, bodyY = 0.85, bodyW = 0.5, bodyH = 0.7;
+  if (type === 'nerf' || type === 'soaker') { headY = 1.35; bodyY = 0.82; bodyW = 0.45; bodyH = 0.65; }
+  else if (type === 'blanket') { headY = 1.5; bodyY = 0.9; bodyW = 0.6; bodyH = 0.8; }
+  else if (type === 'scooter') { headY = 1.15; bodyY = 0.75; bodyW = 0.4; bodyH = 0.5; }
+  else if (type === 'pooSling') { headY = 1.3; bodyY = 0.8; bodyW = 0.45; bodyH = 0.6; }
+  else if (type === 'cricket') { headY = 1.4; bodyY = 0.85; bodyW = 0.5; bodyH = 0.7; }
+
+  const bronzeMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32 });
+  const blueMat = new THREE.MeshStandardMaterial({ color: 0x2244aa });
+  const leatherMat = new THREE.MeshStandardMaterial({ color: 0x8b5a2b });
+
+  if (showHat) {
+    // Corinthian helmet — full face coverage with eye slits
+    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.23, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.65), bronzeMat);
+    helmet.position.y = headY + 0.04;
+    unitGroup.add(helmet);
+    // Tall crest (front-to-back)
+    const crest = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.22, 0.38), blueMat);
+    crest.position.set(0, headY + 0.28, 0);
+    unitGroup.add(crest);
+    // Nose guard
+    const noseGuard = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.04), bronzeMat);
+    noseGuard.position.set(0, headY - 0.02, 0.18);
+    unitGroup.add(noseGuard);
+  }
+
+  // Bronze cuirass (breastplate)
+  const cuirass = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.04, bodyH * 0.6, 0.36), bronzeMat);
+  cuirass.position.set(0, bodyY + bodyH * 0.1, 0);
+  unitGroup.add(cuirass);
+
+  // Leather pteruges (skirt strips) — longer than Roman
+  for (let i = -3; i <= 3; i++) {
+    const strip = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.18, 0.04), leatherMat);
+    strip.position.set(i * 0.07, bodyY - bodyH * 0.35, 0.12);
+    unitGroup.add(strip);
+  }
+
+  // Hoplon shield (large round, on left side)
+  const shieldMat = new THREE.MeshStandardMaterial({ color: 0xcd7f32 });
+  const shield = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 12), shieldMat);
+  shield.rotation.z = Math.PI / 2;
+  shield.position.set(-0.38, bodyY + 0.1, 0);
+  unitGroup.add(shield);
+  // Shield emblem (blue circle center)
+  const emblem = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 8), blueMat);
+  emblem.rotation.z = Math.PI / 2;
+  emblem.position.set(-0.41, bodyY + 0.1, 0);
+  unitGroup.add(emblem);
+}
+
+function addCricketChargeDecorations() {
+  if (!fieldGroup) return;
+
+  // Open grassy field with a stone wall on the defender (blue/left) side
+  // Stone wall — waist-high defensive position
+  const stoneMat = new THREE.MeshStandardMaterial({ color: 0x888877, roughness: 0.9 });
+  for (let z = -FIELD_D / 2 + 1; z < FIELD_D / 2; z += 1.2) {
+    const stone = new THREE.Mesh(
+      new THREE.BoxGeometry(0.8 + Math.random() * 0.4, 0.5 + Math.random() * 0.2, 0.7 + Math.random() * 0.3),
+      stoneMat
+    );
+    stone.position.set(-FIELD_W / 6, 0.3, z);
+    stone.rotation.y = Math.random() * 0.3;
+    stone.castShadow = true;
+    fieldGroup.add(stone);
+  }
+
+  // Split-rail fence fragments on the right (enemy approach side)
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0x8b6b3d });
+  for (let z = -FIELD_D / 2 + 3; z < FIELD_D / 2 - 2; z += 6) {
+    // Post
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2), woodMat);
+    post.position.set(FIELD_W / 4, 0.6, z);
+    post.castShadow = true;
+    fieldGroup.add(post);
+    // Rail
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 4), woodMat);
+    rail.position.set(FIELD_W / 4, 0.7 + Math.random() * 0.2, z + 2);
+    rail.rotation.z = (Math.random() - 0.5) * 0.15;
+    fieldGroup.add(rail);
+  }
+
+  // A few scattered rocks/boulders
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x777766, roughness: 0.95 });
+  const rockPositions = [[5, 3], [8, -4], [-3, 7], [10, 0], [-8, -6]];
+  for (const [rx, rz] of rockPositions) {
+    const rock = new THREE.Mesh(new THREE.SphereGeometry(0.3 + Math.random() * 0.3, 6, 5), rockMat);
+    rock.position.set(rx, 0.2, rz);
+    rock.scale.y = 0.5 + Math.random() * 0.3;
+    rock.castShadow = true;
+    fieldGroup.add(rock);
+  }
+
+  // Tattered flag (blue/Union) planted near stone wall
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.5), poleMat);
+  pole.position.set(-FIELD_W / 6 + 1, 1.25, 0);
+  pole.castShadow = true;
+  fieldGroup.add(pole);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x2244aa, side: THREE.DoubleSide }));
+  flag.position.set(-FIELD_W / 6 + 1.4, 2.2, 0);
+  fieldGroup.add(flag);
+}
+
+function addFlatTopDecorations() {
+  if (!fieldGroup) return;
+
+  const rockMat = new THREE.MeshStandardMaterial({ color: 0x776655, roughness: 0.95 });
+  const darkRockMat = new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 0.95 });
+  const dirtMat = new THREE.MeshStandardMaterial({ color: 0x8a7a5a, roughness: 0.9 });
+
+  // Flat top platform — elevated center area where defenders stand
+  const topRadius = 8;
+  const topHeight = 2.5;
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(topRadius, topRadius, 0.4, 24), dirtMat);
+  top.position.set(0, topHeight, 0);
+  top.receiveShadow = true;
+  top.castShadow = true;
+  fieldGroup.add(top);
+
+  // Dirt/grass top surface
+  const topGrass = new THREE.Mesh(new THREE.CylinderGeometry(topRadius - 0.1, topRadius - 0.1, 0.05, 24),
+    new THREE.MeshStandardMaterial({ color: 0x668844, roughness: 0.9 }));
+  topGrass.position.set(0, topHeight + 0.22, 0);
+  topGrass.receiveShadow = true;
+  fieldGroup.add(topGrass);
+
+  // Solid mountain core — cone fills interior so nothing can get under
+  const coreCone = new THREE.Mesh(
+    new THREE.ConeGeometry(topRadius + 2, topHeight + 0.5, 24),
+    new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 1.0 })
+  );
+  coreCone.position.set(0, (topHeight + 0.5) / 2 - 0.1, 0);
+  coreCone.receiveShadow = true;
+  fieldGroup.add(coreCone);
+
+  // Inner cylinder plug to fill any gap at center
+  const coreInner = new THREE.Mesh(
+    new THREE.CylinderGeometry(topRadius - 0.5, topRadius + 1, topHeight + 0.3, 24),
+    new THREE.MeshStandardMaterial({ color: 0x665544, roughness: 1.0 })
+  );
+  coreInner.position.set(0, (topHeight + 0.3) / 2 - 0.1, 0);
+  coreInner.receiveShadow = true;
+  fieldGroup.add(coreInner);
+
+  // Dense rocky slopes — many overlapping rocks covering the entire surface
+  for (let angle = 0; angle < Math.PI * 2; angle += 0.1) {
+    const rings = 7 + Math.floor(Math.random() * 3);
+    for (let r = 0; r < rings; r++) {
+      const frac = r / rings;
+      const radius = topRadius + 2.2 - frac * 2.5;
+      const y = frac * topHeight;
+      const rockSize = 0.7 + Math.random() * 0.9;
+      const rock = new THREE.Mesh(
+        new THREE.BoxGeometry(rockSize, rockSize * (0.5 + Math.random() * 0.5), rockSize),
+        Math.random() > 0.5 ? rockMat : darkRockMat
+      );
+      const jitter = (Math.random() - 0.5) * 0.6;
+      rock.position.set(
+        Math.cos(angle + jitter * 0.1) * radius,
+        y + rockSize * 0.25,
+        Math.sin(angle + jitter * 0.1) * radius
+      );
+      rock.rotation.set(Math.random() * 0.4, Math.random() * Math.PI, Math.random() * 0.4);
+      rock.castShadow = true;
+      fieldGroup.add(rock);
+    }
+  }
+
+  // Extra large boulders packed around the base for a solid wall look
+  for (let angle = 0; angle < Math.PI * 2; angle += 0.3) {
+    const br = topRadius + 1.2 + Math.random() * 1.2;
+    const boulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.9 + Math.random() * 0.7, 6, 5), Math.random() > 0.5 ? rockMat : darkRockMat
+    );
+    boulder.position.set(Math.cos(angle) * br, 0.5 + Math.random() * 0.4, Math.sin(angle) * br);
+    boulder.scale.set(1, 0.5 + Math.random() * 0.4, 1);
+    boulder.castShadow = true;
+    fieldGroup.add(boulder);
+  }
+
+  // Mid-slope boulders for even more coverage
+  for (let angle = 0; angle < Math.PI * 2; angle += 0.4) {
+    const br = topRadius - 0.5 + Math.random() * 2;
+    const boulder = new THREE.Mesh(
+      new THREE.SphereGeometry(0.7 + Math.random() * 0.5, 6, 5), rockMat
+    );
+    const y = getGroundY(Math.cos(angle) * br, Math.sin(angle) * br);
+    boulder.position.set(Math.cos(angle) * br, y + 0.3, Math.sin(angle) * br);
+    boulder.scale.set(1, 0.6 + Math.random() * 0.3, 1);
+    boulder.castShadow = true;
+    fieldGroup.add(boulder);
+  }
+
+  // Sandbag fortifications on the hilltop edges
+  const sandbagMat = new THREE.MeshStandardMaterial({ color: 0x998866, roughness: 0.9 });
+  for (let angle = 0; angle < Math.PI * 2; angle += 0.6) {
+    const sx = Math.cos(angle) * (topRadius - 1.2);
+    const sz = Math.sin(angle) * (topRadius - 1.2);
+    // Stack of 2 sandbags
+    for (let row = 0; row < 2; row++) {
+      const bag = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.25, 0.4), sandbagMat);
+      bag.position.set(sx, topHeight + 0.35 + row * 0.25, sz);
+      bag.rotation.y = angle + Math.PI / 2;
+      bag.castShadow = true;
+      fieldGroup.add(bag);
+    }
+  }
+
+  // Union flag on top
+  const poleMat = new THREE.MeshStandardMaterial({ color: 0x666666 });
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3), poleMat);
+  pole.position.set(0, topHeight + 1.5, 0);
+  pole.castShadow = true;
+  fieldGroup.add(pole);
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 0.6),
+    new THREE.MeshStandardMaterial({ color: 0x2244aa, side: THREE.DoubleSide }));
+  flag.position.set(0.5, topHeight + 2.7, 0);
+  fieldGroup.add(flag);
+}
+
+let toyWalls = []; // {mesh, x, z, width, height, depth, hp, maxHp, alive, origColor}
+
+function addSiegeOfToysDecorations() {
+  if (!fieldGroup) return;
+  toyWalls = [];
+
+  const wallColors = [0xff4444, 0x44cc44, 0x4488ff, 0xffdd44, 0xff44ff, 0xff8800];
+  const wallX = 3;
+  const segWidth = 2;
+  const segHeight = 2.5;
+  const segDepth = 1.2;
+  let segIndex = 0;
+
+  // Main toy block fortress wall
+  const crackMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  for (let z = -FIELD_D / 2 + 1.5; z < FIELD_D / 2 - 1; z += segWidth + 0.15) {
+    const color = wallColors[segIndex % wallColors.length];
+    const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+    const mesh = new THREE.Mesh(
+      new THREE.BoxGeometry(segDepth, segHeight, segWidth), mat
+    );
+    mesh.position.set(wallX, segHeight / 2, z + segWidth / 2);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    fieldGroup.add(mesh);
+
+    // Pre-create crack lines (hidden initially, revealed as wall takes damage)
+    const cracks = [];
+    const crackPatterns = [
+      // Each crack: [xOff, yOff, zOff, w, h, d] relative to wall center
+      [0, 0.3, 0, 0.02, 0.6, 0.4],   // vertical crack
+      [0, -0.2, 0.3, 0.02, 0.5, 0.3], // side crack
+      [0, 0.5, -0.2, 0.02, 0.4, 0.5], // upper crack
+      [0, -0.5, 0.1, 0.02, 0.7, 0.35],// lower crack
+      [0, 0.1, -0.4, 0.02, 0.55, 0.3],// diagonal crack
+    ];
+    for (const [cx, cy, cz, cw, ch, cd] of crackPatterns) {
+      const crack = new THREE.Mesh(new THREE.BoxGeometry(cw + segDepth, ch, cd), crackMat);
+      crack.position.set(wallX + cx, segHeight / 2 + cy, z + segWidth / 2 + cz);
+      crack.visible = false;
+      fieldGroup.add(crack);
+      cracks.push(crack);
+    }
+
+    toyWalls.push({
+      mesh, x: wallX, z: z + segWidth / 2,
+      width: segDepth, height: segHeight, depth: segWidth,
+      hp: 750, maxHp: 750, alive: true, origColor: color,
+      cracks, rubble: null
+    });
+    segIndex++;
+  }
+
+  // Destructible toy castle towers at the wall ends
+  const towerColor = 0xcc4444;
+  const towerCapColor = 0x4444cc;
+  const towerRadius = 1.4; // base radius for collision
+  const towerHeight = 3.5;
+  for (const tz of [-FIELD_D / 2 + 0.5, FIELD_D / 2 - 0.5]) {
+    const towerGroup = new THREE.Group();
+    towerGroup.position.set(wallX, 0, tz);
+
+    const tMat = new THREE.MeshStandardMaterial({ color: towerColor, roughness: 0.8 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(1.2, towerRadius, towerHeight, 8), tMat);
+    body.position.y = towerHeight / 2;
+    body.castShadow = true;
+    towerGroup.add(body);
+
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(1.5, 1.5, 8),
+      new THREE.MeshStandardMaterial({ color: towerCapColor, roughness: 0.8 }));
+    cap.position.y = towerHeight + 0.75;
+    cap.castShadow = true;
+    towerGroup.add(cap);
+
+    fieldGroup.add(towerGroup);
+
+    // Tower cracks (vertical cracks around the cylinder)
+    const towerCracks = [];
+    const tCrackPatterns = [
+      [0.6, 0.5, 0, 0.03, 1.0, 0.3],
+      [-0.5, 1.2, 0.4, 0.03, 0.8, 0.25],
+      [0.3, -0.3, -0.5, 0.03, 0.9, 0.3],
+      [-0.4, 0.8, -0.3, 0.03, 0.7, 0.35],
+      [0.5, -0.6, 0.3, 0.03, 1.1, 0.25],
+    ];
+    for (const [cx, cy, cz, cw, ch, cd] of tCrackPatterns) {
+      const crack = new THREE.Mesh(new THREE.BoxGeometry(cw + towerRadius * 2, ch, cd), crackMat);
+      crack.position.set(wallX + cx, towerHeight / 2 + cy, tz + cz);
+      crack.visible = false;
+      fieldGroup.add(crack);
+      towerCracks.push(crack);
+    }
+
+    toyWalls.push({
+      mesh: towerGroup, x: wallX, z: tz,
+      width: towerRadius * 2, height: towerHeight, depth: towerRadius * 2,
+      hp: 1200, maxHp: 1200, alive: true, origColor: towerColor,
+      cracks: towerCracks, rubble: null, isTower: true,
+      bodyMesh: body, capMesh: cap
+    });
+  }
+
+  // Scattered toy blocks on the ground
+  const blockColors = [0xff6666, 0x66ff66, 0x6666ff, 0xffff66, 0xff66ff];
+  for (let i = 0; i < 20; i++) {
+    const bx = (Math.random() - 0.5) * (FIELD_W - 4);
+    const bz = (Math.random() - 0.5) * (FIELD_D - 4);
+    if (Math.abs(bx - wallX) < 2) continue; // don't put blocks on the wall
+    const blockSize = 0.2 + Math.random() * 0.3;
+    const block = new THREE.Mesh(
+      new THREE.BoxGeometry(blockSize, blockSize, blockSize),
+      new THREE.MeshStandardMaterial({ color: blockColors[Math.floor(Math.random() * blockColors.length)], roughness: 0.7 })
+    );
+    block.position.set(bx, blockSize / 2, bz);
+    block.rotation.y = Math.random() * Math.PI;
+    block.castShadow = true;
+    fieldGroup.add(block);
+  }
+
+  // Toy action figures (small decorations behind the wall)
+  for (let i = 0; i < 5; i++) {
+    const fx = wallX + 3 + Math.random() * 6;
+    const fz = (Math.random() - 0.5) * (FIELD_D - 4);
+    const fig = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.1),
+      new THREE.MeshStandardMaterial({ color: blockColors[i % blockColors.length] }));
+    body.position.y = 0.15;
+    fig.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffcc99 }));
+    head.position.y = 0.38;
+    fig.add(head);
+    fig.position.set(fx, 0, fz);
+    fieldGroup.add(fig);
+  }
+}
+
+function checkWallCollision(x, z, radius) {
+  radius = radius || 0.5;
+  for (const wall of toyWalls) {
+    if (!wall.alive) continue;
+    const halfW = wall.width / 2 + radius;
+    const halfD = wall.depth / 2 + radius;
+    if (Math.abs(x - wall.x) < halfW && Math.abs(z - wall.z) < halfD) {
+      return wall;
+    }
+  }
+  return null;
+}
+
+function damageWallSegment(wall, damage) {
+  if (!wall.alive) return;
+  wall.hp -= damage;
+  const pct = Math.max(0, wall.hp / wall.maxHp);
+
+  // Reveal cracks progressively as damage increases
+  if (wall.cracks) {
+    const cracksToShow = Math.floor((1 - pct) * wall.cracks.length);
+    for (let i = 0; i < wall.cracks.length; i++) {
+      wall.cracks[i].visible = i < cracksToShow;
+    }
+  }
+
+  // Slight darkening as damage accumulates (but no shrinking)
+  const orig = new THREE.Color(wall.origColor);
+  const dark = new THREE.Color(0x555555);
+  if (wall.isTower) {
+    wall.bodyMesh.material.color.copy(orig).lerp(dark, (1 - pct) * 0.4);
+  } else {
+    wall.mesh.material.color.copy(orig).lerp(dark, (1 - pct) * 0.4);
+  }
+
+  if (wall.hp <= 0) {
+    wall.alive = false;
+    wall.mesh.visible = false;
+    // Hide all cracks
+    if (wall.cracks) for (const c of wall.cracks) c.visible = false;
+
+    // Kill the wall sniper standing on this segment
+    const wallIdx = toyWalls.indexOf(wall);
+    for (const e of enemyUnits) {
+      if (e.userData.isWallSniper && e.userData.wallIndex === wallIdx && e.userData.alive) {
+        e.userData.hp = 0;
+        e.userData.alive = false;
+        e.visible = false;
+        if (e.userData.hbGroup) e.userData.hbGroup.visible = false;
+        spawnConfetti(e.position);
+      }
+    }
+
+    // Replace with walkable rubble pile
+    const rubbleGroup = new THREE.Group();
+    const rubbleColors = wall.isTower
+      ? [wall.origColor, 0x4444cc, 0x888888, 0x666666]
+      : [wall.origColor, 0x888888, 0x666666];
+    const rubbleCount = wall.isTower ? 20 : 12;
+    const rubbleSpread = wall.isTower ? wall.width : wall.width * 1.5;
+    for (let i = 0; i < rubbleCount; i++) {
+      const size = wall.isTower ? 0.2 + Math.random() * 0.5 : 0.15 + Math.random() * 0.3;
+      const rMat = new THREE.MeshStandardMaterial({
+        color: rubbleColors[Math.floor(Math.random() * rubbleColors.length)], roughness: 0.9
+      });
+      const piece = new THREE.Mesh(new THREE.BoxGeometry(size, size * 0.5, size), rMat);
+      piece.position.set(
+        (Math.random() - 0.5) * rubbleSpread,
+        size * 0.25,
+        (Math.random() - 0.5) * (wall.isTower ? wall.depth : wall.depth)
+      );
+      piece.rotation.set(Math.random() * 0.5, Math.random() * Math.PI, Math.random() * 0.5);
+      piece.castShadow = true;
+      rubbleGroup.add(piece);
+    }
+    rubbleGroup.position.set(wall.x, 0, wall.z);
+    fieldGroup.add(rubbleGroup);
+    wall.rubble = rubbleGroup;
+
+    // Spawn flying debris particles
+    spawnWallCrumble(wall);
+    SFX.wallCrumble();
+  }
+}
+
+function spawnWallCrumble(wall) {
+  const count = 10 + Math.floor(Math.random() * 8);
+  for (let i = 0; i < count; i++) {
+    const size = 0.1 + Math.random() * 0.2;
+    const geo = new THREE.BoxGeometry(size, size, size);
+    const mat = new THREE.MeshBasicMaterial({ color: wall.origColor });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.set(
+      wall.x + (Math.random() - 0.5) * wall.width,
+      wall.height * 0.5 + Math.random() * wall.height * 0.5,
+      wall.z + (Math.random() - 0.5) * wall.depth
+    );
+    scene.add(p);
+    confettiParticles.push({
+      mesh: p,
+      vel: new THREE.Vector3((Math.random() - 0.5) * 4, 1 + Math.random() * 3, (Math.random() - 0.5) * 4),
+      life: 1.5
+    });
+  }
 }
 
 let pooMines = []; // {group, x, z, exploded}
@@ -1302,9 +2086,9 @@ function endLandingCutscene() {
 
   // Show click to start
   const pd = loadPlayerData();
-  const attackHint = pd.playerClass === 'nerf' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : 'Left click to swing';
+  const attackHint = pd.playerClass === 'nerf' || pd.playerClass === 'soaker' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : pd.playerClass === 'cricket' ? 'Left click to launch' : 'Left click to swing';
   document.getElementById('click-start').classList.remove('hidden');
-  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Mouse to look | ' + attackHint;
+  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Space to jump | Mouse to look | ' + attackHint;
 
   const startOverlay = document.getElementById('click-start');
   startOverlay.addEventListener('click', function startClick() {
@@ -1450,17 +2234,72 @@ function buildUnitModel(type, isBlue, customColors) {
       const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), darkMat);
       leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
     }
+  } else if (type === 'soaker') {
+    // Kid with a super soaker water gun
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.65, 0.28), teamMat);
+    body.position.y = 0.82; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), skinMat);
+    head.position.y = 1.35; head.castShadow = true; group.add(head);
+    // Water gun body (blue)
+    const gunMat = new THREE.MeshStandardMaterial({ color: 0x22aaff });
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.14, 0.5), gunMat);
+    gun.position.set(0.35, 0.9, 0.15); gun.castShadow = true; group.add(gun);
+    // Nozzle (orange)
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.02, 0.12, 6),
+      new THREE.MeshStandardMaterial({ color: 0xff6600 }));
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.set(0.35, 0.92, 0.42); group.add(nozzle);
+    // Water tank (transparent blue cylinder on top)
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0x44ccff, opacity: 0.6, transparent: true });
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.15, 8), tankMat);
+    tank.position.set(0.35, 1.05, 0.1); group.add(tank);
+    for (const s of [-0.1, 0.1]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
+  } else if (type === 'cricket') {
+    // Kid with a cricket launcher (box of live crickets)
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), teamMat);
+    body.position.y = 0.85; body.castShadow = true; group.add(body);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 8), skinMat);
+    head.position.y = 1.4; head.castShadow = true; group.add(head);
+    // Tube launcher (cardboard tube)
+    const tubeMat = new THREE.MeshStandardMaterial({ color: 0x997755 });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8), tubeMat);
+    tube.rotation.z = -0.6; tube.position.set(0.35, 1.0, 0.1); tube.castShadow = true; group.add(tube);
+    // Cricket box strapped to back (green container full of bugs)
+    const boxMat = new THREE.MeshStandardMaterial({ color: 0x448833 });
+    const cBox = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.25, 0.2), boxMat);
+    cBox.position.set(-0.05, 0.9, -0.2); cBox.castShadow = true; group.add(cBox);
+    // Mesh lid (so bugs can breathe)
+    const lidMat = new THREE.MeshStandardMaterial({ color: 0x333333, wireframe: true });
+    const lid = new THREE.Mesh(new THREE.PlaneGeometry(0.28, 0.18), lidMat);
+    lid.position.set(-0.05, 1.03, -0.2); lid.rotation.x = -Math.PI / 2; group.add(lid);
+    for (const s of [-0.12, 0.12]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5), darkMat);
+      leg.position.set(s, 0.25, 0); leg.castShadow = true; group.add(leg);
+    }
   }
 
   // Add hair for custom-colored units (player character)
-  if (customColors && type !== 'balloon') {
+  // Skip hair when wearing an outfit with hat showing (they clip)
+  const skipHair = customColors && customColors.outfit && customColors.outfit !== 'none' && customColors.showHat !== false;
+  if (customColors && type !== 'balloon' && !skipHair) {
     const hairMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(customColors.hair) });
-    const headY = type === 'pillow' ? 1.4 : type === 'nerf' ? 1.35 : type === 'blanket' ? 1.5 : type === 'scooter' ? 1.15 : type === 'pooSling' ? 1.3 : 1.4;
-    const headR = type === 'pillow' ? 0.2 : type === 'nerf' ? 0.18 : type === 'blanket' ? 0.2 : type === 'scooter' ? 0.17 : type === 'pooSling' ? 0.18 : 0.2;
+    const headY = type === 'pillow' ? 1.4 : type === 'nerf' || type === 'soaker' ? 1.35 : type === 'blanket' ? 1.5 : type === 'scooter' ? 1.15 : type === 'pooSling' ? 1.3 : 1.4;
+    const headR = type === 'pillow' ? 0.2 : type === 'nerf' || type === 'soaker' ? 0.18 : type === 'blanket' ? 0.2 : type === 'scooter' ? 0.17 : type === 'pooSling' ? 0.18 : 0.2;
+    // Top of hair (both styles)
     const hair = new THREE.Mesh(new THREE.SphereGeometry(headR + 0.03, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
     hair.position.y = headY + 0.04;
     hair.castShadow = true;
     group.add(hair);
+    // Long hair: top cap + back portion (matches mini-life style)
+    if (customColors.hairStyle === 'long') {
+      const back = new THREE.Mesh(new THREE.BoxGeometry(headR * 1.82, headR * 2.5, headR * 0.91), hairMat);
+      back.position.set(0, headY - headR, -headR * 0.68);
+      back.castShadow = true;
+      group.add(back);
+    }
   }
 
   // Health bar
@@ -1508,8 +2347,14 @@ function generateArmies() {
 
   // Create player unit (invisible — we're in first person) with custom colors
   playerUnit = buildUnitModel(pd.playerClass, true, {
-    shirt: pd.shirtColor, skin: pd.skinColor, hair: pd.hairColor
+    shirt: pd.shirtColor, skin: pd.skinColor, hair: pd.hairColor, hairStyle: pd.hairStyle,
+    outfit: pd.outfit, showHat: pd.showHat
   });
+  // Apply chosen outfit to player model
+  if (pd.outfit === 'roman') addRomanOutfit(playerUnit, pd.showHat);
+  else if (pd.outfit === 'carthaginian') addCarthaginianOutfit(playerUnit, pd.showHat);
+  else if (pd.outfit === 'union') addUnionOutfit(playerUnit, pd.showHat);
+  else if (pd.outfit === 'confederate') addConfederateOutfit(playerUnit, pd.showHat);
   playerUnit.visible = false;
   playerUnit.position.set(-FIELD_W / 4, 0, 0);
   scene.add(playerUnit);
@@ -1560,6 +2405,123 @@ function generateArmies() {
   if (lvl && lvl.partyHats) {
     for (const e of enemyUnits) addPartyHat(e);
   }
+
+  // Add ancient outfits in Dog Poopic War levels
+  if (lvl && lvl.poopWar) {
+    for (const e of enemyUnits) addRomanOutfit(e);
+    for (const u of deployedUnits) {
+      if (!u.userData.isPlayer) addCarthaginianOutfit(u);
+    }
+  }
+
+  // Add Civil War outfits in Cricket's Charge
+  if (lvl && lvl.cricketCharge) {
+    for (const e of enemyUnits) addConfederateOutfit(e);
+    for (const u of deployedUnits) {
+      if (!u.userData.isPlayer) addUnionOutfit(u);
+    }
+
+    // Reposition: allies behind the stone wall, enemies far right in charge formation
+    for (const u of deployedUnits) {
+      if (u.userData.isPlayer) continue;
+      // Cluster allies behind the stone wall (x ~ -FIELD_W/6 - 2)
+      u.position.set(-FIELD_W / 6 - 2 - Math.random() * 3, 0, (Math.random() - 0.5) * (FIELD_D - 4));
+      u.rotation.y = -Math.PI / 2;
+    }
+    for (const e of enemyUnits) {
+      // Enemies start at far right edge, spread in a line (charging formation)
+      e.position.set(FIELD_W / 2 - 1 - Math.random() * 3, 0, (Math.random() - 0.5) * (FIELD_D - 2));
+      e.rotation.y = Math.PI / 2;
+      // Charge speed boost — melee units move 40% faster
+      if (e.userData.type !== 'balloon' && e.userData.type !== 'nerf' && e.userData.type !== 'cricket') {
+        e.userData.speed *= 1.4;
+      }
+    }
+    // Player starts behind the wall too
+    playerUnit.position.set(-FIELD_W / 6 - 3, 0, 0);
+  }
+
+  // Medium Flat Top — Union on hilltop, Confederates surrounding at base
+  if (lvl && lvl.flatTop) {
+    const topY = 2.5; // match hilltop height
+    const topRadius = 8;
+
+    for (const e of enemyUnits) addConfederateOutfit(e);
+    for (const u of deployedUnits) {
+      if (!u.userData.isPlayer) addUnionOutfit(u);
+    }
+
+    // Position allies on the flat hilltop (well within radius)
+    for (const u of deployedUnits) {
+      if (u.userData.isPlayer) continue;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 1 + Math.random() * (topRadius - 3);
+      u.position.set(Math.cos(angle) * dist, topY, Math.sin(angle) * dist);
+      u.rotation.y = angle + Math.PI; // face outward
+    }
+
+    // Position enemies surrounding the mountain base (well outside the slope)
+    for (const e of enemyUnits) {
+      const angle = Math.random() * Math.PI * 2;
+      const dist = topRadius + 4 + Math.random() * 4;
+      e.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+      e.rotation.y = Math.atan2(-Math.cos(angle) * dist, -Math.sin(angle) * dist); // face toward center
+      // Charging uphill — melee units get speed boost
+      if (e.userData.type !== 'balloon' && e.userData.type !== 'nerf' && e.userData.type !== 'cricket') {
+        e.userData.speed *= 1.3;
+      }
+    }
+
+    // Player starts on the hilltop
+    playerUnit.position.set(0, topY + 0.2, 0);
+  }
+
+  // Siege of Toys — Greek attackers on left, Roman defenders behind walls on right
+  if (lvl && lvl.siegeOfToys) {
+    const wallX = 3;
+
+    for (const e of enemyUnits) addRomanOutfit(e);
+    for (const u of deployedUnits) {
+      if (!u.userData.isPlayer) addGreekOutfit(u);
+    }
+
+    // Allies start on the far left, facing the wall
+    for (const u of deployedUnits) {
+      if (u.userData.isPlayer) continue;
+      u.position.set(
+        -FIELD_W / 2 + 2 + Math.random() * 4,
+        0,
+        (Math.random() - 0.5) * (FIELD_D - 4)
+      );
+      u.rotation.y = -Math.PI / 2;
+    }
+
+    // Enemies behind the wall (right side)
+    for (const e of enemyUnits) {
+      e.position.set(
+        wallX + 2 + Math.random() * (FIELD_W / 2 - wallX - 3),
+        0,
+        (Math.random() - 0.5) * (FIELD_D - 2)
+      );
+      e.rotation.y = Math.PI / 2;
+    }
+
+    // Spawn wall snipers — one nerf gunner on top of each wall segment
+    for (let wi = 0; wi < toyWalls.length; wi++) {
+      const wall = toyWalls[wi];
+      const sniper = buildUnitModel('nerf', false);
+      sniper.position.set(wall.x, wall.height + 0.1, wall.z);
+      sniper.rotation.y = Math.PI / 2; // face left toward attackers
+      sniper.userData.wallIndex = wi;
+      sniper.userData.isWallSniper = true;
+      addRomanOutfit(sniper);
+      scene.add(sniper);
+      enemyUnits.push(sniper);
+    }
+
+    // Player starts with allies on the left
+    playerUnit.position.set(-FIELD_W / 2 + 3, 0, 0);
+  }
 }
 
 // =============================================
@@ -1592,7 +2554,7 @@ function spawnBalloon(from, to, damage, team, splash) {
   projectiles.push({ mesh, start, end, progress: 0, speed: 8, damage, team, type: 'balloon', splash });
 }
 
-function spawnWaterShot(from, dir, damage, team) {
+function spawnWaterShot(from, dir, damage, team, isPlayerShot) {
   const mesh = new THREE.Mesh(
     new THREE.SphereGeometry(0.08, 6, 6),
     new THREE.MeshStandardMaterial({ color: 0x44aaff, opacity: 0.8, transparent: true })
@@ -1601,7 +2563,7 @@ function spawnWaterShot(from, dir, damage, team) {
   const start = mesh.position.clone();
   const end = start.clone().add(dir.clone().multiplyScalar(12));
   scene.add(mesh);
-  projectiles.push({ mesh, start, end, progress: 0, speed: 18, damage, team, type: 'dart' });
+  projectiles.push({ mesh, start, end, progress: 0, speed: 18, damage, team, type: 'dart', isPlayerShot: !!isPlayerShot });
   SFX.waterGun();
 }
 
@@ -1626,10 +2588,55 @@ function spawnPlayerPoo(fromPos, dir, damage, team, range, splash) {
   mesh.position.copy(fromPos).add(new THREE.Vector3(0, 1.2, 0));
   const start = mesh.position.clone();
   const end = start.clone().add(dir.clone().multiplyScalar(range || 10));
-  end.y = 0;
+  if (end.y < 0) end.y = 0;
   scene.add(mesh);
   projectiles.push({ mesh, start, end, progress: 0, speed: 7, damage, team, type: 'poo', splash: splash || 2.5, isPlayerShot: true });
   SFX.pooLaunch();
+}
+
+function spawnCricket(from, to, damage, team) {
+  // Flying cricket bug projectile
+  const bugGroup = new THREE.Group();
+  const bugBody = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4),
+    new THREE.MeshStandardMaterial({ color: 0x3a5a2a }));
+  bugBody.scale.set(1, 0.6, 1.5);
+  bugGroup.add(bugBody);
+  // Legs (tiny)
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x2a3a1a }));
+    leg.rotation.z = side * 0.8;
+    leg.position.set(side * 0.04, -0.02, 0);
+    bugGroup.add(leg);
+  }
+  bugGroup.position.copy(from.position).add(new THREE.Vector3(0, 1, 0));
+  const start = bugGroup.position.clone();
+  const end = to.position.clone().add(new THREE.Vector3(0, 0.8, 0));
+  scene.add(bugGroup);
+  projectiles.push({ mesh: bugGroup, start, end, progress: 0, speed: 12, damage, team, type: 'cricket' });
+  SFX.cricketLaunch();
+}
+
+function spawnPlayerCricket(fromPos, dir, damage, team, range) {
+  const bugGroup = new THREE.Group();
+  const bugBody = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4),
+    new THREE.MeshStandardMaterial({ color: 0x3a5a2a }));
+  bugBody.scale.set(1, 0.6, 1.5);
+  bugGroup.add(bugBody);
+  for (const side of [-1, 1]) {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.08),
+      new THREE.MeshStandardMaterial({ color: 0x2a3a1a }));
+    leg.rotation.z = side * 0.8;
+    leg.position.set(side * 0.04, -0.02, 0);
+    bugGroup.add(leg);
+  }
+  bugGroup.position.copy(fromPos).add(new THREE.Vector3(0, 1.2, 0));
+  const start = bugGroup.position.clone();
+  const end = start.clone().add(dir.clone().multiplyScalar(range || 9));
+  if (end.y < 0) end.y = 0;
+  scene.add(bugGroup);
+  projectiles.push({ mesh: bugGroup, start, end, progress: 0, speed: 12, damage, team, type: 'cricket', isPlayerShot: true });
+  SFX.cricketLaunch();
 }
 
 function updateProjectiles(dt) {
@@ -1643,18 +2650,37 @@ function updateProjectiles(dt) {
       p.mesh.position.y += Math.sin(p.progress * Math.PI) * totalDist * 0.3;
     }
 
-    // Check for in-flight hits on darts (not just at end)
+    // Check wall hits (all projectile types)
     let hit = false;
-    if (p.type === 'dart' && !p.splash && p.progress < 1) {
+    if (toyWalls.length > 0 && p.progress < 1) {
+      const px = p.mesh.position.x, py = p.mesh.position.y, pz = p.mesh.position.z;
+      for (const wall of toyWalls) {
+        if (!wall.alive) continue;
+        if (Math.abs(px - wall.x) < wall.width / 2 + 0.3 &&
+            Math.abs(pz - wall.z) < wall.depth / 2 + 0.3 &&
+            py < wall.height * (wall.hp / wall.maxHp) * 0.6 + wall.height * 0.5) {
+          damageWallSegment(wall, p.damage);
+          scene.remove(p.mesh);
+          projectiles.splice(i, 1);
+          hit = true;
+          break;
+        }
+      }
+    }
+    if (hit) continue;
+
+    // Check for in-flight hits on darts (not just at end)
+    if ((p.type === 'dart' || p.type === 'cricket') && !p.splash && p.progress < 1) {
       const allUnits = [...deployedUnits, ...enemyUnits];
       for (const u of allUnits) {
         if (!u.userData.alive) continue;
         if (u.userData.team === p.team) continue;
         if (u.userData.isPlayer) continue;
-        // Use XZ distance only (darts fly at y=1.2 but units are at y=0)
+        // 3D distance to unit center (supports shooting downward)
         const ddx = u.position.x - p.mesh.position.x;
+        const ddy = (u.position.y + 0.8) - p.mesh.position.y;
         const ddz = u.position.z - p.mesh.position.z;
-        if (Math.sqrt(ddx * ddx + ddz * ddz) < 1.0) {
+        if (Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz) < 1.2) {
           const wasAlive = u.userData.alive;
           applyDamage(u, p.damage);
           if (p.isPlayerShot && wasAlive && !u.userData.alive) playerKillCount++;
@@ -1829,6 +2855,8 @@ let playerKillCount = 0;
 let lastPlayerHp = 100;
 
 function applyDamage(unit, amount) {
+  // Wall snipers are invulnerable — they only die when their wall segment crumbles
+  if (unit.userData.isWallSniper) return;
   unit.userData.hp -= amount;
   if (unit.userData.hp <= 0) {
     unit.userData.hp = 0;
@@ -1852,6 +2880,17 @@ function updateHealthBar(unit) {
   unit.userData.hbFill.position.x = -(1 - pct) * 0.3;
 }
 
+// Get ground height at any XZ position (handles flat top slope)
+function getGroundY(x, z) {
+  if (!playerIsOnFlatTop) return 0;
+  const dist = Math.sqrt(x * x + z * z);
+  if (dist <= FLAT_TOP_RADIUS) return FLAT_TOP_Y; // on hilltop
+  if (dist >= FLAT_TOP_RADIUS + 2) return 0; // fully off the slope
+  // On the slope: linear interpolation between hilltop and ground
+  const slopeFrac = (dist - FLAT_TOP_RADIUS) / 2;
+  return FLAT_TOP_Y * (1 - slopeFrac);
+}
+
 function findNearest(unit, enemies) {
   let best = null, bestDist = Infinity;
   for (const e of enemies) {
@@ -1868,8 +2907,24 @@ function moveToward(unit, target, dt) {
   const dist = dir.length();
   if (dist < 0.1) return;
   dir.normalize();
+  const prevX = unit.position.x, prevZ = unit.position.z;
   unit.position.add(dir.multiplyScalar(unit.userData.speed * dt));
-  unit.position.y = 0;
+  // Wall collision: push back if hitting a wall, try sliding along it
+  if (toyWalls.length > 0 && checkWallCollision(unit.position.x, unit.position.z)) {
+    // Try sliding along Z only
+    unit.position.x = prevX;
+    if (checkWallCollision(unit.position.x, unit.position.z)) {
+      // Try sliding along X only
+      unit.position.x = prevX + dir.x * unit.userData.speed * dt;
+      unit.position.z = prevZ;
+      if (checkWallCollision(unit.position.x, unit.position.z)) {
+        // Fully blocked
+        unit.position.x = prevX;
+        unit.position.z = prevZ;
+      }
+    }
+  }
+  unit.position.y = getGroundY(unit.position.x, unit.position.z);
   unit.rotation.y = Math.atan2(dir.x, dir.z);
 }
 
@@ -1900,10 +2955,60 @@ function updateCombatAI(dt) {
   const allBlue = deployedUnits.filter(u => u.userData.alive);
   const allRed = enemyUnits.filter(u => u.userData.alive);
 
+  // Find nearest alive wall segment to a unit
+  function findNearestWall(unit) {
+    let best = null, bestDist = Infinity;
+    for (const wall of toyWalls) {
+      if (!wall.alive) continue;
+      const dx = wall.x - unit.position.x;
+      const dz = wall.z - unit.position.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d < bestDist) { bestDist = d; best = wall; }
+    }
+    return best;
+  }
+
+  // Check if a wall blocks the line between two positions (on X axis)
+  function wallBlocksPath(fromX, toX, fromZ) {
+    if (toyWalls.length === 0) return false;
+    for (const wall of toyWalls) {
+      if (!wall.alive) continue;
+      const minX = Math.min(fromX, toX);
+      const maxX = Math.max(fromX, toX);
+      if (wall.x >= minX && wall.x <= maxX && Math.abs(fromZ - wall.z) < wall.depth / 2 + 0.8) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function processUnit(unit, enemies) {
     if (!unit.userData.alive) return;
     if (unit.userData.isPlayer) return; // Player is controlled by FPS input
     unit.userData.attackCooldown -= dt;
+
+    // Wall snipers: stay on their wall, shoot at enemies, track wall height
+    if (unit.userData.isWallSniper) {
+      const wi = unit.userData.wallIndex;
+      if (wi >= 0 && wi < toyWalls.length) {
+        const wall = toyWalls[wi];
+        if (!wall.alive) return; // should already be dead, but just in case
+        // Stay on top of the wall (wall no longer shrinks)
+        unit.position.y = wall.height + 0.1;
+        unit.position.x = wall.x;
+        unit.position.z = wall.z;
+      }
+      const target = findNearest(unit, enemies);
+      if (!target) return;
+      const dist = unit.position.distanceTo(target.position);
+      if (dist <= unit.userData.range && unit.userData.attackCooldown <= 0) {
+        spawnDart(unit, target, getAttackDamage(unit, target), unit.userData.team);
+        unit.userData.attackCooldown = 1.0;
+      }
+      const dir = target ? new THREE.Vector3().subVectors(target.position, unit.position) : null;
+      if (dir) unit.rotation.y = Math.atan2(dir.x, dir.z);
+      return;
+    }
 
     const target = findNearest(unit, enemies);
     if (!target) return;
@@ -1912,8 +3017,11 @@ function updateCombatAI(dt) {
     const range = unit.userData.range;
     const type = unit.userData.type;
 
+    // Check if wall blocks path to target (melee units attack the wall instead)
+    const blocked = wallBlocksPath(unit.position.x, target.position.x, unit.position.z);
+
     if (type === 'nerf') {
-      if (dist < 3) {
+      if (dist < 3 && !blocked) {
         const away = new THREE.Vector3().subVectors(unit.position, target.position).normalize();
         unit.position.add(away.multiplyScalar(unit.userData.speed * dt));
         clampToField(unit);
@@ -1937,8 +3045,40 @@ function updateCombatAI(dt) {
       } else if (dist > range) {
         moveToward(unit, target, dt * 0.4);
       }
+    } else if (type === 'cricket') {
+      if (dist < 3 && !blocked) {
+        const away = new THREE.Vector3().subVectors(unit.position, target.position).normalize();
+        unit.position.add(away.multiplyScalar(unit.userData.speed * dt));
+        clampToField(unit);
+      } else if (dist <= range && unit.userData.attackCooldown <= 0) {
+        spawnCricket(unit, target, getAttackDamage(unit, target), unit.userData.team);
+        unit.userData.attackCooldown = 1.2;
+      } else if (dist > range) {
+        moveToward(unit, target, dt * 0.5);
+      }
     } else {
-      if (dist <= range) {
+      // Melee units (pillow, blanket, scooter)
+      if (blocked) {
+        // Attack the nearest wall segment if close enough
+        const nearWall = findNearestWall(unit);
+        if (nearWall) {
+          const wallDist = Math.sqrt(
+            (nearWall.x - unit.position.x) ** 2 + (nearWall.z - unit.position.z) ** 2
+          );
+          if (wallDist <= range + 0.5) {
+            if (unit.userData.attackCooldown <= 0) {
+              damageWallSegment(nearWall, unit.userData.damage);
+              unit.userData.attackCooldown = 0.8;
+              if (type === 'pillow') SFX.pillowHit();
+              else if (type === 'scooter') SFX.scooterZoom();
+            }
+            const dir = new THREE.Vector3(nearWall.x - unit.position.x, 0, nearWall.z - unit.position.z);
+            unit.rotation.y = Math.atan2(dir.x, dir.z);
+          } else {
+            moveToward(unit, target, dt); // will slide along wall
+          }
+        }
+      } else if (dist <= range) {
         if (unit.userData.attackCooldown <= 0) {
           applyDamage(target, getAttackDamage(unit, target));
           unit.userData.attackCooldown = 0.8;
@@ -1977,6 +3117,12 @@ function billboardHealthBars() {
 let playerYaw = 0;
 let playerPitch = 0;
 const moveKeys = { w: false, a: false, s: false, d: false };
+let playerVelY = 0;
+let playerIsOnFlatTop = false;
+const JUMP_SPEED = 6;
+const GRAVITY = 16;
+const FLAT_TOP_RADIUS = 8;
+const FLAT_TOP_Y = 2.7;
 let weaponGroup = null;
 let swingTime = 0;
 let isSwinging = false;
@@ -2014,6 +3160,33 @@ function setupWeapon() {
     );
     hand.position.set(0.32, -0.34, -0.48);
     weaponGroup.add(hand);
+  } else if (pd.playerClass === 'soaker') {
+    // Super Soaker water gun (first-person view)
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x22aaff });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.16, 0.5), bodyMat);
+    body.position.set(0.32, -0.24, -0.52);
+    weaponGroup.add(body);
+    // Water tank on top
+    const tankMat = new THREE.MeshStandardMaterial({ color: 0x44ccff, opacity: 0.7, transparent: true });
+    const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.2, 8), tankMat);
+    tank.position.set(0.32, -0.12, -0.45);
+    weaponGroup.add(tank);
+    // Barrel / nozzle
+    const nozzleMat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.025, 0.15, 8), nozzleMat);
+    nozzle.rotation.x = Math.PI / 2;
+    nozzle.position.set(0.32, -0.2, -0.78);
+    weaponGroup.add(nozzle);
+    // Pump handle
+    const pumpMat = new THREE.MeshStandardMaterial({ color: 0xff8800 });
+    const pump = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.04, 0.2), pumpMat);
+    pump.position.set(0.32, -0.32, -0.42);
+    weaponGroup.add(pump);
+    // Hand
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: skinColor }));
+    hand.position.set(0.32, -0.34, -0.38);
+    weaponGroup.add(hand);
   } else if (pd.playerClass === 'pooSling') {
     // Slingshot weapon (first-person view)
     const stickMat = new THREE.MeshStandardMaterial({ color: 0x885522 });
@@ -2040,6 +3213,24 @@ function setupWeapon() {
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08),
       new THREE.MeshStandardMaterial({ color: skinColor }));
     hand.position.set(0.3, -0.42, -0.48);
+    weaponGroup.add(hand);
+  } else if (pd.playerClass === 'cricket') {
+    // Cricket launcher weapon (first-person view) — cardboard tube
+    const tubeMat = new THREE.MeshStandardMaterial({ color: 0x997755 });
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.45, 8), tubeMat);
+    tube.rotation.x = Math.PI / 2;
+    tube.position.set(0.32, -0.22, -0.55);
+    weaponGroup.add(tube);
+    // Tube opening (dark)
+    const opening = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.02, 8),
+      new THREE.MeshStandardMaterial({ color: 0x333333 }));
+    opening.rotation.x = Math.PI / 2;
+    opening.position.set(0.32, -0.22, -0.78);
+    weaponGroup.add(opening);
+    // Hand
+    const hand = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.08),
+      new THREE.MeshStandardMaterial({ color: skinColor }));
+    hand.position.set(0.32, -0.3, -0.48);
     weaponGroup.add(hand);
   } else {
     // Pillow weapon (first-person view)
@@ -2084,14 +3275,38 @@ function updatePlayerMovement(dt) {
 
   if (move.lengthSq() > 0) {
     move.normalize().multiplyScalar(speed * dt);
+    const prevX = playerUnit.position.x, prevZ = playerUnit.position.z;
     playerUnit.position.add(move);
+    // Wall collision for player
+    if (toyWalls.length > 0 && checkWallCollision(playerUnit.position.x, playerUnit.position.z)) {
+      playerUnit.position.x = prevX;
+      if (checkWallCollision(playerUnit.position.x, playerUnit.position.z)) {
+        playerUnit.position.x = prevX + move.x;
+        playerUnit.position.z = prevZ;
+        if (checkWallCollision(playerUnit.position.x, playerUnit.position.z)) {
+          playerUnit.position.x = prevX;
+          playerUnit.position.z = prevZ;
+        }
+      }
+    }
     clampToField(playerUnit);
+  }
+
+  // Dynamic ground height from terrain
+  const groundHere = getGroundY(playerUnit.position.x, playerUnit.position.z);
+
+  // Jump / gravity
+  playerVelY -= GRAVITY * dt;
+  playerUnit.position.y += playerVelY * dt;
+  if (playerUnit.position.y <= groundHere) {
+    playerUnit.position.y = groundHere;
+    playerVelY = 0;
   }
 }
 
 function updatePlayerCamera() {
   if (!playerUnit) return;
-  camera.position.set(playerUnit.position.x, 1.4, playerUnit.position.z);
+  camera.position.set(playerUnit.position.x, playerUnit.position.y + 1.4, playerUnit.position.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = playerYaw;
   camera.rotation.x = playerPitch;
@@ -2103,6 +3318,14 @@ function updatePlayerCooldowns(dt) {
   if (playerUnit.userData.shootCooldown > 0) playerUnit.userData.shootCooldown -= dt;
 }
 
+function getAimDirection() {
+  return new THREE.Vector3(
+    -Math.sin(playerYaw) * Math.cos(playerPitch),
+    Math.sin(playerPitch),
+    -Math.cos(playerYaw) * Math.cos(playerPitch)
+  ).normalize();
+}
+
 function playerAttack() {
   if (!playerUnit || !playerUnit.userData.alive) return;
   if (playerUnit.userData.attackCooldown > 0) return;
@@ -2112,24 +3335,37 @@ function playerAttack() {
   isSwinging = true;
   swingTime = 0;
 
-  if (pStats.attackType === 'ranged') {
-    // Nerf: shoot a dart forward
-    const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+  if (pStats.attackType === 'ranged' && playerUnit.userData.type === 'soaker') {
+    // Super Soaker: rapid-fire water shots
+    const forward = getAimDirection();
+    let dmg = pStats.damage;
+    if (snackBoostActive) dmg *= 1.1;
+    spawnWaterShot(playerUnit.position, forward, dmg, 'blue', true);
+  } else if (pStats.attackType === 'ranged' && playerUnit.userData.type === 'cricket') {
+    // Cricket: launch a bug where you're aiming
+    const forward = getAimDirection();
+    let dmg = pStats.damage;
+    if (snackBoostActive) dmg *= 1.1;
+    spawnPlayerCricket(playerUnit.position, forward, dmg, 'blue', pStats.range);
+  } else if (pStats.attackType === 'ranged') {
+    // Nerf: shoot a dart where you're aiming
+    const forward = getAimDirection();
     let dmg = pStats.damage;
     if (snackBoostActive) dmg *= 1.1;
     spawnPlayerDart(playerUnit.position, forward, dmg, 'blue', pStats.range);
     SFX.nerfShot();
   } else if (pStats.attackType === 'mortar') {
-    // Poo Slingshot: lob a poo bomb forward
-    const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+    // Poo Slingshot: lob a poo bomb where you're aiming
+    const forward = getAimDirection();
     let dmg = pStats.damage;
     if (snackBoostActive) dmg *= 1.1;
     spawnPlayerPoo(playerUnit.position, forward, dmg, 'blue', pStats.range, 2.5 * (pStats.splashMult || 1));
   } else {
-    // Pillow: melee swing
+    // Melee swing (pillow)
     SFX.pillowHit();
     const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
 
+    let hitEnemy = false;
     for (const enemy of enemyUnits) {
       if (!enemy.userData.alive) continue;
       const toEnemy = new THREE.Vector3().subVectors(enemy.position, playerUnit.position);
@@ -2144,7 +3380,25 @@ function playerAttack() {
         const wasAlive = enemy.userData.alive;
         applyDamage(enemy, dmg);
         if (wasAlive && !enemy.userData.alive) playerKillCount++;
+        hitEnemy = true;
         break;
+      }
+    }
+    // Melee can also hit walls
+    if (!hitEnemy && toyWalls.length > 0) {
+      for (const wall of toyWalls) {
+        if (!wall.alive) continue;
+        const dx = wall.x - playerUnit.position.x;
+        const dz = wall.z - playerUnit.position.z;
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist > pStats.range + 1) continue;
+        const toWall = new THREE.Vector3(dx, 0, dz).normalize();
+        if (forward.dot(toWall) > 0.3) {
+          let dmg = pStats.damage;
+          if (snackBoostActive) dmg *= 1.1;
+          damageWallSegment(wall, dmg);
+          break;
+        }
       }
     }
   }
@@ -2165,10 +3419,11 @@ function spawnPlayerDart(fromPos, dir, damage, team, range) {
 function playerShoot() {
   if (!playerUnit || !playerUnit.userData.alive) return;
   if (!hasPurchase('sb_super_soaker')) return;
+  if (playerUnit.userData.type === 'soaker') return; // primary fire already shoots water
   if (playerUnit.userData.shootCooldown > 0) return;
 
   playerUnit.userData.shootCooldown = 1.5;
-  const forward = new THREE.Vector3(-Math.sin(playerYaw), 0, -Math.cos(playerYaw));
+  const forward = getAimDirection();
   spawnWaterShot(playerUnit.position, forward, 20, 'blue');
 }
 
@@ -2325,6 +3580,8 @@ function renderLoadout() {
   const picker = document.getElementById('class-picker');
   picker.innerHTML = '';
   for (const [id, cls] of Object.entries(CLASSES)) {
+    // Skip shop-locked classes if not purchased
+    if (cls.shopRequired && !hasPurchase(cls.shopRequired)) continue;
     const div = document.createElement('div');
     div.className = 'class-option' + (pd.playerClass === id ? ' selected' : '');
     div.innerHTML = '<div class="class-icon">' + cls.icon + '</div><div class="class-info"><div class="class-name">' + cls.name + '</div><div class="class-desc">' + cls.desc + '</div></div>';
@@ -2332,15 +3589,77 @@ function renderLoadout() {
     picker.appendChild(div);
   }
 
-  // Colors
-  document.getElementById('color-hair').value = pd.hairColor;
-  document.getElementById('color-shirt').value = pd.shirtColor;
-  document.getElementById('color-skin').value = pd.skinColor;
+  // Colors with reset buttons
+  const colorDefaults = { hair: '#8B4513', shirt: '#4488ff', skin: '#ffcc99' };
+  const colorKeys = { hair: 'hairColor', shirt: 'shirtColor', skin: 'skinColor' };
+  for (const [key, defaultVal] of Object.entries(colorDefaults)) {
+    const input = document.getElementById('color-' + key);
+    input.value = pd[colorKeys[key]];
+    input.onchange = (e) => { pd[colorKeys[key]] = e.target.value; savePlayerData(pd); updateMirror(); };
+    // Add reset button if not already present
+    const row = input.parentElement;
+    let resetBtn = row.querySelector('.color-reset');
+    if (!resetBtn) {
+      resetBtn = document.createElement('button');
+      resetBtn.className = 'color-reset';
+      resetBtn.textContent = '↺';
+      resetBtn.title = 'Reset to default';
+      row.appendChild(resetBtn);
+    }
+    resetBtn.onclick = () => { pd[colorKeys[key]] = defaultVal; savePlayerData(pd); renderLoadout(); };
+  }
 
-  // Color change handlers
-  document.getElementById('color-hair').onchange = (e) => { pd.hairColor = e.target.value; savePlayerData(pd); };
-  document.getElementById('color-shirt').onchange = (e) => { pd.shirtColor = e.target.value; savePlayerData(pd); };
-  document.getElementById('color-skin').onchange = (e) => { pd.skinColor = e.target.value; savePlayerData(pd); };
+  // Hair style toggle
+  const hairToggle = document.getElementById('hair-toggle');
+  hairToggle.innerHTML = '';
+  for (const style of ['short', 'long']) {
+    const btn = document.createElement('button');
+    btn.className = 'hair-btn' + (pd.hairStyle === style ? ' selected' : '');
+    btn.textContent = style.charAt(0).toUpperCase() + style.slice(1) + ' Hair';
+    btn.onclick = () => { pd.hairStyle = style; savePlayerData(pd); renderLoadout(); };
+    hairToggle.appendChild(btn);
+  }
+
+  // Outfit picker
+  const outfitPicker = document.getElementById('outfit-picker');
+  outfitPicker.innerHTML = '';
+  for (const outfit of OUTFITS) {
+    const unlocked = isOutfitUnlocked(outfit.id, pd);
+    const div = document.createElement('div');
+    div.className = 'outfit-option' + (pd.outfit === outfit.id ? ' selected' : '') + (unlocked ? '' : ' locked');
+    let inner = '<div><div class="outfit-name">' + outfit.name + '</div><div class="outfit-desc">' + outfit.desc + '</div></div>';
+    if (!unlocked) {
+      const lvl = OUTFITS.find(o => o.id === outfit.id).unlockLevel;
+      inner += '<div class="outfit-lock">Beat Lv ' + lvl + '</div>';
+    }
+    div.innerHTML = inner;
+    if (unlocked) {
+      div.onclick = () => { pd.outfit = outfit.id; savePlayerData(pd); renderLoadout(); };
+    }
+    outfitPicker.appendChild(div);
+  }
+
+  // Hat toggle (only shown when wearing an outfit)
+  let hatToggle = document.getElementById('hat-toggle');
+  if (!hatToggle) {
+    hatToggle = document.createElement('div');
+    hatToggle.id = 'hat-toggle';
+    hatToggle.className = 'hair-toggle';
+    outfitPicker.parentNode.insertBefore(hatToggle, outfitPicker.nextSibling);
+  }
+  hatToggle.innerHTML = '';
+  if (pd.outfit !== 'none') {
+    for (const opt of [{ val: true, label: 'Show Hat' }, { val: false, label: 'Show Hair' }]) {
+      const btn = document.createElement('button');
+      btn.className = 'hair-btn' + (pd.showHat === opt.val ? ' selected' : '');
+      btn.textContent = opt.label;
+      btn.onclick = () => { pd.showHat = opt.val; savePlayerData(pd); renderLoadout(); };
+      hatToggle.appendChild(btn);
+    }
+  }
+
+  // Mirror preview
+  updateMirror();
 
   // Upgrades
   const list = document.getElementById('upgrade-list');
@@ -2367,7 +3686,79 @@ function renderLoadout() {
   }
 }
 
+let mirrorRenderer = null, mirrorScene = null, mirrorCamera = null, mirrorModel = null, mirrorAnimFrame = null;
+
+function updateMirror() {
+  const canvas = document.getElementById('mirror-canvas');
+  if (!canvas) return;
+  const pd = loadPlayerData();
+
+  // Init renderer on first call
+  if (!mirrorRenderer) {
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    mirrorRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    mirrorRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+    mirrorScene = new THREE.Scene();
+    mirrorScene.background = new THREE.Color(0x0a0a1a);
+    mirrorCamera = new THREE.PerspectiveCamera(40, canvas.clientWidth / canvas.clientHeight, 0.1, 10);
+    mirrorCamera.position.set(0, 1.1, 2.5);
+    mirrorCamera.lookAt(0, 0.9, 0);
+    // Lights
+    mirrorScene.add(new THREE.AmbientLight(0x666666));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(2, 3, 2);
+    mirrorScene.add(dirLight);
+    // Floor
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(3, 3),
+      new THREE.MeshStandardMaterial({ color: 0x222233 }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    mirrorScene.add(floor);
+  }
+
+  // Remove old model
+  if (mirrorModel) mirrorScene.remove(mirrorModel);
+
+  // Build new model
+  mirrorModel = buildUnitModel(pd.playerClass, true, {
+    shirt: pd.shirtColor, skin: pd.skinColor, hair: pd.hairColor, hairStyle: pd.hairStyle,
+    outfit: pd.outfit, showHat: pd.showHat
+  });
+  // Apply outfit
+  if (pd.outfit === 'roman') addRomanOutfit(mirrorModel, pd.showHat);
+  else if (pd.outfit === 'carthaginian') addCarthaginianOutfit(mirrorModel, pd.showHat);
+  else if (pd.outfit === 'union') addUnionOutfit(mirrorModel, pd.showHat);
+  else if (pd.outfit === 'confederate') addConfederateOutfit(mirrorModel, pd.showHat);
+  // Hide health bar in mirror
+  if (mirrorModel.userData.hbGroup) mirrorModel.userData.hbGroup.visible = false;
+  mirrorScene.add(mirrorModel);
+
+  // Start spin animation if not already running
+  if (!mirrorAnimFrame) spinMirror();
+}
+
+function spinMirror() {
+  if (!mirrorRenderer || !mirrorScene || !mirrorCamera) { mirrorAnimFrame = null; return; }
+  // Check if loadout screen is still visible
+  const loadoutEl = document.getElementById('loadout-screen');
+  if (!loadoutEl || loadoutEl.classList.contains('hidden')) {
+    mirrorAnimFrame = null;
+    return;
+  }
+  if (mirrorModel) mirrorModel.rotation.y += 0.01;
+  mirrorRenderer.render(mirrorScene, mirrorCamera);
+  mirrorAnimFrame = requestAnimationFrame(spinMirror);
+}
+
+function cleanupMirror() {
+  if (mirrorAnimFrame) { cancelAnimationFrame(mirrorAnimFrame); mirrorAnimFrame = null; }
+  if (mirrorRenderer) { mirrorRenderer.dispose(); mirrorRenderer = null; }
+  mirrorScene = null; mirrorCamera = null; mirrorModel = null;
+}
+
 function confirmLoadout() {
+  cleanupMirror();
   startBattle();
 }
 
@@ -2392,12 +3783,31 @@ function startBattle() {
     scene.fog = new THREE.Fog(0x88ccff, 25, 50);
     addPoopWarDecorations();
   }
+  if (lvl && lvl.cricketCharge) {
+    // Open field — hazy afternoon
+    scene.background = new THREE.Color(0x99bbdd);
+    scene.fog = new THREE.Fog(0x99bbdd, 20, 45);
+    addCricketChargeDecorations();
+  }
+  if (lvl && lvl.flatTop) {
+    // Overcast mountain sky
+    scene.background = new THREE.Color(0x8899aa);
+    scene.fog = new THREE.Fog(0x8899aa, 25, 55);
+    addFlatTopDecorations();
+  }
+  if (lvl && lvl.siegeOfToys) {
+    // Bright cheerful sky for toy battle
+    scene.background = new THREE.Color(0x88ddff);
+    scene.fog = new THREE.Fog(0x88ddff, 25, 55);
+    addSiegeOfToysDecorations();
+  }
 
   generateArmies();
   setupWeapon();
 
   // Reset state
   projectiles = [];
+  if (!lvl || !lvl.siegeOfToys) toyWalls = [];
   clearConfetti();
   battleRunning = true;
   battleTime = 0;
@@ -2408,6 +3818,8 @@ function startBattle() {
   isSwinging = false;
   swingTime = 0;
   boatPhase = false;
+  playerVelY = 0;
+  playerIsOnFlatTop = !!(lvl && lvl.flatTop);
   Object.keys(moveKeys).forEach(k => moveKeys[k] = false);
 
   snackBoostActive = hasPurchase('sb_snack_boost');
@@ -2430,9 +3842,9 @@ function startBattle() {
 
   // Show "click to start"
   const pd = loadPlayerData();
-  const attackHint = pd.playerClass === 'nerf' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : 'Left click to swing';
+  const attackHint = pd.playerClass === 'nerf' || pd.playerClass === 'soaker' ? 'Left click to shoot' : pd.playerClass === 'pooSling' ? 'Left click to launch' : pd.playerClass === 'cricket' ? 'Left click to launch' : 'Left click to swing';
   document.getElementById('click-start').classList.remove('hidden');
-  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Mouse to look | ' + attackHint;
+  document.querySelector('#click-start .start-hint').textContent = 'WASD to move | Space to jump | Mouse to look | ' + attackHint;
   document.getElementById('crosshair').style.display = 'none';
   document.getElementById('player-hud').style.display = 'none';
   document.getElementById('kill-counter').style.display = 'none';
@@ -3399,6 +4811,557 @@ function drawPoopWar3Intro(ctx, w, h, slideIndex, t) {
   }
 }
 
+// CRICKET'S CHARGE — Hold the line
+const FLAT_TOP_SLIDES = [
+  {
+    bg: '#0a0a14',
+    lines: [
+      { text: 'After the cricket battle, they regrouped.', cls: 'narration' },
+      { text: 'They brought REINFORCEMENTS.', cls: 'dramatic villain' },
+      { text: 'Scooter riders. Nerf snipers. The works.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0a14 0%, #1a1428 100%)',
+    lines: [
+      { text: 'You spotted a hill in the backyard.', cls: 'narration' },
+      { text: 'A big one. Flat on top. Rocky on the sides.', cls: 'narration candy' },
+      { text: 'The perfect defensive position.', cls: 'dramatic hero' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0814 0%, #1a1020 100%)',
+    lines: [
+      { text: 'You hauled sandbags up the slope.', cls: 'narration' },
+      { text: 'Set up water balloon launchers.', cls: 'narration' },
+      { text: 'Planted the flag at the summit.', cls: 'dramatic hero' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#0a0a18',
+    lines: [
+      { text: 'Then you saw them coming.', cls: 'narration' },
+      { text: 'From EVERY direction.', cls: 'dramatic villain' },
+      { text: 'Surrounding the mountain.', cls: 'small' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'MEDIUM FLAT TOP', cls: 'dramatic' },
+      { text: 'Hold the high ground. They want it bad.', cls: 'narration hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+function drawFlatTopIntro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Enemy reinforcements gathering — silhouettes with various weapons
+    // Ground line
+    ctx.fillStyle = 'rgba(80,100,60,0.15)';
+    ctx.fillRect(0, cy + 30, w, h);
+    // Groups of red figures with weapons
+    for (let g = 0; g < 3; g++) {
+      const gx = cx - 60 + g * 60;
+      for (let i = 0; i < 4; i++) {
+        const rx = gx + (i - 1.5) * 12;
+        const ry = cy + 20;
+        ctx.fillStyle = 'rgba(255,68,68,0.3)';
+        ctx.beginPath(); ctx.arc(rx, ry, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillRect(rx - 2, ry + 4, 4, 8);
+        // Weapon stick
+        ctx.strokeStyle = 'rgba(255,68,68,0.2)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.moveTo(rx + 3, ry); ctx.lineTo(rx + 8, ry - 6); ctx.stroke();
+      }
+    }
+    // Scooter silhouette
+    ctx.fillStyle = 'rgba(255,68,68,0.25)';
+    ctx.fillRect(cx + 30, cy + 24, 12, 4);
+    ctx.beginPath(); ctx.arc(cx + 32, cy + 30, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 40, cy + 30, 3, 0, Math.PI * 2); ctx.fill();
+  } else if (slideIndex === 1) {
+    // The hill — flat-top mountain shape
+    ctx.fillStyle = 'rgba(100,90,70,0.3)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 80, cy + 40);
+    ctx.lineTo(cx - 40, cy - 20);
+    ctx.lineTo(cx + 40, cy - 20);
+    ctx.lineTo(cx + 80, cy + 40);
+    ctx.closePath();
+    ctx.fill();
+    // Flat top surface
+    ctx.fillStyle = 'rgba(90,130,70,0.25)';
+    ctx.fillRect(cx - 40, cy - 22, 80, 6);
+    // Rocks on sides
+    ctx.fillStyle = 'rgba(120,110,90,0.2)';
+    for (let i = 0; i < 6; i++) {
+      const rx = cx - 55 + i * 20 + (Math.sin(t + i) * 2);
+      const ry = cy + 5 + i * 3;
+      ctx.beginPath(); ctx.arc(rx, ry, 4 + Math.random() * 2, 0, Math.PI * 2); ctx.fill();
+    }
+    // Arrow pointing at top
+    ctx.strokeStyle = 'rgba(68,136,255,0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy - 40); ctx.lineTo(cx, cy - 28); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 5, cy - 33); ctx.lineTo(cx, cy - 28); ctx.lineTo(cx + 5, cy - 33); ctx.stroke();
+  } else if (slideIndex === 2) {
+    // Hauling sandbags up — figures climbing with bags
+    // Mountain outline
+    ctx.fillStyle = 'rgba(100,90,70,0.2)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 80, cy + 40);
+    ctx.lineTo(cx - 40, cy - 15);
+    ctx.lineTo(cx + 40, cy - 15);
+    ctx.lineTo(cx + 80, cy + 40);
+    ctx.closePath();
+    ctx.fill();
+    // Blue figures carrying sandbags up the slope
+    for (let i = 0; i < 4; i++) {
+      const frac = 0.2 + i * 0.2;
+      const fx = cx - 60 + frac * 100;
+      const fy = cy + 30 - frac * 50;
+      ctx.fillStyle = 'rgba(68,136,255,0.35)';
+      ctx.beginPath(); ctx.arc(fx, fy, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(fx - 2, fy + 4, 4, 7);
+      // Sandbag on back
+      ctx.fillStyle = 'rgba(160,140,100,0.4)';
+      ctx.fillRect(fx - 5, fy - 2, 6, 4);
+    }
+    // Flag at top
+    ctx.strokeStyle = 'rgba(100,100,120,0.4)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy - 15); ctx.lineTo(cx, cy - 35); ctx.stroke();
+    ctx.fillStyle = 'rgba(34,68,170,0.5)';
+    ctx.fillRect(cx + 1, cy - 35, 12, 8);
+  } else if (slideIndex === 3) {
+    // Enemies surrounding the hill from all sides
+    // Mountain center
+    ctx.fillStyle = 'rgba(100,90,70,0.25)';
+    ctx.beginPath(); ctx.arc(cx, cy, 30, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(90,130,70,0.2)';
+    ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+    // Blue defenders on top
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const bx = cx + Math.cos(a) * 12;
+      const by = cy + Math.sin(a) * 10;
+      ctx.fillStyle = 'rgba(68,136,255,0.4)';
+      ctx.beginPath(); ctx.arc(bx, by, 3, 0, Math.PI * 2); ctx.fill();
+    }
+    // Red enemies surrounding from outside — animated inward movement
+    const inward = Math.sin(t * 2) * 3;
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2;
+      const dist = 55 - inward;
+      const rx = cx + Math.cos(a) * dist;
+      const ry = cy + Math.sin(a) * (dist * 0.7);
+      ctx.fillStyle = 'rgba(255,68,68,' + (0.25 + Math.sin(t * 3 + i) * 0.05) + ')';
+      ctx.beginPath(); ctx.arc(rx, ry, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(rx - 1.5, ry + 3, 3, 5);
+    }
+  } else if (slideIndex === 4) {
+    // Title card
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold ' + Math.min(w * 0.07, 38) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(100,90,70,' + (0.7 + Math.sin(t * 2) * 0.1) + ')';
+    ctx.fillText('MEDIUM FLAT TOP', cx, cy - 25);
+    ctx.strokeStyle = 'rgba(140,130,110,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeText('MEDIUM FLAT TOP', cx, cy - 25);
+    ctx.font = Math.min(w * 0.035, 18) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(200,200,220,0.5)';
+    ctx.fillText('Hold the high ground.', cx, cy);
+    ctx.restore();
+    // Mountain silhouette with flag
+    ctx.fillStyle = 'rgba(100,90,70,0.3)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 60, cy + 35);
+    ctx.lineTo(cx - 25, cy + 10);
+    ctx.lineTo(cx + 25, cy + 10);
+    ctx.lineTo(cx + 60, cy + 35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34,68,170,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy + 10); ctx.lineTo(cx, cy - 5); ctx.stroke();
+    ctx.fillStyle = 'rgba(34,68,170,0.4)';
+    ctx.fillRect(cx + 1, cy - 5, 10, 6);
+    // Enemies approaching from all sides
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const dist = 50 - Math.sin(t * 2) * 4;
+      const rx = cx + Math.cos(a) * dist;
+      const ry = cy + 15 + Math.sin(a) * 25;
+      ctx.fillStyle = 'rgba(255,68,68,0.2)';
+      ctx.beginPath(); ctx.arc(rx, ry, 2.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+
+const SIEGE_OF_TOYS_SLIDES = [
+  {
+    bg: '#0a0a14',
+    lines: [
+      { text: 'The younger siblings had been busy.', cls: 'narration' },
+      { text: 'Collecting every toy block in the house.', cls: 'narration candy' },
+      { text: 'Every LEGO. Every Mega Block. Every Lincoln Log.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0a14 0%, #1a1428 100%)',
+    lines: [
+      { text: 'They built a WALL.', cls: 'dramatic villain' },
+      { text: 'Massive. Colorful. Ridiculous.', cls: 'narration' },
+      { text: 'With castle towers and everything.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0814 0%, #1a1020 100%)',
+    lines: [
+      { text: 'They hid behind it. Laughing.', cls: 'narration' },
+      { text: 'Throwing nerf darts over the top.', cls: 'narration' },
+      { text: 'Daring you to try and get through.', cls: 'dramatic villain' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#0a0a18',
+    lines: [
+      { text: 'But walls can be BROKEN.', cls: 'dramatic hero' },
+      { text: 'Especially walls made of TOYS.', cls: 'narration candy' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: 'SIEGE OF TOYS', cls: 'dramatic' },
+      { text: 'Break the walls. Storm the fortress.', cls: 'narration hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+function drawSiegeOfToysIntro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Kids collecting toy blocks — scattered colorful blocks and silhouettes
+    const colors = ['rgba(255,68,68,0.3)', 'rgba(68,255,68,0.3)', 'rgba(68,68,255,0.3)', 'rgba(255,255,68,0.3)', 'rgba(255,68,255,0.3)'];
+    for (let i = 0; i < 20; i++) {
+      const bx = cx - 80 + (i % 5) * 35 + Math.sin(t + i) * 3;
+      const by = cy + 20 + Math.floor(i / 5) * 12;
+      const size = 6 + Math.random() * 4;
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.fillRect(bx, by, size, size);
+    }
+    // Kid silhouettes picking up blocks
+    for (let i = 0; i < 3; i++) {
+      const fx = cx - 40 + i * 40;
+      ctx.fillStyle = 'rgba(255,68,68,0.25)';
+      ctx.beginPath(); ctx.arc(fx, cy + 10, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(fx - 2, cy + 14, 4, 8);
+      // Block in hand
+      ctx.fillStyle = colors[i];
+      ctx.fillRect(fx + 3, cy + 12, 4, 4);
+    }
+  } else if (slideIndex === 1) {
+    // The toy wall — colorful blocks stacked high
+    const blockColors = ['#ff4444', '#44cc44', '#4488ff', '#ffdd44', '#ff44ff', '#ff8800'];
+    const wallLeft = cx - 40, wallRight = cx + 40;
+    const wallBottom = cy + 30;
+    const blockW = 14, blockH = 10;
+    for (let row = 0; row < 5; row++) {
+      const offset = row % 2 === 0 ? 0 : blockW / 2;
+      for (let col = 0; col < 6; col++) {
+        const bx = wallLeft + offset + col * blockW;
+        const by = wallBottom - row * blockH;
+        if (bx + blockW > wallRight + 5) continue;
+        ctx.fillStyle = blockColors[(row * 6 + col) % blockColors.length];
+        ctx.globalAlpha = 0.4;
+        ctx.fillRect(bx, by, blockW - 1, blockH - 1);
+        ctx.globalAlpha = 1;
+      }
+    }
+    // Tower on each end
+    for (const tx of [wallLeft - 8, wallRight + 2]) {
+      ctx.fillStyle = 'rgba(204,68,68,0.35)';
+      ctx.fillRect(tx, wallBottom - 55, 12, 60);
+      ctx.fillStyle = 'rgba(68,68,204,0.35)';
+      ctx.beginPath(); ctx.moveTo(tx, wallBottom - 55); ctx.lineTo(tx + 6, wallBottom - 68); ctx.lineTo(tx + 12, wallBottom - 55); ctx.fill();
+    }
+  } else if (slideIndex === 2) {
+    // Enemies hiding behind wall, throwing darts over
+    // Wall
+    ctx.fillStyle = 'rgba(200,100,50,0.25)';
+    ctx.fillRect(cx - 30, cy - 10, 60, 40);
+    // Heads peeking over
+    for (let i = 0; i < 4; i++) {
+      const px = cx - 20 + i * 14;
+      ctx.fillStyle = 'rgba(255,68,68,0.35)';
+      ctx.beginPath(); ctx.arc(px, cy - 14, 4, 0, Math.PI * 2); ctx.fill();
+    }
+    // Darts flying over in arcs
+    for (let i = 0; i < 3; i++) {
+      const dx = cx - 50 - i * 15;
+      const dy = cy - 25 + Math.sin(t * 2 + i) * 5;
+      ctx.strokeStyle = 'rgba(255,136,0,0.4)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(cx - 20 + i * 10, cy - 18);
+      ctx.quadraticCurveTo(cx - 35, cy - 40, dx, dy);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255,136,0,0.5)';
+      ctx.beginPath(); ctx.arc(dx, dy, 2, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 3) {
+    // Crack in the wall — wall with growing crack
+    ctx.fillStyle = 'rgba(200,100,50,0.3)';
+    ctx.fillRect(cx - 35, cy - 15, 70, 45);
+    // Animated crack
+    const crackLen = Math.min(t * 8, 30);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 30);
+    ctx.lineTo(cx - 3, cy + 30 - crackLen * 0.4);
+    ctx.lineTo(cx + 2, cy + 30 - crackLen * 0.7);
+    ctx.lineTo(cx - 1, cy + 30 - crackLen);
+    ctx.stroke();
+    // Falling debris
+    if (t > 1.5) {
+      for (let i = 0; i < 4; i++) {
+        const fx = cx - 5 + i * 3 + Math.sin(t * 3 + i) * 2;
+        const fy = cy + 20 + (t - 1.5) * 15 * (i + 1);
+        if (fy > cy + 35) continue;
+        ctx.fillStyle = 'rgba(200,100,50,0.4)';
+        ctx.fillRect(fx, fy, 3, 3);
+      }
+    }
+  } else if (slideIndex === 4) {
+    // Title card: SIEGE OF TOYS with fortress silhouette
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold ' + Math.min(w * 0.07, 38) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(255,200,50,' + (0.7 + Math.sin(t * 2) * 0.1) + ')';
+    ctx.fillText('SIEGE OF TOYS', cx, cy - 25);
+    ctx.strokeStyle = 'rgba(255,150,0,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeText('SIEGE OF TOYS', cx, cy - 25);
+    ctx.font = Math.min(w * 0.035, 18) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(200,200,220,0.5)';
+    ctx.fillText('Break the walls. Storm the fortress.', cx, cy);
+    ctx.restore();
+    // Fortress silhouette
+    ctx.fillStyle = 'rgba(200,100,50,0.2)';
+    ctx.fillRect(cx - 35, cy + 15, 70, 25);
+    // Towers
+    for (const tx of [cx - 40, cx + 30]) {
+      ctx.fillRect(tx, cy + 5, 12, 35);
+      ctx.beginPath(); ctx.moveTo(tx, cy + 5); ctx.lineTo(tx + 6, cy - 5); ctx.lineTo(tx + 12, cy + 5); ctx.fill();
+    }
+    // Greek attackers approaching
+    const approach = Math.sin(t * 2) * 5;
+    for (let i = 0; i < 6; i++) {
+      const ax = cx - 80 + approach + i * 6;
+      const ay = cy + 25 + (i % 2) * 4;
+      ctx.fillStyle = 'rgba(68,136,255,0.3)';
+      ctx.beginPath(); ctx.arc(ax, ay, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(ax - 1.5, ay + 3, 3, 5);
+    }
+  }
+}
+
+const CRICKET_CHARGE_SLIDES = [
+  {
+    bg: '#0a0a14',
+    lines: [
+      { text: 'It was quiet. Too quiet.', cls: 'narration' },
+      { text: 'The younger siblings had left the house.', cls: 'small' },
+      { text: 'That was NEVER a good sign.', cls: 'narration villain' },
+    ],
+    duration: 3500,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0a14 0%, #1a1428 100%)',
+    lines: [
+      { text: 'They went to the PET STORE.', cls: 'narration' },
+      { text: 'They spent their allowance on CRICKETS.', cls: 'dramatic villain' },
+      { text: 'Hundreds of them.', cls: 'small' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: 'linear-gradient(180deg, #0a0814 0%, #1a1020 100%)',
+    lines: [
+      { text: 'They built launchers out of cardboard tubes.', cls: 'narration' },
+      { text: 'Loaded them with LIVE CRICKETS.', cls: 'dramatic villain' },
+      { text: 'And they started CHARGING across the front yard.', cls: 'narration' },
+    ],
+    duration: 4500,
+  },
+  {
+    bg: '#0a0a18',
+    lines: [
+      { text: 'You had one advantage.', cls: 'narration' },
+      { text: 'Water balloons. LOTS of them.', cls: 'dramatic hero' },
+      { text: 'And a stone wall to hide behind.', cls: 'narration candy' },
+    ],
+    duration: 4000,
+  },
+  {
+    bg: '#000',
+    lines: [
+      { text: "CRICKET'S CHARGE", cls: 'dramatic' },
+      { text: 'Hold the line. Make every balloon count.', cls: 'narration hero' },
+    ],
+    duration: 3500,
+  },
+];
+
+function drawCricketChargeIntro(ctx, w, h, slideIndex, t) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2, cy = h / 2;
+
+  if (slideIndex === 0) {
+    // Empty living room — suspiciously quiet
+    // Couch silhouette
+    ctx.fillStyle = 'rgba(100,80,60,0.2)';
+    ctx.fillRect(cx - 50, cy + 5, 100, 30);
+    ctx.fillRect(cx - 55, cy - 15, 10, 50);
+    ctx.fillRect(cx + 45, cy - 15, 10, 50);
+    // Floor
+    ctx.fillStyle = 'rgba(180,140,100,0.1)';
+    ctx.fillRect(cx - 100, cy + 35, 200, 30);
+    // Window with light coming in
+    ctx.fillStyle = 'rgba(200,220,255,0.08)';
+    ctx.fillRect(cx + 30, cy - 40, 35, 35);
+    ctx.strokeStyle = 'rgba(120,100,80,0.15)'; ctx.lineWidth = 2;
+    ctx.strokeRect(cx + 30, cy - 40, 35, 35);
+    // Empty spot where siblings should be
+    ctx.fillStyle = 'rgba(255,68,68,0.08)';
+    ctx.beginPath(); ctx.arc(cx, cy + 15, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,68,68,0.15)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy + 15, 15, 0, Math.PI * 2); ctx.stroke();
+  } else if (slideIndex === 1) {
+    // Pet store — shelves with cricket containers
+    // Store front shape
+    ctx.fillStyle = 'rgba(180,160,120,0.12)';
+    ctx.fillRect(cx - 70, cy - 30, 140, 70);
+    // Shelves
+    ctx.fillStyle = 'rgba(140,110,70,0.2)';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(cx - 55, cy - 20 + i * 22, 110, 4);
+    }
+    // Cricket containers on shelves (green boxes with bugs)
+    for (let row = 0; row < 2; row++) {
+      for (let col = 0; col < 4; col++) {
+        const bx = cx - 40 + col * 25;
+        const by = cy - 15 + row * 22;
+        ctx.fillStyle = 'rgba(68,136,51,0.3)';
+        ctx.fillRect(bx - 8, by, 16, 14);
+        // Crickets inside (hopping)
+        ctx.fillStyle = 'rgba(58,90,42,' + (0.35 + Math.sin(t * 5 + col + row * 4) * 0.1) + ')';
+        const hop = Math.abs(Math.sin(t * 6 + col * 1.7 + row)) * 4;
+        ctx.beginPath(); ctx.ellipse(bx, by + 8 - hop, 3, 2, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // Siblings at counter (red figures)
+    for (let i = 0; i < 3; i++) {
+      ctx.fillStyle = 'rgba(255,68,68,0.3)';
+      ctx.beginPath(); ctx.arc(cx - 15 + i * 15, cy + 30, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(cx - 17 + i * 15, cy + 34, 4, 8);
+    }
+    // Money on counter
+    ctx.fillStyle = 'rgba(100,180,80,0.3)';
+    ctx.fillRect(cx + 20, cy + 32, 12, 6);
+  } else if (slideIndex === 2) {
+    // Building the launchers — cardboard tubes + loading crickets
+    // Table
+    ctx.fillStyle = 'rgba(140,110,70,0.2)';
+    ctx.fillRect(cx - 60, cy + 10, 120, 6);
+    // Cardboard tubes being assembled
+    const tubeColor = 'rgba(153,119,85,0.45)';
+    for (let i = 0; i < 3; i++) {
+      const tx = cx - 35 + i * 35;
+      ctx.fillStyle = tubeColor;
+      ctx.fillRect(tx - 4, cy - 15, 8, 25);
+      ctx.fillStyle = 'rgba(100,80,60,0.25)';
+      ctx.beginPath(); ctx.ellipse(tx, cy - 15, 5, 3, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // Open cricket box dumping bugs into tube
+    ctx.fillStyle = 'rgba(68,136,51,0.35)';
+    ctx.fillRect(cx + 25, cy - 25, 20, 15);
+    // Crickets falling into tube
+    for (let i = 0; i < 5; i++) {
+      ctx.fillStyle = 'rgba(58,90,42,' + (0.4 + Math.sin(t * 4 + i) * 0.1) + ')';
+      const fallY = cy - 10 + ((t * 40 + i * 30) % 25);
+      const fallX = cx + 35 + Math.sin(t * 3 + i) * 3;
+      ctx.beginPath(); ctx.ellipse(fallX, fallY, 2.5, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // Red kid hands working
+    ctx.fillStyle = 'rgba(255,200,170,0.25)';
+    ctx.beginPath(); ctx.arc(cx - 35, cy, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 35, cy - 5, 4, 0, Math.PI * 2); ctx.fill();
+  } else if (slideIndex === 3) {
+    // Defenders behind wall with water balloons
+    // Stone wall
+    ctx.fillStyle = 'rgba(120,120,110,0.35)';
+    for (let i = 0; i < 8; i++) {
+      ctx.fillRect(cx - 80 + i * 22, cy + 5, 18, 12);
+    }
+    // Blue defenders behind wall
+    for (let i = 0; i < 6; i++) {
+      const bx = cx - 70 + i * 25;
+      ctx.fillStyle = 'rgba(68,136,255,0.35)';
+      ctx.beginPath(); ctx.arc(bx, cy - 5, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(bx - 2, cy - 1, 4, 8);
+    }
+    // Water balloons being lobbed
+    ctx.fillStyle = 'rgba(68,136,255,' + (0.4 + Math.sin(t * 3) * 0.1) + ')';
+    for (let i = 0; i < 4; i++) {
+      const bx = cx - 30 + i * 25;
+      const by = cy - 20 - Math.abs(Math.sin(t * 3 + i * 1.5)) * 25;
+      ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2); ctx.fill();
+    }
+  } else if (slideIndex === 4) {
+    // Title card — dramatic
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold ' + Math.min(w * 0.07, 38) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(26,39,68,' + (0.7 + Math.sin(t * 2) * 0.1) + ')';
+    ctx.fillText("CRICKET'S CHARGE", cx, cy - 25);
+    ctx.strokeStyle = 'rgba(100,100,120,0.5)';
+    ctx.lineWidth = 2;
+    ctx.strokeText("CRICKET'S CHARGE", cx, cy - 25);
+    ctx.font = Math.min(w * 0.035, 18) + 'px Bangers, Impact, sans-serif';
+    ctx.fillStyle = 'rgba(200,200,220,0.5)';
+    ctx.fillText('Hold the line.', cx, cy);
+    ctx.restore();
+    // Charging silhouettes
+    for (let i = 0; i < 8; i++) {
+      const rx = cx + 30 + (i % 4) * 15 - Math.sin(t * 3) * 5;
+      const ry = cy + 15 + Math.floor(i / 4) * 14;
+      ctx.fillStyle = 'rgba(255,68,68,0.25)';
+      ctx.beginPath(); ctx.arc(rx, ry, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(rx - 1.5, ry + 3, 3, 6);
+    }
+    // Defenders
+    for (let i = 0; i < 4; i++) {
+      const bx = cx - 50 + i * 15;
+      ctx.fillStyle = 'rgba(68,136,255,0.25)';
+      ctx.beginPath(); ctx.arc(bx, cy + 18, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(bx - 1.5, cy + 21, 3, 6);
+    }
+  }
+}
+
 // --- B-Day intro canvas drawings ---
 function drawBDayIntroScene(ctx, w, h, slideIndex, t) {
   ctx.clearRect(0, 0, w, h);
@@ -3603,6 +5566,15 @@ function showIntro() {
   } else if (currentLevel === 5) {
     activeIntroSlides = POOP_WAR_3_SLIDES;
     activeIntroDraw = drawPoopWar3Intro;
+  } else if (currentLevel === 6) {
+    activeIntroSlides = CRICKET_CHARGE_SLIDES;
+    activeIntroDraw = drawCricketChargeIntro;
+  } else if (currentLevel === 7) {
+    activeIntroSlides = FLAT_TOP_SLIDES;
+    activeIntroDraw = drawFlatTopIntro;
+  } else if (currentLevel === 8) {
+    activeIntroSlides = SIEGE_OF_TOYS_SLIDES;
+    activeIntroDraw = drawSiegeOfToysIntro;
   } else {
     activeIntroSlides = INTRO_SLIDES;
     activeIntroDraw = drawIntroScene;
@@ -3680,6 +5652,7 @@ function skipIntro() {
 // =============================================
 function hideAllScreens() {
   document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  cleanupMirror();
 }
 
 function showTitle() {
@@ -3698,7 +5671,7 @@ document.addEventListener('mousemove', (e) => {
   if (!battleRunning) return;
   playerYaw -= e.movementX * 0.002;
   playerPitch -= e.movementY * 0.002;
-  playerPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, playerPitch));
+  playerPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, playerPitch));
 });
 
 document.addEventListener('mousedown', (e) => {
@@ -3713,6 +5686,14 @@ document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (k in moveKeys) { moveKeys[k] = true; e.preventDefault(); }
+  if (k === ' ' && battleRunning && playerUnit && playerUnit.userData.alive) {
+    // Jump if on the ground
+    const groundHere = getGroundY(playerUnit.position.x, playerUnit.position.z);
+    if (playerUnit.position.y <= groundHere + 0.01) {
+      playerVelY = JUMP_SPEED;
+    }
+    e.preventDefault();
+  }
   if (k === 'escape') {
     if (document.pointerLockElement) document.exitPointerLock();
     else showTitle();

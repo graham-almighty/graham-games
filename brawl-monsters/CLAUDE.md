@@ -301,6 +301,27 @@ fpQuestProgress = {
 { name: string, skin: number, hairColor: number, hairStyle: number, shirtColor: number, accessory: number }
 ```
 
+## Market System
+
+- Accessible from map screen via MARKET button
+- Buy/Sell tabs
+- **Gold** (`fpGold`): earned from battles, displayed on map HUD and market screen
+- **Gold earning:** `10 + avgEnemyLevel * 3 + enemyCount * 5` per battle win; gym battles 3x
+- **Buy prices:** `floor((hp + atk*2 + def + spd) / 5) + level * 8` — based on base stats + level
+- **Sell prices:** 40% of buy price (reserves only, active team cannot be sold)
+- Bought monsters go to reserves (max 20 total roster)
+- Buy selection shows monsters at levels around player's average (±1)
+- Respects Drakovex shop unlock
+- Species caught tracking and quest completion checks on purchase
+
+## Battle Features
+
+- **Fullscreen:** toggle button on title screen (`toggleFullscreen()`)
+- **Quit battle:** QUIT button in battle top bar, returns to map on loss path
+- **Stat scanner** (G Bux item `bm_stat_scanner`): shows enhanced enemy pips with name, HP bar, and element color
+- **Enemy trainer:** gym leaders appear behind their monster in battle (positioned at left:12%, opacity 0.6)
+- Gym leaders have trainer appearance data in GYMS array
+
 ## Tutorial System
 
 7 tutorial steps triggered at specific moments:
@@ -343,6 +364,7 @@ fpQuestProgress = {
   mapX: number, mapY: number,
   quests: { story: { [id]: 'active'|'complete' }, side: { [id]: 'active'|'complete' } },
   questProgress: { wildBattlesWon, wildBattlesInZone: {}, speciesCaught, differentSpecies, moveLearnedCount },
+  gold: number,
 }
 ```
 
@@ -352,10 +374,10 @@ fpQuestProgress = {
 Title -> Trainer (if none) -> Draft (pick 3 of 5) -> Battle Floor 1 -> Reward -> ... -> Floor 8 Boss -> Victory/Defeat
 
 ### Freeplay
-Title -> Trainer (if none) -> Select Team (pick 3 of 13) -> Map Exploration -> Wild/Gym Battles -> Level Up -> Move Learn -> Capture -> Roster -> Quests
+Title -> Trainer (if none) -> Select Team (pick 3 of 13) -> Map Exploration -> Wild/Gym Battles -> Level Up -> Move Learn -> Capture -> Roster -> Quests -> Market
 
 ### Screens (by DOM id)
-`title-screen`, `trainer-screen`, `collection-screen`, `draft-screen`, `freeplay-select-screen`, `freeplay-hub-screen`, `freeplay-map-screen`, `fp-capture-screen`, `fp-roster-screen`, `battle-screen`, `reward-screen`, `tutor-screen`, `defeat-screen`, `victory-screen`
+`title-screen`, `trainer-screen`, `collection-screen`, `draft-screen`, `freeplay-select-screen`, `freeplay-hub-screen`, `freeplay-map-screen`, `fp-capture-screen`, `fp-roster-screen`, `fp-market-screen`, `battle-screen`, `reward-screen`, `tutor-screen`, `defeat-screen`, `victory-screen`
 
 ## Achievements (19, 430G)
 

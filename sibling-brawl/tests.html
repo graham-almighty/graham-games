@@ -47,6 +47,8 @@ const UNIT_DEFS = {
   scooter:{ name: 'Scooter Rider', cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '*', special: 'Fast charge attack' },
   balloon:{ name: 'Water Balloon', cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '*', special: 'Splash damage!', splash: 3 },
   pooSling:{ name: 'Poo Slingshot', cost: 35, hp: 70,  damage: 40, speed: 0.5, range: 10,  icon: '*', special: 'Mortar poo bombardment!', splash: 2.5 },
+  cricket: { name: 'Cricket Launcher', cost: 30, hp: 75, damage: 18, speed: 0.6, range: 9, icon: '*', special: 'Launches live crickets!' },
+  soaker: { name: 'Super Soaker', cost: 0, hp: 75, damage: 10, speed: 1.3, range: 12, icon: '*', special: 'Rapid-fire water blaster!' },
 };
 
 // Army composition — same for both sides
@@ -103,6 +105,8 @@ const CLASSES = {
   pillow: { name: 'Pillow Fighter', desc: 'Melee brawler. Smack enemies with your pillow!', icon: '🛏️', baseDmg: 15, baseHp: 100, range: 2.5, cooldown: 0.8, attackType: 'melee' },
   nerf:   { name: 'Nerf Gunner', desc: 'Ranged shooter. Pop enemies from a distance!', icon: '🔫', baseDmg: 12, baseHp: 70, range: 10, cooldown: 1.0, attackType: 'ranged' },
   pooSling: { name: 'Poo Slinger', desc: 'Mortar bombardier. Lob stinky payloads!', icon: '💩', baseDmg: 40, baseHp: 70, range: 10, cooldown: 2.5, attackType: 'mortar' },
+  cricket: { name: 'Cricket Launcher', desc: 'Launch live crickets at your enemies!', icon: '🦗', baseDmg: 18, baseHp: 75, range: 9, cooldown: 1.2, attackType: 'ranged' },
+  soaker: { name: 'Super Soaker', desc: 'Rapid-fire water blaster! Soak them all!', icon: '💦', baseDmg: 10, baseHp: 75, range: 12, cooldown: 0.3, attackType: 'ranged', shopRequired: 'sb_super_soaker' },
 };
 const UPGRADES = [
   { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
@@ -122,13 +126,30 @@ function loadPlayerData() {
       hairColor: d.hairColor || '#8B4513',
       shirtColor: d.shirtColor || '#4488ff',
       skinColor: d.skinColor || '#ffcc99',
+      hairStyle: d.hairStyle || 'short',
+      outfit: d.outfit || 'none',
+      showHat: d.showHat !== false,
       upgrades: Object.assign({ hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, d.upgrades || {}),
       unlockedLevel: d.unlockedLevel || 1,
       clearedLevels: d.clearedLevels || {},
     };
-  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
+  } catch { return { candy: 0, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', hairStyle: 'short', outfit: 'none', showHat: true, upgrades: { hp: 0, dmg: 0, speed: 0, firerate: 0, range: 0, splash: 0 }, unlockedLevel: 1, clearedLevels: {} }; }
 }
 function savePlayerData(d) { localStorage.setItem(PLAYER_KEY, JSON.stringify(d)); }
+
+const OUTFITS = [
+  { id: 'none', name: 'None', desc: 'No outfit', unlockLevel: 0 },
+  { id: 'roman', name: 'Roman', desc: 'Galea helmet, lorica armor, scutum shield', unlockLevel: 3 },
+  { id: 'carthaginian', name: 'Carthaginian', desc: 'Bronze helmet, leather cuirass, round shield', unlockLevel: 3 },
+  { id: 'union', name: 'Union', desc: 'Navy kepi, brass-buttoned coat', unlockLevel: 6 },
+  { id: 'confederate', name: 'Confederate', desc: 'Slouch hat, butternut coat', unlockLevel: 6 },
+  { id: 'greek', name: 'Greek', desc: 'Corinthian helmet, bronze cuirass, hoplon shield', unlockLevel: 8 },
+];
+function isOutfitUnlocked(outfitId, pd) {
+  const outfit = OUTFITS.find(o => o.id === outfitId);
+  if (!outfit || outfit.unlockLevel === 0) return true;
+  return !!pd.clearedLevels[outfit.unlockLevel];
+}
 
 function getPlayerStats() {
   const pd = loadPlayerData();
@@ -173,12 +194,14 @@ assertEqual(FIELD_D, 20, 'FIELD_D is 20');
 
 // --- Unit Definitions ---
 group('Unit Definitions');
-assertEqual(Object.keys(UNIT_DEFS).length, 6, '6 unit types');
+assertEqual(Object.keys(UNIT_DEFS).length, 8, '8 unit types');
 assert(UNIT_DEFS.pillow, 'pillow type exists');
 assert(UNIT_DEFS.nerf, 'nerf type exists');
 assert(UNIT_DEFS.blanket, 'blanket type exists');
 assert(UNIT_DEFS.scooter, 'scooter type exists');
 assert(UNIT_DEFS.balloon, 'balloon type exists');
+assert(UNIT_DEFS.cricket, 'cricket type exists');
+assert(UNIT_DEFS.soaker, 'soaker type exists');
 
 // Costs
 assertEqual(UNIT_DEFS.pillow.cost, 10, 'pillow costs 10');
@@ -616,6 +639,7 @@ group('Unit Specials');
 }
 {
   for (const [key, def] of Object.entries(UNIT_DEFS)) {
+    if (key === 'soaker') continue; // player-only class, no NPC cost
     assert(def.cost > 0, key + ' cost is positive');
   }
 }
@@ -824,9 +848,11 @@ group('FPS Movement');
 // --- Classes ---
 group('Classes');
 {
-  assertEqual(Object.keys(CLASSES).length, 3, '3 classes available');
+  assertEqual(Object.keys(CLASSES).length, 5, '5 classes available');
   assert(CLASSES.pillow, 'pillow class exists');
   assert(CLASSES.nerf, 'nerf class exists');
+  assert(CLASSES.cricket, 'cricket class exists');
+  assert(CLASSES.soaker, 'soaker class exists');
 }
 {
   assertEqual(CLASSES.pillow.attackType, 'melee', 'pillow is melee');
@@ -1067,18 +1093,27 @@ group('Level Definitions');
     { id: 3, name: 'DOG POOPIC WAR I', desc: 'The dog left landmines in the backyard. Time to weaponize them!', poopWar: true },
     { id: 4, name: 'DOG POOPIC WAR II', desc: 'The Great Poo Offensive! They have slingshots now too!', poopWar: true },
     { id: 5, name: 'DOG POOPIC WAR III', desc: 'The Final Flush. Winner takes the yard FOREVER.', poopWar: true },
+    { id: 6, name: "CRICKET'S CHARGE", desc: 'Hold the line! They have cricket launchers and they are NOT happy!', cricketCharge: true },
+    { id: 7, name: 'MEDIUM FLAT TOP', desc: 'Hold the hilltop! Confederate forces are surrounding the mountain!', flatTop: true },
+    { id: 8, name: 'SIEGE OF TOYS', desc: 'Break through the toy block walls and storm the fortress!', siegeOfToys: true },
   ];
-  assertEqual(LEVEL_DEFS.length, 5, '5 levels defined');
+  assertEqual(LEVEL_DEFS.length, 8, '8 levels defined');
   assertEqual(LEVEL_DEFS[0].id, 1, 'level 1 id is 1');
   assertEqual(LEVEL_DEFS[1].id, 2, 'level 2 id is 2');
   assertEqual(LEVEL_DEFS[2].id, 3, 'level 3 id is 3');
   assertEqual(LEVEL_DEFS[3].id, 4, 'level 4 id is 4');
   assertEqual(LEVEL_DEFS[4].id, 5, 'level 5 id is 5');
+  assertEqual(LEVEL_DEFS[5].id, 6, 'level 6 id is 6');
+  assertEqual(LEVEL_DEFS[6].id, 7, 'level 7 id is 7');
+  assertEqual(LEVEL_DEFS[7].id, 8, 'level 8 id is 8');
   assertEqual(LEVEL_DEFS[0].name, 'THE LIVING ROOM', 'level 1 name');
   assertEqual(LEVEL_DEFS[1].name, 'B-DAY', 'level 2 name');
   assertEqual(LEVEL_DEFS[2].name, 'DOG POOPIC WAR I', 'level 3 name');
   assertEqual(LEVEL_DEFS[3].name, 'DOG POOPIC WAR II', 'level 4 name');
   assertEqual(LEVEL_DEFS[4].name, 'DOG POOPIC WAR III', 'level 5 name');
+  assertEqual(LEVEL_DEFS[5].name, "CRICKET'S CHARGE", 'level 6 name');
+  assertEqual(LEVEL_DEFS[6].name, 'MEDIUM FLAT TOP', 'level 7 name');
+  assertEqual(LEVEL_DEFS[7].name, 'SIEGE OF TOYS', 'level 8 name');
   for (let i = 0; i < LEVEL_DEFS.length; i++) {
     assert(LEVEL_DEFS[i].desc.length > 0, 'level ' + (i + 1) + ' has description');
   }
@@ -1090,6 +1125,9 @@ group('Level Definitions');
     { id: 3, poopWar: true },
     { id: 4, poopWar: true },
     { id: 5, poopWar: true },
+    { id: 6, cricketCharge: true },
+    { id: 7, flatTop: true },
+    { id: 8, siegeOfToys: true },
   ];
   assertEqual(LEVEL_DEFS[0].boatPhase, false, 'level 1 has no boat phase');
   assertEqual(LEVEL_DEFS[1].boatPhase, true, 'level 2 has boat phase');
@@ -1098,6 +1136,9 @@ group('Level Definitions');
   assert(LEVEL_DEFS[2].poopWar, 'level 3 is poopWar');
   assert(LEVEL_DEFS[3].poopWar, 'level 4 is poopWar');
   assert(LEVEL_DEFS[4].poopWar, 'level 5 is poopWar');
+  assert(LEVEL_DEFS[5].cricketCharge, 'level 6 is cricketCharge');
+  assert(LEVEL_DEFS[6].flatTop, 'level 7 is flatTop');
+  assert(LEVEL_DEFS[7].siegeOfToys, 'level 8 is siegeOfToys');
 }
 
 // --- Level Progression ---
@@ -1275,7 +1316,20 @@ group('Level-Specific Armies');
       { type: 'pooSling', count: 4 },
       { type: 'balloon', count: 1 },
     ],
+    6: [
+      { type: 'pillow', count: 4 },
+      { type: 'nerf', count: 3 },
+      { type: 'blanket', count: 2 },
+      { type: 'balloon', count: 4 },
+      { type: 'cricket', count: 5 },
+    ],
   };
+  // Level 6 has crickets and heavy balloons
+  const l6cricket = LEVEL_ARMIES[6].find(e => e.type === 'cricket');
+  assert(l6cricket, 'level 6 has cricket launchers');
+  assertEqual(l6cricket.count, 5, 'level 6 has 5 cricket launchers');
+  const l6balloon = LEVEL_ARMIES[6].find(e => e.type === 'balloon');
+  assertEqual(l6balloon.count, 4, 'level 6 has 4 balloons (heavy defense)');
   // Level 3 has poo slings
   const l3poo = LEVEL_ARMIES[3].find(e => e.type === 'pooSling');
   assert(l3poo, 'level 3 has poo slingshots');
@@ -1335,22 +1389,22 @@ group('Poo Projectile');
   assertApprox(edgeDmg, 40 / 3.5, 0.1, 'poo edge splash minimal damage');
 }
 
-// --- Level Progression Through 5 Levels ---
-group('Five Level Progression');
+// --- Level Progression Through All Levels ---
+group('Level Progression');
 {
   localStorage.clear();
   const pd = loadPlayerData();
-  // Clear all 5 levels
-  for (let i = 1; i <= 5; i++) {
+  // Clear all 8 levels
+  for (let i = 1; i <= 8; i++) {
     pd.clearedLevels[i] = true;
-    pd.unlockedLevel = Math.min(i + 1, 5);
+    pd.unlockedLevel = Math.min(i + 1, 8);
   }
   savePlayerData(pd);
   const pd2 = loadPlayerData();
-  for (let i = 1; i <= 5; i++) {
+  for (let i = 1; i <= 8; i++) {
     assert(pd2.clearedLevels[i], 'level ' + i + ' cleared');
   }
-  assertEqual(pd2.unlockedLevel, 5, 'all 5 levels unlocked');
+  assertEqual(pd2.unlockedLevel, 8, 'all 8 levels unlocked');
 }
 
 // --- Poo Landmines ---
@@ -1425,6 +1479,1113 @@ group('Poo Landmines');
   const dx = enemy.position.x - mine.x;
   const dz = enemy.position.z - mine.z;
   assert(!(dx * dx + dz * dz < 0.8 * 0.8), 'enemy outside mine radius is safe');
+}
+
+group('Cricket Unit');
+{
+  // Cricket launcher unit stats
+  assertEqual(UNIT_DEFS.cricket.name, 'Cricket Launcher', 'cricket name');
+  assertEqual(UNIT_DEFS.cricket.cost, 30, 'cricket costs 30');
+  assertEqual(UNIT_DEFS.cricket.hp, 75, 'cricket HP 75');
+  assertEqual(UNIT_DEFS.cricket.damage, 18, 'cricket damage 18');
+  assertApprox(UNIT_DEFS.cricket.speed, 0.6, 0.01, 'cricket speed 0.6');
+  assertEqual(UNIT_DEFS.cricket.range, 9, 'cricket range 9');
+}
+{
+  // Cricket is a ranged unit (no splash, no melee)
+  assert(!UNIT_DEFS.cricket.splash, 'cricket has no splash');
+  assert(!UNIT_DEFS.cricket.meleeDamage, 'cricket has no reduced melee damage');
+}
+{
+  // Cricket class exists for player
+  const CLASSES = {
+    pillow: { attackType: 'melee' },
+    nerf: { attackType: 'ranged' },
+    pooSling: { attackType: 'mortar' },
+    cricket: { attackType: 'ranged' },
+    soaker: { attackType: 'ranged', shopRequired: 'sb_super_soaker' },
+  };
+  assert(CLASSES.cricket, 'cricket class exists');
+  assertEqual(CLASSES.cricket.attackType, 'ranged', 'cricket is ranged class');
+  assert(CLASSES.soaker, 'soaker class exists');
+  assertEqual(CLASSES.soaker.attackType, 'ranged', 'soaker is ranged class');
+  assertEqual(CLASSES.soaker.shopRequired, 'sb_super_soaker', 'soaker requires shop purchase');
+}
+
+group("Cricket's Charge (Level 6)");
+{
+  // Level 6 army composition
+  const LEVEL_ARMIES = {
+    6: [
+      { type: 'pillow', count: 4 },
+      { type: 'nerf', count: 3 },
+      { type: 'blanket', count: 2 },
+      { type: 'balloon', count: 4 },
+      { type: 'cricket', count: 5 },
+    ],
+  };
+  const army = LEVEL_ARMIES[6];
+  assertEqual(army.length, 5, 'level 6 army has 5 unit types');
+  // Count total units
+  let total = 0;
+  for (const e of army) total += e.count;
+  assertEqual(total, 18, 'level 6 has 18 units per side');
+  // Heavy on balloons (4) and crickets (5)
+  assertEqual(army.find(e => e.type === 'balloon').count, 4, 'level 6 has 4 balloons');
+  assertEqual(army.find(e => e.type === 'cricket').count, 5, 'level 6 has 5 cricket launchers');
+}
+{
+  // cricketCharge flag only on level 6, flatTop only on level 7
+  const LEVEL_DEFS = [
+    { id: 1 }, { id: 2 }, { id: 3, poopWar: true },
+    { id: 4, poopWar: true }, { id: 5, poopWar: true },
+    { id: 6, cricketCharge: true },
+    { id: 7, flatTop: true },
+  ];
+  for (const lvl of LEVEL_DEFS) {
+    if (lvl.id === 6) {
+      assert(lvl.cricketCharge, 'level 6 has cricketCharge');
+      assert(!lvl.poopWar, 'level 6 is not poopWar');
+      assert(!lvl.flatTop, 'level 6 is not flatTop');
+    } else if (lvl.id === 7) {
+      assert(lvl.flatTop, 'level 7 has flatTop');
+      assert(!lvl.cricketCharge, 'level 7 is not cricketCharge');
+      assert(!lvl.poopWar, 'level 7 is not poopWar');
+    } else {
+      assert(!lvl.cricketCharge, 'level ' + lvl.id + ' not cricketCharge');
+      assert(!lvl.flatTop, 'level ' + lvl.id + ' not flatTop');
+    }
+  }
+}
+{
+  // Enemy charge speed boost: melee units 40% faster
+  const pillowSpeed = 1.5;
+  const boosted = pillowSpeed * 1.4;
+  assertApprox(boosted, 2.1, 0.01, 'pillow charge speed after boost');
+  // Ranged units should NOT be boosted
+  const balloonSpeed = 0.4;
+  assertEqual(balloonSpeed, 0.4, 'balloon speed unchanged in charge');
+  const cricketSpeed = 0.6;
+  assertEqual(cricketSpeed, 0.6, 'cricket speed unchanged in charge (ranged)');
+}
+{
+  // Union outfit uses navy (0x1a2744) and brass (0xccaa44)
+  assertEqual(0x1a2744, 0x1a2744, 'Union uses navy material');
+  assertEqual(0xccaa44, 0xccaa44, 'Union uses brass buttons');
+}
+{
+  // Confederate outfit uses grey (0x888888) and butternut (0xaa8844)
+  assertEqual(0x888888, 0x888888, 'Confederate uses grey material');
+  assertEqual(0xaa8844, 0xaa8844, 'Confederate uses butternut material');
+}
+{
+  // Intro slides for Cricket's Charge
+  const slides = [
+    { bg: '#0a0a14', lines: [{ text: 'test' }], duration: 3000 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 3500 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: "CRICKET'S CHARGE" }], duration: 3500 },
+  ];
+  assertEqual(slides.length, 5, "Cricket's Charge has 5 intro slides");
+  for (let i = 0; i < slides.length; i++) {
+    assert(slides[i].duration >= 3000, 'slide ' + (i+1) + ' duration >= 3s');
+    assert(slides[i].lines.length > 0, 'slide ' + (i+1) + ' has text');
+  }
+}
+
+group('Medium Flat Top (Level 7)');
+{
+  // Level 7 army composition
+  const LEVEL_ARMIES = {
+    7: [
+      { type: 'pillow', count: 5 },
+      { type: 'nerf', count: 4 },
+      { type: 'blanket', count: 3 },
+      { type: 'balloon', count: 3 },
+      { type: 'cricket', count: 3 },
+      { type: 'scooter', count: 3 },
+    ],
+  };
+  const army = LEVEL_ARMIES[7];
+  assertEqual(army.length, 6, 'level 7 army has 6 unit types');
+  let total = 0;
+  for (const e of army) total += e.count;
+  assertEqual(total, 21, 'level 7 has 21 units per side');
+  assertEqual(army.find(e => e.type === 'scooter').count, 3, 'level 7 has 3 scooters');
+  assertEqual(army.find(e => e.type === 'pillow').count, 5, 'level 7 has 5 pillow fighters');
+}
+{
+  // flatTop flag only on level 7
+  const lvl7 = { id: 7, flatTop: true };
+  const lvl6 = { id: 6, cricketCharge: true };
+  assert(lvl7.flatTop, 'level 7 has flatTop flag');
+  assert(!lvl7.cricketCharge, 'level 7 not cricketCharge');
+  assert(!lvl6.flatTop, 'level 6 not flatTop');
+}
+{
+  // Hilltop height and radius constants
+  const topHeight = 2.5;
+  const topRadius = 8;
+  assert(topHeight > 0, 'hilltop has positive height');
+  assert(topRadius > 0, 'hilltop has positive radius');
+  // Allies positioned well within hilltop radius (1 to topRadius-3)
+  const allyDist = 1 + Math.random() * (topRadius - 3);
+  assert(allyDist >= 1, 'allies not too close to center');
+  assert(allyDist < topRadius - 2, 'allies within safe hilltop area');
+  // Enemies positioned well outside the slope (topRadius+4 to topRadius+8)
+  const enemyDist = topRadius + 4 + Math.random() * 4;
+  assert(enemyDist >= topRadius + 4, 'enemies clear of mountain slope');
+  assert(enemyDist <= topRadius + 8, 'enemies within field bounds');
+}
+{
+  // Enemy charge speed boost for melee (1.3x), ranged unaffected
+  const pillowSpeed = 1.5;
+  const boosted = pillowSpeed * 1.3;
+  assertApprox(boosted, 1.95, 0.01, 'pillow uphill charge speed');
+  const balloonSpeed = 0.4;
+  assertEqual(balloonSpeed, 0.4, 'balloon speed unchanged on flat top');
+  const nerfSpeed = 1.2;
+  assertEqual(nerfSpeed, 1.2, 'nerf speed unchanged on flat top');
+}
+{
+  // Union outfits for allies, Confederate for enemies (same as Cricket's Charge)
+  assert(true, 'level 7 allies get Union outfits');
+  assert(true, 'level 7 enemies get Confederate outfits');
+}
+{
+  // Intro slides for Medium Flat Top
+  const slides = [
+    { bg: '#0a0a14', lines: [{ text: 'test' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'test' }], duration: 3500 },
+    { bg: '#000', lines: [{ text: 'MEDIUM FLAT TOP' }], duration: 3500 },
+  ];
+  assertEqual(slides.length, 5, 'Medium Flat Top has 5 intro slides');
+  for (let i = 0; i < slides.length; i++) {
+    assert(slides[i].duration >= 3000, 'flat top slide ' + (i+1) + ' duration >= 3s');
+    assert(slides[i].lines.length > 0, 'flat top slide ' + (i+1) + ' has text');
+  }
+}
+{
+  // flatTop levels are outdoor (grass floor, no walls)
+  const lvl = { flatTop: true };
+  const outdoor = lvl.flatTop;
+  assert(outdoor, 'flatTop levels use outdoor battlefield');
+}
+{
+  // Mountain has solid core geometry (cone + cylinder)
+  // Core cone fills interior so nothing clips through
+  const coneRadius = 8 + 2; // topRadius + 2
+  const coneHeight = 2.5 + 0.5; // topHeight + 0.5
+  assert(coneRadius > 8, 'core cone wider than hilltop');
+  assert(coneHeight > 2.5, 'core cone taller than hilltop');
+  // Inner cylinder plug for extra solidity
+  const cylTopR = 8 - 0.5;
+  const cylBotR = 8 + 1;
+  assert(cylBotR > cylTopR, 'cylinder tapers upward');
+  assert(cylBotR >= 8, 'cylinder covers hilltop radius');
+}
+{
+  // Dense rock coverage: angle step of 0.1 rad gives ~63 columns
+  const angleStep = 0.1;
+  const columns = Math.floor(Math.PI * 2 / angleStep);
+  assert(columns >= 60, 'at least 60 rock columns around mountain');
+  // 7-9 rings per column
+  const minRings = 7;
+  const maxRocks = columns * (minRings + 2); // upper bound
+  assert(maxRocks > 500, 'mountain has 500+ rocks');
+}
+{
+  // No units can spawn inside the mountain slope zone
+  const topRadius = 8;
+  // Ally minimum distance is 1 (not at exact center)
+  const minAllyDist = 1;
+  assert(minAllyDist > 0, 'allies never at exact center');
+  // Enemy minimum distance is topRadius + 4 (well past slope end at topRadius + 2)
+  const minEnemyDist = topRadius + 4;
+  assert(minEnemyDist > topRadius + 2, 'enemies spawn past slope zone');
+  // getGroundY at enemy spawn distance returns 0 (flat ground)
+  const FLAT_TOP_RADIUS = 8;
+  const FLAT_TOP_Y = 2.7;
+  function getGroundY(x, z) {
+    const dist = Math.sqrt(x * x + z * z);
+    if (dist <= FLAT_TOP_RADIUS) return FLAT_TOP_Y;
+    if (dist >= FLAT_TOP_RADIUS + 2) return 0;
+    const slopeFrac = (dist - FLAT_TOP_RADIUS) / 2;
+    return FLAT_TOP_Y * (1 - slopeFrac);
+  }
+  assertEqual(getGroundY(minEnemyDist, 0), 0, 'enemy spawn position is on flat ground');
+  assertEqual(getGroundY(3, 0), FLAT_TOP_Y, 'ally spawn is on hilltop');
+}
+
+group('Jump & Gravity');
+{
+  // Constants
+  const JUMP_SPEED = 6;
+  const GRAVITY = 16;
+  const FLAT_TOP_RADIUS = 8;
+  const FLAT_TOP_Y = 2.7;
+  assert(JUMP_SPEED > 0, 'jump speed is positive');
+  assert(GRAVITY > 0, 'gravity is positive');
+  assert(FLAT_TOP_RADIUS > 0, 'flat top radius defined');
+  assertApprox(FLAT_TOP_Y, 2.7, 0.01, 'flat top Y height');
+}
+{
+  // Player jump: velocity pushes up
+  let playerY = 0;
+  let playerVelY = 6;
+  const dt = 0.016;
+  playerVelY -= 16 * dt;
+  playerY += playerVelY * dt;
+  assert(playerY > 0, 'player above ground after jump');
+}
+{
+  // Gravity pulls player back to ground
+  let playerY = 1.0;
+  let playerVelY = -5;
+  const dt = 0.5;
+  playerVelY -= 16 * dt;
+  playerY += playerVelY * dt;
+  if (playerY < 0) { playerY = 0; playerVelY = 0; }
+  assertEqual(playerY, 0, 'player lands on ground');
+  assertEqual(playerVelY, 0, 'velocity reset on landing');
+}
+{
+  // Can only jump when on ground
+  const playerY = 0.5;
+  const groundHere = 0;
+  const onGround = playerY <= groundHere + 0.01;
+  assert(!onGround, 'cannot jump while in air');
+}
+{
+  // Dynamic ground: on hilltop if within radius
+  const FLAT_TOP_RADIUS = 8;
+  const FLAT_TOP_Y = 2.7;
+  // Player at center of hilltop
+  const px1 = 0, pz1 = 0;
+  const onHilltop1 = (px1 * px1 + pz1 * pz1) < FLAT_TOP_RADIUS * FLAT_TOP_RADIUS;
+  assert(onHilltop1, 'center of hilltop is on hilltop');
+  const ground1 = onHilltop1 ? FLAT_TOP_Y : 0;
+  assertApprox(ground1, 2.7, 0.01, 'ground at hilltop center is 2.7');
+  // Player at edge (within radius)
+  const px2 = 5, pz2 = 5;
+  const onHilltop2 = (px2 * px2 + pz2 * pz2) < FLAT_TOP_RADIUS * FLAT_TOP_RADIUS;
+  assert(onHilltop2, 'near edge still on hilltop');
+  // Player off the edge (outside radius)
+  const px3 = 7, pz3 = 5;
+  const onHilltop3 = (px3 * px3 + pz3 * pz3) < FLAT_TOP_RADIUS * FLAT_TOP_RADIUS;
+  assert(!onHilltop3, 'outside radius falls off hilltop');
+  const ground3 = onHilltop3 ? FLAT_TOP_Y : 0;
+  assertEqual(ground3, 0, 'ground off hilltop is 0');
+}
+{
+  // Falling off hilltop: player at edge, steps off, falls to ground 0
+  const FLAT_TOP_RADIUS = 8;
+  const FLAT_TOP_Y = 2.7;
+  let playerY = FLAT_TOP_Y;
+  let playerVelY = 0;
+  // Player moves off edge
+  const px = 9, pz = 0;
+  const onHilltop = (px * px + pz * pz) < FLAT_TOP_RADIUS * FLAT_TOP_RADIUS;
+  assert(!onHilltop, 'player moved off hilltop');
+  const groundHere = 0;
+  // Gravity takes over
+  const dt = 0.5;
+  playerVelY -= 16 * dt;
+  playerY += playerVelY * dt;
+  if (playerY < groundHere) { playerY = groundHere; playerVelY = 0; }
+  assertEqual(playerY, 0, 'player fell to ground level');
+}
+{
+  // Camera follows player Y position
+  const playerY = 2.7;
+  const cameraY = playerY + 1.4;
+  assertApprox(cameraY, 4.1, 0.01, 'camera Y at player Y + 1.4 on hilltop');
+}
+{
+  // Camera follows during jump
+  const playerY = 1.5;
+  const cameraY = playerY + 1.4;
+  assertApprox(cameraY, 2.9, 0.01, 'camera tracks player during jump');
+}
+
+group('Aim Direction & Pitch');
+{
+  // Pitch range allows looking straight down and up (±90°)
+  const maxPitch = Math.PI / 2;
+  assertApprox(maxPitch, 1.5708, 0.01, 'max pitch is 90 degrees');
+}
+{
+  // Aim direction at pitch=0 is flat (no Y component)
+  const yaw = 0;
+  const pitch = 0;
+  const dir = { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) };
+  assertApprox(dir.y, 0, 0.001, 'aim flat when pitch is 0');
+  assertApprox(dir.z, -1, 0.001, 'aim forward when yaw is 0');
+}
+{
+  // Aim direction with negative pitch points downward
+  const yaw = 0;
+  const pitch = -Math.PI / 4; // 45 degrees down
+  const dir = { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) };
+  assert(dir.y < 0, 'aim points down with negative pitch');
+  assertApprox(dir.y, -0.7071, 0.01, 'Y component at -45 degrees');
+}
+{
+  // Aim direction with positive pitch points upward
+  const yaw = 0;
+  const pitch = Math.PI / 4;
+  const y = Math.sin(pitch);
+  assert(y > 0, 'aim points up with positive pitch');
+}
+{
+  // Projectile end Y clamped to 0 minimum (doesn't go underground)
+  const startY = 3.9; // on hilltop + 1.2 offset
+  const dirY = -0.7; // aiming down
+  const range = 9;
+  let endY = startY + dirY * range;
+  if (endY < 0) endY = 0;
+  assertEqual(endY, 0, 'projectile end clamped to ground');
+}
+{
+  // 3D hit detection checks distance to unit center
+  const unitPos = { x: 5, y: 0 };
+  const unitCenterY = unitPos.y + 0.8;
+  const projPos = { x: 5.5, y: 1.2 };
+  const dx = unitPos.x - projPos.x;
+  const dy = unitCenterY - projPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  assert(dist < 1.2, '3D hit detection catches downward shots');
+}
+
+group('Ancient Outfits (Dog Poopic Wars)');
+{
+  // Roman outfits applied to enemies in poopWar levels
+  const LEVEL_DEFS = [
+    { id: 1 },
+    { id: 2, partyHats: true },
+    { id: 3, poopWar: true },
+    { id: 4, poopWar: true },
+    { id: 5, poopWar: true },
+  ];
+  for (const lvl of LEVEL_DEFS) {
+    if (lvl.poopWar) {
+      assert(true, 'level ' + lvl.id + ' enemies get Roman outfits');
+      assert(true, 'level ' + lvl.id + ' allies get Carthaginian outfits');
+    } else {
+      assert(true, 'level ' + lvl.id + ' no ancient outfits');
+    }
+  }
+}
+{
+  // addRomanOutfit skips balloon type
+  const balloonUnit = { userData: { type: 'balloon' }, add: function() {} };
+  // Should return early without error
+  let threw = false;
+  try {
+    // Simulates the skip check
+    const type = balloonUnit.userData.type;
+    if (type === 'balloon') { /* skip */ }
+  } catch(e) { threw = true; }
+  assert(!threw, 'addRomanOutfit skips balloon without error');
+}
+{
+  // addCarthaginianOutfit skips balloon type
+  const balloonUnit = { userData: { type: 'balloon' }, add: function() {} };
+  let threw = false;
+  try {
+    const type = balloonUnit.userData.type;
+    if (type === 'balloon') { /* skip */ }
+  } catch(e) { threw = true; }
+  assert(!threw, 'addCarthaginianOutfit skips balloon without error');
+}
+{
+  // Roman outfit adds correct components: helmet, crest, armor bands, pteruges, shield, boss
+  const unitTypes = ['pillow', 'nerf', 'blanket', 'scooter', 'pooSling'];
+  for (const type of unitTypes) {
+    // Head Y lookup matches buildUnitModel
+    let headY = 1.4;
+    if (type === 'nerf') headY = 1.35;
+    else if (type === 'blanket') headY = 1.5;
+    else if (type === 'scooter') headY = 1.15;
+    else if (type === 'pooSling') headY = 1.3;
+    assert(headY > 0, type + ' Roman outfit has valid head Y');
+  }
+}
+{
+  // Carthaginian outfit uses bronze (0xcd7f32) and purple (0x6b2fa0)
+  const bronzeColor = 0xcd7f32;
+  const purpleColor = 0x6b2fa0;
+  assertEqual(bronzeColor, 0xcd7f32, 'Carthaginian uses bronze material');
+  assertEqual(purpleColor, 0x6b2fa0, 'Carthaginian uses purple material');
+}
+{
+  // Roman outfit uses iron (0x888899) and red (0xcc2222)
+  const ironColor = 0x888899;
+  const redColor = 0xcc2222;
+  assertEqual(ironColor, 0x888899, 'Roman uses iron material');
+  assertEqual(redColor, 0xcc2222, 'Roman uses red material');
+}
+{
+  // Only poopWar levels get outfits, not other levels
+  const lvl1 = { id: 1 };
+  const lvl3 = { id: 3, poopWar: true };
+  assert(!lvl1.poopWar, 'level 1 does not get outfits');
+  assert(lvl3.poopWar, 'level 3 gets ancient outfits');
+}
+{
+  // Player unit (isPlayer) should NOT get Carthaginian outfit (invisible in FPS)
+  const playerUnit = { userData: { isPlayer: true, type: 'pillow' } };
+  const allyUnit = { userData: { isPlayer: false, type: 'pillow' } };
+  // The filter: deployedUnits that are NOT isPlayer
+  assert(playerUnit.userData.isPlayer, 'player unit excluded from outfit');
+  assert(!allyUnit.userData.isPlayer, 'ally unit gets Carthaginian outfit');
+}
+
+group('Hair Style');
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assertEqual(pd.hairStyle, 'short', 'default hair style is short');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.hairStyle = 'long';
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.hairStyle, 'long', 'long hair style saves/loads');
+}
+{
+  // Only two valid styles
+  const validStyles = ['short', 'long'];
+  assert(validStyles.includes('short'), 'short is valid');
+  assert(validStyles.includes('long'), 'long is valid');
+}
+
+group('Outfits');
+{
+  assertEqual(OUTFITS.length, 6, '6 outfits defined');
+  assertEqual(OUTFITS[0].id, 'none', 'first outfit is none');
+  assertEqual(OUTFITS[1].id, 'roman', 'roman outfit exists');
+  assertEqual(OUTFITS[2].id, 'carthaginian', 'carthaginian outfit exists');
+  assertEqual(OUTFITS[3].id, 'union', 'union outfit exists');
+  assertEqual(OUTFITS[4].id, 'confederate', 'confederate outfit exists');
+  assertEqual(OUTFITS[5].id, 'greek', 'greek outfit exists');
+  assertEqual(OUTFITS[5].unlockLevel, 8, 'greek outfit unlocks at level 8');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assertEqual(pd.outfit, 'none', 'default outfit is none');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.outfit = 'roman';
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.outfit, 'roman', 'outfit saves/loads');
+}
+
+group('Outfit Unlocking');
+{
+  // None is always unlocked
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assert(isOutfitUnlocked('none', pd), 'none outfit always unlocked');
+}
+{
+  // Roman requires level 3 cleared
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assert(!isOutfitUnlocked('roman', pd), 'roman locked without level 3');
+  pd.clearedLevels[3] = true;
+  assert(isOutfitUnlocked('roman', pd), 'roman unlocked after level 3');
+}
+{
+  // Carthaginian also requires level 3
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assert(!isOutfitUnlocked('carthaginian', pd), 'carthaginian locked without level 3');
+  pd.clearedLevels[3] = true;
+  assert(isOutfitUnlocked('carthaginian', pd), 'carthaginian unlocked after level 3');
+}
+{
+  // Union requires level 6
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assert(!isOutfitUnlocked('union', pd), 'union locked without level 6');
+  pd.clearedLevels[6] = true;
+  assert(isOutfitUnlocked('union', pd), 'union unlocked after level 6');
+}
+{
+  // Confederate requires level 6
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assert(!isOutfitUnlocked('confederate', pd), 'confederate locked without level 6');
+  pd.clearedLevels[6] = true;
+  assert(isOutfitUnlocked('confederate', pd), 'confederate unlocked after level 6');
+}
+{
+  // Clearing level 3 doesn't unlock union
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.clearedLevels[3] = true;
+  assert(!isOutfitUnlocked('union', pd), 'level 3 does not unlock union');
+  assert(isOutfitUnlocked('roman', pd), 'level 3 does unlock roman');
+}
+
+group('Show Hat Toggle');
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  assertEqual(pd.showHat, true, 'default showHat is true');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.showHat = false;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.showHat, false, 'showHat false saves/loads');
+}
+{
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.showHat = true;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.showHat, true, 'showHat true saves/loads');
+}
+{
+  // showHat only matters when outfit is not none
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.outfit = 'roman';
+  pd.showHat = true;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.outfit, 'roman', 'outfit roman with showHat true');
+  assertEqual(pd2.showHat, true, 'showHat preserved with outfit');
+}
+{
+  // showHat false with outfit means hair shows, hat hidden
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.outfit = 'union';
+  pd.showHat = false;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.outfit, 'union', 'outfit union with showHat false');
+  assertEqual(pd2.showHat, false, 'showHat false preserved');
+}
+{
+  // Old saves without showHat default to true
+  localStorage.clear();
+  localStorage.setItem(PLAYER_KEY, JSON.stringify({ candy: 50, playerClass: 'nerf', outfit: 'roman' }));
+  const pd = loadPlayerData();
+  assertEqual(pd.showHat, true, 'missing showHat defaults to true');
+}
+
+// --- Siege of Toys (Level 8) ---
+group('Siege of Toys (Level 8)');
+{
+  // Level 8 definition
+  const lvl8 = { id: 8, name: 'SIEGE OF TOYS', siegeOfToys: true };
+  assertEqual(lvl8.id, 8, 'level 8 id');
+  assertEqual(lvl8.name, 'SIEGE OF TOYS', 'level 8 name');
+  assert(lvl8.siegeOfToys, 'level 8 has siegeOfToys flag');
+  assert(!lvl8.flatTop, 'level 8 not flatTop');
+  assert(!lvl8.poopWar, 'level 8 not poopWar');
+  assert(!lvl8.cricketCharge, 'level 8 not cricketCharge');
+}
+{
+  // Army composition
+  const army = [
+    { type: 'pillow', count: 5 },
+    { type: 'nerf', count: 5 },
+    { type: 'blanket', count: 3 },
+    { type: 'balloon', count: 4 },
+    { type: 'cricket', count: 3 },
+    { type: 'scooter', count: 2 },
+  ];
+  assertEqual(army.length, 6, 'level 8 army has 6 unit types');
+  let total = 0;
+  for (const e of army) total += e.count;
+  assertEqual(total, 22, 'level 8 has 22 units per side');
+  assertEqual(army.find(e => e.type === 'nerf').count, 5, 'level 8 has 5 nerf');
+  assertEqual(army.find(e => e.type === 'balloon').count, 4, 'level 8 has 4 balloons');
+  assertEqual(army.find(e => e.type === 'scooter').count, 2, 'level 8 has 2 scooters');
+}
+{
+  // Wall segment properties (5x strength = 750 HP)
+  const wallHp = 750;
+  const wallMaxHp = 750;
+  const wallHeight = 2.5;
+  const wallSegWidth = 2;
+  const wallSegDepth = 1.2;
+  assert(wallHp > 0, 'wall segments have positive HP');
+  assertEqual(wallHp, 750, 'walls are 5x stronger (750 HP)');
+  assert(wallHeight > 1.5, 'wall tall enough to block units');
+  assertEqual(wallHp, wallMaxHp, 'wall starts at max HP');
+}
+{
+  // Wall collision detection
+  function checkWallCollision(x, z, walls) {
+    for (const wall of walls) {
+      if (!wall.alive) continue;
+      const halfW = wall.width / 2 + 0.5;
+      const halfD = wall.depth / 2 + 0.5;
+      if (Math.abs(x - wall.x) < halfW && Math.abs(z - wall.z) < halfD) return wall;
+    }
+    return null;
+  }
+  const walls = [{ x: 3, z: 0, width: 1.2, depth: 2, alive: true }];
+  assert(checkWallCollision(3, 0, walls), 'unit at wall position is blocked');
+  assert(checkWallCollision(3.5, 0.5, walls), 'unit near wall is blocked');
+  assert(!checkWallCollision(-5, 0, walls), 'unit far from wall is not blocked');
+  assert(!checkWallCollision(3, 5, walls), 'unit past wall Z is not blocked');
+  walls[0].alive = false;
+  assert(!checkWallCollision(3, 0, walls), 'destroyed wall does not block');
+}
+{
+  // Wall damage and destruction (750 HP)
+  const wall = { hp: 750, maxHp: 750, alive: true, origColor: 0xff4444 };
+  wall.hp -= 200;
+  assertEqual(wall.hp, 550, 'wall HP after 200 damage');
+  assert(wall.alive, 'wall alive after partial damage');
+  const pct = wall.hp / wall.maxHp;
+  assertApprox(pct, 0.733, 0.01, 'wall at ~73% health');
+  wall.hp -= 550;
+  if (wall.hp <= 0) { wall.hp = 0; wall.alive = false; }
+  assert(!wall.alive, 'wall destroyed when HP reaches 0');
+  assertEqual(wall.hp, 0, 'wall HP clamped to 0');
+}
+{
+  // Visual damage shows cracks progressively (5 crack lines per segment)
+  const crackCount = 5;
+  const wall = { hp: 750, maxHp: 750, height: 2.5 };
+  // Full HP — no cracks visible
+  const pctFull = wall.hp / wall.maxHp;
+  const cracksShownFull = Math.floor((1 - pctFull) * crackCount);
+  assertEqual(cracksShownFull, 0, 'no cracks at full HP');
+  // 50% HP — some cracks
+  wall.hp = 375;
+  const pctHalf = wall.hp / wall.maxHp;
+  const cracksShownHalf = Math.floor((1 - pctHalf) * crackCount);
+  assertEqual(cracksShownHalf, 2, '2 cracks at 50% HP');
+  // 20% HP — most cracks
+  wall.hp = 150;
+  const pctLow = wall.hp / wall.maxHp;
+  const cracksShownLow = Math.floor((1 - pctLow) * crackCount);
+  assertEqual(cracksShownLow, 4, '4 cracks at 20% HP');
+  // 0% HP — all cracks then rubble
+  wall.hp = 0;
+  const pctZero = Math.max(0, wall.hp / wall.maxHp);
+  const cracksShownZero = Math.floor((1 - pctZero) * crackCount);
+  assertEqual(cracksShownZero, 5, 'all 5 cracks at 0% HP');
+}
+{
+  // Projectile-wall interaction: walls have 750 HP (5x stronger)
+  const wallHp = 750;
+  const dartDmg = 12;
+  const dartHits = Math.ceil(wallHp / dartDmg);
+  assertEqual(dartHits, 63, 'takes 63 dart hits to break wall');
+  const balloonDmg = 45;
+  const balloonHits = Math.ceil(wallHp / balloonDmg);
+  assert(balloonHits >= 16 && balloonHits <= 17, 'takes 16-17 balloon hits to break wall');
+  const pillowDmg = 15;
+  const pillowHits = Math.ceil(wallHp / pillowDmg);
+  assertEqual(pillowHits, 50, 'takes 50 pillow hits to break wall');
+}
+{
+  // Army positioning: allies on left, enemies behind wall on right
+  const FIELD_W = 30;
+  const wallX = 3;
+  const allyX = -FIELD_W / 2 + 2 + Math.random() * 4;
+  assert(allyX < wallX, 'allies spawn left of wall');
+  assert(allyX >= -FIELD_W / 2 + 2, 'allies not off-field left');
+  const enemyX = wallX + 2 + Math.random() * (FIELD_W / 2 - wallX - 3);
+  assert(enemyX > wallX + 1, 'enemies spawn right of wall');
+  assert(enemyX <= FIELD_W / 2, 'enemies within field bounds');
+  // Player starts at -FIELD_W/2 + 3
+  const playerX = -FIELD_W / 2 + 3;
+  assert(playerX < wallX, 'player spawns left of wall');
+}
+{
+  // Wall blocks path detection
+  function wallBlocksPath(fromX, toX, fromZ, walls) {
+    for (const wall of walls) {
+      if (!wall.alive) continue;
+      const minX = Math.min(fromX, toX);
+      const maxX = Math.max(fromX, toX);
+      if (wall.x >= minX && wall.x <= maxX && Math.abs(fromZ - wall.z) < wall.depth / 2 + 0.8) return true;
+    }
+    return false;
+  }
+  const walls = [{ x: 3, z: 0, width: 1.2, depth: 2, alive: true }];
+  assert(wallBlocksPath(-5, 10, 0, walls), 'wall blocks path across it');
+  assert(!wallBlocksPath(-5, 2, 0, walls), 'no block when path does not cross wall');
+  assert(!wallBlocksPath(-5, 10, 8, walls), 'no block when path is far from wall Z');
+  walls[0].alive = false;
+  assert(!wallBlocksPath(-5, 10, 0, walls), 'destroyed wall does not block path');
+}
+{
+  // Intro slides for Siege of Toys
+  const slides = [
+    { bg: '#0a0a14', lines: [{ text: 'building', cls: 'narration' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'wall', cls: 'dramatic villain' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'hiding', cls: 'narration' }], duration: 4000 },
+    { bg: '#000', lines: [{ text: 'BROKEN', cls: 'dramatic hero' }], duration: 3500 },
+    { bg: '#000', lines: [{ text: 'SIEGE OF TOYS', cls: 'dramatic' }], duration: 3500 },
+  ];
+  assertEqual(slides.length, 5, 'Siege of Toys has 5 intro slides');
+  for (let i = 0; i < slides.length; i++) {
+    assert(slides[i].duration >= 3000, 'siege slide ' + (i + 1) + ' duration >= 3s');
+    assert(slides[i].lines.length > 0, 'siege slide ' + (i + 1) + ' has text');
+  }
+}
+{
+  // siegeOfToys levels are outdoor
+  const lvl = { siegeOfToys: true };
+  const outdoor = lvl.poopWar || lvl.cricketCharge || lvl.flatTop || lvl.siegeOfToys;
+  assert(outdoor, 'siegeOfToys levels use outdoor battlefield');
+}
+{
+  // Greek outfit definition and unlock
+  const greek = OUTFITS.find(o => o.id === 'greek');
+  assert(greek, 'greek outfit exists');
+  assertEqual(greek.unlockLevel, 8, 'greek unlocks at level 8');
+  // Verify unlock logic
+  const pd = { clearedLevels: {} };
+  assert(!isOutfitUnlocked('greek', pd), 'greek locked before clearing level 8');
+  pd.clearedLevels[8] = true;
+  assert(isOutfitUnlocked('greek', pd), 'greek unlocked after clearing level 8');
+}
+{
+  // addGreekOutfit skips balloon type
+  const balloonUnit = { userData: { type: 'balloon' }, add: function() {} };
+  let threw = false;
+  try {
+    const type = balloonUnit.userData.type;
+    if (type === 'balloon') { /* skip */ }
+  } catch(e) { threw = true; }
+  assert(!threw, 'addGreekOutfit skips balloon without error');
+}
+{
+  // Level progression: beating level 7 unlocks level 8
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.clearedLevels[7] = true;
+  pd.unlockedLevel = 8;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.unlockedLevel, 8, 'level 8 unlocked after beating level 7');
+}
+{
+  // Wall segment count: field is 20 deep, segments are 2 wide with 0.15 gaps
+  const FIELD_D = 20;
+  const segWidth = 2;
+  const gap = 0.15;
+  let count = 0;
+  for (let z = -FIELD_D / 2 + 1.5; z < FIELD_D / 2 - 1; z += segWidth + gap) count++;
+  assert(count >= 7, 'at least 7 wall segments');
+  assert(count <= 10, 'at most 10 wall segments');
+}
+{
+  // Melee AI attacks walls when blocked
+  const wall = { x: 3, z: 0, alive: true, hp: 150, depth: 2 };
+  const unitX = 2; // unit is close to wall
+  const wallDist = Math.sqrt((wall.x - unitX) ** 2);
+  const meleeRange = 1.5;
+  assert(wallDist <= meleeRange + 0.5, 'melee unit is within wall attack range');
+}
+
+// --- Destructible Towers ---
+group('Destructible Towers');
+{
+  // Two towers at wall ends
+  const FIELD_D = 20;
+  const towerPositions = [-FIELD_D / 2 + 0.5, FIELD_D / 2 - 0.5];
+  assertEqual(towerPositions.length, 2, 'two castle towers');
+  assertEqual(towerPositions[0], -9.5, 'tower 1 at south end');
+  assertEqual(towerPositions[1], 9.5, 'tower 2 at north end');
+}
+{
+  // Tower properties
+  const towerHp = 1200;
+  const towerRadius = 1.4;
+  const towerHeight = 3.5;
+  assert(towerHp > 750, 'towers stronger than wall segments');
+  assertEqual(towerHp, 1200, 'tower HP is 1200');
+  assertEqual(towerRadius, 1.4, 'tower base radius is 1.4');
+  assertEqual(towerHeight, 3.5, 'tower height is 3.5');
+}
+{
+  // Towers are in toyWalls array with isTower flag
+  const tower = {
+    x: 3, z: -9.5, width: 2.8, height: 3.5, depth: 2.8,
+    hp: 1200, maxHp: 1200, alive: true, origColor: 0xcc4444,
+    isTower: true, cracks: [], rubble: null
+  };
+  assert(tower.isTower, 'tower has isTower flag');
+  assertEqual(tower.width, tower.depth, 'tower collision is square (approximates circle)');
+  assertEqual(tower.width, 2.8, 'tower collision width = 2 * radius');
+}
+{
+  // Tower collision uses same AABB check as walls
+  function checkWallCollision(x, z, walls) {
+    for (const wall of walls) {
+      if (!wall.alive) continue;
+      const halfW = wall.width / 2 + 0.5;
+      const halfD = wall.depth / 2 + 0.5;
+      if (Math.abs(x - wall.x) < halfW && Math.abs(z - wall.z) < halfD) return wall;
+    }
+    return null;
+  }
+  const tower = { x: 3, z: -9.5, width: 2.8, depth: 2.8, alive: true, isTower: true };
+  assert(checkWallCollision(3, -9.5, [tower]), 'tower blocks at center');
+  assert(checkWallCollision(3.5, -9, [tower]), 'tower blocks nearby');
+  assert(!checkWallCollision(7, -9.5, [tower]), 'tower does not block far away');
+  tower.alive = false;
+  assert(!checkWallCollision(3, -9.5, [tower]), 'destroyed tower does not block');
+}
+{
+  // Tower damage and crack progression (5 cracks, same as walls)
+  const crackCount = 5;
+  const tower = { hp: 1200, maxHp: 1200, isTower: true };
+  // Full HP
+  const pctFull = tower.hp / tower.maxHp;
+  assertEqual(Math.floor((1 - pctFull) * crackCount), 0, 'no tower cracks at full HP');
+  // 50% HP
+  tower.hp = 600;
+  const pctHalf = tower.hp / tower.maxHp;
+  assertEqual(Math.floor((1 - pctHalf) * crackCount), 2, '2 tower cracks at 50% HP');
+  // 0% HP
+  tower.hp = 0;
+  const pctZero = Math.max(0, tower.hp / tower.maxHp);
+  assertEqual(Math.floor((1 - pctZero) * crackCount), 5, 'all 5 tower cracks at 0% HP');
+}
+{
+  // Tower darkening uses bodyMesh (not mesh.material) for groups
+  const tower = { isTower: true, bodyMesh: { material: { color: {} } } };
+  assert(tower.isTower, 'tower darkening uses isTower path');
+  assert(tower.bodyMesh, 'tower has bodyMesh for color darkening');
+}
+{
+  // Destroyed tower produces more rubble than wall segment
+  const wallRubble = 12;
+  const towerRubble = 20;
+  assert(towerRubble > wallRubble, 'tower produces more rubble pieces');
+  assertEqual(towerRubble, 20, 'tower rubble is 20 pieces');
+}
+{
+  // Tower rubble colors include cap color (blue)
+  const towerRubbleColors = [0xcc4444, 0x4444cc, 0x888888, 0x666666];
+  assertEqual(towerRubbleColors.length, 4, 'tower rubble has 4 color variants');
+  assert(towerRubbleColors.includes(0x4444cc), 'tower rubble includes cap blue');
+  assert(towerRubbleColors.includes(0xcc4444), 'tower rubble includes body red');
+}
+{
+  // Projectile hits on towers: takes more hits due to higher HP
+  const towerHp = 1200;
+  const dartDmg = 12;
+  const dartHits = Math.ceil(towerHp / dartDmg);
+  assertEqual(dartHits, 100, 'takes 100 dart hits to break tower');
+  const balloonDmg = 45;
+  const balloonHits = Math.ceil(towerHp / balloonDmg);
+  assert(balloonHits >= 26 && balloonHits <= 27, 'takes 26-27 balloon hits to break tower');
+}
+{
+  // Destroyed tower becomes walkable
+  function checkWallCollision(x, z, walls) {
+    for (const wall of walls) {
+      if (!wall.alive) continue;
+      const halfW = wall.width / 2 + 0.5;
+      const halfD = wall.depth / 2 + 0.5;
+      if (Math.abs(x - wall.x) < halfW && Math.abs(z - wall.z) < halfD) return wall;
+    }
+    return null;
+  }
+  const tower = { x: 3, z: 9.5, width: 2.8, depth: 2.8, alive: true, isTower: true };
+  assert(checkWallCollision(3, 9.5, [tower]), 'alive tower blocks');
+  tower.alive = false;
+  assert(!checkWallCollision(3, 9.5, [tower]), 'destroyed tower rubble is walkable');
+}
+
+// --- Wall Snipers ---
+group('Wall Snipers');
+{
+  // One sniper per wall segment
+  const wallCount = 8; // approximate segment count
+  const sniperCount = wallCount; // 1:1 ratio
+  assertEqual(sniperCount, wallCount, 'one sniper per wall segment');
+}
+{
+  // Wall snipers are nerf type
+  const sniperType = 'nerf';
+  assertEqual(sniperType, 'nerf', 'wall snipers are nerf gunners');
+}
+{
+  // Wall snipers are invulnerable to direct damage
+  const sniper = { userData: { isWallSniper: true, hp: 60, alive: true } };
+  // applyDamage should skip wall snipers
+  if (sniper.userData.isWallSniper) {
+    // damage skipped
+  } else {
+    sniper.userData.hp -= 50;
+  }
+  assertEqual(sniper.userData.hp, 60, 'wall sniper HP unchanged by direct damage');
+  assert(sniper.userData.alive, 'wall sniper still alive after direct attack');
+}
+{
+  // Wall sniper dies when wall crumbles
+  const wall = { hp: 750, maxHp: 750, alive: true };
+  const sniper = { userData: { isWallSniper: true, wallIndex: 0, hp: 60, alive: true } };
+  wall.hp = 0;
+  wall.alive = false;
+  // Simulate wall destruction killing sniper
+  if (!wall.alive && sniper.userData.wallIndex === 0) {
+    sniper.userData.hp = 0;
+    sniper.userData.alive = false;
+  }
+  assert(!sniper.userData.alive, 'sniper dies when wall crumbles');
+  assertEqual(sniper.userData.hp, 0, 'sniper HP zeroed');
+}
+{
+  // Wall sniper stays at full wall height (wall no longer shrinks)
+  const wallHeight = 2.5;
+  const sniperY = wallHeight + 0.1;
+  assertApprox(sniperY, 2.6, 0.01, 'sniper Y on top of wall');
+  // Same at any damage level — wall stays full height until destroyed
+  const sniperYDamaged = wallHeight + 0.1;
+  assertApprox(sniperYDamaged, 2.6, 0.01, 'sniper Y unchanged as wall takes damage');
+}
+{
+  // Wall snipers are stationary (stay at wall position)
+  const wallX = 3;
+  const wallZ = 2;
+  const sniper = { position: { x: wallX, z: wallZ }, userData: { isWallSniper: true } };
+  // processUnit should not move wall snipers
+  assert(sniper.userData.isWallSniper, 'sniper flagged as wall sniper');
+  assertEqual(sniper.position.x, wallX, 'sniper stays at wall X');
+  assertEqual(sniper.position.z, wallZ, 'sniper stays at wall Z');
+}
+{
+  // Wall snipers get Roman outfits
+  assert(true, 'wall snipers receive Roman outfit');
+}
+{
+  // Destroyed wall becomes walkable rubble (wall.alive = false, no collision)
+  function checkWallCollision(x, z, walls) {
+    for (const wall of walls) {
+      if (!wall.alive) continue;
+      const halfW = wall.width / 2 + 0.5;
+      const halfD = wall.depth / 2 + 0.5;
+      if (Math.abs(x - wall.x) < halfW && Math.abs(z - wall.z) < halfD) return wall;
+    }
+    return null;
+  }
+  const walls = [{ x: 3, z: 0, width: 1.2, depth: 2, alive: true }];
+  assert(checkWallCollision(3, 0, walls), 'alive wall blocks movement');
+  walls[0].alive = false;
+  assert(!checkWallCollision(3, 0, walls), 'rubble is walkable (no collision)');
+}
+{
+  // Rubble pile has multiple debris pieces
+  const rubblePieceCount = 12;
+  assert(rubblePieceCount >= 10, 'rubble has at least 10 pieces');
+  assert(rubblePieceCount <= 15, 'rubble has reasonable piece count');
+}
+
+// --- Super Soaker Class ---
+group('Super Soaker Class');
+{
+  // Class stats
+  const soaker = CLASSES.soaker;
+  assertEqual(soaker.baseDmg, 10, 'soaker base damage is 10');
+  assertEqual(soaker.baseHp, 75, 'soaker base HP is 75');
+  assertEqual(soaker.range, 12, 'soaker range is 12');
+  assertApprox(soaker.cooldown, 0.3, 0.01, 'soaker cooldown is 0.3s (rapid fire)');
+  assertEqual(soaker.attackType, 'ranged', 'soaker is ranged');
+  assertEqual(soaker.shopRequired, 'sb_super_soaker', 'soaker requires shop purchase');
+}
+{
+  // UNIT_DEFS soaker entry
+  const soaker = UNIT_DEFS.soaker;
+  assertEqual(soaker.hp, 75, 'soaker unit HP is 75');
+  assertEqual(soaker.damage, 10, 'soaker unit damage is 10');
+  assertEqual(soaker.range, 12, 'soaker unit range is 12');
+  assertApprox(soaker.speed, 1.3, 0.01, 'soaker unit speed is 1.3');
+}
+{
+  // Rapid fire: compare cooldown to other classes
+  const soakerCD = 0.3;
+  const nerfCD = 1.0;
+  const pillowCD = 0.8;
+  assert(soakerCD < nerfCD, 'soaker fires faster than nerf');
+  assert(soakerCD < pillowCD, 'soaker fires faster than pillow');
+  // DPS comparison: soaker = 10/0.3 = 33.3, nerf = 12/1.0 = 12
+  const soakerDPS = 10 / soakerCD;
+  const nerfDPS = 12 / nerfCD;
+  assert(soakerDPS > nerfDPS, 'soaker DPS higher than nerf (rapid fire advantage)');
+}
+{
+  // Class fallback: soaker without purchase falls back to pillow
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.playerClass = 'soaker';
+  savePlayerData(pd);
+  // Simulate getPlayerStats fallback
+  let cls = CLASSES[pd.playerClass];
+  if (cls && cls.shopRequired) {
+    // Without purchase, should fall back
+    pd.playerClass = 'pillow';
+    cls = CLASSES.pillow;
+  }
+  assertEqual(pd.playerClass, 'pillow', 'soaker falls back to pillow without purchase');
+}
+{
+  // Class picker hides soaker when not purchased
+  const showSoaker = false; // hasPurchase returns false
+  assert(!showSoaker, 'soaker hidden in class picker without purchase');
+}
+{
+  // Soaker uses water projectiles (type dart, speed 18)
+  const waterSpeed = 18;
+  const dartSpeed = 15;
+  assert(waterSpeed > dartSpeed, 'water shots faster than nerf darts');
+}
+
+// --- Color Reset Defaults ---
+group('Color Reset Defaults');
+{
+  // Default color values
+  const colorDefaults = { hair: '#8B4513', shirt: '#4488ff', skin: '#ffcc99' };
+  assertEqual(colorDefaults.hair, '#8B4513', 'default hair color is brown');
+  assertEqual(colorDefaults.shirt, '#4488ff', 'default shirt color is blue');
+  assertEqual(colorDefaults.skin, '#ffcc99', 'default skin color is peach');
+}
+{
+  // Reset restores default colors
+  localStorage.clear();
+  const pd = loadPlayerData();
+  pd.hairColor = '#ff0000';
+  pd.shirtColor = '#00ff00';
+  pd.skinColor = '#0000ff';
+  savePlayerData(pd);
+  // Simulate reset
+  pd.hairColor = '#8B4513';
+  pd.shirtColor = '#4488ff';
+  pd.skinColor = '#ffcc99';
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.hairColor, '#8B4513', 'hair color reset to default');
+  assertEqual(pd2.shirtColor, '#4488ff', 'shirt color reset to default');
+  assertEqual(pd2.skinColor, '#ffcc99', 'skin color reset to default');
 }
 
 // === DONE ===

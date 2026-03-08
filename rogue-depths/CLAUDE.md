@@ -42,7 +42,7 @@ Title -> Class Select -> Game -> (per-floor loop: Shop -> next floor) -> Death/V
 | Left click | Attack (melee swing or ranged projectile) |
 | E | Open adjacent chest / pick up item (equip weapon, use potion/armor) |
 | Q | Store picked-up item in inventory (weapons, potions) |
-| 1-5 | Use inventory slot (potion = consume, weapon = swap with equipped) |
+| 1-9, 0 | Use inventory slot 1-10 (potion = consume, weapon = swap with equipped) |
 | R | Drop item from selected inventory slot |
 | ESC | Pause / Resume |
 
@@ -135,17 +135,19 @@ Title -> Class Select -> Game -> (per-floor loop: Shop -> next floor) -> Death/V
 | gold | Instantly collect | -- | -- |
 
 ### Inventory
-- 5 slots, displayed as bottom HUD bar
-- Keys 1-5 to use (potions heal, weapons swap with equipped)
+- 20 slots (2 rows of 10), displayed as bottom HUD bar
+- Keys 1-9 and 0 to use slots 1-10 (potions heal, weapons swap with equipped)
+- Click any slot to use it (all 20 slots)
 - R key to drop selected item on ground
 - Weapons and potions can be stored; armor and gold are instant-use only
+- Each item shows a short abbreviation label below the icon (e.g., SP, MP, LP, SWD, AXE, ARM)
 
 ### Potion Types
-| Name | Heal | Weight (drop chance) |
-|------|------|----------------------|
-| Small Potion | 25 | 10 |
-| Medium Potion | 50 | 5 |
-| Large Potion | 100 | 2 |
+| Name | Abbrev | Heal | Weight (drop chance) |
+|------|--------|------|----------------------|
+| Small Potion | SP | 25 | 10 |
+| Medium Potion | MP | 50 | 5 |
+| Large Potion | LP | 100 | 2 |
 
 ### Armor
 - Defense = `5 + random(0, min(floor, 5)) * 2` percent
@@ -206,7 +208,7 @@ Title -> Class Select -> Game -> (per-floor loop: Shop -> next floor) -> Death/V
   player: {
     x, y, hp, maxHp, defense, speed, className,
     color, radius, weapon: { base, rarity, type, damage, name, color },
-    inventory: [item | null, ...],  // 5 slots
+    inventory: [item | null, ...],  // 20 slots
     attackTimer, invulnTimer, gold, floor, kills, bossKills,
     damageTakenThisBoss, facingAngle, swingTimer, swingDuration, swingDir
   },

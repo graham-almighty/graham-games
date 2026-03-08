@@ -17,6 +17,10 @@
 | TURN_SPEED | 3.2 |
 | DRIFT_THRESHOLD | 120 |
 | TRACK_WIDTH | 120 |
+| NITRO_DURATION | 2 |
+| NITRO_BOOST | 150 |
+| BOMB_RADIUS | 22 |
+| BOMB_RESPAWN_TIME | 5 |
 
 ## Maps (6)
 | # | Name | Style |
@@ -64,10 +68,27 @@ Title -> Map Select -> Mode Select (1-4 players) -> Bot Select -> Car Select (pe
 - Waypoint index advances only if nearest is +1 or +2 from current
 - Lap counted when `wayIdx <= 1 && prevWayIdx >= wp.length - 3` (handles fast cars skipping wp 0)
 
+## Power-Up System
+- 3 power-ups: Bomb (47%), Nitro (48%), Swap/Teleport (5%)
+- **Quick tap brake** (< 0.2s press+release) to activate power-up; **hold brake** to reverse normally
+- `usePowerUp()` always consumes the power-up (no return value)
+- **Bomb:** instant explosion directly behind car. Any car in blast radius (BOMB_RADIUS=22) is destroyed and respawns at the explosion location after 5 seconds. Not a mine — explodes immediately.
+- **Nitro:** 2-second speed boost (MAX_SPEED + 150)
+- **Swap (teleport):** swaps position with the leader. If no one is ahead (already in 1st), the power-up is wasted/consumed but nothing happens.
+- Destroyed cars: `car.destroyed = true`, `car.respawnTimer` counts down, car is invisible and skips all updates/collisions during respawn
+
+## Background Music
+- Web Audio API synthesized racing jingle (bass + lead + hi-hat, 140 BPM)
+- `startBGM()` called at countdown start, `stopBGM()` on race end/quit
+- Loops indefinitely via scheduled oscillator/buffer patterns
+
 ## AI
 - Follows track centerline with look-ahead targeting
 - Brakes for upcoming sharp turns proportional to speed
 - Corrects toward center when drifting off-track
+- AI uses power-ups independently via `shouldAIUsePowerUp()` (random chance per type)
+- AI won't use swap if already in 1st place
+- AI won't use swap if already in 1st place
 
 ## Achievements (8, 175G)
 | ID | Name | Reward | Condition |

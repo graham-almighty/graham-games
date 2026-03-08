@@ -307,6 +307,17 @@ function createMonsterFreeplay(defKey, level, xp, moves) {
   };
 }
 
+function getMonsterBuyPrice(defKey, level) {
+  const def = MONSTER_DEFS[defKey];
+  if (!def) return 999;
+  const base = Math.floor((def.hp + def.atk * 2 + def.def + def.spd) / 5);
+  return base + level * 8;
+}
+
+function getMonsterSellPrice(monster) {
+  return Math.floor(getMonsterBuyPrice(monster.defKey, monster.level) * 0.4);
+}
+
 const FREEPLAY_MOVE_POOL = {
   emberon: [
     { level: 8, move: { name: 'Fire Storm', element: 'Fire', power: 90, accuracy: 82, effect: { type: 'debuff', stat: 'def', amount: 20, turns: 2, chance: 25 } } },
@@ -2397,6 +2408,76 @@ describe('Gym Doors on Map', () => {
       assert(gd.col >= 0 && gd.col < MAP_COLS, `Gym ${gd.gymId} col in bounds`);
       assert(gd.row >= 0 && gd.row < MAP_ROWS, `Gym ${gd.gymId} row in bounds`);
     }
+  });
+});
+
+// ═══ Market System ═══
+describe('Market System', () => {
+  it('getMonsterBuyPrice returns consistent values', () => {
+    const price1 = getMonsterBuyPrice('emberon', 1);
+    const price5 = getMonsterBuyPrice('emberon', 5);
+    assert(price1 > 0, 'Price should be positive');
+    assert(price5 > price1, 'Higher level should cost more');
+    assertEqual(price5 - price1, 32, 'Each level adds 8G (4 levels * 8)');
+  });
+
+  it('getMonsterBuyPrice formula is correct', () => {
+    // emberon: hp=110, atk=75, def=55, spd=65
+    // base = floor((110 + 75*2 + 55 + 65) / 5) = floor(380/5) = 76
+    const price = getMonsterBuyPrice('emberon', 1);
+    assertEqual(price, 76 + 1 * 8, 'Emberon Lv1 price');
+
+    const price10 = getMonsterBuyPrice('emberon', 10);
+    assertEqual(price10, 76 + 10 * 8, 'Emberon Lv10 price');
+  });
+
+  it('getMonsterSellPrice is 40% of buy price', () => {
+    const m = createMonsterFreeplay('emberon', 5, 700);
+    const buy = getMonsterBuyPrice('emberon', 5);
+    const sell = getMonsterSellPrice(m);
+    assertEqual(sell, Math.floor(buy * 0.4), 'Sell price is 40% of buy');
+  });
+
+  it('sell price is always less than buy price', () => {
+    for (const key of Object.keys(MONSTER_DEFS)) {
+      if (key === '_boss') continue;
+      for (const lv of [1, 10, 20]) {
+        const m = createMonsterFreeplay(key, lv, 0);
+        const buy = getMonsterBuyPrice(key, lv);
+        const sell = getMonsterSellPrice(m);
+        assert(sell < buy, `${key} Lv${lv}: sell ${sell} < buy ${buy}`);
+      }
+    }
+  });
+
+  it('all non-boss monsters have valid prices', () => {
+    for (const key of Object.keys(MONSTER_DEFS)) {
+      if (key === '_boss') continue;
+      const price = getMonsterBuyPrice(key, 1);
+      assert(price > 0, `${key} should have positive price, got ${price}`);
+      assert(price < 500, `${key} price ${price} should be reasonable`);
+    }
+  });
+
+  it('boss monster returns 999 if unknown key', () => {
+    const price = getMonsterBuyPrice('nonexistent', 1);
+    assertEqual(price, 999);
+  });
+
+  it('gold earned from wild battle is reasonable', () => {
+    const avgEnemyLv = 5;
+    const enemyCount = 2;
+    const goldEarned = 10 + avgEnemyLv * 3 + enemyCount * 5;
+    assertEqual(goldEarned, 35, 'Lv5 wild with 2 enemies');
+  });
+
+  it('gold earned from gym battle has 3x multiplier', () => {
+    const avgEnemyLv = 10;
+    const enemyCount = 3;
+    const baseGold = 10 + avgEnemyLv * 3 + enemyCount * 5;
+    const gymGold = baseGold * 3;
+    assertEqual(baseGold, 55);
+    assertEqual(gymGold, 165, 'Gym gold is 3x base');
   });
 });
 

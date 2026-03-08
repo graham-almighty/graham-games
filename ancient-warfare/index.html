@@ -98,6 +98,17 @@
     color: #888;
     background: transparent;
   }
+  .blood-toggle {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 16px;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: 0.08em;
+  }
+  .blood-toggle input { margin-right: 6px; accent-color: #cd7f32; cursor: pointer; vertical-align: middle;
+  }
   .punk-btn.secondary:hover { border-color: #cd7f32; color: #cd7f32; }
 
   /* Deploy Screen */
@@ -503,6 +514,7 @@
   <button class="punk-btn" onclick="startCampaignMode()">CAMPAIGN</button>
   <button class="punk-btn" onclick="startSandboxMode()">SANDBOX</button>
   <button class="punk-btn secondary" onclick="window.location.href='../index.html'">EXIT</button>
+  <label class="blood-toggle"><input type="checkbox" id="blood-toggle" onchange="toggleBlood(this.checked)">BLOOD EFFECTS</label>
 </div>
 
 <!-- Level Select Screen -->
@@ -829,10 +841,10 @@ const UNIT_DEFS = {
   archer:    { name: 'Archer',    cost: 15, hp: 60,  damage: 12, speed: 1.2, range: 8,   icon: '&#127993;', special: 'Ranged, 5 dmg melee, retreats', meleeDamage: 5 },
   spearman:  { name: 'Spearman',  cost: 12, hp: 130, damage: 12, speed: 1.0, range: 1.8, icon: '&#128737;', special: '2x vs cavalry/elephant' },
   cavalry:   { name: 'Cavalry',   cost: 25, hp: 90,  damage: 20, speed: 3.0, range: 1.8, icon: '&#127943;', special: 'First hit 2x (charge)' },
-  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '&#129516;', special: 'Splash radius 3, very slow', splash: 3 },
+  catapult:  { name: 'Catapult',  cost: 40, hp: 80,  damage: 45, speed: 0.4, range: 12,  icon: '&#129704;', special: 'Splash radius 3, very slow', splash: 3 },
   elephant:  { name: 'War Elephant', cost: 50, hp: 300, damage: 30, speed: 0.8, range: 2.0, icon: '&#128024;', special: 'Tank, trample', shopRequired: 'aw_war_elephant' },
-  trebuchet: { name: 'Trebuchet',   cost: 55, hp: 60,  damage: 60, speed: 0.3, range: 15,  icon: '&#9881;',   special: 'Heavy siege, splash 4', splash: 4 },
-  ballista:  { name: 'Ballista',    cost: 30, hp: 70,  damage: 35, speed: 0.5, range: 11,  icon: '&#10016;',  special: 'Precision bolt, long range' },
+  trebuchet: { name: 'Trebuchet',   cost: 55, hp: 60,  damage: 60, speed: 0.3, range: 15,  icon: '&#9732;',   special: 'Heavy siege, splash 4', splash: 4 },
+  ballista:  { name: 'Ballista',    cost: 30, hp: 70,  damage: 35, speed: 0.5, range: 11,  icon: '&#127993;', special: 'Precision bolt, long range' },
 };
 
 const FIELD_W = 40, FIELD_D = 30;
@@ -904,6 +916,7 @@ function refreshTitleScreen() {
   } else {
     btn.style.display = 'none';
   }
+  refreshBloodToggle();
 }
 
 function continueCampaign() {
@@ -1659,7 +1672,9 @@ function renderDeploySidebar() {
     for (const e of levelDef.enemies) {
       rows += '<div class="dep-row"><span>' + UNIT_DEFS[e.type].name + '</span><span class="dep-count">x' + e.count + '</span></div>';
     }
-    preview.innerHTML = '<div class="dep-title">Enemy Forces</div>' + rows;
+    let totalUnits = 0;
+    for (const e of levelDef.enemies) totalUnits += e.count;
+    preview.innerHTML = '<div class="dep-title">Enemy Forces (' + totalUnits + ' units)</div>' + rows;
     info.after(preview);
   } else {
     h3.innerHTML = '&#9876; DEPLOY ARMY';
@@ -1851,6 +1866,62 @@ function generateEnemyArmy(playerBudget) {
 }
 
 // ═══════════════════════════════════════════
+// BLOOD EFFECTS
+// ═══════════════════════════════════════════
+const AW_BLOOD_KEY = 'aw-blood';
+let bloodEnabled = localStorage.getItem(AW_BLOOD_KEY) === 'true';
+let bloodParticles = [];
+
+function toggleBlood(on) {
+  bloodEnabled = on;
+  localStorage.setItem(AW_BLOOD_KEY, on ? 'true' : 'false');
+}
+
+function refreshBloodToggle() {
+  document.getElementById('blood-toggle').checked = bloodEnabled;
+}
+
+function spawnBlood(pos) {
+  if (!bloodEnabled) return;
+  const count = 60 + Math.floor(Math.random() * 60);
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 4, 3);
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5 + Math.random() * 0.3, 0, 0) });
+    const p = new THREE.Mesh(geo, mat);
+    p.position.set(pos.x + (Math.random() - 0.5) * 0.5, pos.y + 0.5 + Math.random() * 0.5, pos.z + (Math.random() - 0.5) * 0.5);
+    scene.add(p);
+    bloodParticles.push({
+      mesh: p,
+      vx: (Math.random() - 0.5) * 4,
+      vy: 2 + Math.random() * 3,
+      vz: (Math.random() - 0.5) * 4,
+      life: 1.5 + Math.random(),
+    });
+  }
+}
+
+function updateBlood(dt) {
+  for (let i = bloodParticles.length - 1; i >= 0; i--) {
+    const bp = bloodParticles[i];
+    if (bp.settled) continue;
+    bp.vy -= 9.8 * dt;
+    bp.mesh.position.x += bp.vx * dt;
+    bp.mesh.position.y += bp.vy * dt;
+    bp.mesh.position.z += bp.vz * dt;
+    if (bp.mesh.position.y < 0.02) {
+      bp.mesh.position.y = 0.02;
+      bp.vy = 0; bp.vx = 0; bp.vz = 0;
+      bp.settled = true;
+    }
+  }
+}
+
+function clearBlood() {
+  for (const bp of bloodParticles) scene.remove(bp.mesh);
+  bloodParticles = [];
+}
+
+// ═══════════════════════════════════════════
 // PROJECTILE SYSTEM
 // ═══════════════════════════════════════════
 let projectiles = [];
@@ -2019,6 +2090,7 @@ function applyDamage(unit, amount) {
   if (unit.userData.hp <= 0) {
     unit.userData.hp = 0;
     unit.userData.alive = false;
+    spawnBlood(unit.position);
     // Death animation: sink into ground
     unit.position.y = -0.5;
     unit.visible = false;
@@ -2317,6 +2389,7 @@ function startBattle() {
   selectedBattleUnit = null;
   commandTarget = null;
   projectiles = [];
+  clearBlood();
 
   cameraTarget.set(0, 0, 0);
   cameraDistance = 30;
@@ -2353,6 +2426,7 @@ function battleLoop() {
     updatePossessedMovement(dt);
     updateCombatAI(dt);
     updateProjectiles(dt);
+    updateBlood(dt);
 
     // Check if possessed unit died
     if (possessedUnit && !possessedUnit.userData.alive) exitPossession();
@@ -2644,6 +2718,7 @@ function cleanupBattleScene() {
   for (const u of deployedUnits) scene.remove(u);
   for (const u of enemyUnits) scene.remove(u);
   for (const p of projectiles) scene.remove(p.mesh);
+  clearBlood();
   deployedUnits = [];
   survivorUnits = [];
   enemyUnits = [];

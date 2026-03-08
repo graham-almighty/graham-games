@@ -162,3 +162,12 @@ Achievements are only checked in non-sandbox battles.
 |----|------|--------|
 | aw_war_elephant | 75G | Unlocks War Elephant unit type (campaign/skirmish only; always available in sandbox) |
 | aw_battle_horn | 50G | +10% damage for first 10s of battle |
+
+## Blood Effects
+- **Toggle:** checkbox on title screen, persisted in `aw-blood` localStorage key (default off)
+- `toggleBlood(on)` — sets `bloodEnabled` and saves to localStorage
+- `spawnBlood(pos)` — creates 6-12 small red sphere particles with random velocity when a unit dies (only if enabled)
+- `updateBlood(dt)` — applies gravity (9.8), ground clamping, opacity fade; removes expired particles
+- `clearBlood()` — removes all blood particles from scene (called on battle start and cleanup)
+- Blood spawned in `applyDamage()` when unit HP reaches 0
+- `refreshBloodToggle()` called in `refreshTitleScreen()` to sync checkbox state
