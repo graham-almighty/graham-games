@@ -570,6 +570,22 @@
     border-radius: 8px;
   }
 
+  .game-card.dress-to-depress {
+    border-left-color: #ff69b4;
+  }
+  .game-card.dress-to-depress:hover {
+    border-color: #ff69b4;
+    box-shadow: 0 0 30px #ff69b415, -5px 0 20px #ff69b410;
+  }
+  .game-card.dress-to-depress::before {
+    background: linear-gradient(90deg, #ff69b408 0%, transparent 50%);
+  }
+  .game-card.dress-to-depress .game-icon {
+    background: linear-gradient(135deg, #1a0818, #2a0a1a);
+    border: 1px solid #ff69b444;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -1422,6 +1438,28 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- DRESS TO DEPRESS -->
+    <a href="dress-to-depress/index.html" class="game-card dress-to-depress" data-preview="previews/dress-to-depress.mp4">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0818" stroke="#ff69b4" stroke-width="2"/>
+          <!-- hanger -->
+          <path d="M25,14 L25,28" stroke="#ff69b4" stroke-width="1.5" fill="none"/>
+          <circle cx="25" cy="12" r="2.5" fill="none" stroke="#ff69b4" stroke-width="1.5"/>
+          <path d="M17,20 L25,15 L33,20" fill="none" stroke="#ff69b4" stroke-width="1.5"/>
+          <!-- dress shape -->
+          <path d="M19,28 L17,40 L33,40 L31,28 Z" fill="#ff69b4" opacity="0.3" stroke="#ff69b4" stroke-width="1"/>
+          <!-- X mark -->
+          <path d="M36,8 L42,14 M42,8 L36,14" stroke="#ff4444" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">DRESS TO DEPRESS</div>
+        <div class="game-desc">Fashion's worst nightmare</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
   </div>
   <div class="footer">GRAHAM GAMES &copy; 2026</div>
 </div>
@@ -1468,6 +1506,7 @@ for (let i = 0; i < 30; i++) {
     <button class="gg-close" onclick="closeNews()">CLOSE</button>
   </div>
 </div>
+
 
 <!-- Game Player (iframe container for school mode) -->
 <div id="game-player">
@@ -1640,6 +1679,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'sb_commander',    name: 'Big Sibling',       desc: 'Win 5 battles',                       reward: 25 },
     { id: 'sb_warlord',      name: 'Supreme Sibling',   desc: 'Win 10 battles',                      reward: 50 },
   ]},
+  { group: 'DRESS TO DEPRESS', items: [
+    { id: 'dtd_first_show',    name: 'First Show',            desc: 'Complete a round',                    reward: 5 },
+    { id: 'dtd_full_outfit',   name: 'Fully Dressed',         desc: 'Equip something in every slot',       reward: 10 },
+    { id: 'dtd_3_stars',       name: 'Fashion Disaster',      desc: 'Get 3+ stars on a round',             reward: 15 },
+    { id: 'dtd_5_stars',       name: 'Depressingly Perfect',  desc: 'Get 5 stars on a round',              reward: 30 },
+    { id: 'dtd_all_themes',    name: 'World Tour of Shame',   desc: 'Play all 5 themes',                   reward: 25 },
+    { id: 'dtd_color_clash',   name: 'Rainbow Wreck',         desc: 'Max color clash score',               reward: 15 },
+    { id: 'dtd_style_clash',   name: 'Identity Crisis',       desc: 'Max style mismatch score',            reward: 20 },
+    { id: 'dtd_bonus_combo',   name: 'Combo Breaker',         desc: 'Trigger a bonus combo',               reward: 15 },
+    { id: 'dtd_high_score',    name: 'Master of Disaster',    desc: 'Total score 400+ across all rounds',  reward: 40 },
+    { id: 'dtd_speed_dresser', name: 'Speed Dresser',         desc: 'Dress in under 15 seconds',           reward: 25 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1664,6 +1715,8 @@ const SHOP_ITEMS = [
   { id: 'mio_trail_shield', name: 'Trail Shield',    desc: 'Trail is safe for 2s after leaving territory', cost: 75, icon: '&#128737;', game: 'Mega IO' },
   { id: 'sb_super_soaker',  name: 'Super Soaker',    desc: 'Unlocks the Super Soaker unit type',           cost: 75, icon: '&#128166;', game: 'Sibling Brawl' },
   { id: 'sb_snack_boost',   name: 'Snack Boost',     desc: '+10% damage for blue team for first 10s',      cost: 50, icon: '&#127852;', game: 'Sibling Brawl' },
+  { id: 'dtd_wild_card',    name: 'Wild Card',       desc: 'Adds 3 wild clothing items',                   cost: 50, icon: '&#127183;', game: 'Dress to Depress' },
+  { id: 'dtd_extra_time',   name: 'Extra Time',      desc: '60 seconds per round instead of 45',           cost: 75, icon: '&#9203;',   game: 'Dress to Depress' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══
@@ -1746,14 +1799,16 @@ const NEWS_TAG_COLORS = {
   'battle-bros':      { bg: '#00e5ff22', border: '#00e5ff', color: '#00e5ff' },
   'mega-io':          { bg: '#44ddff22', border: '#44ddff', color: '#44ddff' },
   'sibling-brawl':    { bg: '#ff66aa22', border: '#ff66aa', color: '#ff66aa' },
+  'dress-to-depress': { bg: '#ff69b422', border: '#ff69b4', color: '#ff69b4' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
-  'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl',
+  'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-03-08', title: 'Dress to Depress Launches!', desc: 'New 3D fashion disaster game! Pick the worst outfits, clash colors and styles, then strut your stuff down the runway for judging by three hilarious NPC judges!', game: 'dress-to-depress' },
   { date: '2026-03-07', title: 'Sibling Brawl Launches!', desc: 'New goofy indoor battle simulator! Deploy pillow fighters, nerf gunners, blanket tanks, scooter riders, and water balloons to defeat the evil younger sibling empire!', game: 'sibling-brawl' },
   { date: '2026-03-07', title: 'Mega IO Launches!', desc: 'New territory capture arena game! Move around the map, leave trails, and capture territory by completing loops. Compete against 4 AI bots to dominate the map before time runs out!', game: 'mega-io' },
   { date: '2026-03-07', title: 'Cool Stuff Update 1', desc: 'Rogue Depths: expanded inventory to 20 slots with item labels so you can see what you\'re carrying at a glance. Ancient Warfare: new blood effects toggle — watch the battlefield get messy! School Mode now also blocks Rogue Depths and Battle Bros.', game: 'all' },

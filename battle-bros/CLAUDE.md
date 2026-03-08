@@ -191,6 +191,15 @@ Note: `bb_first_fight` and `bb_2p_match` are both awarded at every match end. Mo
 | bb_boss_fighter | 75G | Unlocks Omega (hidden boss fighter) in character select |
 | bb_shadow_mode | 50G | Adds motion trail to fighters (3 ghost images at 8%/16%/24% opacity) + scanline overlay on fight screen |
 
+## Background Music (Web Audio API)
+- **Style:** Upbeat chiptune video game music (same theme as Rogue Depths)
+- **Scale:** C major pentatonic (262-660 Hz), 150 BPM, sixteenth note arpeggios
+- **Instruments:** Square wave lead, triangle harmony (thirds), triangle bass, noise drums
+- **Intensity:** Always intense (fighting game, no calm mode)
+- **Controls:** M key toggle (no visible HUD button)
+- **Hooks:** `startMatch()` starts music, match end stops music
+- **Separate AudioContext** (`musicCtx`) from SFX (`audioCtx`)
+
 ## Sound Effects (Web Audio API)
 | Function | Description |
 |----------|-------------|

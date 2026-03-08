@@ -8,6 +8,7 @@ Monster battler with two modes: a roguelike run (8-floor gauntlet) and a freepla
 - **Controls:** Mouse/touch for battles and menus; WASD/Arrow keys for map movement; E to interact; T for team; Q for quests
 - **Mobile:** Touch D-pad + action button shown on small screens; responsive CSS breakpoint at 600px
 - **Audio:** Web Audio API synthesized SFX (`SFX.hit()`, `SFX.superHit()`, `SFX.miss()`, `SFX.heal()`, `SFX.faint()`, `SFX.select()`, `SFX.victory()`, `SFX.defeat()`, `SFX.buff()`, `SFX.status()`)
+- **Music:** Procedural medieval war theme (Web Audio API), toggleable via ♫ button in battle top bar. D minor/Dorian scale, 120 BPM. Calm during draft/rewards/map, intense during battles. Stops on victory/defeat.
 - **Fonts:** Cinzel Decorative for titles/buttons, Segoe UI for body text
 - **Theme:** Dark background (#0a0a0f), magenta accent (#e040fb)
 

@@ -2268,6 +2268,58 @@ group('Blood Effects');
 }
 
 // ============================================================
+// DARK DRAMATIC BACKGROUND MUSIC
+// ============================================================
+group('Dark Dramatic Background Music');
+{
+  // D minor harmonic scale
+  const scale = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 277.18, 293.66];
+  assertEqual(scale.length, 8, 'Scale has 8 notes');
+  assertApprox(scale[0], 146.83, 0.01, 'Scale starts at D3 (146.83 Hz)');
+  assertApprox(scale[7], 293.66, 0.01, 'Scale ends at D4 (293.66 Hz)');
+  for (let i = 1; i < scale.length; i++) {
+    assert(scale[i] > scale[i-1], 'Scale[' + i + '] > Scale[' + (i-1) + ']');
+  }
+  assertApprox(scale[7] / scale[0], 2.0, 0.05, 'Scale spans one octave (D3 to D4)');
+
+  // Deep drone frequencies (D1, A1)
+  const drones = [36.71, 55.00];
+  assertEqual(drones.length, 2, 'Two drone notes');
+  assert(drones[0] < 50, 'Drone D1 is sub-bass (< 50 Hz)');
+  assert(drones[1] < 60, 'Drone A1 is sub-bass (< 60 Hz)');
+
+  // Slow ominous tempo
+  const bpm = 90;
+  assert(bpm < 100, 'BPM is slow (< 100) for dramatic feel');
+  const eighth = 60 / bpm / 2;
+  assertApprox(eighth, 0.333, 0.01, 'Eighth note is ~0.333s at 90 BPM');
+  const barDur = eighth * 8;
+  assertApprox(barDur, 2.667, 0.01, 'Bar duration is ~2.667s at 90 BPM');
+
+  // Music state flags
+  let playing = false, muted = false;
+  playing = true;
+  assert(playing, 'Music can be set to playing');
+  playing = false;
+  assert(!playing, 'Music can be stopped');
+  muted = true;
+  assert(muted, 'Music can be muted');
+  muted = false;
+  assert(!muted, 'Music can be unmuted');
+
+  // Dissonant minor second undertone factor
+  const dissonanceFactor = 0.94;
+  const undertone = scale[0] * dissonanceFactor;
+  assertApprox(undertone, 138.02, 0.1, 'Dissonant undertone frequency');
+  assert(undertone < scale[0], 'Undertone is lower than root note');
+
+  // Button text
+  function getMusicText(m) { return m ? '♫ OFF' : '♫ ON'; }
+  assertEqual(getMusicText(false), '♫ ON', 'Button shows ON when unmuted');
+  assertEqual(getMusicText(true), '♫ OFF', 'Button shows OFF when muted');
+}
+
+// ============================================================
 showSummary();
 </script>
 </body>

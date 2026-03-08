@@ -136,6 +136,14 @@ Levels 1-12 use only base unit types + elephants. Levels 13+ introduce ballista 
 - Run save created on NEXT LEVEL, loaded on CONTINUE CAMPAIGN from title
 - Cleared on campaign completion (all 20 levels beaten)
 
+## Background Music (Web Audio API)
+- **Style:** Very dark and dramatic battle music
+- **Scale:** D minor harmonic (146.83-293.66 Hz), 90 BPM (slow, ominous)
+- **Instruments:** Sawtooth drones (D1/A1 sub-bass), sawtooth melody with dissonant minor second undertones (freq * 0.94), heavy war drums (60Hz lowpass boom), sparse metallic hihats, brass power chord stabs every 4 bars
+- **Controls:** HUD button in battle-controls div (♫ ON/OFF) + M key toggle
+- **Hooks:** `startBattle()` starts music (after battle horn SFX), `endBattle()` stops music
+- **Separate AudioContext** (`musicCtx`) from SFX (`audioCtx`)
+
 ## Sound Effects (Web Audio API)
 - `SFX.swordClash()`, `SFX.arrowShot()`, `SFX.arrowHit()`, `SFX.catapultLaunch()`, `SFX.catapultImpact()`
 - `SFX.cavalryCharge()`, `SFX.battleHorn()`, `SFX.victory()`, `SFX.defeat()`, `SFX.place()`

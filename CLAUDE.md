@@ -39,6 +39,7 @@
   brawl-monsters/index.html    — 2D monster catching/battling RPG
   battle-bros/index.html       — 2D 8-bit platform fighter
   rogue-depths/index.html      — 2D roguelike dungeon crawler
+  dress-to-depress/index.html  — 3D fashion disaster dress-up game (Three.js r128)
   sibling-brawl/index.html     — 3D first-person sibling battle game (Three.js r128)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
@@ -83,7 +84,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (105 total, 2345G earnable)
+### Achievement Summary (115 total, 2545G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -94,11 +95,12 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Devious Driving | 8 | 175G |
 | Brawl Monsters | 19 | 430G |
 | Battle Bros | 10 | 210G |
+| Dress to Depress | 10 | 200G |
 | Sibling Brawl | 10 | 185G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 
-### G Bux Shop (19 items, 1300G total)
+### G Bux Shop (21 items, 1425G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -120,6 +122,8 @@ See each game's `CLAUDE.md` for full achievement tables.
 | bb_boss_fighter | Boss Fighter | 50G | Battle Bros | Unlocks hidden fighter Omega |
 | sb_super_soaker | Super Soaker | 75G | Sibling Brawl | Unlocks Super Soaker unit |
 | sb_snack_boost | Snack Boost | 50G | Sibling Brawl | +10% damage for first 10s |
+| dtd_wild_card | Wild Card | 50G | Dress to Depress | Adds 3 wild clothing items |
+| dtd_extra_time | Extra Time | 75G | Dress to Depress | 60s per round instead of 45 |
 
 ---
 

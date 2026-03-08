@@ -494,6 +494,7 @@
       <span><span class="stat-label">&#128176;</span> <span class="stat" id="hud-gold">100</span></span>
       <button class="wave-btn" id="wave-btn" onclick="sendWaveEarly()">SEND WAVE</button>
       <button class="speed-btn" id="speed-btn" onclick="toggleSpeed()">1x</button>
+      <button class="speed-btn" id="music-btn" onclick="toggleMusic()">♫ ON</button>
       <a href="../index.html" class="top-exit">EXIT</a>
     </div>
     <canvas id="game-canvas"></canvas>
@@ -804,6 +805,176 @@ function setMap(mapIndex) {
   }
 }
 
+// ═══ MUSIC ENGINE — Medieval War Theme ═══
+let musicCtx = null, musicGain = null, musicPlaying = false, musicMuted = false;
+let musicInterval = null;
+
+function initMusic() {
+  if (musicCtx) return;
+  musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = musicCtx.createGain();
+  musicGain.gain.value = 0.25;
+  musicGain.connect(musicCtx.destination);
+}
+
+// Play a note with an oscillator
+function playNote(freq, type, start, dur, vol, detune) {
+  if (!musicCtx || musicMuted) return;
+  const osc = musicCtx.createOscillator();
+  const g = musicCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  if (detune) osc.detune.value = detune;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + 0.02);
+  g.gain.setValueAtTime(vol, start + dur * 0.7);
+  g.gain.linearRampToValueAtTime(0, start + dur);
+  osc.connect(g);
+  g.connect(musicGain);
+  osc.start(start);
+  osc.stop(start + dur + 0.05);
+}
+
+// Drum hit using noise burst
+function playDrum(start, dur, freq, vol) {
+  if (!musicCtx || musicMuted) return;
+  const bufSize = musicCtx.sampleRate * dur;
+  const buf = musicCtx.createBuffer(1, bufSize, musicCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1);
+  const src = musicCtx.createBufferSource();
+  src.buffer = buf;
+  const filt = musicCtx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.value = freq;
+  const g = musicCtx.createGain();
+  g.gain.setValueAtTime(vol, start);
+  g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+  src.connect(filt);
+  filt.connect(g);
+  g.connect(musicGain);
+  src.start(start);
+  src.stop(start + dur + 0.05);
+}
+
+// Medieval scale (D minor / Dorian)
+const SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66]; // D3 E3 F3 G3 A3 Bb3 C4 D4
+const SCALE_HIGH = SCALE.map(f => f * 2); // octave up
+const BASS = [73.42, 82.41, 87.31, 98.00, 110.00]; // D2 E2 F2 G2 A2
+
+// Melody patterns (scale indices) — each bar is 8 eighth notes
+const MELODY_A = [0, 2, 4, 3, 2, 0, 4, 3]; // heroic march
+const MELODY_B = [4, 5, 7, 4, 3, 2, 0, 2]; // rising battle call
+const MELODY_C = [7, 4, 3, 2, 0, 2, 3, 4]; // descending resolve
+const MELODY_D = [0, 0, 3, 4, 4, 3, 2, 0]; // war drum melody
+
+// Bass patterns
+const BASS_A = [0, -1, 0, -1, 3, -1, 3, -1]; // -1 = rest
+const BASS_B = [0, -1, 4, -1, 3, -1, 2, -1];
+const BASS_C = [4, -1, 3, -1, 0, -1, 0, -1];
+
+// Drum patterns (1 = hit, 0 = rest)
+const DRUM_MARCH =  [1, 0, 0, 1, 1, 0, 0, 1]; // steady march
+const DRUM_BATTLE = [1, 0, 1, 0, 1, 1, 0, 1]; // intense battle
+const DRUM_FILL =   [1, 1, 0, 1, 1, 0, 1, 1]; // fill
+const HH_PATTERN =  [0, 1, 0, 1, 0, 1, 0, 1]; // offbeat hihat
+
+let musicBeat = 0;
+let musicBPM = 120;
+
+function scheduleBar() {
+  if (!musicCtx || musicMuted || !musicPlaying) return;
+  const t = musicCtx.currentTime + 0.05;
+  const eighth = 60 / musicBPM / 2; // duration of an eighth note
+  const barNum = musicBeat;
+  musicBeat++;
+
+  // Pick patterns based on wave intensity
+  const intense = waveActive;
+  const bossWave = wave === 10 || wave === 20 || wave === 30;
+
+  // Melody — brass-like sawtooth
+  const melodies = intense
+    ? (bossWave ? [MELODY_B, MELODY_C, MELODY_D, MELODY_B] : [MELODY_A, MELODY_B, MELODY_A, MELODY_C])
+    : [MELODY_A, MELODY_D, MELODY_A, MELODY_D];
+  const melody = melodies[barNum % melodies.length];
+  const melVol = intense ? 0.12 : 0.08;
+
+  for (let i = 0; i < 8; i++) {
+    const idx = melody[i];
+    const freq = intense ? SCALE_HIGH[idx] : SCALE[idx];
+    playNote(freq, 'sawtooth', t + i * eighth, eighth * 0.85, melVol, 0);
+    // Harmony — quieter triangle a 5th below for depth
+    if (i % 2 === 0) {
+      playNote(freq * 0.667, 'triangle', t + i * eighth, eighth * 1.5, melVol * 0.4, 5);
+    }
+  }
+
+  // Bass — deep square wave
+  const basses = intense ? [BASS_B, BASS_C, BASS_A, BASS_B] : [BASS_A, BASS_A, BASS_C, BASS_A];
+  const bass = basses[barNum % basses.length];
+  const bassVol = intense ? 0.1 : 0.06;
+  for (let i = 0; i < 8; i++) {
+    if (bass[i] >= 0) {
+      playNote(BASS[bass[i]], 'square', t + i * eighth, eighth * 0.9, bassVol, 0);
+    }
+  }
+
+  // War drums
+  const drums = intense
+    ? (bossWave ? DRUM_FILL : DRUM_BATTLE)
+    : DRUM_MARCH;
+  const drumVol = intense ? 0.3 : 0.18;
+  for (let i = 0; i < 8; i++) {
+    if (drums[i]) playDrum(t + i * eighth, 0.15, intense ? 200 : 150, drumVol);
+    if (HH_PATTERN[i]) playDrum(t + i * eighth, 0.05, 5000, 0.04);
+  }
+
+  // Brass fanfare stab on boss waves (every 4 bars)
+  if (bossWave && barNum % 4 === 0) {
+    playNote(293.66, 'sawtooth', t, eighth * 3, 0.15, 0);        // D4
+    playNote(369.99, 'sawtooth', t, eighth * 3, 0.12, 5);        // F#4
+    playNote(440.00, 'sawtooth', t, eighth * 3, 0.10, -5);       // A4
+    playNote(146.83, 'square', t, eighth * 3, 0.08, 0);          // D3 bass
+  }
+}
+
+function startMusic() {
+  initMusic();
+  if (musicCtx.state === 'suspended') musicCtx.resume();
+  musicPlaying = true;
+  musicBeat = 0;
+  const barDuration = (60 / musicBPM / 2) * 8; // 8 eighth notes per bar
+  if (musicInterval) clearInterval(musicInterval);
+  scheduleBar(); // play first bar immediately
+  musicInterval = setInterval(scheduleBar, barDuration * 1000);
+  updateMusicBtn();
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+  updateMusicBtn();
+}
+
+function toggleMusic() {
+  if (musicMuted) {
+    musicMuted = false;
+    if (!musicPlaying) startMusic();
+    else updateMusicBtn();
+  } else {
+    musicMuted = true;
+    updateMusicBtn();
+  }
+}
+
+function updateMusicBtn() {
+  const btn = document.getElementById('music-btn');
+  if (!btn) return;
+  btn.textContent = musicMuted ? '♫ OFF' : '♫ ON';
+  btn.classList.toggle('active', !musicMuted);
+}
+
 // ═══ GAME STATE ═══
 let gold, lives, score, wave, enemies, towers, projectiles, effects;
 let waveActive, waveCountdown, spawnQueue, spawnTimer;
@@ -864,6 +1035,8 @@ function startGame() {
   buildSidePanel();
   updateHUD();
   startWaveCountdown();
+
+  if (!musicMuted) startMusic();
 
   if (animFrame) cancelAnimationFrame(animFrame);
   animFrame = requestAnimationFrame(gameLoop);
@@ -2229,6 +2402,11 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
+  if (key === 'm' || key === 'M') {
+    toggleMusic();
+    return;
+  }
+
   if (key === 'Escape') {
     selectedTowerType = null;
     selectedPlacedTower = null;
@@ -2252,6 +2430,7 @@ function endGame(won) {
   }
 
   cancelAnimationFrame(animFrame);
+  stopMusic();
 
   const mapName = MAP_DEFS[currentMapIndex].name;
   document.getElementById('end-title').textContent = won ? 'VICTORY' : 'DEFEATED';

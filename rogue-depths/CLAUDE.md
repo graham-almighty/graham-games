@@ -232,6 +232,15 @@ Title -> Class Select -> Game -> (per-floor loop: Shop -> next floor) -> Death/V
 - Shows revealed tiles, enemy dots (red, bosses yellow), player dot (white)
 - Stairs shown in gold (#c9a84c)
 
+## Background Music (Web Audio API)
+- **Style:** Upbeat chiptune video game music
+- **Scale:** C major pentatonic (262-660 Hz), 150 BPM, sixteenth note arpeggios
+- **Instruments:** Square wave lead, triangle harmony (thirds), triangle bass, noise drums
+- **Intensity:** Calm on normal floors, intense on boss floors (5, 10, 15)
+- **Controls:** HUD button (♫ ON/OFF) + M key toggle
+- **Hooks:** `startGame()` starts music (calm), `enterFloor()` sets intensity based on boss floor, death/victory stops music
+- **Separate AudioContext** (`musicCtx`) from SFX (`audioCtx`)
+
 ## Sound Effects (Web Audio API)
 | SFX | Description |
 |-----|-------------|

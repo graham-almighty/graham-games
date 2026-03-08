@@ -3,9 +3,10 @@
 ## Core Systems
 - **Renderer:** 2D Canvas, `requestAnimationFrame` loop
 - **Grid:** 16x10 tiles (52px each), dynamic path per map
-- **Controls:** Mouse click to place/select towers, keyboard shortcuts (1-7 tower types, Space = send wave, F = toggle speed, Escape = deselect)
+- **Controls:** Mouse click to place/select towers, keyboard shortcuts (1-7 tower types, Space = send wave, F = toggle speed, M = toggle music, Escape = deselect)
 - **30 waves**, game is winnable. 5s countdown between waves (or send early).
 - **2x speed toggle** (F key)
+- **Music:** Procedural medieval war theme (Web Audio API), toggleable (M key or ♫ button). D minor/Dorian scale, 120 BPM, intensifies during waves with heavier drums and higher octave melodies. Boss waves get brass fanfare stabs. Starts on game start, stops on game end.
 - **UI flow:** Title -> Map Select -> Story Intro -> Game -> End -> (Story Outro on victory) -> Map Select
 - **Cartoony visual style:** Custom drawn towers, enemies, projectiles, and effects (no simple circles/symbols)
 

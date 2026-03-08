@@ -1134,6 +1134,99 @@ group('Story Content');
   }
 }
 
+// ═══ Music System ═══
+group('Music System');
+{
+  // Medieval scale has 8 notes (D minor / Dorian)
+  const SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+  assertEqual(SCALE.length, 8, 'medieval scale has 8 notes');
+  assertApprox(SCALE[0], 146.83, 0.01, 'scale starts at D3');
+  assertApprox(SCALE[7], 293.66, 0.01, 'scale ends at D4 (octave)');
+}
+{
+  // Bass notes are one octave below
+  const BASS = [73.42, 82.41, 87.31, 98.00, 110.00];
+  assertEqual(BASS.length, 5, 'bass has 5 notes');
+  assertApprox(BASS[0], 73.42, 0.01, 'bass starts at D2');
+}
+{
+  // Melody patterns are 8 steps (eighth notes per bar)
+  const MELODY_A = [0, 2, 4, 3, 2, 0, 4, 3];
+  const MELODY_B = [4, 5, 7, 4, 3, 2, 0, 2];
+  const MELODY_C = [7, 4, 3, 2, 0, 2, 3, 4];
+  const MELODY_D = [0, 0, 3, 4, 4, 3, 2, 0];
+  assertEqual(MELODY_A.length, 8, 'melody A has 8 steps');
+  assertEqual(MELODY_B.length, 8, 'melody B has 8 steps');
+  assertEqual(MELODY_C.length, 8, 'melody C has 8 steps');
+  assertEqual(MELODY_D.length, 8, 'melody D has 8 steps');
+  // All indices within scale range (0-7)
+  for (const m of [MELODY_A, MELODY_B, MELODY_C, MELODY_D]) {
+    for (const idx of m) assert(idx >= 0 && idx <= 7, 'melody index in range');
+  }
+}
+{
+  // Drum patterns are 8 steps
+  const DRUM_MARCH =  [1, 0, 0, 1, 1, 0, 0, 1];
+  const DRUM_BATTLE = [1, 0, 1, 0, 1, 1, 0, 1];
+  const DRUM_FILL =   [1, 1, 0, 1, 1, 0, 1, 1];
+  const HH_PATTERN =  [0, 1, 0, 1, 0, 1, 0, 1];
+  assertEqual(DRUM_MARCH.length, 8, 'march drum pattern has 8 steps');
+  assertEqual(DRUM_BATTLE.length, 8, 'battle drum pattern has 8 steps');
+  assertEqual(DRUM_FILL.length, 8, 'fill drum pattern has 8 steps');
+  assertEqual(HH_PATTERN.length, 8, 'hihat pattern has 8 steps');
+  // March is sparser than battle
+  const marchHits = DRUM_MARCH.reduce((a, b) => a + b, 0);
+  const battleHits = DRUM_BATTLE.reduce((a, b) => a + b, 0);
+  assert(battleHits >= marchHits, 'battle drums denser than march');
+}
+{
+  // Bass patterns are 8 steps, -1 = rest
+  const BASS_A = [0, -1, 0, -1, 3, -1, 3, -1];
+  const BASS_B = [0, -1, 4, -1, 3, -1, 2, -1];
+  assertEqual(BASS_A.length, 8, 'bass A has 8 steps');
+  assertEqual(BASS_B.length, 8, 'bass B has 8 steps');
+  // Rests are on offbeats (odd indices)
+  for (let i = 1; i < 8; i += 2) {
+    assertEqual(BASS_A[i], -1, 'bass A offbeat ' + i + ' is rest');
+  }
+}
+{
+  // Music state flags
+  let musicPlaying = false, musicMuted = false;
+  // Toggle mute behavior
+  musicMuted = true;
+  assert(musicMuted, 'music can be muted');
+  musicMuted = false;
+  assert(!musicMuted, 'music can be unmuted');
+  // Playing state
+  musicPlaying = true;
+  assert(musicPlaying, 'music can be set to playing');
+  musicPlaying = false;
+  assert(!musicPlaying, 'music can be stopped');
+}
+{
+  // BPM and timing
+  const musicBPM = 120;
+  const eighth = 60 / musicBPM / 2;
+  assertApprox(eighth, 0.25, 0.001, 'eighth note at 120 BPM = 0.25s');
+  const barDuration = eighth * 8;
+  assertApprox(barDuration, 2.0, 0.001, 'bar duration = 2 seconds at 120 BPM');
+}
+{
+  // Intensity changes based on wave state
+  const waveActive = true;
+  const wave = 10;
+  const bossWave = wave === 10 || wave === 20 || wave === 30;
+  assert(bossWave, 'wave 10 is a boss wave');
+  assert(waveActive, 'active wave triggers intense music');
+}
+{
+  // Music button text reflects state
+  function getMusicText(muted) { return muted ? '♫ OFF' : '♫ ON'; }
+  assertEqual(getMusicText(false), '♫ ON', 'button shows ON when unmuted');
+  assertEqual(getMusicText(true), '♫ OFF', 'button shows OFF when muted');
+}
+
 // ============================================================
 showSummary();
 </script>

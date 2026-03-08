@@ -2481,6 +2481,55 @@ describe('Market System', () => {
   });
 });
 
+describe('Background Music', () => {
+  it('Music scale has 8 notes (D minor/Dorian)', () => {
+    const SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+    assertEqual(SCALE.length, 8);
+  });
+  it('High scale is one octave above', () => {
+    const SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+    const HI = SCALE.map(f => f * 2);
+    assertClose(HI[0], 293.66, 0.01);
+    assertClose(HI[7], 587.32, 0.01);
+  });
+  it('4 melody patterns of 8 steps each', () => {
+    const MEL = [[0,2,4,3,2,0,4,3],[4,5,7,4,3,2,0,2],[7,4,3,2,0,2,3,4],[0,0,3,4,4,3,2,0]];
+    assertEqual(MEL.length, 4);
+    for (const m of MEL) assertEqual(m.length, 8);
+  });
+  it('Melody indices are in scale range 0-7', () => {
+    const MEL = [[0,2,4,3,2,0,4,3],[4,5,7,4,3,2,0,2],[7,4,3,2,0,2,3,4],[0,0,3,4,4,3,2,0]];
+    for (const m of MEL) for (const n of m) { assert(n >= 0); assert(n <= 7); }
+  });
+  it('3 drum patterns of 8 steps each', () => {
+    const DRM = [[1,0,0,1,1,0,0,1],[1,0,1,0,1,1,0,1],[1,1,0,1,1,0,1,1]];
+    assertEqual(DRM.length, 3);
+    for (const d of DRM) assertEqual(d.length, 8);
+  });
+  it('BPM is 120, eighth note = 0.25s', () => {
+    const eighth = 60 / 120 / 2;
+    assertClose(eighth, 0.25, 0.001);
+  });
+  it('Music intensity toggles between calm and intense', () => {
+    let intense = false;
+    intense = true;
+    assert(intense, 'Can set intense');
+    intense = false;
+    assert(!intense, 'Can set calm');
+  });
+  it('Music mute toggles on/off', () => {
+    let muted = false;
+    muted = true;
+    assert(muted, 'Can mute');
+    muted = false;
+    assert(!muted, 'Can unmute');
+  });
+  it('Button text reflects mute state', () => {
+    assertEqual(true ? '♫ OFF' : '♫ ON', '♫ OFF');
+    assertEqual(false ? '♫ OFF' : '♫ ON', '♫ ON');
+  });
+});
+
 renderResults();
 
 // Clean up

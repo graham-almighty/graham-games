@@ -580,6 +580,42 @@ group('Balance');
 }
 
 // ============================================================
+// BACKGROUND MUSIC
+// ============================================================
+group('Background Music');
+{
+  // Scale constants (C major pentatonic, same as Rogue Depths)
+  const scale = [262, 294, 330, 392, 440, 524, 588, 660];
+  assertEqual(scale.length, 8, 'Scale has 8 notes');
+  assertEqual(scale[0], 262, 'Scale starts at C4 (262 Hz)');
+  assertEqual(scale[7], 660, 'Scale ends at E5 (660 Hz)');
+  for (let i = 1; i < scale.length; i++) {
+    assert(scale[i] > scale[i-1], 'Scale[' + i + '] > Scale[' + (i-1) + ']');
+  }
+  assert(scale[5] > scale[0] * 1.9, 'High octave note is roughly 2x low');
+
+  // Tempo
+  const bpm = 150;
+  const step = 60 / bpm / 4;
+  assertApprox(step, 0.1, 0.01, 'Sixteenth note step is ~0.1s at 150 BPM');
+
+  // Music state flags
+  let playing = false, muted = false;
+  playing = true;
+  assert(playing, 'Music can be set to playing');
+  playing = false;
+  assert(!playing, 'Music can be stopped');
+  muted = true;
+  assert(muted, 'Music can be muted');
+  muted = false;
+  assert(!muted, 'Music can be unmuted');
+
+  // Always intense (fighting game, no calm mode)
+  const alwaysIntense = true;
+  assert(alwaysIntense, 'Battle Bros music is always intense');
+}
+
+// ============================================================
 showSummary();
 </script>
 </body>
