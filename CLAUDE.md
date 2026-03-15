@@ -41,6 +41,7 @@
   rogue-depths/index.html      — 2D roguelike dungeon crawler
   dress-to-depress/index.html  — 3D fashion disaster dress-up game (Three.js r128)
   sibling-brawl/index.html     — 3D first-person sibling battle game (Three.js r128)
+  school-nurse/index.html      — 2D school nurse detective sim (Canvas)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   CLAUDE.md                    — This file (cross-game overview)
@@ -84,7 +85,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (115 total, 2545G earnable)
+### Achievement Summary (125 total, 2795G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -97,6 +98,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Battle Bros | 10 | 210G |
 | Dress to Depress | 10 | 200G |
 | Sibling Brawl | 10 | 185G |
+| School Nurse | 10 | 250G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 

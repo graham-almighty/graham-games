@@ -72,15 +72,17 @@ Title -> Level Select -> Intro Cinematic -> Loadout -> Battle (FPS) -> Results
 | 7 | 5 pillow, 4 nerf, 3 blanket, 3 balloon, 3 cricket, 3 scooter |
 | 8 | 5 pillow, 5 nerf, 3 blanket, 4 balloon, 3 cricket, 2 scooter |
 
-## Upgrades (6 types, candy currency)
-| Upgrade | Per Level | Max | Cost |
-|---------|-----------|-----|------|
-| HP (Toughness) | +20 HP | 5 | 30 candy |
-| Damage (Power) | +3 damage | 5 | 40 candy |
-| Speed | +0.3 speed | 5 | 35 candy |
-| Fire Rate | -10% cooldown | 5 | 45 candy |
-| Range (Reach) | +10% range | 5 | 40 candy |
-| Splash (Blast Radius) | +15% splash | 3 | 60 candy |
+## Upgrades (6 types, candy currency, scaling costs)
+Cost formula: `baseCost * (1 + level * 0.4)` — each level costs more.
+
+| Upgrade | Per Level | Max | Base Cost |
+|---------|-----------|-----|-----------|
+| HP (Toughness) | +20 HP | 10 | 30 candy |
+| Damage (Power) | +3 damage | 10 | 40 candy |
+| Speed | +0.3 speed | 10 | 35 candy |
+| Fire Rate | -10% cooldown | 10 | 45 candy |
+| Range (Reach) | +10% range | 10 | 40 candy |
+| Splash (Blast Radius) | +15% splash | 6 | 60 candy |
 
 ## Outfits (6, unlock by beating levels)
 | ID | Name | Unlock | Description |

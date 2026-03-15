@@ -2299,6 +2299,8 @@ let hasBeaverPet = false;
 let hasGGPoster = false;
 let hasGGTV = false;
 let ggTVGroup = null;
+let hasPhone = false;
+let phoneOrders = [];
 let ggPosterGroup = null;
 let activePet = 'dog'; // 'dog', 'cat', 'beaver', or 'none'
 let petStay = false; // C key toggle — pet stays in place
@@ -2846,6 +2848,70 @@ function buildGGTV() {
   rebuildInteractMeshes();
 }
 
+let phoneGroup = null;
+const BASEMENT_PHONE_Y = -3.35;
+function buildPhone() {
+  if (phoneGroup) return;
+  const g = new THREE.Group();
+  // Retro landline phone — chunky body, rotary-style dial, coiled cord, handset on cradle
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x882222 }); // dark red plastic
+  const blackMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  // Phone body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.25), bodyMat);
+  body.position.set(0, 0.075, 0);
+  g.add(body);
+  // Dial circle (front face)
+  const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.02, 16), blackMat);
+  dial.rotation.x = Math.PI / 2;
+  dial.position.set(0, 0.12, 0.12);
+  g.add(dial);
+  // Dial ring
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.01, 8, 16), new THREE.MeshLambertMaterial({ color: 0xcccccc }));
+  ring.rotation.x = Math.PI / 2;
+  ring.position.set(0, 0.12, 0.125);
+  g.add(ring);
+  // Handset cradle bumps
+  const bump1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 8), bodyMat);
+  bump1.position.set(-0.14, 0.17, 0);
+  g.add(bump1);
+  const bump2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.04, 8), bodyMat);
+  bump2.position.set(0.14, 0.17, 0);
+  g.add(bump2);
+  // Handset (resting on cradle)
+  const earpiece = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.08), blackMat);
+  earpiece.position.set(-0.14, 0.21, 0);
+  g.add(earpiece);
+  const mouthpiece = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.08), blackMat);
+  mouthpiece.position.set(0.14, 0.21, 0);
+  g.add(mouthpiece);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.03, 0.04), blackMat);
+  handle.position.set(0, 0.22, 0);
+  g.add(handle);
+  // Coiled cord (simple cylinder going down)
+  const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 6), blackMat);
+  cord.position.set(-0.15, -0.15, -0.08);
+  g.add(cord);
+  // Small table to sit on
+  const tableMat = new THREE.MeshLambertMaterial({ color: 0x6d4c2a });
+  const tableTop = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.4), tableMat);
+  tableTop.position.set(0, -0.02, 0);
+  g.add(tableTop);
+  const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), tableMat);
+  leg1.position.set(-0.26, -0.32, -0.16); g.add(leg1);
+  const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), tableMat);
+  leg2.position.set(0.26, -0.32, -0.16); g.add(leg2);
+  const leg3 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), tableMat);
+  leg3.position.set(-0.26, -0.32, 0.16); g.add(leg3);
+  const leg4 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.6, 0.04), tableMat);
+  leg4.position.set(0.26, -0.32, 0.16); g.add(leg4);
+  // Position in basement
+  g.position.set(3, BASEMENT_PHONE_Y + 0.77, 3);
+  scene.add(g);
+  phoneGroup = g;
+  interactables.push({ mesh: body, group: g, type: 'ggPhone', label: 'Use Landline', need: null, usePos: new THREE.Vector3(3, BASEMENT_PHONE_Y + 0.15, 2), floor: -1 });
+  rebuildInteractMeshes();
+}
+
 // GG Trivia questions
 const GG_TRIVIA = [
   { q: 'What island do you defend in Goofball Land?', a: ['Gub Gub Ga Lub Ga Gub Island', 'Treasure Island', 'Monkey Island', 'Skull Island'], c: 0 },
@@ -3138,6 +3204,67 @@ const GG_NEWS_STORIES = [
     body: 'In a groundbreaking fitness study, local gym-goers reported feeling "a tiny bit more energetic" after using the treadmill exactly three times. "It\'s not much," said Coach Carl, "but it\'s honest work." The study was funded by a grant of $0.' },
   { reporter: 'chuck', headline: 'MILITARY: Sergeant Briggs Says New Recruits "Need More Practice"',
     body: 'Sgt. Briggs held a press conference today criticizing the aim of recent recruits. "They come in, they can barely hit a target, and then they want to go on missions?" He shook his head for approximately 45 seconds before adding, "Five training sessions. MINIMUM."' },
+  { reporter: 'tina', headline: 'ENTERTAINMENT: New Game "School Nurse Simulator" Takes Town by Storm',
+    body: 'Local kids have been obsessed with a new game where you pretend to be a school nurse. "I caught THREE fakers today," bragged 9-year-old Timmy. "One kid said he had a stomach ache but his temperature was totally normal." The school\'s actual nurse was unavailable for comment.' },
+  { reporter: 'chuck', headline: 'SPORTS: Cheerleading Squad Performs to Crowd of Zero',
+    body: 'The town cheerleading squad put on what they called "an electrifying performance" at the basketball court today. Unfortunately, no one was there to see it. "We still nailed every move," said squad captain Becky. "The seagulls seemed impressed."' },
+  { reporter: 'tina', headline: 'BUSINESS: Fast Food Worker Promoted to "Senior Fry Specialist"',
+    body: 'A Mic Ronaldz employee was thrilled today after receiving a new title. "I\'m basically management now," said the worker, who has been catching falling burgers for three shifts. Owner Mic Ronaldz Jr. clarified that "it\'s the same job. We just made up the title."' },
+  { reporter: 'chuck', headline: 'SCIENCE: Local Fish Tank Declared "Most Relaxing Square Foot in Town"',
+    body: 'A panel of relaxation experts has certified one local fish tank as the single most calming location in the entire town. "Something about watching those fish go back and forth," said Dr. Calm. "It\'s better than the spa, honestly." The fish had no comment.' },
+  { reporter: 'tina', headline: 'BREAKING: Jukebox at Local Home Playing Non-Stop for 3 Days',
+    body: 'Neighbors are reporting that a jukebox in a nearby house has been playing continuously for 72 hours. "At first it was nice," said the neighbor. "Now I hear the bass line in my dreams." The homeowner insists they are "just vibing" and will stop "eventually."' },
+  { reporter: 'chuck', headline: 'LIFESTYLE: Man Buys Mansion, Immediately Misses His Old Shower',
+    body: 'A local resident who recently purchased a luxury mansion has confessed to missing his old $2 shower. "The spa is nice and all, but there was something about that water pressure at home," he sighed. "It cost $2 but it was honest water."' },
+  { reporter: 'tina', headline: 'HEALTH: Study Confirms Beds Restore Energy, Scientists Stunned',
+    body: 'In what researchers are calling "the most obvious finding of the century," a new study has confirmed that sleeping in a bed restores energy. "We spent $0 on this research," said lead scientist Dr. Snooze. "And yet, here we are, publishing it."' },
+  { reporter: 'chuck', headline: 'CRIME: Library Book Returned 47 Days Late, No Charges Filed',
+    body: 'Librarian Linda announced today that a severely overdue book was finally returned. "I was worried sick," she said. "It was our only copy of \'Typing for Beginners.\'" The late returner was sentenced to one disapproving glance and a tutting noise.' },
+  { reporter: 'tina', headline: 'FASHION: Gold Drip Outfit Declared "Too Shiny" by Town Council',
+    body: 'The town council held an emergency meeting today to discuss a particularly shiny outfit worn by a local resident. "It\'s blinding people at the crosswalk," complained Mayor Maple. The outfit owner refused to change, stating "drip is drip."' },
+  { reporter: 'chuck', headline: 'TECHNOLOGY: Old Pete Still Doesn\'t Know What a Computer Does',
+    body: 'Longtime resident Old Pete admitted today that he still has no idea what computers are for. "People sit there and click things and money appears," he said, bewildered. "In my day, we earned money by... actually, I forget how we did it too."' },
+  { reporter: 'tina', headline: 'FOOD: Chef Rosa\'s Special Declared "Almost as Good as the Fridge"',
+    body: 'In a devastating blow to the restaurant industry, a taste test revealed that most residents prefer eating from their home fridge. "It\'s faster and the fridge never judges you," said one participant. Chef Rosa has requested a recount.' },
+];
+
+const GG_TV_ADS = [
+  { name: 'Mega Blaster 3000', price: 30, icon: '\u{1F52B}', color: '#ff6b35', itemId: 'megaBlaster', phone: '555-0130',
+    tagline: 'THE MOST POWERFUL FOAM DART GUN IN THE GALAXY!',
+    desc: 'Fires up to 50 foam darts per second! (Darts not included. Gun not included. Imagination sold separately.)',
+    effect: 'Unlocks: Foam Blaster — +25 fun when used', statKey: 'fun', statVal: 25 },
+  { name: 'Turbo Sneakers XL', price: 40, icon: '\u{1F45F}', color: '#00bcd4', itemId: 'turboSneakers', phone: '555-0240',
+    tagline: 'RUN FASTER! JUMP HIGHER! LOOK COOLER!',
+    desc: 'Scientists can\'t explain why these shoes make you 0.1% faster. But they DO. Probably. Results may vary.',
+    effect: 'Unlocks: Shoe Rack — +20 energy when used', statKey: 'energy', statVal: 20 },
+  { name: 'Glow Lava Lamp EXTREME', price: 35, icon: '\u{1FA94}', color: '#e040fb', itemId: 'glowLamp', phone: '555-0350',
+    tagline: 'IT GLOWS! IT FLOWS! IT... DOES THAT THING!',
+    desc: 'Ten times brighter than a regular lava lamp! Stare at it for hours! Your eyes may or may not recover!',
+    effect: 'Unlocks: Glow Lamp — +30 fun when used', statKey: 'fun', statVal: 30 },
+  { name: 'Chef\'s Kiss Apron', price: 45, icon: '\u{1F9D1}\u200D\u{1F373}', color: '#ff9800', itemId: 'chefApron', phone: '555-0460',
+    tagline: 'COOK LIKE A PRO! OR AT LEAST LOOK LIKE ONE!',
+    desc: 'Wearing this apron makes food taste 12% better. Comes with a tiny hat! (Hat not actually included.)',
+    effect: 'Unlocks: Snack Fridge — +35 hunger when used', statKey: 'hunger', statVal: 35 },
+  { name: 'Ultra Comfy Pillow', price: 25, icon: '\u{1F6CB}\uFE0F', color: '#7e57c2', itemId: 'comfyPillow', phone: '555-0570',
+    tagline: 'THE FLUFFIEST PILLOW KNOWN TO MANKIND!',
+    desc: 'Made from clouds. Actual clouds. We went up there and got them. Sleep has never been this good.',
+    effect: 'Unlocks: Nap Spot — +30 energy when used', statKey: 'energy', statVal: 30 },
+  { name: 'Sparkle Shampoo', price: 20, icon: '\u2728', color: '#26c6da', itemId: 'sparkleShampoo', phone: '555-0680',
+    tagline: 'YOUR HAIR WILL LITERALLY SPARKLE!',
+    desc: 'Contains 47 secret ingredients including "sparkle essence" and "that new hair smell." Side effects: extreme shininess.',
+    effect: 'Unlocks: Spa Kit — +25 hygiene when used', statKey: 'hygiene', statVal: 25 },
+  { name: 'Joke Book Vol. 9', price: 15, icon: '\u{1F4D6}', color: '#66bb6a', itemId: 'jokeBook', phone: '555-0790',
+    tagline: 'WHY DID THE CHICKEN-- YOU KNOW WHAT, JUST BUY IT!',
+    desc: '500 jokes! 3 of them are actually funny! The rest are dad jokes. Perfect for any occasion, especially awkward silences.',
+    effect: 'Unlocks: Joke Book — +20 fun when used', statKey: 'fun', statVal: 20 },
+  { name: 'Power Protein Bars', price: 35, icon: '\u{1F4AA}', color: '#ef5350', itemId: 'proteinBars', phone: '555-0800',
+    tagline: 'GAINS! GAINS! GAINS! (RESULTS NOT GUARANTEED)',
+    desc: 'Tastes like cardboard but makes you FEEL like a champion. Now in bulk! Feed the whole family!',
+    effect: 'Unlocks: Protein Stash — +25 hunger +15 energy', statKey: 'hunger', statVal: 25, bonus: { key: 'energy', val: 15 } },
+  { name: 'SCHOOL NURSE SIMULATOR', price: 0, icon: '\u{1FA7A}', color: '#4caa64', isGame: true,
+    tagline: 'TREAT THE SICK! BUST THE FAKERS!',
+    desc: 'A kid says their stomach hurts but their temperature is normal? FAKER! Examine patients, spot the liars, and save the truly sick. Can YOU survive as the school nurse?',
+    effect: 'PLAY NOW!', link: '../school-nurse/index.html' },
 ];
 
 function drawNewsReporter(cvs, reporterKey) {
@@ -3174,6 +3301,89 @@ function drawNewsReporter(cvs, reporterKey) {
   ctx.fillText(r.name, cvs.width / 2, cvs.height - 6);
 }
 
+function renderTVAd(overlay, ad, onDone) {
+  overlay.innerHTML = '';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:linear-gradient(135deg,#1a0a0a,#2a1a0a);border:3px solid ' + ad.color + ';border-radius:12px;padding:24px;max-width:380px;text-align:center;font-family:Segoe UI,sans-serif;animation:adPop 0.3s ease-out;';
+
+  // "COMMERCIAL BREAK" header
+  const header = document.createElement('div');
+  header.style.cssText = 'color:#888;font-size:0.6rem;letter-spacing:2px;margin-bottom:8px;text-transform:uppercase;';
+  header.textContent = '\u{1F4FA} COMMERCIAL BREAK';
+  panel.appendChild(header);
+
+  // Big icon
+  const icon = document.createElement('div');
+  icon.style.cssText = 'font-size:3rem;margin-bottom:8px;';
+  icon.textContent = ad.icon;
+  panel.appendChild(icon);
+
+  // Product name
+  const name = document.createElement('div');
+  name.style.cssText = 'color:' + ad.color + ';font-size:1.3rem;font-weight:bold;margin-bottom:4px;text-shadow:0 0 10px ' + ad.color + '44;';
+  name.textContent = ad.name;
+  panel.appendChild(name);
+
+  // Tagline (big flashy text)
+  const tag = document.createElement('div');
+  tag.style.cssText = 'color:#fff;font-size:0.85rem;font-weight:bold;margin-bottom:10px;letter-spacing:0.5px;';
+  tag.textContent = ad.tagline;
+  panel.appendChild(tag);
+
+  // Description
+  const desc = document.createElement('div');
+  desc.style.cssText = 'color:#bbb;font-size:0.8rem;line-height:1.5;margin-bottom:12px;font-style:italic;';
+  desc.textContent = ad.desc;
+  panel.appendChild(desc);
+
+  if (ad.isGame && ad.link) {
+    // Game ad — big PLAY NOW button that teleports to the game
+    const playBtn = document.createElement('button');
+    playBtn.style.cssText = 'padding:12px 36px;border:none;border-radius:8px;font-size:1.1rem;cursor:pointer;font-weight:bold;background:' + ad.color + ';color:#fff;margin-bottom:10px;letter-spacing:1px;box-shadow:0 0 20px ' + ad.color + '44;transition:all 0.2s;display:block;width:100%;';
+    playBtn.textContent = '\u{1F3AE} PLAY NOW!';
+    playBtn.onmouseover = () => { playBtn.style.transform = 'scale(1.05)'; playBtn.style.boxShadow = '0 0 30px ' + ad.color + '66'; };
+    playBtn.onmouseout = () => { playBtn.style.transform = 'scale(1)'; playBtn.style.boxShadow = '0 0 20px ' + ad.color + '44'; };
+    playBtn.onclick = () => { window.location.href = ad.link; };
+    panel.appendChild(playBtn);
+
+    const orSkip = document.createElement('div');
+    orSkip.style.cssText = 'color:#666;font-size:0.7rem;margin-bottom:8px;';
+    orSkip.textContent = 'or';
+    panel.appendChild(orSkip);
+  } else {
+    // Product ad — price and phone hint
+    const info = document.createElement('div');
+    info.style.cssText = 'color:#c9a84c;font-size:0.85rem;font-weight:bold;margin-bottom:4px;';
+    info.textContent = 'Only $' + ad.price + '!';
+    panel.appendChild(info);
+    const eff = document.createElement('div');
+    eff.style.cssText = 'color:#4caf50;font-size:0.75rem;margin-bottom:12px;';
+    eff.textContent = ad.effect;
+    panel.appendChild(eff);
+
+    if (hasPhone) {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'color:#66bb6a;font-size:1rem;font-weight:bold;margin-bottom:10px;text-shadow:0 0 8px #66bb6a44;letter-spacing:1px;';
+      hint.textContent = '\u{260E}\uFE0F CALL NOW: ' + (ad.phone || '555-0000');
+      panel.appendChild(hint);
+    } else {
+      const hint = document.createElement('div');
+      hint.style.cssText = 'color:#888;font-size:0.7rem;margin-bottom:10px;font-style:italic;';
+      hint.textContent = 'Buy a Phone at the GG Merch Store to order products!';
+      panel.appendChild(hint);
+    }
+  }
+
+  // Skip button
+  const skipBtn = document.createElement('button');
+  skipBtn.style.cssText = 'padding:6px 18px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#333;color:#aaa;';
+  skipBtn.textContent = 'Back to the news...';
+  skipBtn.onclick = onDone;
+  panel.appendChild(skipBtn);
+
+  overlay.appendChild(panel);
+}
+
 function startGGNews() {
   const overlay = document.getElementById('merch-overlay');
   overlay.style.display = 'flex';
@@ -3181,7 +3391,13 @@ function startGGNews() {
   overlay.innerHTML = '';
 
   const stories = [...GG_NEWS_STORIES].sort(() => Math.random() - 0.5).slice(0, 3);
+  // Always include the game ad as one of the two, plus one random product ad
+  const gameAd = GG_TV_ADS.find(a => a.isGame);
+  const productPool = GG_TV_ADS.filter(a => !a.isGame).sort(() => Math.random() - 0.5);
+  const ads = [productPool[0], gameAd].sort(() => Math.random() - 0.5);
+  window._lastSeenAds = ads;
   let sIdx = 0;
+  let showingAd = false;
 
   function renderStory() {
     overlay.innerHTML = '';
@@ -3195,14 +3411,12 @@ function startGGNews() {
     const topRow = document.createElement('div');
     topRow.style.cssText = 'display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;';
 
-    // Reporter character canvas
     const cvs = document.createElement('canvas');
     cvs.width = 140; cvs.height = 180;
     cvs.style.cssText = 'border-radius:8px;border:2px solid #c9a84c44;flex-shrink:0;width:120px;height:150px;';
     drawNewsReporter(cvs, story.reporter);
     topRow.appendChild(cvs);
 
-    // Headline + banner column
     const infoCol = document.createElement('div');
     infoCol.style.cssText = 'flex:1;min-width:0;';
 
@@ -3224,11 +3438,9 @@ function startGGNews() {
     topRow.appendChild(infoCol);
     panel.appendChild(topRow);
 
-    // Subtitle area — speech bubble style
     const bubbleWrap = document.createElement('div');
     bubbleWrap.style.cssText = 'position:relative;margin-bottom:14px;';
 
-    // Speech bubble triangle
     const tri = document.createElement('div');
     tri.style.cssText = 'width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1a1a3e;margin-left:40px;';
     bubbleWrap.appendChild(tri);
@@ -3242,7 +3454,6 @@ function startGGNews() {
     bubbleWrap.appendChild(bubble);
     panel.appendChild(bubbleWrap);
 
-    // Progress
     const prog = document.createElement('div');
     prog.style.cssText = 'color:#666;font-size:0.7rem;text-align:center;margin-bottom:10px;';
     prog.textContent = 'Story ' + (sIdx + 1) + ' of ' + stories.length;
@@ -3257,8 +3468,14 @@ function startGGNews() {
     nextBtn.onclick = () => {
       clearInterval(typeTimer);
       sIdx++;
-      if (sIdx < stories.length) renderStory();
-      else {
+      if (sIdx < stories.length) {
+        // Show ad between stories (after story 1 and story 2)
+        if (sIdx <= ads.length) {
+          renderTVAd(overlay, ads[sIdx - 1], () => renderStory());
+        } else {
+          renderStory();
+        }
+      } else {
         needs.fun = Math.min(100, needs.fun + 30);
         overlay.innerHTML = '';
         const endPanel = document.createElement('div');
@@ -3288,7 +3505,6 @@ function startGGNews() {
 
     overlay.appendChild(panel);
 
-    // Typewriter subtitle effect
     let charIdx = 0;
     const fullText = story.body;
     const typeTimer = setInterval(() => {
@@ -3299,6 +3515,207 @@ function startGGNews() {
   }
 
   renderStory();
+}
+
+function buildPhoneItem(itemId) {
+  const BY = -3.35;
+  const colors = { megaBlaster: 0xff6b35, turboSneakers: 0x00bcd4, glowLamp: 0xe040fb, chefApron: 0xff9800,
+    comfyPillow: 0x7e57c2, sparkleShampoo: 0x26c6da, jokeBook: 0x66bb6a, proteinBars: 0xef5350 };
+  const positions = { megaBlaster: [-4, BY+0.55, 3], turboSneakers: [-3, BY+0.35, 4], glowLamp: [-1, BY+0.55, 4],
+    chefApron: [1, BY+0.85, 4], comfyPillow: [2, BY+0.35, 4], sparkleShampoo: [4, BY+0.55, 4],
+    jokeBook: [-4, BY+0.55, 4], proteinBars: [0, BY+0.45, 4] };
+  const labels = { megaBlaster: 'Play with Blaster', turboSneakers: 'Try on Sneakers', glowLamp: 'Stare at Glow Lamp',
+    chefApron: 'Raid Snack Fridge', comfyPillow: 'Nap on Pillow', sparkleShampoo: 'Use Spa Kit',
+    jokeBook: 'Read Joke Book', proteinBars: 'Eat Protein Bar' };
+  const c = colors[itemId] || 0xcccccc;
+  const pos = positions[itemId] || [0, BY+0.5, 3];
+  const g = new THREE.Group();
+  // Small colored box on a shelf/floor — represents the delivered item
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.3), new THREE.MeshLambertMaterial({ color: c }));
+  box.position.set(0, 0.175, 0);
+  g.add(box);
+  // Label strip
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.08, 0.01), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  strip.position.set(0, 0.175, 0.155);
+  g.add(strip);
+  g.position.set(pos[0], pos[1], pos[2]);
+  scene.add(g);
+  // Register as interactable
+  const ad = GG_TV_ADS.find(a => a.itemId === itemId);
+  if (ad) {
+    actionConfig['phone_' + itemId] = { label: labels[itemId] || 'Using...', duration: 3, restore: ad.statVal, cost: 0 };
+    if (ad.bonus) actionConfig['phone_' + itemId].energyBonus = ad.bonus.val;
+    interactables.push({ mesh: box, group: g, type: 'phone_' + itemId, label: labels[itemId] || 'Use Item',
+      need: ad.statKey, usePos: new THREE.Vector3(pos[0], BY + 0.15, pos[2] - 1), floor: -1 });
+  }
+  rebuildInteractMeshes();
+  return g;
+}
+
+function openPhoneCatalog() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+  overlay.innerHTML = '';
+
+  const WRONG_NUMBER_MSGS = [
+    'Hello? ...No, this is a pizza place. You have the wrong number.',
+    'The number you have dialed does not exist. Please try again.',
+    "Hi, you've reached Old Pete. I don't know why you're calling me.",
+    '*loud static* ...Is this thing on? Who are you? WHAT YEAR IS IT?!',
+    "Goofball's Goofatorium! We're closed forever! Stop calling!",
+    "You've reached the GG News tip line. We don't want your tips. Goodbye.",
+    '*phone rings 47 times* ...Nobody home. Try again never.',
+    "Sir, this is a library. Please whisper your wrong number more quietly.",
+  ];
+
+  let dialedNumber = '';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:linear-gradient(135deg,#1a1a1a,#0d0d0d);border:2px solid #444;border-radius:16px;padding:24px;max-width:320px;text-align:center;font-family:Segoe UI,sans-serif;box-shadow:0 0 30px #00000088,inset 0 1px 0 #333;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#66bb6a;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = '\u{260E}\uFE0F GG Landline';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#888;font-size:0.7rem;margin-bottom:14px;';
+  sub.textContent = 'Dial a number from a TV ad to order!';
+  panel.appendChild(sub);
+
+  // LCD display
+  const lcd = document.createElement('div');
+  lcd.style.cssText = 'background:#0a1a0a;border:2px solid #333;border-radius:8px;padding:14px 12px;margin-bottom:16px;font-family:"Courier New",monospace;font-size:1.6rem;color:#33ff33;letter-spacing:3px;text-align:center;min-height:1.8em;text-shadow:0 0 8px #33ff3344;box-shadow:inset 0 2px 6px #00000088;';
+  lcd.textContent = '_';
+  panel.appendChild(lcd);
+
+  // Status message area
+  const statusMsg = document.createElement('div');
+  statusMsg.style.cssText = 'color:#aaa;font-size:0.8rem;margin-bottom:12px;min-height:2.4em;line-height:1.3;';
+  statusMsg.textContent = '';
+  panel.appendChild(statusMsg);
+
+  function updateLCD() {
+    if (dialedNumber.length === 0) {
+      lcd.textContent = '_';
+      lcd.style.color = '#33ff33';
+    } else {
+      // Format as XXX-XXXX with auto-dash
+      let display = dialedNumber;
+      if (dialedNumber.length > 3) {
+        display = dialedNumber.substring(0, 3) + '-' + dialedNumber.substring(3);
+      }
+      lcd.textContent = display;
+      lcd.style.color = '#33ff33';
+    }
+  }
+
+  function pressDigit(d) {
+    if (dialedNumber.length >= 7) return; // max 7 digits (XXX-XXXX)
+    dialedNumber += d;
+    statusMsg.textContent = '';
+    statusMsg.style.color = '#aaa';
+    updateLCD();
+  }
+
+  function clearNumber() {
+    dialedNumber = '';
+    statusMsg.textContent = '';
+    statusMsg.style.color = '#aaa';
+    updateLCD();
+  }
+
+  function dialNumber() {
+    if (dialedNumber.length === 0) {
+      statusMsg.style.color = '#ff8844';
+      statusMsg.textContent = 'Dial a number first!';
+      return;
+    }
+    // Format dialed number as XXX-XXXX for comparison
+    let formatted = dialedNumber;
+    if (dialedNumber.length > 3) {
+      formatted = dialedNumber.substring(0, 3) + '-' + dialedNumber.substring(3);
+    }
+    const match = GG_TV_ADS.find(a => !a.isGame && a.phone === formatted);
+    if (match) {
+      if (phoneOrders.includes(match.itemId)) {
+        statusMsg.style.color = '#ff8844';
+        statusMsg.textContent = 'You already have that!';
+        lcd.style.color = '#ff8844';
+      } else if (money < match.price) {
+        statusMsg.style.color = '#ef5350';
+        statusMsg.textContent = 'Not enough money for ' + match.name + '! ($' + match.price + ' needed)';
+        lcd.style.color = '#ef5350';
+      } else {
+        money -= match.price;
+        SFX.kaChing();
+        phoneOrders.push(match.itemId);
+        buildPhoneItem(match.itemId);
+        statusMsg.style.color = '#66bb6a';
+        statusMsg.textContent = match.icon + ' ' + match.name + ' ordered! Delivered to basement!';
+        lcd.style.color = '#66bb6a';
+        lcd.textContent = 'ORDER OK';
+      }
+    } else {
+      statusMsg.style.color = '#ff8844';
+      statusMsg.textContent = WRONG_NUMBER_MSGS[Math.floor(Math.random() * WRONG_NUMBER_MSGS.length)];
+      lcd.style.color = '#ff8844';
+    }
+  }
+
+  // Dial pad grid
+  const pad = document.createElement('div');
+  pad.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;';
+
+  const digits = ['1','2','3','4','5','6','7','8','9','*','0','#'];
+  digits.forEach(d => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:12px 0;border:1px solid #555;border-radius:8px;font-size:1.2rem;cursor:pointer;font-weight:bold;background:linear-gradient(180deg,#3a3a3a,#222);color:#ddd;transition:all 0.1s;box-shadow:0 2px 4px #00000044;';
+    btn.textContent = d;
+    btn.onmouseover = () => { btn.style.background = 'linear-gradient(180deg,#4a4a4a,#333)'; btn.style.color = '#fff'; };
+    btn.onmouseout = () => { btn.style.background = 'linear-gradient(180deg,#3a3a3a,#222)'; btn.style.color = '#ddd'; };
+    if (d === '*' || d === '#') {
+      btn.style.color = '#666';
+      btn.onclick = () => {}; // decorative
+    } else {
+      btn.onclick = () => pressDigit(d);
+    }
+    pad.appendChild(btn);
+  });
+  panel.appendChild(pad);
+
+  // Action buttons row
+  const actionRow = document.createElement('div');
+  actionRow.style.cssText = 'display:flex;gap:8px;margin-bottom:12px;';
+
+  const clearBtn = document.createElement('button');
+  clearBtn.style.cssText = 'flex:1;padding:10px;border:1px solid #555;border-radius:8px;font-size:0.85rem;cursor:pointer;font-weight:bold;background:linear-gradient(180deg,#4a3a2a,#2a1a0a);color:#ff8844;transition:all 0.1s;';
+  clearBtn.textContent = 'CLEAR';
+  clearBtn.onmouseover = () => { clearBtn.style.background = 'linear-gradient(180deg,#5a4a3a,#3a2a1a)'; };
+  clearBtn.onmouseout = () => { clearBtn.style.background = 'linear-gradient(180deg,#4a3a2a,#2a1a0a)'; };
+  clearBtn.onclick = clearNumber;
+  actionRow.appendChild(clearBtn);
+
+  const callBtn = document.createElement('button');
+  callBtn.style.cssText = 'flex:1;padding:10px;border:1px solid #33ff33;border-radius:8px;font-size:0.85rem;cursor:pointer;font-weight:bold;background:linear-gradient(180deg,#1a3a1a,#0a2a0a);color:#33ff33;transition:all 0.1s;letter-spacing:1px;';
+  callBtn.textContent = '\u{260E}\uFE0F CALL';
+  callBtn.onmouseover = () => { callBtn.style.background = 'linear-gradient(180deg,#2a4a2a,#1a3a1a)'; };
+  callBtn.onmouseout = () => { callBtn.style.background = 'linear-gradient(180deg,#1a3a1a,#0a2a0a)'; };
+  callBtn.onclick = dialNumber;
+  actionRow.appendChild(callBtn);
+
+  panel.appendChild(actionRow);
+
+  const close = document.createElement('button');
+  close.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  close.textContent = 'Hang Up';
+  close.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+  panel.appendChild(close);
+
+  overlay.appendChild(panel);
+  overlay.onclick = (e) => { if (e.target === overlay) { overlay.style.display = 'none'; overlay.innerHTML = ''; } };
 }
 
 function closeCourtOverlay() {
@@ -9239,6 +9656,10 @@ function startAction(obj) {
     openGGTVMenu();
     return;
   }
+  if (obj.type === 'ggPhone') {
+    openPhoneCatalog();
+    return;
+  }
 
   // Basketball Court — picker for play or cheer
   if (obj.type === 'basketballCourt') {
@@ -10602,6 +11023,50 @@ function openMerchStore() {
   }
   panel.appendChild(tvBtn);
 
+  // --- GG Phone ---
+  const divider4 = document.createElement('div');
+  divider4.style.cssText = 'border-top:1px solid #333;margin:16px 0;';
+  panel.appendChild(divider4);
+
+  const phoneIcon = document.createElement('div');
+  phoneIcon.style.cssText = 'font-size:2.5rem;margin-bottom:6px;';
+  phoneIcon.textContent = '\u{260E}\uFE0F';
+  panel.appendChild(phoneIcon);
+
+  const phoneDesc = document.createElement('div');
+  phoneDesc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:12px;line-height:1.4;';
+  phoneDesc.innerHTML = '<b style="color:#66bb6a">GG Landline</b> \u2014 Retro rotary phone for the basement!<br>Order products from TV ads and unlock new items!';
+  panel.appendChild(phoneDesc);
+
+  const phoneBtn = document.createElement('button');
+  phoneBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (hasPhone) {
+    phoneBtn.style.background = '#444';
+    phoneBtn.style.color = '#aaa';
+    phoneBtn.textContent = 'OWNED';
+  } else if (!basementLoaded) {
+    phoneBtn.style.background = '#444';
+    phoneBtn.style.color = '#aaa';
+    phoneBtn.textContent = '$100 \u2014 Requires basement';
+  } else if (money < 100) {
+    phoneBtn.style.background = '#444';
+    phoneBtn.style.color = '#aaa';
+    phoneBtn.textContent = '$100 \u2014 Not enough money';
+  } else {
+    phoneBtn.style.background = '#66bb6a';
+    phoneBtn.style.color = '#1a1a2e';
+    phoneBtn.textContent = 'BUY \u2014 $100';
+    phoneBtn.onclick = () => {
+      money -= 100;
+      hasPhone = true;
+      buildPhone();
+      SFX.kaChing();
+      closeMerchStore();
+      showTip('Landline installed in the basement! Order from TV ads!');
+    };
+  }
+  panel.appendChild(phoneBtn);
+
   const close = document.createElement('div');
   close.style.cssText = 'color:#888;font-size:0.75rem;margin-top:8px;cursor:pointer;';
   close.textContent = 'Click anywhere to close';
@@ -11320,6 +11785,26 @@ function restartGame() {
     ggTVGroup = null;
   }
   hasGGTV = false;
+  // Reset Phone
+  if (phoneGroup) {
+    scene.remove(phoneGroup);
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].type === 'ggPhone') interactables.splice(i, 1);
+    }
+    phoneGroup = null;
+  }
+  hasPhone = false;
+  // Clean up phone-ordered items
+  for (const itemId of phoneOrders) {
+    delete actionConfig['phone_' + itemId];
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].type === 'phone_' + itemId) {
+        if (interactables[i].group) scene.remove(interactables[i].group);
+        interactables.splice(i, 1);
+      }
+    }
+  }
+  phoneOrders = [];
   // Reset town/car state
   if (carGroup) { scene.remove(carGroup); carGroup = null; }
   if (townGroup) { scene.remove(townGroup); townGroup = null; }
@@ -11453,6 +11938,8 @@ function buildSaveData() {
     hasBeaverPet,
     hasGGPoster,
     hasGGTV,
+    hasPhone,
+    phoneOrders: [...phoneOrders],
   };
 }
 
@@ -11572,6 +12059,14 @@ function loadSlot(index) {
     if (save.hasGGTV) {
       hasGGTV = true;
       buildGGTV();
+    }
+  }
+  if (save.hasPhone) {
+    hasPhone = true;
+    buildPhone();
+    if (save.phoneOrders && save.phoneOrders.length) {
+      phoneOrders = [...save.phoneOrders];
+      phoneOrders.forEach(itemId => buildPhoneItem(itemId));
     }
   }
   currentFloor = save.currentFloor;

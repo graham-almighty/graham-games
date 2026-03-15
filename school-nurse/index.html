@@ -1,0 +1,1758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCHOOL NURSE SIMULATOR - Graham Games</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='22' text-anchor='middle' font-family='serif' font-weight='bold' font-size='16' fill='%23c9a84c'>GG</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a0f;
+    color: #ddd;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 20%, #0a1a2a22 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, #1a2a0a22 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* Exit Bar */
+  .exit-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 42px;
+    background: linear-gradient(180deg, #111118, #0a0a0f);
+    border-bottom: 1px solid #4caa6444;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    z-index: 100;
+  }
+  .exit-bar .gg-logo { width: 28px; height: 28px; margin-right: 10px; }
+  .exit-bar .gg-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    color: #888;
+    letter-spacing: 0.1em;
+    flex: 1;
+  }
+  .exit-bar .exit-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid #555;
+    color: #777;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+  }
+  .exit-bar .exit-btn:hover { color: #4caa64; border-color: #4caa64; }
+
+  /* Toast */
+  #gg-toast {
+    position: fixed;
+    top: 20px; right: 20px;
+    background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
+    border: 1px solid #c9a84c;
+    border-radius: 8px;
+    padding: 12px 18px;
+    z-index: 200;
+    opacity: 0;
+    transform: translateX(100px);
+    transition: all 0.4s;
+    box-shadow: 0 0 20px #c9a84c22;
+  }
+  #gg-toast.visible { opacity: 1; transform: translateX(0); }
+  .toast-header {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: #c9a84c;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .toast-name { font-size: 0.9rem; color: #fff; margin-bottom: 2px; }
+  .toast-reward { font-size: 0.75rem; color: #c9a84c; }
+
+  /* Screens */
+  .screen {
+    position: absolute;
+    top: 42px; left: 0; right: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1;
+    transition: opacity 0.3s;
+  }
+  .screen.hidden { opacity: 0; pointer-events: none; }
+
+  /* Title */
+  #title-screen h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.2rem;
+    font-weight: 900;
+    color: #4caa64;
+    text-shadow: 0 0 20px #4caa6444, 2px 2px 0 #001a0a;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+    text-align: center;
+  }
+  .title-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: #888;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .title-icon { font-size: 3.5rem; margin-bottom: 12px; }
+  .title-stats {
+    font-size: 0.8rem;
+    color: #666;
+    margin-bottom: 20px;
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  /* Buttons */
+  .btn {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    padding: 10px 40px;
+    background: linear-gradient(135deg, #4caa6433, #4caa6411);
+    border: 1px solid #4caa6488;
+    color: #4caa64;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    border-radius: 4px;
+    transition: all 0.2s;
+    margin: 4px;
+  }
+  .btn:hover { background: #4caa6444; color: #fff; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.secondary {
+    background: transparent;
+    border-color: #555;
+    color: #777;
+    font-size: 0.8rem;
+    padding: 6px 20px;
+  }
+  .btn.secondary:hover { border-color: #4caa64; color: #4caa64; }
+  .btn.danger {
+    background: linear-gradient(135deg, #aa4c4c33, #aa4c4c11);
+    border-color: #aa4c4c88;
+    color: #e07070;
+  }
+  .btn.danger:hover { background: #aa4c4c44; color: #fff; }
+  .btn.send-back {
+    background: linear-gradient(135deg, #aa8c4c33, #aa8c4c11);
+    border-color: #aa8c4c88;
+    color: #ddb060;
+    font-size: 0.9rem;
+    padding: 8px 20px;
+    margin-top: 8px;
+  }
+  .btn.send-back:hover { background: #aa8c4c44; color: #fff; }
+
+  /* HUD */
+  #hud {
+    position: absolute;
+    top: 42px; left: 0; right: 0;
+    height: 36px;
+    background: #00000088;
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 12px;
+    font-size: 0.8rem;
+    z-index: 10;
+    border-bottom: 1px solid #4caa6422;
+  }
+  #hud span { color: #aaa; }
+  #hud .hud-val { color: #4caa64; font-weight: bold; }
+  .rep-bar {
+    display: inline-block;
+    width: 80px;
+    height: 8px;
+    background: #333;
+    border-radius: 4px;
+    overflow: hidden;
+    vertical-align: middle;
+    margin-left: 4px;
+  }
+  .rep-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #aa4c4c, #aaaa4c, #4caa64);
+    transition: width 0.5s;
+    border-radius: 4px;
+  }
+
+  /* Game Layout */
+  #game-area {
+    position: absolute;
+    top: 78px; left: 0; right: 0; bottom: 0;
+    display: flex;
+    overflow: hidden;
+  }
+  #canvas-wrap {
+    flex: 0 0 420px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 12px;
+  }
+  #officeCanvas {
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #1a1a2e;
+  }
+  #ui-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* UI Cards */
+  .card {
+    background: #00000066;
+    backdrop-filter: blur(4px);
+    border: 1px solid #ffffff11;
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .card h3 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: #4caa64;
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .card h3.result-correct { color: #4caa64; }
+  .card h3.result-wrong { color: #e07070; }
+
+  .complaint-text {
+    font-style: italic;
+    color: #ccc;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    line-height: 1.4;
+  }
+  .patient-meta {
+    font-size: 0.75rem;
+    color: #888;
+  }
+
+  /* Exam Buttons */
+  .exam-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .exam-btn {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    background: #1a2a1a;
+    border: 1px solid #4caa6444;
+    color: #bbb;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .exam-btn:hover:not(:disabled) { background: #2a3a2a; color: #fff; border-color: #4caa6488; }
+  .exam-btn:disabled { opacity: 0.3; cursor: default; }
+  .exam-btn .exam-icon { margin-right: 4px; }
+  .exams-left { font-size: 0.7rem; color: #888; margin-bottom: 6px; }
+
+  /* Notes */
+  .note-entry {
+    font-size: 0.8rem;
+    color: #bbb;
+    padding: 4px 0;
+    border-bottom: 1px solid #ffffff08;
+    line-height: 1.4;
+  }
+  .note-entry .note-label {
+    color: #4caa64;
+    font-weight: bold;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .note-empty {
+    font-size: 0.75rem;
+    color: #555;
+    font-style: italic;
+  }
+
+  /* Treatment Grid */
+  .treat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .treat-btn {
+    font-family: 'Segoe UI', sans-serif;
+    font-size: 0.78rem;
+    padding: 8px 10px;
+    background: #1a1a2a;
+    border: 1px solid #4c6caa44;
+    color: #bbb;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .treat-btn:hover { background: #2a2a3a; color: #fff; border-color: #4c6caa88; }
+
+  /* Result */
+  .result-text {
+    font-size: 0.85rem;
+    color: #ccc;
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .result-score {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 6px;
+  }
+  .result-score.positive { color: #4caa64; }
+  .result-score.negative { color: #e07070; }
+  .result-rep { font-size: 0.8rem; color: #aaa; margin-bottom: 8px; }
+
+  /* Day screen */
+  .day-announce {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    color: #4caa64;
+    text-shadow: 0 0 20px #4caa6444;
+    margin-bottom: 8px;
+  }
+  .day-sub {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 20px;
+  }
+
+  /* Summary */
+  .summary-table {
+    width: 100%;
+    max-width: 340px;
+    font-size: 0.85rem;
+    margin-bottom: 16px;
+  }
+  .summary-table tr td {
+    padding: 4px 8px;
+    border-bottom: 1px solid #ffffff0a;
+  }
+  .summary-table tr td:last-child {
+    text-align: right;
+    color: #4caa64;
+    font-weight: bold;
+  }
+
+  /* Game over */
+  .game-over-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.2rem;
+    color: #e07070;
+    text-shadow: 0 0 20px #e0707044;
+    margin-bottom: 8px;
+  }
+  .game-over-sub {
+    font-size: 0.9rem;
+    color: #888;
+    margin-bottom: 16px;
+  }
+  .final-stats {
+    font-size: 0.85rem;
+    color: #aaa;
+    text-align: center;
+    line-height: 1.8;
+    margin-bottom: 20px;
+  }
+
+  /* Mobile */
+  @media (max-width: 700px) {
+    #title-screen h1 { font-size: 1.5rem; }
+    .title-icon { font-size: 2.5rem; }
+    #game-area { flex-direction: column; }
+    #canvas-wrap { flex: 0 0 auto; padding: 6px; }
+    #officeCanvas { width: 100%; height: auto; }
+    #ui-panel { padding: 8px 10px; overflow-y: auto; flex: 1; }
+    .exam-grid, .treat-grid { grid-template-columns: 1fr; }
+    #hud { font-size: 0.7rem; }
+    .day-announce { font-size: 1.5rem; }
+    .game-over-title { font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Exit Bar -->
+<div class="exit-bar">
+  <svg class="gg-logo" viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="s1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1a5c2a"/><stop offset="50%" stop-color="#3aaa5a"/><stop offset="100%" stop-color="#1a5c2a"/>
+      </linearGradient>
+    </defs>
+    <path d="M130,40 C120,25 90,15 65,20 C35,28 18,55 15,85 C12,115 18,150 35,175 C50,195 75,205 100,200 C115,196 125,185 128,170 L128,145 L95,145" fill="none" stroke="url(#s1)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M275,60 C268,42 245,30 220,32 C190,37 170,60 168,90 C165,120 172,158 190,182 C205,200 228,210 252,206 C268,202 278,190 280,176 L280,150 L248,150" fill="none" stroke="url(#s1)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="gg-title">SCHOOL NURSE SIMULATOR</span>
+  <button class="exit-btn" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+</div>
+
+<!-- Achievement Toast -->
+<div id="gg-toast">
+  <div class="toast-header">&#127942; ACHIEVEMENT UNLOCKED</div>
+  <div class="toast-name" id="gg-toast-name"></div>
+  <div class="toast-reward" id="gg-toast-reward"></div>
+</div>
+
+<!-- Title Screen -->
+<div id="title-screen" class="screen">
+  <div class="title-icon">&#129657;</div>
+  <h1>SCHOOL NURSE SIMULATOR</h1>
+  <div class="title-sub">Treat the sick. Bust the fakers.</div>
+  <div class="title-stats" id="title-stats"></div>
+  <button class="btn" onclick="startGame()">PLAY</button>
+  <button class="btn secondary" onclick="window.location.href='../index.html'" style="margin-top:8px">EXIT TO LAUNCHER</button>
+</div>
+
+<!-- Day Announce Screen -->
+<div id="day-screen" class="screen hidden">
+  <div class="day-announce" id="day-title">DAY 1</div>
+  <div class="day-sub" id="day-sub">3 patients on the way</div>
+  <button class="btn" onclick="beginDay()">START</button>
+</div>
+
+<!-- Game Screen -->
+<div id="game-screen" class="screen hidden">
+  <div id="hud">
+    <span>Day <span class="hud-val" id="hud-day">1</span></span>
+    <span>Score <span class="hud-val" id="hud-score">0</span></span>
+    <span>Rep <div class="rep-bar"><div class="rep-fill" id="hud-rep-fill"></div></div></span>
+    <span>Patient <span class="hud-val" id="hud-patient">1/3</span></span>
+  </div>
+  <div id="game-area">
+    <div id="canvas-wrap">
+      <canvas id="officeCanvas" width="400" height="320"></canvas>
+    </div>
+    <div id="ui-panel"></div>
+  </div>
+</div>
+
+<!-- Day Summary Screen -->
+<div id="summary-screen" class="screen hidden">
+  <div class="day-announce" id="summary-title">END OF DAY 1</div>
+  <div id="summary-body"></div>
+  <button class="btn" id="summary-btn" onclick="nextDay()">NEXT DAY</button>
+</div>
+
+<!-- Game Over Screen -->
+<div id="gameover-screen" class="screen hidden">
+  <div class="game-over-title">YOU'VE BEEN FIRED!</div>
+  <div class="game-over-sub">Your reputation hit rock bottom...</div>
+  <div class="final-stats" id="final-stats"></div>
+  <button class="btn" onclick="startGame()">TRY AGAIN</button>
+  <button class="btn secondary" onclick="showScreen('title-screen')" style="margin-top:8px">MENU</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// G BUX SYSTEM
+// ═══════════════════════════════════════════
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  showAchievementToast(name, reward);
+  return true;
+}
+
+let ggToastQueue = [], ggToastShowing = false;
+function showAchievementToast(name, reward) {
+  ggToastQueue.push({ name, reward });
+  if (!ggToastShowing) processToastQueue();
+}
+function processToastQueue() {
+  if (!ggToastQueue.length) { ggToastShowing = false; return; }
+  ggToastShowing = true;
+  const { name, reward } = ggToastQueue.shift();
+  document.getElementById('gg-toast-name').textContent = name;
+  document.getElementById('gg-toast-reward').textContent = '+' + reward + ' G Bux';
+  document.getElementById('gg-toast').classList.add('visible');
+  setTimeout(() => {
+    document.getElementById('gg-toast').classList.remove('visible');
+    setTimeout(processToastQueue, 400);
+  }, 3000);
+}
+
+// ═══════════════════════════════════════════
+// ACHIEVEMENTS
+// ═══════════════════════════════════════════
+const SN_ACH = {
+  sn_first_patient:  { name: 'First Patient',        reward: 10 },
+  sn_clean_sweep:    { name: 'Clean Sweep',           reward: 20 },
+  sn_faker_buster:   { name: 'Faker Buster',          reward: 25 },
+  sn_week_survivor:  { name: 'Week Survivor',         reward: 20 },
+  sn_perfect_week:   { name: 'Perfect Week',          reward: 50 },
+  sn_nurse_of_year:  { name: 'Nurse of the Year',     reward: 30 },
+  sn_allergy_alert:  { name: 'Allergy Alert',         reward: 15 },
+  sn_gut_feeling:    { name: 'Gut Feeling',            reward: 20 },
+  sn_veteran_nurse:  { name: 'Veteran Nurse',         reward: 25 },
+  sn_no_fakers:      { name: 'No Fakers Left Behind', reward: 35 },
+};
+
+function tryAch(id) {
+  const a = SN_ACH[id];
+  if (a) ggUnlockAchievement(id, a.name, a.reward);
+}
+
+// ═══════════════════════════════════════════
+// GAME DATA
+// ═══════════════════════════════════════════
+const NAMES_M = ['Tommy','Jake','Ethan','Noah','Liam','Marcus','Dylan','Ryan','Alex','Ben','Max','Kyle','Leo','Owen','Finn','Wyatt','Caleb','Miles','Henry','Jack'];
+const NAMES_F = ['Emma','Sophia','Olivia','Ava','Mia','Isabella','Lily','Chloe','Zoe','Hannah','Grace','Ella','Lucy','Nora','Ruby','Maya','Hazel','Aria','Luna','Sadie'];
+const GRADES = ['Kindergarten','1st Grade','2nd Grade','3rd Grade','4th Grade','5th Grade','6th Grade'];
+const SKIN_TONES = ['#FDEBD0','#F5CBA7','#E0AC69','#C68642','#8D5524','#5C3A1E'];
+const HAIR_COLORS = ['#1a1a1a','#3B2314','#D4A017','#C0392B','#8B4513','#E67E22'];
+const SHIRT_COLORS = ['#3498DB','#E74C3C','#2ECC71','#9B59B6','#F39C12','#1ABC9C','#E91E63','#FF5722'];
+const HAIR_STYLES = ['short','long','ponytail','buzz','curly'];
+
+const CONDITIONS = [
+  {
+    id: 'stomachAche', name: 'Stomach Ache',
+    realComplaints: [
+      "My stomach really hurts... I didn't eat breakfast because I felt so sick...",
+      "I feel like I'm going to throw up... it started last night...",
+      "My tummy hurts really bad... can I please lie down?"
+    ],
+    fakeComplaints: [
+      ["Owww, my stomach hurts SO much... is the math test still happening today?", "easy"],
+      ["My stomach is killing me... I think I need to go home and play vide\u2014 I mean, rest...", "easy"],
+      ["I have a terrible stomach ache... it started RIGHT when Mrs. Johnson said 'pop quiz'...", "medium"],
+      ["My stomach has been hurting since this morning... I really don't feel well... *fidgets*", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 100.2\u00b0F \u2014 Slightly elevated.", fake: "Temperature: 98.6\u00b0F \u2014 Perfectly normal." },
+      physical: { label: "Press on Stomach", real: "Patient winces and tenses up when you press gently. Stomach feels rigid.", fake: "No reaction when you press. Patient seems surprised you're actually checking." },
+      observe: { real: "Patient is quiet and pale. Keeps holding their stomach. Not interested in chatting.", fake: "Patient is chatty and alert. Good color in their face. Keeps glancing at the clock." },
+      questions: { real: "\"It started last night... I almost threw up this morning but my mom had already left for work...\"", fake: "\"It started right before science class... we have a big test today... I mean, it's been hurting ALL day!\"" }
+    },
+    correctTreatment: 'medicine', conditionEffect: 'pale'
+  },
+  {
+    id: 'headache', name: 'Headache',
+    realComplaints: [
+      "My head is pounding... can you turn the lights down?",
+      "I've had this headache since I woke up... it won't go away...",
+      "Everything is so loud and bright... my head really hurts..."
+    ],
+    fakeComplaints: [
+      ["I have a headache... *is texting on phone* ...a REALLY bad one...", "easy"],
+      ["My head hurts so much I can't do the reading assignment today...", "easy"],
+      ["I have the WORST headache... *was just yelling in the hallway* ...ow...", "medium"],
+      ["I've had this headache for a while now... it's making it hard to focus...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 99.8\u00b0F \u2014 Slightly warm.", fake: "Temperature: 98.6\u00b0F \u2014 Perfectly normal." },
+      physical: { label: "Check Light Sensitivity", real: "Patient squints and turns away when you shine the penlight. Clearly bothered.", fake: "Patient stares right at the light without flinching. No sensitivity at all." },
+      observe: { real: "Patient is quiet, eyes half-closed, resting head on hand. Avoiding the fluorescent lights.", fake: "Patient is energetic and talkative. Scrolling through phone with no trouble reading small text." },
+      questions: { real: "\"It started when I woke up... it's getting worse. I feel kind of dizzy too...\"", fake: "\"It started when... um... right before the test\u2014 I mean, a while ago I think?\"" }
+    },
+    correctTreatment: 'medicine', conditionEffect: 'headache'
+  },
+  {
+    id: 'scrapedKnee', name: 'Scraped Knee',
+    realComplaints: [
+      "I fell on the playground and my knee is bleeding...",
+      "I scraped my knee really bad at recess... it stings...",
+      "I tripped on the stairs and hurt my knee... there's blood..."
+    ],
+    fakeComplaints: [
+      ["I hurt my knee SO bad... *knee is perfectly clean* ...can I get a band-aid and skip PE?", "easy"],
+      ["I scraped my knee at recess! It hurts REALLY bad! *no visible mark whatsoever*", "easy"],
+      ["I fell and my knee hurts... *walks in without any limp at all* ...ow ow ow...", "medium"],
+      ["I scraped my knee earlier... it still really hurts even though it looks okay now...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 98.6\u00b0F \u2014 Normal (expected for a scrape).", fake: "Temperature: 98.6\u00b0F \u2014 Normal." },
+      physical: { label: "Examine the Knee", real: "Visible scrape with redness and minor bleeding. Skin is broken and raw.", fake: "Knee looks completely clean and uninjured. No redness, no scrape, no mark at all." },
+      observe: { real: "Patient is favoring that leg. Genuine grimace when the knee bends. A bit teary.", fake: "Patient walked in normally. Keeps forgetting which knee supposedly hurts." },
+      questions: { real: "\"I was running at recess and tripped on the edge of the blacktop...\"", fake: "\"I fell... somewhere... it was really bad! ...Can I go home early?\"" }
+    },
+    correctTreatment: 'bandage', conditionEffect: 'scrape'
+  },
+  {
+    id: 'twistedAnkle', name: 'Twisted Ankle',
+    realComplaints: [
+      "I twisted my ankle in gym class... it really hurts to walk...",
+      "I stepped wrong on the stairs and my ankle is swelling up...",
+      "My ankle hurts so bad... I heard it pop when I rolled it..."
+    ],
+    fakeComplaints: [
+      ["I twisted my ankle... *walked in without limping* ...it's SO bad...", "easy"],
+      ["My ankle hurts so much... *switches which foot they favor* ...wait, it's this one...", "easy"],
+      ["I hurt my ankle in PE... can I skip the mile run today? ...I mean, it really hurts...", "medium"],
+      ["I rolled my ankle at recess... it's been aching since then...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 98.6\u00b0F \u2014 Normal (expected for a sprain).", fake: "Temperature: 98.6\u00b0F \u2014 Normal." },
+      physical: { label: "Check the Ankle", real: "Ankle is visibly swollen and warm. Patient jerks away when you gently touch it.", fake: "No swelling, no tenderness. Ankle looks completely normal. Patient barely reacts to touch." },
+      observe: { real: "Patient limped in favoring the same foot the whole time. Winces when shifting weight.", fake: "Patient walked in normally, then started limping once in the office. Inconsistent about which ankle." },
+      questions: { real: "\"I was playing soccer and my foot got caught when I turned. I heard it pop.\"", fake: "\"I... twisted it... doing something at recess... I don't remember exactly what...\"" }
+    },
+    correctTreatment: 'icePack', conditionEffect: 'swollen'
+  },
+  {
+    id: 'fever', name: 'Fever',
+    realComplaints: [
+      "I feel really hot and tired... my whole body aches...",
+      "I'm freezing but I keep sweating... I don't feel good...",
+      "I think I have a fever... everything hurts and I'm so tired..."
+    ],
+    fakeComplaints: [
+      ["I feel REALLY hot... *was just pressing hands on the radiator* ...check my forehead!", "easy"],
+      ["I definitely have a fever... my mom said if I get a fever I go home! *big smile*", "easy"],
+      ["I feel so hot and sick... *was just doing jumping jacks in the bathroom* ...seriously!", "medium"],
+      ["I've been feeling warm all day and kind of achy... I think I might have a fever...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 101.3\u00b0F \u2014 Definitely a fever.", fake: "Temperature: 98.4\u00b0F \u2014 Perfectly normal.", fakeHard: "Temperature: 99.1\u00b0F \u2014 Very slightly warm, could be from activity." },
+      physical: { label: "Feel Forehead", real: "Forehead is hot and clammy. Patient's skin is flushed and damp.", fake: "Forehead is warm but dry. No clamminess. Skin color is normal." },
+      observe: { real: "Patient is flushed, glassy-eyed, and lethargic. Shivering despite warm room. Very low energy.", fake: "Patient has normal color, bright alert eyes, and plenty of energy. Not sweating at all." },
+      questions: { real: "\"I felt bad this morning but Mom had already left for work so I came to school...\"", fake: "\"It just started like 5 minutes ago... right when I remembered we have a presentation...\"" }
+    },
+    correctTreatment: 'rest', conditionEffect: 'flushed'
+  },
+  {
+    id: 'soreThroat', name: 'Sore Throat',
+    realComplaints: [
+      "My throat is really sore... it hurts to swallow...",
+      "I can barely talk... my throat is so raw...",
+      "I've been coughing and my throat is on fire..."
+    ],
+    fakeComplaints: [
+      ["My throat hurts... *cough cough* ...I can't do the oral presentation! HEY JAKE! ...I mean *whisper* ow...", "easy"],
+      ["I have a terrible sore throat... *swallows a whole granola bar* ...I can't swallow anything...", "easy"],
+      ["My throat really hurts today... I don't think I can read aloud in class...", "medium"],
+      ["I've been having throat pain since this morning... it's getting harder to talk...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 100.1\u00b0F \u2014 Slightly elevated.", fake: "Temperature: 98.6\u00b0F \u2014 Perfectly normal." },
+      physical: { label: "Look at Throat", real: "Throat is red and inflamed. Tonsils look swollen. Clearly irritated.", fake: "Throat looks perfectly normal. Pink and healthy. No inflammation at all." },
+      observe: { real: "Patient is speaking softly with a raspy voice. Winces every time they swallow.", fake: "Patient forgets to fake the raspy voice when excited. Was yelling to a friend in the hall a minute ago." },
+      questions: { real: "\"It started yesterday evening. Mom gave me tea and honey but it's worse today.\"", fake: "\"It hurts when I have to... read out loud... in class... *perfectly normal voice*\"" }
+    },
+    correctTreatment: 'lozenge', conditionEffect: 'soreThroat'
+  },
+  {
+    id: 'nausea', name: 'Nausea',
+    realComplaints: [
+      "I feel like I'm going to throw up...",
+      "My stomach is churning... I really don't feel well...",
+      "I feel so sick... I barely made it here without throwing up..."
+    ],
+    fakeComplaints: [
+      ["I'm SO nauseous... *ate 3 candy bars at lunch* ...I need to go home! Got any snacks?", "easy"],
+      ["I feel like I'm gonna throw up... can I go home and play\u2014 I mean rest?", "easy"],
+      ["I feel really nauseous right now... *has been perfectly fine all morning*", "medium"],
+      ["My stomach has been unsettled all day... I feel like I might throw up...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 100.4\u00b0F \u2014 Slightly elevated.", fake: "Temperature: 98.6\u00b0F \u2014 Perfectly normal." },
+      physical: { label: "Press on Stomach", real: "Stomach is tense and gurgling audibly. Patient gags slightly when you mention food.", fake: "Stomach feels normal. Patient doesn't flinch. Perks up when you mention food." },
+      observe: { real: "Patient is pale with a greenish tint. Sitting very still. Doesn't want to talk about food.", fake: "Patient has great color. Chatty and animated. Just asked if there are crackers in the cabinet." },
+      questions: { real: "\"I ate lunch and started feeling worse after... I think something was off...\"", fake: "\"I feel sick right before... um... what class do I have next again?\"" }
+    },
+    correctTreatment: 'rest', conditionEffect: 'nauseous'
+  },
+  {
+    id: 'allergicReaction', name: 'Allergic Reaction',
+    alwaysReal: true,
+    realComplaints: [
+      "My arm is getting really itchy and there are bumps everywhere...",
+      "I ate something and my lips feel funny and my skin is getting splotchy...",
+      "I got stung by something at recess and my hand is swelling up really bad..."
+    ],
+    fakeComplaints: [],
+    exams: {
+      temperature: { real: "Temperature: 99.5\u00b0F \u2014 Slightly elevated (immune response)." },
+      physical: { label: "Check Skin", real: "Visible red hives spreading on arms and neck. Slight swelling around lips/eyes." },
+      observe: { real: "Patient is anxious and uncomfortable. Scratching arms frequently. Some visible swelling." },
+      questions: { real: "\"I ate a cookie at lunch and forgot it had peanuts... I'm allergic to peanuts...\"" }
+    },
+    correctTreatment: 'allergyMed', conditionEffect: 'hives'
+  },
+  {
+    id: 'eyeIrritation', name: 'Eye Irritation',
+    realComplaints: [
+      "My eye is really red and won't stop watering...",
+      "Something got in my eye in art class and it burns...",
+      "My eyes are so itchy and they keep tearing up..."
+    ],
+    fakeComplaints: [
+      ["My eyes hurt... *has been rubbing them* ...I can't see the board, so I can't do classwork...", "easy"],
+      ["My eye is bothering me... *eyes look perfectly fine* ...I need to go home...", "easy"],
+      ["I can't see anything... *reads tiny text on phone perfectly* ...it's really blurry...", "medium"],
+      ["My eyes have been bothering me since art class... they feel irritated...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 98.6\u00b0F \u2014 Normal (expected for eye irritation).", fake: "Temperature: 98.6\u00b0F \u2014 Normal." },
+      physical: { label: "Examine Eyes", real: "Left eye is visibly red and watery. Looks like something may be irritating it. Minor debris visible.", fake: "Both eyes look perfectly clear and normal. No redness, no watering, no debris." },
+      observe: { real: "Patient keeps blinking and tearing up. Rubbing the eye involuntarily. Avoiding bright light.", fake: "Patient's eyes look totally fine. Read the eye chart on the wall without any trouble." },
+      questions: { real: "\"Sawdust or something blew in my eye during art class when we were sanding wood.\"", fake: "\"I just... can't see well today... for some reason... can I skip the reading quiz?\"" }
+    },
+    correctTreatment: 'eyeWash', conditionEffect: 'redEye'
+  },
+  {
+    id: 'cough', name: 'Bad Cough',
+    realComplaints: [
+      "I can't stop coughing... *genuine deep cough* ...my chest hurts...",
+      "I've been coughing all morning... *rattling cough* ...it won't stop...",
+      "*persistent coughing* ...sorry... I feel terrible... my throat and chest hurt..."
+    ],
+    fakeComplaints: [
+      ["*exaggerated theatrical cough* ...I'm SO sick... *stops coughing when distracted*", "easy"],
+      ["*fake cough* ...I can't do the fitness test today... *cough* ...I'm too sick...", "easy"],
+      ["*forced cough* ...this cough has been terrible... *talks perfectly normally between coughs*", "medium"],
+      ["I've had this cough on and off today... *occasional cough* ...it's really bothering me...", "hard"]
+    ],
+    exams: {
+      temperature: { real: "Temperature: 100.0\u00b0F \u2014 Slightly elevated.", fake: "Temperature: 98.6\u00b0F \u2014 Perfectly normal." },
+      physical: { label: "Listen to Breathing", real: "You can hear wheezing and congestion. Breathing sounds rattly and labored.", fake: "Breathing sounds completely clear. No wheezing, no congestion. Lungs sound healthy." },
+      observe: { real: "Patient coughs involuntarily and frequently. Looks tired and worn down. Cough sounds wet and deep.", fake: "Patient only coughs when you're looking at them. Stops when distracted. Cough sounds forced and dry." },
+      questions: { real: "\"It started a few days ago and keeps getting worse. My little sister was sick last week.\"", fake: "\"It started this morning right before the fitness test\u2014 I mean, it started last night!\"" }
+    },
+    correctTreatment: 'lozenge', conditionEffect: 'coughing'
+  }
+];
+
+const TREATMENTS = [
+  { id: 'bandage', name: 'Band-Aid & Clean', icon: '\ud83e\ude79', desc: 'For scrapes and cuts' },
+  { id: 'icePack', name: 'Ice Pack', icon: '\ud83e\uddca', desc: 'For swelling and sprains' },
+  { id: 'medicine', name: 'Pain Reliever', icon: '\ud83d\udc8a', desc: 'For headaches and pain' },
+  { id: 'rest', name: 'Rest + Call Parents', icon: '\ud83d\udecf\ufe0f', desc: 'For fever and serious illness' },
+  { id: 'lozenge', name: 'Warm Drink & Lozenge', icon: '\u2615', desc: 'For throat and cough' },
+  { id: 'allergyMed', name: 'Allergy Medicine', icon: '\ud83d\udc89', desc: 'For allergic reactions' },
+  { id: 'eyeWash', name: 'Eye Wash Station', icon: '\ud83d\udc41\ufe0f', desc: 'For eye irritation' },
+  { id: 'sendBack', name: 'Send Back to Class', icon: '\ud83c\udfeb', desc: "They're faking it!" },
+];
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+let state = {};
+
+function resetState() {
+  state = {
+    day: 1,
+    score: 0,
+    reputation: 60,
+    patientIndex: 0,
+    patients: [],
+    currentPatient: null,
+    examsUsed: 0,
+    maxExams: 3,
+    notes: [],
+    dayCorrect: 0,
+    dayTotal: 0,
+    dayFakersCaught: 0,
+    dayMistakes: 0,
+    weekCorrect: 0,
+    weekMistakes: 0,
+    totalPatients: 0,
+    totalCorrect: 0,
+    totalFakersCaught: 0,
+    phase: 'exam'
+  };
+}
+
+// ═══════════════════════════════════════════
+// SAVE / LOAD STATS
+// ═══════════════════════════════════════════
+const SAVE_KEY = 'school-nurse-save';
+function loadStats() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveStats() {
+  const s = loadStats();
+  s.highScore = Math.max(s.highScore || 0, state.score);
+  s.totalPatients = (s.totalPatients || 0) + state.dayTotal;
+  s.totalCorrect = (s.totalCorrect || 0) + state.dayCorrect;
+  s.totalFakersCaught = (s.totalFakersCaught || 0) + state.dayFakersCaught;
+  s.bestDay = Math.max(s.bestDay || 0, state.day);
+  localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+}
+function saveFinalStats() {
+  const s = loadStats();
+  s.highScore = Math.max(s.highScore || 0, state.score);
+  s.bestDay = Math.max(s.bestDay || 0, state.day);
+  s.gamesPlayed = (s.gamesPlayed || 0) + 1;
+  localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+}
+
+// ═══════════════════════════════════════════
+// PATIENT GENERATION
+// ═══════════════════════════════════════════
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generatePatient(isFaker, difficulty) {
+  const gender = Math.random() < 0.5 ? 'm' : 'f';
+  const name = gender === 'm' ? pick(NAMES_M) : pick(NAMES_F);
+  const grade = pick(GRADES);
+  const skinTone = pick(SKIN_TONES);
+  const hairColor = pick(HAIR_COLORS);
+  const hairStyle = pick(HAIR_STYLES);
+  const shirtColor = pick(SHIRT_COLORS);
+
+  // Pick condition - allergic reactions are always real
+  let condPool = isFaker ? CONDITIONS.filter(c => !c.alwaysReal) : CONDITIONS;
+  const condition = pick(condPool);
+
+  let complaint, examResults = {}, faking = isFaker && !condition.alwaysReal;
+
+  if (faking) {
+    // Pick a fake complaint appropriate to difficulty
+    const fakes = condition.fakeComplaints;
+    let pool;
+    if (difficulty === 'easy') {
+      pool = fakes.filter(f => f[1] === 'easy');
+    } else if (difficulty === 'medium') {
+      pool = fakes.filter(f => f[1] === 'easy' || f[1] === 'medium');
+    } else {
+      pool = fakes.filter(f => f[1] === 'medium' || f[1] === 'hard');
+    }
+    if (!pool.length) pool = fakes;
+    complaint = pick(pool)[0];
+
+    // Build exam results (fake versions)
+    for (const key of ['temperature','physical','observe','questions']) {
+      const ex = condition.exams[key];
+      if (difficulty === 'hard' && ex.fakeHard) {
+        examResults[key] = ex.fakeHard;
+      } else {
+        examResults[key] = ex.fake;
+      }
+    }
+  } else {
+    complaint = pick(condition.realComplaints);
+    for (const key of ['temperature','physical','observe','questions']) {
+      examResults[key] = condition.exams[key].real;
+    }
+  }
+
+  return {
+    name, gender, grade, skinTone, hairColor, hairStyle, shirtColor,
+    condition: condition,
+    complaint,
+    faking,
+    examResults,
+    physicalLabel: condition.exams.physical.label,
+    correctTreatment: condition.correctTreatment,
+    conditionEffect: faking ? null : condition.conditionEffect,
+    fakeReason: faking ? generateFakeReason() : null
+  };
+}
+
+function generateFakeReason() {
+  return pick([
+    "They admitted they wanted to skip a test.",
+    "They confessed they just wanted to go home early.",
+    "They were trying to get out of PE class.",
+    "They wanted to avoid an oral presentation.",
+    "They just didn't feel like going to class.",
+    "They wanted to play on their phone in the nurse's office.",
+    "They were trying to avoid a homework check."
+  ]);
+}
+
+function generateDayPatients(day) {
+  let total, fakers, difficulty;
+  if (day <= 2) { total = 3; fakers = 1; difficulty = 'easy'; }
+  else if (day <= 4) { total = 4; fakers = 2; difficulty = 'medium'; }
+  else if (day <= 6) { total = 5; fakers = 2; difficulty = 'medium'; }
+  else { total = 5; fakers = Math.random() < 0.5 ? 3 : 2; difficulty = 'hard'; }
+
+  const patients = [];
+  const fakerSlots = new Set();
+  while (fakerSlots.size < fakers) fakerSlots.add(Math.floor(Math.random() * total));
+
+  for (let i = 0; i < total; i++) {
+    patients.push(generatePatient(fakerSlots.has(i), difficulty));
+  }
+  return patients;
+}
+
+// ═══════════════════════════════════════════
+// CANVAS DRAWING
+// ═══════════════════════════════════════════
+let canvas, ctx;
+
+function drawOffice() {
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+
+  // Wall
+  ctx.fillStyle = '#C8E6C9';
+  ctx.fillRect(0, 0, w, h * 0.62);
+
+  // Wall trim
+  ctx.fillStyle = '#A5D6A7';
+  ctx.fillRect(0, h * 0.58, w, 12);
+
+  // Floor
+  ctx.fillStyle = '#D7CCC8';
+  ctx.fillRect(0, h * 0.62, w, h * 0.38);
+
+  // Floor tile lines
+  ctx.strokeStyle = '#BCAAA4';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < w; x += 50) {
+    ctx.beginPath();
+    ctx.moveTo(x, h * 0.62);
+    ctx.lineTo(x, h);
+    ctx.stroke();
+  }
+  for (let y = h * 0.62; y < h; y += 30) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(w, y);
+    ctx.stroke();
+  }
+
+  // Window
+  drawWindow(w * 0.72, h * 0.06, 80, 85);
+
+  // Cabinet
+  drawCabinet(15, h * 0.12, 70, 130);
+
+  // Medical cross poster
+  drawCrossPoster(w * 0.42, h * 0.04, 40, 35);
+
+  // Clock
+  drawClock(w * 0.58, h * 0.08, 16);
+
+  // Exam table
+  drawExamTable(w * 0.32, h * 0.55, 140, 40);
+
+  // Desk
+  drawDesk(w * 0.02, h * 0.55, 80, 40);
+
+  // Current patient
+  if (state.currentPatient) {
+    drawStudent(state.currentPatient, w * 0.32 + 45, h * 0.55 - 5);
+  }
+}
+
+function drawWindow(x, y, w, h) {
+  // Frame
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(x - 4, y - 4, w + 8, h + 8);
+  // Glass
+  ctx.fillStyle = '#81D4FA';
+  ctx.fillRect(x, y, w, h);
+  // Sky detail
+  ctx.fillStyle = '#B3E5FC';
+  ctx.fillRect(x, y, w, h * 0.4);
+  // Cross bars
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(x + w/2 - 2, y, 4, h);
+  ctx.fillRect(x, y + h/2 - 2, w, 4);
+  // Curtains
+  ctx.fillStyle = '#FFECB3';
+  ctx.beginPath();
+  ctx.moveTo(x - 4, y - 4);
+  ctx.lineTo(x + 14, y - 4);
+  ctx.lineTo(x - 4, y + h * 0.7);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x + w + 4, y - 4);
+  ctx.lineTo(x + w - 14, y - 4);
+  ctx.lineTo(x + w + 4, y + h * 0.7);
+  ctx.fill();
+}
+
+function drawCabinet(x, y, w, h) {
+  // Cabinet body
+  ctx.fillStyle = '#ECEFF1';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#B0BEC5';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // Shelves
+  for (let sy = 1; sy < 4; sy++) {
+    ctx.fillStyle = '#CFD8DC';
+    ctx.fillRect(x + 2, y + sy * (h/4), w - 4, 2);
+  }
+  // Bottles
+  const bottleColors = ['#E53935','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1'];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 3; col++) {
+      const bx = x + 8 + col * 22;
+      const by = y + 8 + row * (h/4);
+      const bc = bottleColors[(row * 3 + col) % bottleColors.length];
+      ctx.fillStyle = bc;
+      ctx.fillRect(bx, by + 6, 10, 16);
+      ctx.fillRect(bx + 3, by, 4, 8);
+    }
+  }
+  // Glass door effect
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(x + 2, y + 2, w/2 - 3, h - 4);
+}
+
+function drawCrossPoster(x, y, w, h) {
+  // Poster background
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#E53935';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, w, h);
+  // Red cross
+  ctx.fillStyle = '#E53935';
+  const cx = x + w/2, cy = y + h/2 - 3;
+  ctx.fillRect(cx - 3, cy - 8, 6, 16);
+  ctx.fillRect(cx - 8, cy - 3, 16, 6);
+  // Text
+  ctx.fillStyle = '#333';
+  ctx.font = 'bold 5px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('WASH YOUR', x + w/2, y + h - 7);
+  ctx.fillText('HANDS!', x + w/2, y + h - 2);
+  ctx.textAlign = 'left';
+}
+
+function drawClock(x, y, r) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  // Hour marks
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 - Math.PI/2;
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.arc(x + Math.cos(a) * (r - 3), y + Math.sin(a) * (r - 3), 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Hands
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + Math.cos(-Math.PI/3) * (r - 6), y + Math.sin(-Math.PI/3) * (r - 6));
+  ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + Math.cos(Math.PI/6) * (r - 4), y + Math.sin(Math.PI/6) * (r - 4));
+  ctx.stroke();
+}
+
+function drawExamTable(x, y, w, h) {
+  // Legs
+  ctx.fillStyle = '#795548';
+  ctx.fillRect(x + 5, y + h, 8, 50);
+  ctx.fillRect(x + w - 13, y + h, 8, 50);
+  // Table top
+  ctx.fillStyle = '#A1887F';
+  ctx.fillRect(x, y, w, h);
+  // Paper
+  ctx.fillStyle = '#FAFAFA';
+  ctx.fillRect(x + 5, y + 3, w - 10, h - 6);
+  // Paper crinkle lines
+  ctx.strokeStyle = '#E0E0E0';
+  ctx.lineWidth = 0.5;
+  for (let lx = x + 15; lx < x + w - 10; lx += 18) {
+    ctx.beginPath();
+    ctx.moveTo(lx, y + 4);
+    ctx.lineTo(lx + 5, y + h - 4);
+    ctx.stroke();
+  }
+}
+
+function drawDesk(x, y, w, h) {
+  // Desk body
+  ctx.fillStyle = '#8D6E63';
+  ctx.fillRect(x, y, w, h);
+  ctx.fillRect(x + 5, y + h, 6, 45);
+  ctx.fillRect(x + w - 11, y + h, 6, 45);
+  // Desk top
+  ctx.fillStyle = '#A1887F';
+  ctx.fillRect(x, y, w, 5);
+  // Papers
+  ctx.fillStyle = '#fff';
+  ctx.save();
+  ctx.translate(x + 20, y + 10);
+  ctx.rotate(-0.1);
+  ctx.fillRect(0, 0, 18, 22);
+  ctx.restore();
+  ctx.save();
+  ctx.translate(x + 35, y + 8);
+  ctx.rotate(0.08);
+  ctx.fillRect(0, 0, 18, 22);
+  ctx.restore();
+  // Pen
+  ctx.fillStyle = '#1565C0';
+  ctx.save();
+  ctx.translate(x + 55, y + 15);
+  ctx.rotate(0.3);
+  ctx.fillRect(0, 0, 3, 20);
+  ctx.restore();
+}
+
+function drawStudent(p, cx, tableY) {
+  const bodyY = tableY - 40;
+  const headY = bodyY - 25;
+
+  // Legs dangling
+  ctx.fillStyle = '#37474F';
+  ctx.fillRect(cx - 12, tableY, 9, 28);
+  ctx.fillRect(cx + 4, tableY, 9, 28);
+  // Shoes
+  ctx.fillStyle = '#263238';
+  ctx.fillRect(cx - 14, tableY + 28, 13, 6);
+  ctx.fillRect(cx + 2, tableY + 28, 13, 6);
+
+  // Body (shirt)
+  ctx.fillStyle = p.shirtColor;
+  roundRect(cx - 16, bodyY, 33, 40, 3);
+
+  // Arms
+  ctx.fillStyle = p.skinTone;
+  ctx.fillRect(cx - 22, bodyY + 4, 8, 24);
+  ctx.fillRect(cx + 15, bodyY + 4, 8, 24);
+  // Sleeves
+  ctx.fillStyle = p.shirtColor;
+  ctx.fillRect(cx - 22, bodyY + 2, 8, 8);
+  ctx.fillRect(cx + 15, bodyY + 2, 8, 8);
+
+  // Head
+  ctx.fillStyle = p.skinTone;
+  ctx.beginPath();
+  ctx.arc(cx, headY, 16, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Condition effects on face
+  if (p.conditionEffect === 'pale' || p.conditionEffect === 'nauseous') {
+    ctx.fillStyle = 'rgba(129, 199, 132, 0.3)';
+    ctx.beginPath();
+    ctx.arc(cx, headY, 16, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.conditionEffect === 'flushed') {
+    ctx.fillStyle = 'rgba(229, 57, 53, 0.25)';
+    ctx.beginPath();
+    ctx.arc(cx, headY, 16, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (p.conditionEffect === 'hives') {
+    ctx.fillStyle = '#E53935';
+    for (let i = 0; i < 8; i++) {
+      const hx = cx - 20 + Math.random() * 40;
+      const hy = bodyY + 5 + Math.random() * 30;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Cheek blush for flushed
+  if (p.conditionEffect === 'flushed') {
+    ctx.fillStyle = 'rgba(229, 115, 115, 0.5)';
+    ctx.beginPath(); ctx.arc(cx - 10, headY + 4, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 10, headY + 4, 4, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Red eye
+  if (p.conditionEffect === 'redEye') {
+    ctx.fillStyle = '#E53935';
+    ctx.beginPath(); ctx.arc(cx - 5, headY - 2, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx - 5, headY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+    // Normal eye
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx + 5, headY - 2, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx + 5, headY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+  } else {
+    // Normal eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(cx - 5, headY - 2, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 5, headY - 2, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(cx - 5, headY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 5, headY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Mouth expression
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  if (p.faking && !p.conditionEffect) {
+    // Slight smirk for fakers (but player shouldn't see state.faking directly - this is subtle)
+    ctx.arc(cx, headY + 7, 4, 0.1, Math.PI - 0.1);
+  } else if (p.conditionEffect === 'nauseous' || p.conditionEffect === 'pale') {
+    // Frown
+    ctx.arc(cx, headY + 10, 4, Math.PI + 0.3, -0.3);
+  } else {
+    // Neutral
+    ctx.moveTo(cx - 4, headY + 6);
+    ctx.lineTo(cx + 4, headY + 6);
+  }
+  ctx.stroke();
+
+  // Hair
+  drawHair(cx, headY, p.hairColor, p.hairStyle);
+
+  // Scrape on knee
+  if (p.conditionEffect === 'scrape') {
+    ctx.fillStyle = '#C62828';
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, tableY + 8, 5, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#E57373';
+    ctx.beginPath();
+    ctx.ellipse(cx - 7, tableY + 8, 3, 2, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Swollen ankle
+  if (p.conditionEffect === 'swollen') {
+    ctx.fillStyle = 'rgba(229, 115, 115, 0.5)';
+    ctx.beginPath();
+    ctx.ellipse(cx - 8, tableY + 30, 10, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawHair(cx, headY, color, style) {
+  ctx.fillStyle = color;
+  if (style === 'short') {
+    ctx.beginPath();
+    ctx.arc(cx, headY - 4, 16, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(cx - 16, headY - 8, 32, 8);
+  } else if (style === 'long') {
+    ctx.beginPath();
+    ctx.arc(cx, headY - 2, 18, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(cx - 17, headY, 6, 28);
+    ctx.fillRect(cx + 11, headY, 6, 28);
+  } else if (style === 'ponytail') {
+    ctx.beginPath();
+    ctx.arc(cx, headY - 4, 16, Math.PI, 0);
+    ctx.fill();
+    ctx.fillRect(cx - 16, headY - 8, 32, 8);
+    // Ponytail
+    ctx.beginPath();
+    ctx.moveTo(cx + 2, headY - 14);
+    ctx.quadraticCurveTo(cx + 22, headY - 10, cx + 18, headY + 12);
+    ctx.quadraticCurveTo(cx + 14, headY + 18, cx + 4, headY + 8);
+    ctx.fill();
+    // Hair tie
+    ctx.fillStyle = '#E53935';
+    ctx.beginPath();
+    ctx.arc(cx + 6, headY - 8, 3, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (style === 'buzz') {
+    ctx.beginPath();
+    ctx.arc(cx, headY - 2, 17, Math.PI + 0.3, -0.3);
+    ctx.fill();
+  } else if (style === 'curly') {
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI + (i / 9) * Math.PI;
+      const r = 17 + Math.sin(i * 1.5) * 3;
+      ctx.beginPath();
+      ctx.arc(cx + Math.cos(a) * r * 0.85, headY - 4 + Math.sin(a) * r * 0.85, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // Top curls
+    for (let i = 0; i < 5; i++) {
+      ctx.beginPath();
+      ctx.arc(cx - 10 + i * 5, headY - 18, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.fill();
+}
+
+function drawSpeechBubble(text) {
+  const w = canvas.width, h = canvas.height;
+  const bx = w * 0.52, by = h * 0.08;
+  const bw = w * 0.44, bh = 55;
+
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.moveTo(bx + 6, by);
+  ctx.lineTo(bx + bw - 6, by);
+  ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 6);
+  ctx.lineTo(bx + bw, by + bh - 6);
+  ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 6, by + bh);
+  ctx.lineTo(bx + 20, by + bh);
+  ctx.lineTo(bx + 10, by + bh + 12);
+  ctx.lineTo(bx + 14, by + bh);
+  ctx.lineTo(bx + 6, by + bh);
+  ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 6);
+  ctx.lineTo(bx, by + 6);
+  ctx.quadraticCurveTo(bx, by, bx + 6, by);
+  ctx.fill();
+
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Text wrapping
+  ctx.fillStyle = '#333';
+  ctx.font = '10px "Segoe UI", sans-serif';
+  ctx.textAlign = 'left';
+  const words = text.split(' ');
+  let line = '', ly = by + 14, maxW = bw - 16;
+  for (const word of words) {
+    const test = line + word + ' ';
+    if (ctx.measureText(test).width > maxW && line) {
+      ctx.fillText(line.trim(), bx + 8, ly);
+      line = word + ' ';
+      ly += 13;
+    } else {
+      line = test;
+    }
+  }
+  if (line.trim()) ctx.fillText(line.trim(), bx + 8, ly);
+  ctx.textAlign = 'left';
+}
+
+// ═══════════════════════════════════════════
+// UI RENDERING
+// ═══════════════════════════════════════════
+const uiPanel = () => document.getElementById('ui-panel');
+
+function updateHUD() {
+  document.getElementById('hud-day').textContent = state.day;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-rep-fill').style.width = state.reputation + '%';
+  const total = state.patients.length;
+  document.getElementById('hud-patient').textContent = (state.patientIndex + 1) + '/' + total;
+}
+
+function renderPatientUI() {
+  const p = state.currentPatient;
+  const panel = uiPanel();
+  state.phase = 'exam';
+  state.examsUsed = 0;
+  state.notes = [];
+
+  let html = '';
+
+  // Patient info card
+  html += '<div class="card" id="patient-card">';
+  html += '<h3>Patient</h3>';
+  html += '<div style="font-size:1rem;font-weight:bold;color:#fff;margin-bottom:4px">' + p.name + '</div>';
+  html += '<div class="patient-meta">' + p.grade + ' &bull; Complaint: ' + p.condition.name + '</div>';
+  html += '<div class="complaint-text" style="margin-top:8px">"' + p.complaint + '"</div>';
+  html += '</div>';
+
+  // Exam card
+  html += '<div class="card" id="exam-card">';
+  html += '<h3>Examinations</h3>';
+  html += '<div class="exams-left" id="exams-left">3 exams remaining</div>';
+  html += '<div class="exam-grid">';
+  html += '<button class="exam-btn" onclick="doExam(\'temperature\')" id="exam-temperature"><span class="exam-icon">\ud83c\udf21\ufe0f</span> Take Temperature</button>';
+  html += '<button class="exam-btn" onclick="doExam(\'physical\')" id="exam-physical"><span class="exam-icon">\ud83e\ude7a</span> ' + p.physicalLabel + '</button>';
+  html += '<button class="exam-btn" onclick="doExam(\'observe\')" id="exam-observe"><span class="exam-icon">\ud83d\udc41\ufe0f</span> Observe Behavior</button>';
+  html += '<button class="exam-btn" onclick="doExam(\'questions\')" id="exam-questions"><span class="exam-icon">\ud83d\udcac</span> Ask Questions</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // Notes card
+  html += '<div class="card" id="notes-card">';
+  html += '<h3>Nurse\'s Notes</h3>';
+  html += '<div id="notes-list"><div class="note-empty">No observations yet. Examine the patient!</div></div>';
+  html += '</div>';
+
+  // Treatment button
+  html += '<button class="btn" onclick="showTreatmentUI()" style="width:100%">CHOOSE TREATMENT</button>';
+
+  panel.innerHTML = html;
+}
+
+function doExam(type) {
+  if (state.examsUsed >= state.maxExams) return;
+  if (document.getElementById('exam-' + type).disabled) return;
+
+  state.examsUsed++;
+  const result = state.currentPatient.examResults[type];
+
+  // Disable this exam button
+  document.getElementById('exam-' + type).disabled = true;
+
+  // Add to notes
+  const labels = { temperature: 'Temperature', physical: state.currentPatient.physicalLabel, observe: 'Behavior', questions: 'Questions' };
+  state.notes.push({ label: labels[type], text: result });
+
+  // Update notes display
+  const notesList = document.getElementById('notes-list');
+  let html = '';
+  for (const note of state.notes) {
+    html += '<div class="note-entry"><span class="note-label">' + note.label + ':</span> ' + note.text + '</div>';
+  }
+  notesList.innerHTML = html;
+
+  // Update exams remaining
+  const remaining = state.maxExams - state.examsUsed;
+  document.getElementById('exams-left').textContent = remaining + ' exam' + (remaining !== 1 ? 's' : '') + ' remaining';
+
+  // Disable all if no more exams
+  if (remaining <= 0) {
+    document.querySelectorAll('.exam-btn').forEach(b => b.disabled = true);
+  }
+
+  // Redraw canvas
+  drawOffice();
+  drawSpeechBubble(state.currentPatient.complaint);
+}
+
+function showTreatmentUI() {
+  state.phase = 'treat';
+  const panel = uiPanel();
+
+  let html = '';
+
+  // Keep patient info visible
+  const p = state.currentPatient;
+  html += '<div class="card">';
+  html += '<h3>Patient</h3>';
+  html += '<div style="font-size:1rem;font-weight:bold;color:#fff;margin-bottom:4px">' + p.name + '</div>';
+  html += '<div class="patient-meta">' + p.grade + ' &bull; ' + p.condition.name + '</div>';
+  html += '</div>';
+
+  // Notes (carried over)
+  if (state.notes.length) {
+    html += '<div class="card">';
+    html += '<h3>Your Notes</h3>';
+    for (const note of state.notes) {
+      html += '<div class="note-entry"><span class="note-label">' + note.label + ':</span> ' + note.text + '</div>';
+    }
+    html += '</div>';
+  }
+
+  // Treatment options
+  html += '<div class="card">';
+  html += '<h3>Choose Treatment</h3>';
+  html += '<div class="treat-grid">';
+  for (const t of TREATMENTS) {
+    if (t.id === 'sendBack') continue;
+    html += '<button class="treat-btn" onclick="applyTreatment(\'' + t.id + '\')">' + t.icon + ' ' + t.name + '<div style="font-size:0.65rem;color:#888;margin-top:2px">' + t.desc + '</div></button>';
+  }
+  html += '</div>';
+  html += '<button class="btn send-back" onclick="applyTreatment(\'sendBack\')" style="width:100%">\ud83c\udfeb Send Back to Class \u2014 "They\'re faking it!"</button>';
+  html += '</div>';
+
+  // Back button
+  html += '<button class="btn secondary" onclick="renderPatientUI()" style="width:100%">BACK TO EXAMS</button>';
+
+  panel.innerHTML = html;
+}
+
+function applyTreatment(treatmentId) {
+  const p = state.currentPatient;
+  let correct = false;
+  let scoreChange = 0;
+  let repChange = 0;
+  let resultTitle = '';
+  let resultText = '';
+  let resultClass = '';
+
+  if (treatmentId === 'sendBack') {
+    // Player thinks they're faking
+    if (p.faking) {
+      // Correct! Caught a faker
+      correct = true;
+      scoreChange = 150;
+      repChange = 15;
+      resultTitle = 'FAKER BUSTED!';
+      resultText = p.name + ' was indeed faking! ' + p.fakeReason;
+      resultClass = 'positive';
+      state.dayFakersCaught++;
+      state.totalFakersCaught++;
+    } else {
+      // Wrong! Sent a real sick kid back
+      scoreChange = -100;
+      repChange = -20;
+      resultTitle = 'WRONG CALL!';
+      resultText = p.name + ' was really sick with ' + p.condition.name.toLowerCase() + '! They needed ' + getTreatmentName(p.correctTreatment) + '.';
+      if (p.condition.id === 'allergicReaction') {
+        repChange = -30;
+        resultText += ' This was an allergic reaction \u2014 a serious mistake!';
+      }
+      resultClass = 'negative';
+      state.dayMistakes++;
+    }
+  } else {
+    // Player is treating
+    if (p.faking) {
+      // Treated a faker (wasted resources)
+      scoreChange = -50;
+      repChange = -10;
+      resultTitle = 'WASTED TREATMENT!';
+      resultText = p.name + ' was faking! ' + p.fakeReason + ' You wasted supplies on them.';
+      resultClass = 'negative';
+      state.dayMistakes++;
+    } else if (treatmentId === p.correctTreatment) {
+      // Correct treatment!
+      correct = true;
+      scoreChange = 100;
+      repChange = 10;
+      resultTitle = 'CORRECT TREATMENT!';
+      resultText = p.name + ' had ' + p.condition.name.toLowerCase() + ' and ' + getTreatmentName(treatmentId) + ' was exactly right!';
+      resultClass = 'positive';
+    } else {
+      // Wrong treatment for real condition
+      scoreChange = -25;
+      repChange = -5;
+      resultTitle = 'WRONG TREATMENT';
+      resultText = p.name + ' really had ' + p.condition.name.toLowerCase() + ' but needed ' + getTreatmentName(p.correctTreatment) + ', not ' + getTreatmentName(treatmentId) + '.';
+      if (p.condition.id === 'allergicReaction' && treatmentId !== 'allergyMed') {
+        repChange = -25;
+        resultText += ' Allergic reactions need allergy medicine \u2014 this was dangerous!';
+      }
+      resultClass = 'negative';
+      state.dayMistakes++;
+    }
+  }
+
+  if (correct) state.dayCorrect++;
+  state.dayTotal++;
+  state.totalPatients++;
+  state.score = Math.max(0, state.score + scoreChange);
+  state.reputation = Math.max(0, Math.min(100, state.reputation + repChange));
+
+  // Check achievements
+  if (state.totalPatients === 1) tryAch('sn_first_patient');
+  if (correct && treatmentId === 'sendBack' && state.examsUsed === 0) tryAch('sn_gut_feeling');
+  if (correct && p.condition.id === 'allergicReaction') tryAch('sn_allergy_alert');
+  if (state.reputation >= 100) tryAch('sn_nurse_of_year');
+  const stats = loadStats();
+  if ((stats.totalFakersCaught || 0) + state.dayFakersCaught >= 10) tryAch('sn_faker_buster');
+  if ((stats.totalFakersCaught || 0) + state.dayFakersCaught >= 25) tryAch('sn_no_fakers');
+  if ((stats.totalPatients || 0) + state.dayTotal >= 50) tryAch('sn_veteran_nurse');
+
+  // Render result
+  showResultUI(resultTitle, resultText, scoreChange, repChange, resultClass);
+  updateHUD();
+}
+
+function getTreatmentName(id) {
+  const t = TREATMENTS.find(t => t.id === id);
+  return t ? t.name : id;
+}
+
+function showResultUI(title, text, scoreChange, repChange, cls) {
+  const panel = uiPanel();
+  let html = '';
+
+  html += '<div class="card">';
+  html += '<h3 class="result-' + (cls === 'positive' ? 'correct' : 'wrong') + '">' + title + '</h3>';
+  html += '<div class="result-text">' + text + '</div>';
+
+  const sign = scoreChange >= 0 ? '+' : '';
+  html += '<div class="result-score ' + cls + '">' + sign + scoreChange + ' points</div>';
+  const repSign = repChange >= 0 ? '+' : '';
+  html += '<div class="result-rep">Reputation ' + repSign + repChange + '%</div>';
+  html += '</div>';
+
+  // Next button
+  if (state.patientIndex < state.patients.length - 1) {
+    html += '<button class="btn" onclick="nextPatient()" style="width:100%">NEXT PATIENT \u2192</button>';
+  } else {
+    html += '<button class="btn" onclick="endDay()" style="width:100%">END OF DAY \u2192</button>';
+  }
+
+  panel.innerHTML = html;
+  state.phase = 'result';
+
+  // Check reputation
+  if (state.reputation <= 0) {
+    setTimeout(gameOver, 500);
+  }
+}
+
+// ═══════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function startGame() {
+  resetState();
+  showDayScreen();
+}
+
+function showDayScreen() {
+  state.patients = generateDayPatients(state.day);
+  state.patientIndex = 0;
+  state.dayCorrect = 0;
+  state.dayTotal = 0;
+  state.dayFakersCaught = 0;
+  state.dayMistakes = 0;
+
+  document.getElementById('day-title').textContent = 'DAY ' + state.day;
+  const n = state.patients.length;
+  document.getElementById('day-sub').textContent = n + ' patient' + (n !== 1 ? 's' : '') + ' on the way';
+  showScreen('day-screen');
+}
+
+function beginDay() {
+  showScreen('game-screen');
+  showPatient();
+}
+
+function showPatient() {
+  state.currentPatient = state.patients[state.patientIndex];
+  updateHUD();
+  renderPatientUI();
+  drawOffice();
+  drawSpeechBubble(state.currentPatient.complaint);
+}
+
+function nextPatient() {
+  state.patientIndex++;
+  showPatient();
+}
+
+function endDay() {
+  saveStats();
+
+  // Check clean sweep achievement (all correct in a day)
+  if (state.dayMistakes === 0 && state.dayTotal > 0) tryAch('sn_clean_sweep');
+
+  // Check week achievements
+  state.weekCorrect += state.dayCorrect;
+  state.weekMistakes += state.dayMistakes;
+  if (state.day % 5 === 0) {
+    tryAch('sn_week_survivor');
+    if (state.weekMistakes === 0) tryAch('sn_perfect_week');
+    state.weekCorrect = 0;
+    state.weekMistakes = 0;
+  }
+
+  // Show summary
+  document.getElementById('summary-title').textContent = 'END OF DAY ' + state.day;
+  const fakers = state.patients.filter(p => p.faking).length;
+
+  let html = '<table class="summary-table">';
+  html += '<tr><td>Patients Seen</td><td>' + state.dayTotal + '</td></tr>';
+  html += '<tr><td>Correct Diagnoses</td><td>' + state.dayCorrect + '/' + state.dayTotal + '</td></tr>';
+  html += '<tr><td>Fakers Caught</td><td>' + state.dayFakersCaught + '/' + fakers + '</td></tr>';
+  html += '<tr><td>Mistakes</td><td style="color:' + (state.dayMistakes > 0 ? '#e07070' : '#4caa64') + '">' + state.dayMistakes + '</td></tr>';
+  html += '<tr><td>Total Score</td><td>' + state.score + '</td></tr>';
+  html += '<tr><td>Reputation</td><td>' + state.reputation + '%</td></tr>';
+  html += '</table>';
+
+  if (state.dayMistakes === 0) {
+    html += '<div style="color:#4caa64;font-size:0.9rem;margin-bottom:8px">Perfect day! No mistakes!</div>';
+  }
+
+  document.getElementById('summary-body').innerHTML = html;
+  showScreen('summary-screen');
+}
+
+function nextDay() {
+  if (state.reputation <= 0) {
+    gameOver();
+    return;
+  }
+  state.day++;
+  showDayScreen();
+}
+
+function gameOver() {
+  saveFinalStats();
+  const stats = loadStats();
+
+  let html = '';
+  html += 'Days Survived: <strong>' + state.day + '</strong><br>';
+  html += 'Final Score: <strong>' + state.score + '</strong><br>';
+  html += 'High Score: <strong>' + (stats.highScore || 0) + '</strong><br>';
+  html += 'Patients Treated: <strong>' + state.totalPatients + '</strong><br>';
+  html += 'Fakers Caught: <strong>' + state.totalFakersCaught + '</strong>';
+
+  document.getElementById('final-stats').innerHTML = html;
+  showScreen('gameover-screen');
+}
+
+function updateTitleStats() {
+  const s = loadStats();
+  const el = document.getElementById('title-stats');
+  if (!s.gamesPlayed && !s.totalPatients) {
+    el.innerHTML = 'Welcome, Nurse!<br>Treat the sick. Catch the fakers.';
+    return;
+  }
+  el.innerHTML = 'High Score: ' + (s.highScore || 0) +
+    ' &bull; Best Day: ' + (s.bestDay || 0) +
+    '<br>Patients Treated: ' + (s.totalPatients || 0) +
+    ' &bull; Fakers Caught: ' + (s.totalFakersCaught || 0);
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+function init() {
+  canvas = document.getElementById('officeCanvas');
+  ctx = canvas.getContext('2d');
+  updateTitleStats();
+  showScreen('title-screen');
+}
+
+window.onload = init;
+</script>
+</body>
+</html>

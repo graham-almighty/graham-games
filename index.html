@@ -586,6 +586,23 @@
     border-radius: 8px;
   }
 
+  /* SCHOOL NURSE card */
+  .game-card.school-nurse {
+    border-left-color: #4caa64;
+  }
+  .game-card.school-nurse:hover {
+    border-color: #4caa64;
+    box-shadow: 0 0 30px #4caa6415, -5px 0 20px #4caa6410;
+  }
+  .game-card.school-nurse::before {
+    background: linear-gradient(90deg, #4caa6408 0%, transparent 50%);
+  }
+  .game-card.school-nurse .game-icon {
+    background: linear-gradient(135deg, #0a1a0e, #0a2a12);
+    border: 1px solid #4caa6444;
+    border-radius: 8px;
+  }
+
   .game-card.goofball-land {
     border-left-color: #ffcc00;
   }
@@ -666,6 +683,62 @@
     text-transform: uppercase;
   }
   .school-badge.visible { display: block; }
+
+  /* New game drop banner */
+  .drop-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 20px;
+    margin-bottom: 18px;
+    background: linear-gradient(90deg, #4caa6422, #4caa6444, #4caa6422);
+    border: 1px solid #4caa6466;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    animation: dropPulse 2s ease-in-out infinite;
+  }
+  .drop-banner:hover {
+    background: linear-gradient(90deg, #4caa6433, #4caa6466, #4caa6433);
+    border-color: #4caa64;
+    box-shadow: 0 0 20px #4caa6433;
+  }
+  .drop-sparkle {
+    font-size: 0.9rem;
+    animation: dropSpin 3s linear infinite;
+  }
+  .drop-text {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #4caa64;
+    letter-spacing: 0.1em;
+  }
+  .drop-tag {
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    font-weight: bold;
+    color: #1a1a2e;
+    background: #4caa64;
+    padding: 2px 8px;
+    border-radius: 10px;
+    letter-spacing: 0.08em;
+  }
+  .drop-text2 {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: #aaa;
+    letter-spacing: 0.08em;
+  }
+  @keyframes dropPulse {
+    0%, 100% { box-shadow: 0 0 0px transparent; }
+    50% { box-shadow: 0 0 12px #4caa6422; }
+  }
+  @keyframes dropSpin {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+  }
 
   .game-card.school-blocked {
     opacity: 0.3;
@@ -1139,6 +1212,15 @@ for (let i = 0; i < 30; i++) {
     <button class="nav-btn" onclick="openNews()">&#128240; NEWS</button>
   </div>
 
+  <!-- New Game Banner -->
+  <div class="drop-banner" onclick="document.querySelector('.game-card.school-nurse').scrollIntoView({behavior:'smooth'})">
+    <span class="drop-sparkle">&#10024;</span>
+    <span class="drop-text">SCHOOL NURSE SIMULATOR</span>
+    <span class="drop-tag">NEW!</span>
+    <span class="drop-text2">drops now!</span>
+    <span class="drop-sparkle">&#10024;</span>
+  </div>
+
   <div class="game-list">
     <!-- HURGVIBBIT -->
     <a href="hurgvibbit/index.html" class="game-card hurgvibbit" data-preview="previews/hurgvibbit.mp4">
@@ -1476,6 +1558,29 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- SCHOOL NURSE SIMULATOR -->
+    <a href="school-nurse/index.html" class="game-card school-nurse">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1a0e" stroke="#4caa64" stroke-width="2"/>
+          <!-- red cross -->
+          <rect x="21" y="12" width="8" height="20" rx="1" fill="#e05050" opacity="0.7"/>
+          <rect x="15" y="18" width="20" height="8" rx="1" fill="#e05050" opacity="0.7"/>
+          <!-- thermometer -->
+          <rect x="34" y="28" width="3" height="12" rx="1.5" fill="#4caa64" opacity="0.8"/>
+          <circle cx="35.5" cy="38" r="2.5" fill="#e05050" opacity="0.6"/>
+          <!-- clipboard -->
+          <rect x="10" y="30" width="12" height="14" rx="1" fill="none" stroke="#4caa64" stroke-width="1" opacity="0.5"/>
+          <rect x="13" y="28" width="6" height="3" rx="1" fill="#4caa64" opacity="0.5"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">SCHOOL NURSE</div>
+        <div class="game-desc">Treat the sick, bust the fakers</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
     <!-- GOOFBALL LAND (hidden while in development) -->
 
   </div>
@@ -1709,6 +1814,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'dtd_high_score',    name: 'Master of Disaster',    desc: 'Total score 400+ across all rounds',  reward: 40 },
     { id: 'dtd_speed_dresser', name: 'Speed Dresser',         desc: 'Dress in under 15 seconds',           reward: 25 },
   ]},
+  { group: 'SCHOOL NURSE', items: [
+    { id: 'sn_first_patient',  name: 'First Patient',        desc: 'Treat your first patient',              reward: 10 },
+    { id: 'sn_clean_sweep',    name: 'Clean Sweep',           desc: 'No mistakes in a full day',             reward: 20 },
+    { id: 'sn_faker_buster',   name: 'Faker Buster',          desc: 'Catch 10 fakers total',                 reward: 25 },
+    { id: 'sn_week_survivor',  name: 'Week Survivor',         desc: 'Complete a full school week (5 days)',   reward: 20 },
+    { id: 'sn_perfect_week',   name: 'Perfect Week',          desc: 'Complete a week with zero mistakes',    reward: 50 },
+    { id: 'sn_nurse_of_year',  name: 'Nurse of the Year',     desc: 'Reach 100% reputation',                 reward: 30 },
+    { id: 'sn_allergy_alert',  name: 'Allergy Alert',         desc: 'Correctly treat an allergic reaction',  reward: 15 },
+    { id: 'sn_gut_feeling',    name: 'Gut Feeling',            desc: 'Catch a faker without any exams',       reward: 20 },
+    { id: 'sn_veteran_nurse',  name: 'Veteran Nurse',         desc: 'Treat 50 patients total',               reward: 25 },
+    { id: 'sn_no_fakers',      name: 'No Fakers Left Behind', desc: 'Catch 25 fakers total',                 reward: 35 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -1818,14 +1935,16 @@ const NEWS_TAG_COLORS = {
   'mega-io':          { bg: '#44ddff22', border: '#44ddff', color: '#44ddff' },
   'sibling-brawl':    { bg: '#ff66aa22', border: '#ff66aa', color: '#ff66aa' },
   'dress-to-depress': { bg: '#ff69b422', border: '#ff69b4', color: '#ff69b4' },
+  'school-nurse':     { bg: '#4caa6422', border: '#4caa64', color: '#4caa64' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
-  'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress',
+  'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress', 'school-nurse': 'School Nurse',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-03-15', title: 'School Nurse Simulator Launches!', desc: 'New detective-style simulation game! Examine students, spot the fakers, and treat the truly sick. Use your thermometer, observe behavior, and ask questions to figure out who really needs help!', game: 'school-nurse' },
   { date: '2026-03-08', title: 'Dress to Depress Launches!', desc: 'New 3D fashion disaster game! Pick the worst outfits, clash colors and styles, then strut your stuff down the runway for judging by three hilarious NPC judges!', game: 'dress-to-depress' },
   { date: '2026-03-07', title: 'Sibling Brawl Launches!', desc: 'New goofy indoor battle simulator! Deploy pillow fighters, nerf gunners, blanket tanks, scooter riders, and water balloons to defeat the evil younger sibling empire!', game: 'sibling-brawl' },
   { date: '2026-03-07', title: 'Mega IO Launches!', desc: 'New territory capture arena game! Move around the map, leave trails, and capture territory by completing loops. Compete against 4 AI bots to dominate the map before time runs out!', game: 'mega-io' },
