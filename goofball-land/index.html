@@ -182,9 +182,35 @@
   }
   #wave-banner.visible { opacity: 1; }
 
+  /* Voice Recorder */
+  #voice-screen { justify-content: flex-start; padding-top: 20px; overflow-y: auto; }
+  #voice-screen h1 { font-size: 1.8rem; margin-bottom: 4px; }
+  .voice-sub { color: #888; font-size: 0.8rem; margin-bottom: 16px; text-align: center; }
+  .voice-list { width: 90%; max-width: 500px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+  .voice-row {
+    display: flex; align-items: center; gap: 8px;
+    background: #ffffff08; border: 1px solid #333; border-radius: 6px;
+    padding: 8px 12px;
+  }
+  .voice-row.has-recording { border-color: #ffcc0055; }
+  .voice-phrase { flex: 1; font-size: 0.9rem; color: #ddd; font-style: italic; }
+  .voice-btn {
+    font-family: 'Cinzel', serif; font-size: 0.6rem;
+    padding: 4px 10px; background: transparent;
+    border: 1px solid #555; color: #aaa;
+    cursor: pointer; border-radius: 3px; transition: all 0.15s;
+    min-width: 50px; text-align: center;
+  }
+  .voice-btn:hover { border-color: #ffcc00; color: #ffcc00; }
+  .voice-btn.recording { border-color: #ff4444; color: #ff4444; animation: pulse-rec 0.8s infinite; }
+  .voice-btn.has-clip { border-color: #4caf50; color: #4caf50; }
+  .voice-status { font-size: 0.65rem; color: #555; min-width: 20px; text-align: center; }
+  @keyframes pulse-rec { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
   @media (max-width: 600px) {
     .screen h1 { font-size: 1.8rem; }
     #model-container { width: 220px; height: 220px; }
+    .voice-phrase { font-size: 0.75rem; }
   }
 </style>
 </head>
@@ -217,6 +243,16 @@
   </div>
   <div class="title-lore">The Lumpachubs are attacking Gub Gub Ga Lub Ga Gub Island! Fight back with belly bumps and spitballs to defend the Chubalumps!</div>
   <button class="punk-btn" onclick="startGame()">PLAY</button>
+  <button class="punk-btn secondary" onclick="showScreen('voice-screen')">RECORD VOICE CLIPS</button>
+</div>
+
+<!-- Voice Recording Screen -->
+<div id="voice-screen" class="screen hidden">
+  <h1>RECORD OWIES</h1>
+  <div class="voice-sub">Record yourself saying each phrase in your goofiest voice!</div>
+  <div class="voice-list" id="voice-list"></div>
+  <button class="punk-btn secondary" onclick="clearAllRecordings()">CLEAR ALL</button>
+  <button class="punk-btn" onclick="showScreen('title-screen')" style="margin-top:8px;">DONE</button>
 </div>
 
 <!-- Game Screen -->
@@ -227,6 +263,7 @@
       <div class="hud-item"><span class="hud-label">WAVE:</span><span class="hud-val" id="hud-wave">1</span></div>
       <div class="hud-item"><span class="hud-label">SCORE:</span><span class="hud-val" id="hud-score">0</span></div>
       <div class="hud-item"><span class="hud-label">ENEMIES:</span><span class="hud-val" id="hud-enemies">0</span></div>
+      <button class="toolbar-btn" onclick="quitToMenu()" style="margin-left:8px;">QUIT</button>
     </div>
     <div id="crosshair"></div>
     <div id="bump-cooldown"><kbd>SPACE</kbd> BELLY BUMP: <span class="ready">READY</span></div>
@@ -255,6 +292,137 @@ function ggLoad() {
 function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
 
 // ═══════════════════════════════════════════
+// VOICE RECORDING SYSTEM
+// ═══════════════════════════════════════════
+const OWIE_PHRASES = [
+  'owie!', 'ow ow ow!', 'ouch!', 'yowza!', 'my belly!',
+  'oof!', 'ouchie!', 'oww that hurt!', 'not the belly!',
+  'hey!', 'ow my tummy!', 'gub gub owie!', 'eeeyowch!',
+  'buh buh buh owie!', 'owwwww!', 'yoinks!',
+];
+let voiceClips = {}; // { phraseIndex: AudioBuffer }
+let activeRecording = null; // { stop: Function }
+let activeRecordingIdx = null;
+
+function buildVoiceList() {
+  const list = document.getElementById('voice-list');
+  list.innerHTML = '';
+  OWIE_PHRASES.forEach((phrase, i) => {
+    const row = document.createElement('div');
+    row.className = 'voice-row' + (voiceClips[i] ? ' has-recording' : '');
+
+    const label = document.createElement('span');
+    label.className = 'voice-phrase';
+    label.textContent = '"' + phrase + '"';
+
+    const recBtn = document.createElement('button');
+    recBtn.className = 'voice-btn' + (voiceClips[i] ? ' has-clip' : '');
+    recBtn.textContent = voiceClips[i] ? 'RE-REC' : 'REC';
+    recBtn.onclick = () => toggleRecording(i, recBtn);
+
+    const playBtn = document.createElement('button');
+    playBtn.className = 'voice-btn';
+    playBtn.textContent = 'PLAY';
+    playBtn.style.display = voiceClips[i] ? '' : 'none';
+    playBtn.onclick = () => playVoiceClip(i);
+
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'voice-btn';
+    clearBtn.textContent = 'X';
+    clearBtn.style.display = voiceClips[i] ? '' : 'none';
+    clearBtn.onclick = () => {
+      delete voiceClips[i];
+      buildVoiceList();
+    };
+
+    const status = document.createElement('span');
+    status.className = 'voice-status';
+    status.textContent = voiceClips[i] ? '\u2713' : '';
+
+    row.append(label, recBtn, playBtn, clearBtn, status);
+    list.appendChild(row);
+  });
+}
+
+async function toggleRecording(idx, btn) {
+  // Stop current recording if any
+  if (activeRecording) {
+    activeRecording.stop();
+    if (activeRecordingIdx === idx) return;
+  }
+
+  try {
+    ensureAudio();
+    await audioCtx.resume();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const source = audioCtx.createMediaStreamSource(stream);
+    const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    const silentGain = audioCtx.createGain();
+    silentGain.gain.value = 0;
+    const chunks = [];
+
+    processor.onaudioprocess = e => {
+      chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    };
+    source.connect(processor);
+    processor.connect(silentGain);
+    silentGain.connect(audioCtx.destination);
+
+    btn.textContent = 'STOP';
+    btn.classList.add('recording');
+    activeRecordingIdx = idx;
+
+    const stopFn = () => {
+      if (!activeRecording) return;
+      processor.onaudioprocess = null;
+      source.disconnect();
+      processor.disconnect();
+      silentGain.disconnect();
+      stream.getTracks().forEach(t => t.stop());
+      btn.classList.remove('recording');
+      activeRecording = null;
+      activeRecordingIdx = null;
+
+      // Combine chunks into one AudioBuffer
+      const totalLen = chunks.reduce((s, c) => s + c.length, 0);
+      if (totalLen === 0) return;
+      const combined = new Float32Array(totalLen);
+      let off = 0;
+      for (const c of chunks) { combined.set(c, off); off += c.length; }
+
+      const buf = audioCtx.createBuffer(1, combined.length, audioCtx.sampleRate);
+      buf.getChannelData(0).set(combined);
+      voiceClips[idx] = buf;
+      buildVoiceList();
+    };
+
+    activeRecording = { stop: stopFn };
+
+    // Auto-stop after 3 seconds
+    setTimeout(() => {
+      if (activeRecordingIdx === idx && activeRecording) stopFn();
+    }, 3000);
+  } catch(e) {
+    alert('Mic error: ' + e.message);
+  }
+}
+
+async function playVoiceClip(idx) {
+  if (!voiceClips[idx]) return;
+  ensureAudio();
+  await audioCtx.resume();
+  const source = audioCtx.createBufferSource();
+  source.buffer = voiceClips[idx];
+  source.connect(audioCtx.destination);
+  source.start();
+}
+
+function clearAllRecordings() {
+  voiceClips = {};
+  buildVoiceList();
+}
+
+// ═══════════════════════════════════════════
 // SCREEN MANAGEMENT
 // ═══════════════════════════════════════════
 let currentScreen = 'title-screen';
@@ -263,13 +431,17 @@ function showScreen(id) {
   document.getElementById(id).classList.remove('hidden');
   currentScreen = id;
   if (id === 'title-screen') startTitlePreview();
+  if (id === 'voice-screen') buildVoiceList();
 }
 
 // ═══════════════════════════════════════════
 // SOUND EFFECTS
 // ═══════════════════════════════════════════
 let audioCtx;
-function ensureAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
 
 const SFX = {
   spit() {
@@ -304,6 +476,29 @@ const SFX = {
     g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
     o.connect(g); g.connect(audioCtx.destination);
     o.start(); o.stop(audioCtx.currentTime + 0.1);
+  },
+  owie() {
+    // Use recorded clips if any exist
+    const clipKeys = Object.keys(voiceClips);
+    if (clipKeys.length > 0) {
+      ensureAudio();
+      const key = clipKeys[Math.floor(Math.random() * clipKeys.length)];
+      const source = audioCtx.createBufferSource();
+      source.buffer = voiceClips[key];
+      source.playbackRate.value = 0.9 + Math.random() * 0.3;
+      source.connect(audioCtx.destination);
+      source.start();
+      return;
+    }
+    // Fallback to speech synthesis
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(OWIE_PHRASES[Math.floor(Math.random() * OWIE_PHRASES.length)]);
+      u.pitch = 1.5 + Math.random() * 0.5;
+      u.rate = 1.4 + Math.random() * 0.8;
+      u.volume = 0.7;
+      speechSynthesis.speak(u);
+    }
   },
   enemyDie() {
     ensureAudio();
@@ -706,7 +901,7 @@ function spawnEnemy() {
 // ═══════════════════════════════════════════
 function shootSpitball() {
   const spitGeo = new THREE.SphereGeometry(0.15, 8, 6);
-  const spitMat = new THREE.MeshPhongMaterial({ color: 0x88cc44, emissive: 0x224400 });
+  const spitMat = new THREE.MeshPhongMaterial({ color: 0x4488ff, emissive: 0x002244 });
   const spit = new THREE.Mesh(spitGeo, spitMat);
   spit.position.set(player.position.x, player.position.y + 1.3, player.position.z);
   const dir = new THREE.Vector3(
@@ -993,7 +1188,7 @@ function gameLoop() {
       if (enemy.userData.attackCooldown <= 0) {
         playerHP -= ENEMY_DAMAGE;
         enemy.userData.attackCooldown = ENEMY_ATTACK_COOLDOWN;
-        SFX.hit();
+        SFX.owie();
         updateHUD();
         if (playerHP <= 0) {
           endGame();
@@ -1038,7 +1233,7 @@ function gameLoop() {
       } else if (bodyDist < 1.0) {
         // Body hit
         enemy.userData.hp -= SPIT_DAMAGE;
-        spawnParticles(spit.position, 0x88cc44, 4);
+        spawnParticles(spit.position, 0x4488ff, 4);
         SFX.hit();
         if (enemy.userData.hp <= 0) killEnemy(enemy);
         hitEnemy = true;
@@ -1084,6 +1279,13 @@ function gameLoop() {
 // ═══════════════════════════════════════════
 // END GAME
 // ═══════════════════════════════════════════
+function quitToMenu() {
+  gameRunning = false;
+  if (gameAnimId) cancelAnimationFrame(gameAnimId);
+  if (document.pointerLockElement) document.exitPointerLock();
+  showScreen('title-screen');
+}
+
 function endGame() {
   gameRunning = false;
   if (document.pointerLockElement) document.exitPointerLock();

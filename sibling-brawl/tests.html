@@ -109,13 +109,14 @@ const CLASSES = {
   soaker: { name: 'Super Soaker', desc: 'Rapid-fire water blaster! Soak them all!', icon: '💦', baseDmg: 10, baseHp: 75, range: 12, cooldown: 0.3, attackType: 'ranged', shopRequired: 'sb_super_soaker' },
 };
 const UPGRADES = [
-  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
-  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 5, cost: 40 },
-  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 5, cost: 35 },
-  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 5, cost: 45 },
-  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 5, cost: 40 },
-  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 3, cost: 60 },
+  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 10, baseCost: 30 },
+  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 10, baseCost: 40 },
+  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 10, baseCost: 35 },
+  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 10, baseCost: 45 },
+  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 10, baseCost: 40 },
+  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 6,  baseCost: 60 },
 ];
+function upgradeCost(up, lvl) { return Math.floor(up.baseCost * (1 + lvl * 0.4)); }
 
 function loadPlayerData() {
   try {
@@ -898,36 +899,47 @@ group('Upgrades');
 {
   for (const up of UPGRADES) {
     assert(up.maxLevel > 0, up.id + ' has positive max level');
-    assert(up.cost > 0, up.id + ' has positive cost');
+    assert(up.baseCost > 0, up.id + ' has positive base cost');
     assert(up.name.length > 0, up.id + ' has name');
   }
 }
 {
   const hpUp = UPGRADES.find(u => u.id === 'hp');
-  assertEqual(hpUp.cost, 30, 'hp upgrade costs 30 candy');
-  assertEqual(hpUp.maxLevel, 5, 'hp max level is 5');
+  assertEqual(hpUp.baseCost, 30, 'hp upgrade base cost is 30 candy');
+  assertEqual(hpUp.maxLevel, 10, 'hp max level is 10');
+  assertEqual(upgradeCost(hpUp, 0), 30, 'hp lv0 costs 30');
+  assertEqual(upgradeCost(hpUp, 5), 90, 'hp lv5 costs 90');
 }
 {
   const dmgUp = UPGRADES.find(u => u.id === 'dmg');
-  assertEqual(dmgUp.cost, 40, 'dmg upgrade costs 40 candy');
+  assertEqual(dmgUp.baseCost, 40, 'dmg upgrade base cost is 40 candy');
+  assertEqual(dmgUp.maxLevel, 10, 'dmg max level is 10');
 }
 {
   const spdUp = UPGRADES.find(u => u.id === 'speed');
-  assertEqual(spdUp.cost, 35, 'speed upgrade costs 35 candy');
+  assertEqual(spdUp.baseCost, 35, 'speed upgrade base cost is 35 candy');
 }
 {
   const frUp = UPGRADES.find(u => u.id === 'firerate');
-  assertEqual(frUp.cost, 45, 'firerate upgrade costs 45 candy');
-  assertEqual(frUp.maxLevel, 5, 'firerate max level is 5');
+  assertEqual(frUp.baseCost, 45, 'firerate upgrade base cost is 45 candy');
+  assertEqual(frUp.maxLevel, 10, 'firerate max level is 10');
 }
 {
   const rUp = UPGRADES.find(u => u.id === 'range');
-  assertEqual(rUp.cost, 40, 'range upgrade costs 40 candy');
+  assertEqual(rUp.baseCost, 40, 'range upgrade base cost is 40 candy');
 }
 {
   const sUp = UPGRADES.find(u => u.id === 'splash');
-  assertEqual(sUp.cost, 60, 'splash upgrade costs 60 candy');
-  assertEqual(sUp.maxLevel, 3, 'splash max level is 3');
+  assertEqual(sUp.baseCost, 60, 'splash upgrade base cost is 60 candy');
+  assertEqual(sUp.maxLevel, 6, 'splash max level is 6');
+}
+{
+  // Scaling cost tests
+  const hpUp = UPGRADES.find(u => u.id === 'hp');
+  for (let i = 0; i < hpUp.maxLevel; i++) {
+    assert(upgradeCost(hpUp, i) > 0, 'hp cost at level ' + i + ' is positive');
+  }
+  assert(upgradeCost(hpUp, 1) > upgradeCost(hpUp, 0), 'hp cost increases with level');
 }
 
 // --- Player Data Persistence ---
@@ -1066,8 +1078,9 @@ group('Candy Economy');
   savePlayerData({ candy: 100, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 0, dmg: 0, speed: 0 } });
   const pd = loadPlayerData();
   const hpUp = UPGRADES.find(u => u.id === 'hp');
-  assert(pd.candy >= hpUp.cost, 'can afford hp upgrade');
-  pd.candy -= hpUp.cost;
+  const cost0 = upgradeCost(hpUp, 0);
+  assert(pd.candy >= cost0, 'can afford hp upgrade');
+  pd.candy -= cost0;
   pd.upgrades.hp = 1;
   savePlayerData(pd);
   const pd2 = loadPlayerData();
@@ -1075,13 +1088,28 @@ group('Candy Economy');
   assertEqual(pd2.upgrades.hp, 1, 'hp upgrade level 1');
 }
 {
+  // Cost scales with level
+  localStorage.clear();
+  savePlayerData({ candy: 500, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 3, dmg: 0, speed: 0 } });
+  const pd = loadPlayerData();
+  const hpUp = UPGRADES.find(u => u.id === 'hp');
+  const cost3 = upgradeCost(hpUp, 3);
+  assert(cost3 > upgradeCost(hpUp, 0), 'level 3 costs more than level 0');
+  assertEqual(cost3, Math.floor(30 * (1 + 3 * 0.4)), 'hp lv3 cost matches formula');
+  pd.candy -= cost3;
+  pd.upgrades.hp = 4;
+  savePlayerData(pd);
+  const pd2 = loadPlayerData();
+  assertEqual(pd2.upgrades.hp, 4, 'hp upgrade level 4 after purchase');
+}
+{
   // Cannot exceed max level
   localStorage.clear();
-  savePlayerData({ candy: 9999, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 5, dmg: 0, speed: 0 } });
+  savePlayerData({ candy: 9999, playerClass: 'pillow', hairColor: '#8B4513', shirtColor: '#4488ff', skinColor: '#ffcc99', upgrades: { hp: 10, dmg: 0, speed: 0 } });
   const pd = loadPlayerData();
   const hpUp = UPGRADES.find(u => u.id === 'hp');
   assert(pd.upgrades.hp >= hpUp.maxLevel, 'hp at max level');
-  assert(!(pd.upgrades.hp < hpUp.maxLevel && pd.candy >= hpUp.cost), 'cannot buy when maxed');
+  assert(!(pd.upgrades.hp < hpUp.maxLevel), 'cannot buy when maxed');
 }
 
 // --- Level Definitions ---

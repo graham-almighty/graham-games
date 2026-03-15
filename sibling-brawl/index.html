@@ -447,13 +447,14 @@ const CLASSES = {
   cricket: { name: 'Cricket Launcher', desc: 'Launch live crickets at your enemies!', icon: '🦗', baseDmg: 18, baseHp: 75, range: 9, cooldown: 1.2, attackType: 'ranged' },
 };
 const UPGRADES = [
-  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 5, cost: 30 },
-  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 5, cost: 40 },
-  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 5, cost: 35 },
-  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 5, cost: 45 },
-  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 5, cost: 40 },
-  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 3, cost: 60 },
+  { id: 'hp',       name: 'Toughness',     desc: '+20 HP per level',           maxLevel: 10, baseCost: 30 },
+  { id: 'dmg',      name: 'Power',         desc: '+3 damage per level',        maxLevel: 10, baseCost: 40 },
+  { id: 'speed',    name: 'Speed',         desc: '+0.3 speed per level',       maxLevel: 10, baseCost: 35 },
+  { id: 'firerate', name: 'Fire Rate',     desc: '-10% cooldown per level',    maxLevel: 10, baseCost: 45 },
+  { id: 'range',    name: 'Reach',         desc: '+10% range per level',       maxLevel: 10, baseCost: 40 },
+  { id: 'splash',   name: 'Blast Radius',  desc: '+15% splash per level',     maxLevel: 6,  baseCost: 60 },
 ];
+function upgradeCost(up, lvl) { return Math.floor(up.baseCost * (1 + lvl * 0.4)); }
 
 function loadPlayerData() {
   try {
@@ -3666,17 +3667,18 @@ function renderLoadout() {
   list.innerHTML = '';
   for (const up of UPGRADES) {
     const lvl = pd.upgrades[up.id] || 0;
-    const canBuy = lvl < up.maxLevel && pd.candy >= up.cost;
+    const cost = upgradeCost(up, lvl);
+    const canBuy = lvl < up.maxLevel && pd.candy >= cost;
     const maxed = lvl >= up.maxLevel;
     const div = document.createElement('div');
     div.className = 'upgrade-row';
     div.innerHTML =
       '<div class="upgrade-name">' + up.name + '<br><span style="font-size:10px;color:#888">' + up.desc + '</span></div>' +
       '<div class="upgrade-level">Lv ' + lvl + '/' + up.maxLevel + '</div>' +
-      '<button class="upgrade-btn" ' + (canBuy ? '' : 'disabled') + '>' + (maxed ? 'MAX' : up.cost + ' candy') + '</button>';
+      '<button class="upgrade-btn" ' + (canBuy ? '' : 'disabled') + '>' + (maxed ? 'MAX' : cost + ' candy') + '</button>';
     if (canBuy) {
       div.querySelector('button').onclick = () => {
-        pd.candy -= up.cost;
+        pd.candy -= cost;
         pd.upgrades[up.id] = lvl + 1;
         savePlayerData(pd);
         renderLoadout();

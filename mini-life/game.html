@@ -152,7 +152,7 @@
     opacity: 0;
     transition: opacity 0.5s;
   }
-  .action-overlay.visible { opacity: 1; }
+  .action-overlay.visible { opacity: 1; pointer-events: auto; }
 
   /* Sleep overlay */
   .sleep-overlay {
@@ -1152,7 +1152,7 @@
 
 <!-- Controls hint -->
 <div class="controls-hint">
-  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; Mouse: Look<br>
+  <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; <kbd>SPACE</kbd> Jump &nbsp; Mouse: Look<br>
   <kbd>Click</kbd> Interact &nbsp; <kbd>ESC</kbd> Release cursor<br>
   <kbd>P</kbd> Shop &nbsp; <kbd>T</kbd> Pet
 </div>
@@ -1199,6 +1199,7 @@
   <div class="hud-pill shop-btn" onclick="toggleShop()">&#128241; SHOP</div>
   <div class="hud-pill shop-btn" id="pet-menu-btn" style="display:none;" onclick="togglePetMenu()">&#128062; PET</div>
   <div class="hud-pill shop-btn" onclick="saveGame()">&#128190; SAVE</div>
+  <div class="hud-pill shop-btn" onclick="renameSave()">&#9998; NAME</div>
   <div class="hud-pill shop-btn" onclick="toggleLeaderboard()">&#127942; TOP $</div>
 </div>
 
@@ -2296,6 +2297,8 @@ let petCat = null;
 let petBeaver = null;
 let hasBeaverPet = false;
 let hasGGPoster = false;
+let hasGGTV = false;
+let ggTVGroup = null;
 let ggPosterGroup = null;
 let activePet = 'dog'; // 'dog', 'cat', 'beaver', or 'none'
 let petStay = false; // C key toggle — pet stays in place
@@ -2545,6 +2548,152 @@ function buildPetBeaver() {
   petBodyMeshes.push(body);
 }
 
+// Draw the player's character on a 2D canvas for posters
+function drawPosterCharacter(ctx, cx, cy, s, opts) {
+  const skinHex = SKIN_TONES[opts.skinTone || 0].hex;
+  const skinCSS = '#' + skinHex.toString(16).padStart(6, '0');
+  const hairHex = HAIR_COLORS[opts.hairColor || 0].hex;
+  const hairCSS = '#' + hairHex.toString(16).padStart(6, '0');
+  const outfit = OUTFITS[opts.outfit || 0];
+  const shirtCSS = '#' + outfit.shirt.toString(16).padStart(6, '0');
+  const pantsCSS = '#' + outfit.pants.toString(16).padStart(6, '0');
+  const isFemale = opts.gender === 'female';
+  const bodyW = isFemale ? 20 : 22;
+  const armX = isFemale ? 32 : 34;
+
+  // Legs
+  ctx.fillStyle = pantsCSS;
+  ctx.fillRect(cx - 18*s, cy + 35*s, 14*s, 40*s);
+  ctx.fillRect(cx + 4*s, cy + 35*s, 14*s, 40*s);
+
+  // Shoes
+  ctx.fillStyle = '#333333';
+  ctx.fillRect(cx - 20*s, cy + 72*s, 18*s, 8*s);
+  ctx.fillRect(cx + 2*s, cy + 72*s, 18*s, 8*s);
+
+  // Body / shirt
+  ctx.fillStyle = shirtCSS;
+  ctx.fillRect(cx - bodyW*s, cy - 10*s, bodyW*2*s, 48*s);
+
+  // GG merch shirt text
+  if (opts.outfit === GG_MERCH_IDX) {
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold ' + (16*s/2) + 'px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAHAM', cx, cy + 14*s);
+    ctx.fillText('GAMES', cx, cy + 26*s);
+    ctx.font = (11*s/2) + 'px sans-serif';
+    ctx.fillText('is my life', cx, cy + 36*s);
+  }
+
+  // Arms
+  ctx.fillStyle = shirtCSS;
+  ctx.fillRect(cx - armX*s, cy - 5*s, 14*s, 35*s);
+  ctx.fillRect(cx + (armX-14)*s, cy - 5*s, 14*s, 35*s);
+
+  // Hands
+  ctx.fillStyle = skinCSS;
+  ctx.fillRect(cx - (armX-2)*s, cy + 28*s, 12*s, 12*s);
+  ctx.fillRect(cx + (armX-12)*s, cy + 28*s, 12*s, 12*s);
+
+  // Head
+  ctx.fillStyle = skinCSS;
+  ctx.beginPath();
+  ctx.arc(cx, cy - 30*s, 22*s, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Hair — style-dependent
+  ctx.fillStyle = hairCSS;
+  const hs = opts.hairStyle || 'short';
+  if (hs === 'curly' || hs === 'curlylong') {
+    const clusters = [[-12, -48], [0, -52], [12, -48], [-18, -42], [18, -42],
+     [-20, -35], [20, -35], [-15, -50], [15, -50], [0, -56],
+     [-8, -54], [8, -54], [-22, -44], [22, -44],
+     [-6, -56], [6, -56], [-24, -38], [24, -38],
+     [-10, -50], [10, -50], [0, -48], [-16, -46], [16, -46]];
+    if (hs === 'curlylong') {
+      clusters.push([-24, -30], [24, -30], [-22, -22], [22, -22], [-20, -14], [20, -14]);
+    }
+    clusters.forEach(([dx, dy]) => {
+      ctx.beginPath();
+      ctx.arc(cx + dx*s, cy + dy*s, 8*s, 0, Math.PI * 2);
+      ctx.fill();
+    });
+  } else if (hs === 'long') {
+    // Top cap
+    ctx.fillRect(cx - 24*s, cy - 54*s, 48*s, 16*s);
+    // Side panels hanging down
+    ctx.fillRect(cx - 26*s, cy - 42*s, 10*s, 40*s);
+    ctx.fillRect(cx + 16*s, cy - 42*s, 10*s, 40*s);
+    // Top dome
+    ctx.beginPath();
+    ctx.arc(cx, cy - 54*s, 24*s, Math.PI, 0);
+    ctx.fill();
+  } else if (hs === 'buzz') {
+    ctx.beginPath();
+    ctx.arc(cx, cy - 34*s, 20*s, Math.PI, 0);
+    ctx.fill();
+  } else if (hs === 'sideponytail') {
+    // Top cap
+    ctx.beginPath();
+    ctx.arc(cx, cy - 34*s, 22*s, Math.PI, 0);
+    ctx.fill();
+    // Side ponytail (hangs to the right)
+    ctx.fillRect(cx + 18*s, cy - 38*s, 8*s, 35*s);
+    // Hair tie
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(cx + 16*s, cy - 38*s, 12*s, 4*s);
+    ctx.fillStyle = hairCSS;
+  } else if (hs === 'ponytail') {
+    // Top cap
+    ctx.beginPath();
+    ctx.arc(cx, cy - 34*s, 22*s, Math.PI, 0);
+    ctx.fill();
+    // Ponytail behind
+    ctx.fillRect(cx - 4*s, cy - 30*s, 8*s, 30*s);
+    // Red tie
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(cx - 5*s, cy - 4*s, 10*s, 4*s);
+    ctx.fillStyle = hairCSS;
+  } else if (hs === 'bun') {
+    ctx.beginPath();
+    ctx.arc(cx, cy - 34*s, 22*s, Math.PI, 0);
+    ctx.fill();
+    // Bun on top
+    ctx.beginPath();
+    ctx.arc(cx, cy - 58*s, 10*s, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Short (default) — flat cap on top
+    ctx.beginPath();
+    ctx.arc(cx, cy - 34*s, 22*s, Math.PI, -0.1);
+    ctx.fill();
+  }
+
+  // Eyes
+  [[-8, -32], [8, -32]].forEach(([dx, dy]) => {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s, cy + dy*s, 5*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#222222';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s, cy + dy*s, 3*s, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cx + dx*s - 1*s, cy + dy*s - 1*s, 1.2*s, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Smile
+  ctx.strokeStyle = '#222222';
+  ctx.lineWidth = Math.max(2, 1.5*s);
+  ctx.beginPath();
+  ctx.arc(cx, cy - 24*s, 8*s, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+}
+
 function buildGGPoster() {
   const g = new THREE.Group();
 
@@ -2569,82 +2718,8 @@ function buildGGPoster() {
   ctx.textAlign = 'center';
   ctx.fillText('GRAHAM', 256, 80);
 
-  // Draw Mini Life character — large, centered
-  const cx = 256, cy = 340;
-  const s = 2; // scale factor
-
-  // Legs (black pants — GG merch)
-  ctx.fillStyle = '#1a1a1a';
-  ctx.fillRect(cx - 18*s, cy + 35*s, 14*s, 40*s);
-  ctx.fillRect(cx + 4*s, cy + 35*s, 14*s, 40*s);
-
-  // Shoes
-  ctx.fillStyle = '#333333';
-  ctx.fillRect(cx - 20*s, cy + 72*s, 18*s, 8*s);
-  ctx.fillRect(cx + 2*s, cy + 72*s, 18*s, 8*s);
-
-  // Body / shirt (red — GG merch)
-  ctx.fillStyle = '#cc2222';
-  ctx.fillRect(cx - 22*s, cy - 10*s, 44*s, 48*s);
-
-  // "GRAHAM GAMES" text on shirt (gold)
-  ctx.fillStyle = '#c9a84c';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText('GRAHAM', cx, cy + 14*s);
-  ctx.fillText('GAMES', cx, cy + 26*s);
-  ctx.font = '11px sans-serif';
-  ctx.fillText('is my life', cx, cy + 36*s);
-
-  // Arms (red shirt sleeves)
-  ctx.fillStyle = '#cc2222';
-  ctx.fillRect(cx - 34*s, cy - 5*s, 14*s, 35*s);
-  ctx.fillRect(cx + 20*s, cy - 5*s, 14*s, 35*s);
-
-  // Hands (skin — avg tone)
-  ctx.fillStyle = '#c9956b';
-  ctx.fillRect(cx - 32*s, cy + 28*s, 12*s, 12*s);
-  ctx.fillRect(cx + 22*s, cy + 28*s, 12*s, 12*s);
-
-  // Head (skin)
-  ctx.fillStyle = '#c9956b';
-  ctx.beginPath();
-  ctx.arc(cx, cy - 30*s, 22*s, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Curly blonde hair — dense clusters of circles
-  ctx.fillStyle = '#d4a835';
-  [[-12, -48], [0, -52], [12, -48], [-18, -42], [18, -42],
-   [-20, -35], [20, -35], [-15, -50], [15, -50], [0, -56],
-   [-8, -54], [8, -54], [-22, -44], [22, -44],
-   [-6, -56], [6, -56], [-24, -38], [24, -38],
-   [-10, -50], [10, -50], [0, -48], [-16, -46], [16, -46]].forEach(([dx, dy]) => {
-    ctx.beginPath();
-    ctx.arc(cx + dx*s, cy + dy*s, 8*s, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Eyes (white sclera + dark pupil + highlight)
-  [[-8, -32], [8, -32]].forEach(([dx, dy]) => {
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx + dx*s, cy + dy*s, 5*s, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#222222';
-    ctx.beginPath();
-    ctx.arc(cx + dx*s, cy + dy*s, 3*s, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(cx + dx*s - 1*s, cy + dy*s - 1*s, 1.2*s, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Smile
-  ctx.strokeStyle = '#222222';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(cx, cy - 24*s, 8*s, 0.1 * Math.PI, 0.9 * Math.PI);
-  ctx.stroke();
+  // Always draw Graham on the poster
+  drawPosterCharacter(ctx, 256, 340, 2, { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 });
 
   // "GG" at bottom in big gold
   ctx.fillStyle = '#c9a84c';
@@ -2673,6 +2748,1235 @@ function buildGGPoster() {
   interactables.push({ mesh: frame, group: g, type: 'ggPoster', label: 'Admire GG Poster', need: 'fun', usePos: new THREE.Vector3(-1, UPPER_Y, 3.5), floor: 1 });
   actionConfig.ggPoster = { label: 'Admiring...', duration: 2, restore: 15, cost: 0 };
   rebuildInteractMeshes();
+}
+
+function buildGGTV() {
+  const g = new THREE.Group();
+  const redMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const darkMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const grayMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+
+  // Chunky retro boxy TV body (red plastic)
+  const tvBody = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.9, 0.9), redMat);
+  tvBody.position.set(0, 0.45, 0);
+  g.add(tvBody);
+
+  // Screen bezel (dark inset frame on front)
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.6, 0.05), darkMat);
+  bezel.position.set(-0.05, 0.5, 0.43);
+  g.add(bezel);
+
+  // Screen — canvas texture with "The Great GG Trivia" title card
+  const cvs = document.createElement('canvas');
+  cvs.width = 256; cvs.height = 180;
+  const ctx = cvs.getContext('2d');
+  ctx.fillStyle = '#0a0a2e';
+  ctx.fillRect(0, 0, 256, 180);
+  const grad = ctx.createRadialGradient(128, 90, 10, 128, 90, 110);
+  grad.addColorStop(0, '#1a1a4e');
+  grad.addColorStop(1, '#0a0a2e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 256, 180);
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 18px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('THE GREAT', 128, 55);
+  ctx.font = 'bold 30px serif';
+  ctx.fillText('GG TRIVIA', 128, 90);
+  ctx.font = 'bold 22px serif';
+  ctx.fillText('GG', 128, 135);
+  ctx.strokeStyle = '#c9a84c';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(4, 4, 248, 172);
+
+  const screenTex = new THREE.CanvasTexture(cvs);
+  const screenMat = new THREE.MeshLambertMaterial({ map: screenTex, emissive: 0x222244, emissiveIntensity: 0.4 });
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.5, 0.02), screenMat);
+  screen.position.set(-0.05, 0.5, 0.455);
+  g.add(screen);
+
+  // Control panel (right side of front face — knobs/dials area)
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.02), grayMat);
+  panel.position.set(0.42, 0.5, 0.46);
+  g.add(panel);
+  // Two chunky dial knobs
+  const knobMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const knob1 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 8), knobMat);
+  knob1.rotation.x = Math.PI / 2;
+  knob1.position.set(0.42, 0.6, 0.48);
+  g.add(knob1);
+  const knob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.04, 8), knobMat);
+  knob2.rotation.x = Math.PI / 2;
+  knob2.position.set(0.42, 0.4, 0.48);
+  g.add(knob2);
+
+  // Speaker grille (left side of front face)
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.4, 0.02), darkMat);
+  grille.position.set(-0.48, 0.5, 0.46);
+  g.add(grille);
+
+  // Stubby feet
+  const footMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  for (const fx of [-0.4, 0.4]) {
+    for (const fz of [-0.3, 0.3]) {
+      const foot = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.06, 0.1), footMat);
+      foot.position.set(fx, 0.03, fz);
+      g.add(foot);
+    }
+  }
+
+  // Antenna — two rabbit ears
+  const antMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  const ant1 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), antMat);
+  ant1.position.set(-0.15, 1.15, -0.1);
+  ant1.rotation.z = 0.3;
+  g.add(ant1);
+  const ant2 = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 6), antMat);
+  ant2.position.set(0.15, 1.15, -0.1);
+  ant2.rotation.z = -0.3;
+  g.add(ant2);
+
+  // Place on floor upstairs next to bed
+  g.position.set(-0.5, UPPER_Y, 4.75);
+  scene.add(g);
+  ggTVGroup = g;
+
+  // Interactable
+  interactables.push({ mesh: tvBody, group: g, type: 'ggTV', label: 'Watch GG TV', need: 'fun', usePos: new THREE.Vector3(-0.5, UPPER_Y, 3.5), floor: 1 });
+  rebuildInteractMeshes();
+}
+
+// GG Trivia questions
+const GG_TRIVIA = [
+  { q: 'What island do you defend in Goofball Land?', a: ['Gub Gub Ga Lub Ga Gub Island', 'Treasure Island', 'Monkey Island', 'Skull Island'], c: 0 },
+  { q: 'What currency do you earn across all Graham Games?', a: ['G Bux', 'Gold Coins', 'Diamonds', 'Tokens'], c: 0 },
+  { q: 'What type of game is Hurgvibbit?', a: ['Rhythm game', 'Racing game', 'Puzzle game', 'Platformer'], c: 0 },
+  { q: 'What is the name of the fast food place in Mini Life?', a: ['Mic Ronaldz', 'Burger Barn', 'Quick Bites', 'Fry Palace'], c: 0 },
+  { q: 'What animal is the GG Merch Store pet?', a: ['Beaver', 'Dog', 'Cat', 'Hamster'], c: 0 },
+  { q: 'What do Chubalumps use to attack in Goofball Land?', a: ['Spitballs and belly bumps', 'Swords', 'Magic spells', 'Lasers'], c: 0 },
+  { q: 'What is the Tower Defense flame tower unlocked with?', a: ['G Bux shop', 'Beating level 5', 'Finding a key', 'Free from start'], c: 0 },
+  { q: 'How many save slots does Mini Life have?', a: ['3', '1', '5', '10'], c: 0 },
+  { q: 'What class uses pillows as weapons in Sibling Brawl?', a: ['Pillow Fighter', 'Blanket Tank', 'Scooter Rider', 'Nerf Gunner'], c: 0 },
+  { q: 'What color is the Graham Games logo?', a: ['Gold', 'Red', 'Blue', 'Green'], c: 0 },
+  { q: 'What game has a Dog Poopic War campaign?', a: ['Sibling Brawl', 'Battle Bros', 'Brawl Monsters', 'Ancient Warfare'], c: 0 },
+  { q: 'What do you collect in Rogue Depths?', a: ['Loot and weapons', 'Stars', 'Coins', 'Flowers'], c: 0 },
+  { q: 'What sport can you play in Mini Life town?', a: ['Basketball', 'Soccer', 'Baseball', 'Hockey'], c: 0 },
+  { q: 'What is the NPC at the GG Merch Store called?', a: ['GG Superfan', 'GG Employee', 'Shopkeeper', 'GG Nerd'], c: 0 },
+  { q: 'What does the GG Merch shirt say?', a: ['Graham Games is my life', 'I love GG', 'GG Forever', 'Play more GG'], c: 0 },
+  { q: 'What is the maximum number of players in Devious Driving?', a: ['4', '2', '6', '8'], c: 0 },
+  { q: 'What is the name of the military NPC in Mini Life?', a: ['Sgt. Briggs', 'Cpt. Steel', 'Gen. Knox', 'Pvt. Jones'], c: 0 },
+  { q: 'How many training sessions before you can go on missions?', a: ['5', '3', '10', '1'], c: 0 },
+  { q: 'What creature is the mascot in Brawl Monsters?', a: ['Drakovex', 'Pikachu', 'Charizard', 'Slimey'], c: 0 },
+  { q: 'What does the War Elephant cost in the G Bux shop?', a: ['75G', '50G', '100G', '150G'], c: 0 },
+  { q: 'What font is used for the Graham Games launcher?', a: ['Cinzel', 'Comic Sans', 'Arial', 'Times New Roman'], c: 0 },
+  { q: 'What is the name of the librarian NPC?', a: ['Librarian Linda', 'Bookworm Betty', 'Reader Rachel', 'Library Liz'], c: 0 },
+  { q: 'What game lets you catch and battle monsters?', a: ['Brawl Monsters', 'Battle Bros', 'Sibling Brawl', 'Ancient Warfare'], c: 0 },
+  { q: 'What is the PIN-protected parental feature called?', a: ['School Mode', 'Kid Lock', 'Safe Mode', 'Parent Gate'], c: 0 },
+  { q: 'What weapon does the Nerf Gunner use in Sibling Brawl?', a: ['Nerf darts', 'Water balloons', 'Pillows', 'Rubber bands'], c: 0 },
+  { q: 'How much does the GG Merch outfit cost in Mini Life?', a: ['$40', '$20', '$50', '$100'], c: 0 },
+  { q: 'What is the name of the chef NPC in town?', a: ['Chef Rosa', 'Chef Gordon', 'Cook Carl', 'Baker Bob'], c: 0 },
+  { q: 'What does the Monster Scanner do in Brawl Monsters?', a: ['See enemy stats', 'Find hidden monsters', 'Heal your team', 'Double damage'], c: 0 },
+  { q: 'What type of game is Rogue Depths?', a: ['Roguelike dungeon crawler', 'Tower defense', 'Racing game', 'Rhythm game'], c: 0 },
+  { q: 'What does Shadow Mode add to Battle Bros?', a: ['CRT scanlines and after-images', 'Invisibility', 'Dark levels', 'New characters'], c: 0 },
+  { q: 'How much fun does the GG Poster give?', a: ['+15 fun', '+5 fun', '+50 fun', '+30 fun'], c: 0 },
+  { q: 'What is the hidden fighter unlocked by Boss Fighter in Battle Bros?', a: ['Omega', 'Alpha', 'Shadow', 'Ultra'], c: 0 },
+  { q: 'What does the Snack Boost do in Sibling Brawl?', a: ['+10% damage for first 10s', 'Heal to full', 'Double speed', 'Extra life'], c: 0 },
+  { q: 'What building is east of Town Hall in Mini Life?', a: ['GG Merch Store', 'Library', 'Gym', 'Arcade'], c: 0 },
+  { q: 'What is the name of the arcade NPC?', a: ['Gamer Gary', 'Player Pete', 'Arcade Andy', 'Joystick Jake'], c: 0 },
+  { q: 'How many quests are there in Mini Life?', a: ['4', '2', '6', '10'], c: 0 },
+  { q: 'What does Turbo Mode do in Hurgvibbit?', a: ['Insane speed difficulty', 'Double score', 'Slow motion', 'Extra lives'], c: 0 },
+  { q: 'What is the mansion kitchen special perk?', a: ['Free food', 'Double portions', 'Faster cooking', 'Earns money'], c: 0 },
+  { q: 'What games are blocked by School Mode?', a: ['Combat and Ancient Warfare', 'All games', 'Mini Life and Hurgvibbit', 'Battle Bros and Rogue Depths'], c: 0 },
+  // Tower Defense
+  { q: 'What are the two story NPCs in Tower Defense?', a: ['Commander Aric and Scout Lira', 'King Arthur and Merlin', 'Lord Steel and Lady Bow', 'Captain Rock and Private Arrow'], c: 0 },
+  { q: 'What kingdom is under siege in Tower Defense?', a: ['Aurelion', 'Camelot', 'Hyrule', 'Gondor'], c: 0 },
+  { q: 'How many waves are in Tower Defense?', a: ['30', '20', '50', '100'], c: 0 },
+  { q: 'What does the Ice Tower do in Tower Defense?', a: ['Slows enemies 50% for 2s', 'Freezes enemies solid', 'Deals splash damage', 'Heals your towers'], c: 0 },
+  { q: 'What is the final Tower Defense map called?', a: ["Dragon's Lair", 'The Dark Swamp', 'Fire Mountain', 'Skull Canyon'], c: 0 },
+  { q: 'How many lives do you start with in Tower Defense?', a: ['20', '10', '5', '50'], c: 0 },
+  // Ancient Warfare
+  { q: 'How much gold does a War Elephant cost in Ancient Warfare?', a: ['50 gold', '25 gold', '100 gold', '75 gold'], c: 0 },
+  { q: 'What key lets you possess a unit in Ancient Warfare?', a: ['P', 'E', 'Space', 'F'], c: 0 },
+  { q: 'How many campaign levels are in Ancient Warfare?', a: ['20', '10', '30', '15'], c: 0 },
+  { q: 'What unit has 2x damage against cavalry in Ancient Warfare?', a: ['Spearman', 'Swordsman', 'Archer', 'Catapult'], c: 0 },
+  { q: 'What is the last Ancient Warfare campaign level called?', a: ['Armageddon', 'The Final Battle', 'Total War', 'Last Stand'], c: 0 },
+  // Brawl Monsters
+  { q: 'What is the boss monster in Brawl Monsters roguelike mode?', a: ['Chimera Rex', 'Drakovex', 'Dragon King', 'Shadow Lord'], c: 0 },
+  { q: 'How many gym leaders are in Brawl Monsters freeplay?', a: ['5', '3', '8', '10'], c: 0 },
+  { q: 'What is the final gym leader called in Brawl Monsters?', a: ['Champion Drax', 'Master Elite', 'Grand Champion', 'Boss Battle'], c: 0 },
+  { q: 'What element is strong against Water in Brawl Monsters?', a: ['Plant', 'Fire', 'Electric', 'Shadow'], c: 0 },
+  { q: 'What is the max monster level in Brawl Monsters?', a: ['20', '50', '100', '10'], c: 0 },
+  { q: 'How many floors are in Brawl Monsters roguelike mode?', a: ['8', '5', '10', '15'], c: 0 },
+  // Battle Bros
+  { q: 'What is Blaze\'s special move in Battle Bros?', a: ['Fireball', 'Fire Punch', 'Flame Kick', 'Inferno'], c: 0 },
+  { q: 'What is Omega\'s taunt line in Battle Bros?', a: ['I am the end.', 'You lose.', 'Game over!', 'Bow to me.'], c: 0 },
+  { q: 'How many rounds do you need to win a Battle Bros match?', a: ['2', '1', '3', '5'], c: 0 },
+  { q: 'What fighter has the highest HP in Battle Bros?', a: ['Volt (120 HP)', 'Stone (130 HP)', 'Blaze (100 HP)', 'Fang (110 HP)'], c: 0 },
+  { q: 'What is Shade\'s special move in Battle Bros?', a: ['Shadow Step', 'Dark Dash', 'Vanish', 'Night Strike'], c: 0 },
+  // Rogue Depths
+  { q: 'What is the final boss of Rogue Depths?', a: ['Ancient Dragon', 'The Lich', 'Spider Queen', 'Dark Lord'], c: 0 },
+  { q: 'What is the Rogue class special ability in Rogue Depths?', a: ['Backstab (1.5x from behind)', 'Invisibility', 'Poison attack', 'Double jump'], c: 0 },
+  { q: 'How many floors are in Rogue Depths?', a: ['15', '10', '20', '30'], c: 0 },
+  { q: 'What enemy ignores walls in Rogue Depths?', a: ['Wraith', 'Ghost', 'Bat', 'Dark Knight'], c: 0 },
+  { q: 'What happens when a Slime dies in Rogue Depths?', a: ['Splits into 2 smaller slimes', 'Explodes', 'Drops gold', 'Nothing'], c: 0 },
+  { q: 'What color is an Epic rarity weapon in Rogue Depths?', a: ['Purple', 'Blue', 'Gold', 'Red'], c: 0 },
+  // Devious Driving
+  { q: 'How do you activate a power-up in Devious Driving?', a: ['Quick tap brake key', 'Press Space', 'Press P', 'Double tap gas'], c: 0 },
+  { q: 'How many car designs are in Devious Driving?', a: ['12', '8', '6', '20'], c: 0 },
+  { q: 'What is the rarest power-up in Devious Driving?', a: ['Swap/Teleport (5%)', 'Bomb (10%)', 'Nitro (5%)', 'Shield (1%)'], c: 0 },
+  { q: 'How many race maps are in Devious Driving?', a: ['6', '4', '8', '10'], c: 0 },
+  { q: 'What car do you unlock for winning all 6 maps?', a: ['F1', 'Golden', 'Ghost', 'Monster'], c: 0 },
+  // Dress to Depress
+  { q: 'What is the goal in Dress to Depress?', a: ['Dress as badly as possible', 'Look the best', 'Match the theme', 'Copy the judge'], c: 0 },
+  { q: 'Who are the judges in Dress to Depress?', a: ['Francesca, Chad, and Granny Mildred', 'Simon, Paula, and Randy', 'Tim, Heidi, and Nina', 'Tom, Gisele, and Anna'], c: 0 },
+  { q: 'How many rounds are in a Dress to Depress game?', a: ['5', '3', '10', '7'], c: 0 },
+  { q: 'What bot competitor has a buzz cut in Dress to Depress?', a: ['Sir Wrinkleton', 'Bella Disastro', 'Missy Mishmash', 'Lord Tattered'], c: 0 },
+  { q: 'How long is the dress-up timer in Dress to Depress?', a: ['45 seconds', '30 seconds', '60 seconds', '90 seconds'], c: 0 },
+  // Sibling Brawl
+  { q: 'How many levels are in Sibling Brawl?', a: ['8', '6', '10', '5'], c: 0 },
+  { q: 'What is the Dog Poopic War based on?', a: ['Romans vs Carthaginians', 'Cowboys vs Indians', 'Pirates vs Ninjas', 'Cats vs Dogs'], c: 0 },
+  { q: 'What currency do you earn per kill in Sibling Brawl?', a: ['5 candy', '10 candy', '1 candy', '20 candy'], c: 0 },
+  { q: 'What outfit do you unlock for beating Level 8 in Sibling Brawl?', a: ['Greek', 'Roman', 'Viking', 'Spartan'], c: 0 },
+  { q: 'What is the Poo Slinger\'s attack type in Sibling Brawl?', a: ['Mortar (splash)', 'Melee', 'Sniper', 'Beam'], c: 0 },
+  // Hurgvibbit
+  { q: 'What grade requires ZERO bad hits in Hurgvibbit?', a: ['S grade', 'A grade', 'A+ grade', 'Perfect grade'], c: 0 },
+  { q: 'How many note lanes does Hurgvibbit have?', a: ['4', '2', '6', '8'], c: 0 },
+  { q: 'What is the Clap lane key in Hurgvibbit?', a: ['D or Space', 'F', 'J', 'K'], c: 0 },
+  { q: 'How many points is a Perfect hit worth in Hurgvibbit?', a: ['300', '100', '500', '200'], c: 0 },
+  // Cross-game
+  { q: 'How many total games are on the Graham Games launcher?', a: ['12', '8', '10', '15'], c: 0 },
+  { q: 'What theme are the Graham Games launcher colors?', a: ['Dark and gold', 'Blue and white', 'Red and black', 'Green and silver'], c: 0 },
+  { q: 'What is the GG logo shaped like?', a: ['A serpent double-G', 'A shield', 'A crown', 'A star'], c: 0 },
+];
+
+function startGGTrivia() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+
+  let qIdx = 0;
+  let score = 0;
+  const questions = [...GG_TRIVIA].sort(() => Math.random() - 0.5).slice(0, 5);
+
+  function renderQuestion() {
+    overlay.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:420px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color:#c9a84c;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+    title.textContent = 'The Great GG Trivia';
+    panel.appendChild(title);
+
+    const progress = document.createElement('div');
+    progress.style.cssText = 'color:#888;font-size:0.7rem;margin-bottom:14px;';
+    progress.textContent = 'Question ' + (qIdx + 1) + ' of ' + questions.length + '  |  Score: ' + score;
+    panel.appendChild(progress);
+
+    const q = questions[qIdx];
+    const qEl = document.createElement('div');
+    qEl.style.cssText = 'color:#fff;font-size:1rem;margin-bottom:16px;line-height:1.4;';
+    qEl.textContent = q.q;
+    panel.appendChild(qEl);
+
+    // Shuffle answers but track correct
+    const answers = q.a.map((text, i) => ({ text, correct: i === q.c }));
+    answers.sort(() => Math.random() - 0.5);
+
+    answers.forEach(a => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'display:block;width:100%;padding:10px;margin:6px 0;border:1px solid #c9a84c44;border-radius:6px;background:#1a1a3e;color:#ddd;font-size:0.9rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+      btn.textContent = a.text;
+      btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#2a2a4e'; };
+      btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#1a1a3e'; };
+      btn.onclick = () => {
+        // Disable all buttons
+        panel.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.cursor = 'default'; b.onmouseover = null; });
+        if (a.correct) {
+          score++;
+          btn.style.background = '#1a4a1a';
+          btn.style.borderColor = '#4caf50';
+          btn.style.color = '#4caf50';
+          SFX.kaChing();
+        } else {
+          btn.style.background = '#4a1a1a';
+          btn.style.borderColor = '#ff4444';
+          btn.style.color = '#ff4444';
+          // Highlight correct answer
+          panel.querySelectorAll('button').forEach(b => {
+            const ans = answers.find(x => x.text === b.textContent);
+            if (ans && ans.correct) { b.style.background = '#1a4a1a'; b.style.borderColor = '#4caf50'; b.style.color = '#4caf50'; }
+          });
+        }
+        setTimeout(() => {
+          qIdx++;
+          if (qIdx < questions.length) renderQuestion();
+          else showResults();
+        }, 1200);
+      };
+      panel.appendChild(btn);
+    });
+
+    overlay.appendChild(panel);
+  }
+
+  function showResults() {
+    overlay.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:360px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color:#c9a84c;font-size:1.3rem;font-weight:bold;margin-bottom:12px;font-family:Cinzel,serif;';
+    title.textContent = 'Results!';
+    panel.appendChild(title);
+
+    const scoreEl = document.createElement('div');
+    scoreEl.style.cssText = 'color:#fff;font-size:1.5rem;font-weight:bold;margin-bottom:8px;';
+    scoreEl.textContent = score + ' / ' + questions.length;
+    panel.appendChild(scoreEl);
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#aaa;font-size:0.9rem;margin-bottom:16px;';
+    msg.textContent = score === questions.length ? 'Perfect! You are a true GG fan!' :
+                      score >= 3 ? 'Great job! You know your GG!' :
+                      'Keep playing Graham Games to learn more!';
+    panel.appendChild(msg);
+
+    const funGain = 20 + score * 10;
+    needs.fun = Math.min(100, needs.fun + funGain);
+    const reward = document.createElement('div');
+    reward.style.cssText = 'color:#4caf50;font-size:0.85rem;margin-bottom:16px;';
+    reward.textContent = '+' + funGain + ' fun';
+    panel.appendChild(reward);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    closeBtn.textContent = 'DONE';
+    closeBtn.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+    panel.appendChild(closeBtn);
+
+    overlay.appendChild(panel);
+  }
+
+  renderQuestion();
+}
+
+function openGGTVMenu() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+  overlay.innerHTML = '';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:320px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.2rem;font-weight:bold;margin-bottom:16px;font-family:Cinzel,serif;';
+  title.textContent = 'GG TV';
+  panel.appendChild(title);
+
+  const channels = [
+    { name: 'GG Trivia', desc: 'Test your Graham Games knowledge!', fn: startGGTrivia },
+    { name: 'GG News', desc: 'Watch the latest reports', fn: startGGNews },
+  ];
+
+  channels.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #c9a84c44;border-radius:8px;background:#1a1a3e;color:#ddd;font-size:0.95rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    const nm = document.createElement('div');
+    nm.style.cssText = 'font-weight:bold;color:#c9a84c;margin-bottom:2px;';
+    nm.textContent = ch.name;
+    btn.appendChild(nm);
+    const ds = document.createElement('div');
+    ds.style.cssText = 'font-size:0.75rem;color:#888;';
+    ds.textContent = ch.desc;
+    btn.appendChild(ds);
+    btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#2a2a4e'; };
+    btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#1a1a3e'; };
+    btn.onclick = () => ch.fn();
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:12px;padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Turn Off';
+  closeBtn.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+  panel.appendChild(closeBtn);
+
+  overlay.appendChild(panel);
+}
+
+const GG_NEWS_REPORTERS = {
+  tina: { name: 'Tina Tonkins', color: '#e84393', opts: { skinTone: 1, gender: 'female', hairStyle: 'sideponytail', hairColor: 2, outfit: 3, accessory: 0, dress: -1 } },
+  chuck: { name: 'Chuck Chuckleton', color: '#0984e3', opts: { skinTone: 3, gender: 'male', hairStyle: 'short', hairColor: 1, outfit: 5, accessory: 0, dress: -1 } },
+};
+
+const GG_NEWS_STORIES = [
+  { reporter: 'tina', headline: 'BREAKING: Local Beaver Spotted Wearing Tiny Shirt',
+    body: 'Residents of Mini Life Town were stunned today when a beaver was seen strolling through the park wearing what appeared to be a red Graham Games t-shirt. "I couldn\'t believe my eyes," said Mayor Maple. "It just walked right past the fountain like it owned the place." Animal control has been notified but the beaver remains at large.' },
+  { reporter: 'chuck', headline: 'EXCLUSIVE: Man Claims He Can Eat 47 Burgers at Mic Ronaldz',
+    body: 'A local man known only as "Big Jeff" announced today that he plans to break the all-time Mic Ronaldz burger eating record. "I\'ve been training for months," he told reporters while doing arm stretches. The current record is 12 burgers, held by an unnamed toddler who works there.' },
+  { reporter: 'tina', headline: 'WEATHER: Mysterious Fog Returns to Town',
+    body: 'The strange fog that rolls in at the edges of town every single day has scientists baffled. "We\'ve tested everything," said Dr. Blinksworth. "It\'s as if the world just... ends out there." Mayor Maple assured residents this is "totally normal and not at all suspicious."' },
+  { reporter: 'chuck', headline: 'SPORTS: Basketball Court Still Has No Teams',
+    body: 'Despite having a perfectly good basketball court in town, no organized teams have been formed. "People just show up, shoot a few hoops alone, then leave," reported Coach Carl. "It\'s honestly kind of sad. But hey, free throws are fun too I guess."' },
+  { reporter: 'tina', headline: 'POLITICS: Mayor Maple Promises More Benches',
+    body: 'In a bold campaign move, Mayor Maple has promised to install "at least one more bench" in the town park. "The people have spoken," she said at a press conference attended by nobody. "They want somewhere to sit, and by golly, they shall have it."' },
+  { reporter: 'chuck', headline: 'CRIME: Shoplifter Caught Stealing Free Samples',
+    body: 'Merchant Mike reported a bizarre incident today when a customer attempted to steal free samples from his store. "They\'re free!" he shouted at the fleeing suspect. "You don\'t have to run!" The suspect was last seen hiding behind the library.' },
+  { reporter: 'tina', headline: 'TECH: Local Computer Somehow Earns Money When Used',
+    body: 'Scientists remain baffled by a home computer that generates actual cash when someone types on it. "We\'ve run every diagnostic," said tech expert Gary. "It just... makes money. We don\'t know how." The homeowner declined to comment, citing "gotta grind."' },
+  { reporter: 'chuck', headline: 'HEALTH: Shower Water Confirmed to Be "Pretty Nice"',
+    body: 'After months of investigation, water quality experts have confirmed that the shower water in local homes is, quote, "pretty nice." "It\'s clean, it\'s warm, and it costs $2," said the report. "What more do you want?" Residents seem satisfied.' },
+  { reporter: 'tina', headline: 'REAL ESTATE: Mansions Now Available, Cost Entire Life Savings',
+    body: 'A luxury mansion has gone on the market in the outskirts of town, priced at what experts call "everything you have." Features include a hot tub, art studio, and a kitchen where food is free. "It\'s the dream," said the realtor. "You just have to work for a very long time first."' },
+  { reporter: 'chuck', headline: 'ENTERTAINMENT: Arcade Owner Admits Games Are "Kinda Rigged"',
+    body: 'Gamer Gary, owner of the local arcade, made a shocking confession today. "Look, the brick breaker game? It\'s beatable, sure. But is it easy? No." He then laughed and charged another $5 admission. Attendance remains high despite the admission.' },
+  { reporter: 'tina', headline: 'LIFESTYLE: Treadmill Users Report Feeling "Slightly Less Tired"',
+    body: 'In a groundbreaking fitness study, local gym-goers reported feeling "a tiny bit more energetic" after using the treadmill exactly three times. "It\'s not much," said Coach Carl, "but it\'s honest work." The study was funded by a grant of $0.' },
+  { reporter: 'chuck', headline: 'MILITARY: Sergeant Briggs Says New Recruits "Need More Practice"',
+    body: 'Sgt. Briggs held a press conference today criticizing the aim of recent recruits. "They come in, they can barely hit a target, and then they want to go on missions?" He shook his head for approximately 45 seconds before adding, "Five training sessions. MINIMUM."' },
+];
+
+function drawNewsReporter(cvs, reporterKey) {
+  const ctx = cvs.getContext('2d');
+  const r = GG_NEWS_REPORTERS[reporterKey];
+  // News desk background
+  ctx.fillStyle = '#0a0a2e';
+  ctx.fillRect(0, 0, cvs.width, cvs.height);
+  // Desk
+  ctx.fillStyle = '#3a2a1a';
+  ctx.fillRect(0, cvs.height - 40, cvs.width, 40);
+  ctx.fillStyle = '#4a3a2a';
+  ctx.fillRect(0, cvs.height - 42, cvs.width, 4);
+  // GG NEWS banner on desk
+  ctx.fillStyle = '#cc2222';
+  ctx.fillRect(cvs.width / 2 - 35, cvs.height - 32, 70, 18);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 11px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('GG NEWS', cvs.width / 2, cvs.height - 18);
+  // Small microphone on desk
+  ctx.fillStyle = '#555';
+  ctx.fillRect(cvs.width / 2 + 40, cvs.height - 55, 4, 15);
+  ctx.fillStyle = '#333';
+  ctx.beginPath();
+  ctx.arc(cvs.width / 2 + 42, cvs.height - 58, 6, 0, Math.PI * 2);
+  ctx.fill();
+  // Draw the reporter character behind desk
+  drawPosterCharacter(ctx, cvs.width / 2, cvs.height - 80, 0.8, r.opts);
+  // Name plate
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(r.name, cvs.width / 2, cvs.height - 6);
+}
+
+function startGGNews() {
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+  overlay.innerHTML = '';
+
+  const stories = [...GG_NEWS_STORIES].sort(() => Math.random() - 0.5).slice(0, 3);
+  let sIdx = 0;
+
+  function renderStory() {
+    overlay.innerHTML = '';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:20px;max-width:460px;text-align:left;font-family:Segoe UI,sans-serif;';
+
+    const story = stories[sIdx];
+    const r = GG_NEWS_REPORTERS[story.reporter];
+
+    // Top row: reporter canvas + headline
+    const topRow = document.createElement('div');
+    topRow.style.cssText = 'display:flex;align-items:flex-start;gap:14px;margin-bottom:12px;';
+
+    // Reporter character canvas
+    const cvs = document.createElement('canvas');
+    cvs.width = 140; cvs.height = 180;
+    cvs.style.cssText = 'border-radius:8px;border:2px solid #c9a84c44;flex-shrink:0;width:120px;height:150px;';
+    drawNewsReporter(cvs, story.reporter);
+    topRow.appendChild(cvs);
+
+    // Headline + banner column
+    const infoCol = document.createElement('div');
+    infoCol.style.cssText = 'flex:1;min-width:0;';
+
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#cc2222;color:#fff;font-weight:bold;font-size:0.7rem;padding:3px 8px;border-radius:3px;display:inline-block;margin-bottom:6px;letter-spacing:1px;';
+    banner.textContent = 'GG NEWS LIVE';
+    infoCol.appendChild(banner);
+
+    const nameTag = document.createElement('div');
+    nameTag.style.cssText = 'color:' + r.color + ';font-size:0.75rem;font-weight:bold;margin-bottom:4px;';
+    nameTag.textContent = r.name;
+    infoCol.appendChild(nameTag);
+
+    const headline = document.createElement('div');
+    headline.style.cssText = 'color:#fff;font-size:0.95rem;font-weight:bold;line-height:1.3;';
+    headline.textContent = story.headline;
+    infoCol.appendChild(headline);
+
+    topRow.appendChild(infoCol);
+    panel.appendChild(topRow);
+
+    // Subtitle area — speech bubble style
+    const bubbleWrap = document.createElement('div');
+    bubbleWrap.style.cssText = 'position:relative;margin-bottom:14px;';
+
+    // Speech bubble triangle
+    const tri = document.createElement('div');
+    tri.style.cssText = 'width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:8px solid #1a1a3e;margin-left:40px;';
+    bubbleWrap.appendChild(tri);
+
+    const bubble = document.createElement('div');
+    bubble.style.cssText = 'background:#1a1a3e;border:1px solid #c9a84c44;border-radius:10px;padding:12px 14px;min-height:70px;';
+
+    const subtitleEl = document.createElement('div');
+    subtitleEl.style.cssText = 'color:#ddd;font-size:0.85rem;line-height:1.5;font-style:italic;';
+    bubble.appendChild(subtitleEl);
+    bubbleWrap.appendChild(bubble);
+    panel.appendChild(bubbleWrap);
+
+    // Progress
+    const prog = document.createElement('div');
+    prog.style.cssText = 'color:#666;font-size:0.7rem;text-align:center;margin-bottom:10px;';
+    prog.textContent = 'Story ' + (sIdx + 1) + ' of ' + stories.length;
+    panel.appendChild(prog);
+
+    const btnRow = document.createElement('div');
+    btnRow.style.cssText = 'text-align:center;';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    nextBtn.textContent = sIdx < stories.length - 1 ? 'NEXT STORY' : 'DONE';
+    nextBtn.onclick = () => {
+      clearInterval(typeTimer);
+      sIdx++;
+      if (sIdx < stories.length) renderStory();
+      else {
+        needs.fun = Math.min(100, needs.fun + 30);
+        overlay.innerHTML = '';
+        const endPanel = document.createElement('div');
+        endPanel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+        const endTitle = document.createElement('div');
+        endTitle.style.cssText = 'color:#c9a84c;font-size:1.1rem;font-weight:bold;margin-bottom:10px;font-family:Cinzel,serif;';
+        endTitle.textContent = 'GG News';
+        endPanel.appendChild(endTitle);
+        const endMsg = document.createElement('div');
+        endMsg.style.cssText = 'color:#aaa;font-size:0.85rem;margin-bottom:6px;font-style:italic;';
+        endMsg.textContent = '"That\'s all for today. Stay informed, stay gaming!"';
+        endPanel.appendChild(endMsg);
+        const endReward = document.createElement('div');
+        endReward.style.cssText = 'color:#4caf50;font-size:0.85rem;margin-bottom:14px;';
+        endReward.textContent = '+30 fun';
+        endPanel.appendChild(endReward);
+        const endBtn = document.createElement('button');
+        endBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+        endBtn.textContent = 'DONE';
+        endBtn.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+        endPanel.appendChild(endBtn);
+        overlay.appendChild(endPanel);
+      }
+    };
+    btnRow.appendChild(nextBtn);
+    panel.appendChild(btnRow);
+
+    overlay.appendChild(panel);
+
+    // Typewriter subtitle effect
+    let charIdx = 0;
+    const fullText = story.body;
+    const typeTimer = setInterval(() => {
+      charIdx += 2;
+      subtitleEl.textContent = fullText.substring(0, charIdx);
+      if (charIdx >= fullText.length) clearInterval(typeTimer);
+    }, 20);
+  }
+
+  renderStory();
+}
+
+function closeCourtOverlay() {
+  const overlay = document.getElementById('job-overlay');
+  overlay.classList.remove('visible');
+  overlay.innerHTML = '';
+  jobMiniGameRunning = false;
+}
+
+function startGGBasketball() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.classList.add('visible');
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.2rem;font-weight:bold;margin-bottom:6px;font-family:Cinzel,serif;';
+  title.textContent = 'Basketball Court';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#888;font-size:0.75rem;margin-bottom:16px;';
+  sub.textContent = 'What do you wanna do?';
+  panel.appendChild(sub);
+
+  const opts = [
+    { name: 'Play Basketball', desc: 'Shoot hoops and score points!', fn: runCourtBasketball },
+    { name: 'Cheerleading', desc: 'Cheer on the team with dance moves!', fn: runCourtCheerleading },
+  ];
+
+  opts.forEach(o => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #c9a84c44;border-radius:8px;background:#1a1a3e;color:#ddd;font-size:0.95rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    const nm = document.createElement('div');
+    nm.style.cssText = 'font-weight:bold;color:#ff8844;margin-bottom:2px;';
+    nm.textContent = o.name;
+    btn.appendChild(nm);
+    const ds = document.createElement('div');
+    ds.style.cssText = 'font-size:0.75rem;color:#888;';
+    ds.textContent = o.desc;
+    btn.appendChild(ds);
+    btn.onmouseover = () => { btn.style.borderColor = '#ff8844'; btn.style.background = '#2a2a4e'; };
+    btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#1a1a3e'; };
+    btn.onclick = () => o.fn();
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:12px;padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Leave';
+  closeBtn.onclick = () => closeCourtOverlay();
+  panel.appendChild(closeBtn);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+}
+
+function runCourtBasketball() {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:16px;max-width:480px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#ff8844;font-size:1rem;font-weight:bold;margin-bottom:8px;';
+  title.textContent = 'GG Basketball';
+  panel.appendChild(title);
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 440; cvs.height = 300;
+  cvs.style.cssText = 'border-radius:8px;border:2px solid #c9a84c44;display:block;margin:0 auto 10px;width:100%;max-width:440px;';
+  panel.appendChild(cvs);
+
+  const hint = document.createElement('div');
+  hint.style.cssText = 'color:#aaa;font-size:0.75rem;margin-bottom:8px;';
+  hint.innerHTML = 'Press <b>SPACE</b> to shoot when the power bar is in the green!';
+  panel.appendChild(hint);
+
+  const scoreEl = document.createElement('div');
+  scoreEl.style.cssText = 'color:#fff;font-size:0.9rem;font-weight:bold;margin-bottom:8px;';
+  scoreEl.textContent = 'Score: 0 / 0';
+  panel.appendChild(scoreEl);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  let score = 0, attempts = 0, maxAttempts = 8;
+  let power = 0, powerDir = 1, shooting = false, shotResult = null, shotTimer = 0;
+  let ballX = 120, ballY = 230, ballVX = 0, ballVY = 0, ballInFlight = false;
+  const hoopX = 340, hoopY = 100, hoopW = 40;
+  let running = true;
+  let lastTime = performance.now();
+
+  // Mini characters watching from sideline
+  const crowd = [];
+  for (let i = 0; i < 5; i++) {
+    crowd.push({
+      x: 30 + i * 45, y: H - 30,
+      skin: Math.floor(Math.random() * 6),
+      hair: Math.floor(Math.random() * 7),
+      bounce: Math.random() * Math.PI * 2
+    });
+  }
+
+  function drawMiniPerson(x, y, skinIdx, hairIdx, armUp) {
+    const skinColors = ['#f5d0a9', '#f0c090', '#d4a86a', '#b08850', '#8a6535', '#5a3a1a'];
+    const hairColors = ['#1a1a1a', '#4a3222', '#d4a843', '#aa3322', '#dd6622', '#ffffff', '#3366cc'];
+    const skin = skinColors[skinIdx];
+    const hair = hairColors[hairIdx];
+    // Body
+    ctx.fillStyle = '#cc4400';
+    ctx.fillRect(x - 5, y - 8, 10, 14);
+    // Head
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(x, y - 14, 6, 0, Math.PI * 2); ctx.fill();
+    // Hair
+    ctx.fillStyle = hair;
+    ctx.beginPath(); ctx.arc(x, y - 17, 5, Math.PI, 0); ctx.fill();
+    // Arms
+    ctx.fillStyle = '#cc4400';
+    if (armUp) {
+      ctx.fillRect(x - 9, y - 16, 4, 10);
+      ctx.fillRect(x + 5, y - 16, 4, 10);
+    } else {
+      ctx.fillRect(x - 9, y - 6, 4, 10);
+      ctx.fillRect(x + 5, y - 6, 4, 10);
+    }
+    // Legs
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x - 4, y + 6, 3, 8);
+    ctx.fillRect(x + 1, y + 6, 3, 8);
+  }
+
+  function shoot() {
+    if (shooting || ballInFlight || !running) return;
+    shooting = true;
+    ballInFlight = true;
+    attempts++;
+    // Green zone is 0.4-0.65
+    const inGreen = power >= 0.4 && power <= 0.65;
+    const dx = hoopX - ballX, dy = hoopY - ballY;
+    if (inGreen) {
+      ballVX = dx / 30;
+      ballVY = dy / 30 - 3;
+      shotResult = 'swish';
+    } else {
+      ballVX = dx / 30 + (Math.random() - 0.5) * 6;
+      ballVY = dy / 30 - 3 + (Math.random() - 0.5) * 3;
+      shotResult = 'miss';
+    }
+  }
+
+  function onKey(e) {
+    if (e.code === 'Space') { e.preventDefault(); shoot(); }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    // Court background
+    ctx.fillStyle = '#8B5E3C';
+    ctx.fillRect(0, 0, W, H);
+    // Court lines
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(10, 10, W - 20, H - 20);
+    ctx.beginPath(); ctx.moveTo(W / 2, 10); ctx.lineTo(W / 2, H - 10); ctx.stroke();
+    ctx.beginPath(); ctx.arc(W / 2, H / 2, 40, 0, Math.PI * 2); ctx.stroke();
+
+    // Backboard + hoop
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(hoopX + 15, hoopY - 30, 5, 50);
+    ctx.fillStyle = '#ccc';
+    ctx.fillRect(hoopX - 5, hoopY - 25, 30, 20);
+    // Rim
+    ctx.strokeStyle = '#ff4400';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(hoopX - hoopW / 2, hoopY);
+    ctx.lineTo(hoopX + hoopW / 2, hoopY);
+    ctx.stroke();
+    // Net lines
+    ctx.strokeStyle = '#ffffff55';
+    ctx.lineWidth = 1;
+    for (let nx = -2; nx <= 2; nx++) {
+      ctx.beginPath();
+      ctx.moveTo(hoopX + nx * 8, hoopY);
+      ctx.lineTo(hoopX + nx * 5, hoopY + 20);
+      ctx.stroke();
+    }
+
+    // Player character
+    const playerSkin = Math.min(charOpts.skinTone || 0, 5);
+    const playerHair = Math.min(charOpts.hairColor || 0, 6);
+    if (!ballInFlight) {
+      drawMiniPerson(120, 230, playerSkin, playerHair, false);
+      // Ball in hands
+      ctx.fillStyle = '#ff8844';
+      ctx.beginPath(); ctx.arc(ballX, ballY - 4, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#cc5500';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(ballX, ballY - 4, 8, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      drawMiniPerson(120, 230, playerSkin, playerHair, true);
+    }
+
+    // Ball in flight
+    if (ballInFlight) {
+      ballX += ballVX;
+      ballY += ballVY;
+      ballVY += 0.35;
+      // Ball
+      ctx.fillStyle = '#ff8844';
+      ctx.beginPath(); ctx.arc(ballX, ballY, 8, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = '#cc5500';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(ballX, ballY, 8, 0, Math.PI * 2); ctx.stroke();
+
+      // Check if ball reached hoop area
+      if (ballY >= hoopY - 10 && ballY <= hoopY + 10 && ballX >= hoopX - hoopW / 2 && ballX <= hoopX + hoopW / 2 && shotResult === 'swish') {
+        if (!shotTimer) {
+          score++;
+          shotTimer = 1.5;
+          SFX.kaChing();
+        }
+      }
+      // Ball off screen or settled
+      if (ballY > H + 20 || ballX > W + 20 || ballX < -20) {
+        if (!shotTimer) shotTimer = 0.8;
+      }
+      if (shotTimer > 0) {
+        shotTimer -= dt;
+        if (shotTimer <= 0) {
+          // Reset
+          ballX = 120; ballY = 230; ballVX = 0; ballVY = 0;
+          ballInFlight = false; shooting = false; shotResult = null; shotTimer = 0;
+          power = 0; powerDir = 1;
+          if (attempts >= maxAttempts) {
+            running = false;
+            document.removeEventListener('keydown', onKey);
+            finishBasketball();
+            return;
+          }
+        }
+      }
+    }
+
+    // Shot result text
+    if (shotResult && shotTimer > 0) {
+      ctx.fillStyle = shotResult === 'swish' ? '#44ff44' : '#ff4444';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(shotResult === 'swish' ? 'SWISH!' : 'MISS!', W / 2, H / 2 - 20);
+    }
+
+    // Power bar (left side)
+    if (!ballInFlight) {
+      power += powerDir * dt * 1.8;
+      if (power >= 1) { power = 1; powerDir = -1; }
+      if (power <= 0) { power = 0; powerDir = 1; }
+      ctx.fillStyle = '#222';
+      ctx.fillRect(20, 50, 20, 150);
+      // Green zone
+      ctx.fillStyle = '#44aa4466';
+      ctx.fillRect(20, 50 + 150 * (1 - 0.65), 20, 150 * 0.25);
+      // Fill
+      const barH = power * 150;
+      ctx.fillStyle = (power >= 0.4 && power <= 0.65) ? '#44ff44' : '#ff4444';
+      ctx.fillRect(20, 50 + 150 - barH, 20, barH);
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(20, 50, 20, 150);
+    }
+
+    // Crowd
+    crowd.forEach((p, i) => {
+      p.bounce += dt * 3;
+      const armUp = Math.sin(p.bounce) > 0.3;
+      drawMiniPerson(p.x, p.y, p.skin, p.hair, armUp);
+    });
+
+    // Attempts remaining
+    ctx.fillStyle = '#fff';
+    ctx.font = '12px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Shots: ' + attempts + '/' + maxAttempts, W - 100, 30);
+
+    scoreEl.textContent = 'Score: ' + score + ' / ' + attempts;
+    requestAnimationFrame(draw);
+  }
+
+  function finishBasketball() {
+    const funGain = 20 + score * 5;
+    needs.fun = Math.min(100, needs.fun + funGain);
+    overlay.innerHTML = '';
+    const endPanel = document.createElement('div');
+    endPanel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+    const t = document.createElement('div');
+    t.style.cssText = 'color:#ff8844;font-size:1.2rem;font-weight:bold;margin-bottom:10px;';
+    t.textContent = 'Game Over!';
+    endPanel.appendChild(t);
+    const s = document.createElement('div');
+    s.style.cssText = 'color:#fff;font-size:1.4rem;font-weight:bold;margin-bottom:6px;';
+    s.textContent = score + ' / ' + maxAttempts + ' baskets';
+    endPanel.appendChild(s);
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#aaa;font-size:0.85rem;margin-bottom:6px;';
+    msg.textContent = score >= 7 ? 'MVP! Nothing but net!' : score >= 5 ? 'Nice shooting!' : score >= 3 ? 'Not bad, keep practicing!' : 'Better luck next time!';
+    endPanel.appendChild(msg);
+    const r = document.createElement('div');
+    r.style.cssText = 'color:#4caf50;font-size:0.85rem;margin-bottom:14px;';
+    r.textContent = '+' + funGain + ' fun';
+    endPanel.appendChild(r);
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    btn.textContent = 'DONE';
+    btn.onclick = () => closeCourtOverlay();
+    endPanel.appendChild(btn);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+    wrap.appendChild(endPanel);
+    overlay.appendChild(wrap);
+  }
+
+  draw();
+}
+
+const CHEER_MOVES = [
+  { name: 'CLAP!', key: 'Space', code: 'Space' },
+  { name: 'LEFT ARM!', key: 'A', code: 'KeyA' },
+  { name: 'RIGHT ARM!', key: 'D', code: 'KeyD' },
+  { name: 'JUMP!', key: 'W', code: 'KeyW' },
+  { name: 'STOMP!', key: 'S', code: 'KeyS' },
+];
+
+function runCourtCheerleading() {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:16px;max-width:480px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#e84393;font-size:1rem;font-weight:bold;margin-bottom:8px;';
+  title.textContent = 'GG Cheerleading!';
+  panel.appendChild(title);
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 440; cvs.height = 300;
+  cvs.style.cssText = 'border-radius:8px;border:2px solid #c9a84c44;display:block;margin:0 auto 10px;width:100%;max-width:440px;';
+  panel.appendChild(cvs);
+
+  const promptEl = document.createElement('div');
+  promptEl.style.cssText = 'color:#fff;font-size:1.3rem;font-weight:bold;margin-bottom:6px;min-height:36px;';
+  panel.appendChild(promptEl);
+
+  const scoreEl = document.createElement('div');
+  scoreEl.style.cssText = 'color:#aaa;font-size:0.8rem;margin-bottom:6px;';
+  scoreEl.textContent = 'Score: 0 | Combo: 0';
+  panel.appendChild(scoreEl);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+
+  const ctx = cvs.getContext('2d');
+  const W = cvs.width, H = cvs.height;
+  let score = 0, combo = 0, maxCombo = 0, round = 0, totalRounds = 15;
+  let currentMove = null, moveTimer = 0, waitingForInput = false;
+  let flash = null, running = true;
+  let lastTime = performance.now();
+
+  // Cheerleader squad positions
+  const cheerleaders = [
+    { x: 110, y: 210, skin: 1, hair: 2, pose: 'idle' },
+    { x: 220, y: 200, skin: 0, hair: 4, pose: 'idle' },
+    { x: 330, y: 210, skin: 3, hair: 6, pose: 'idle' },
+  ];
+
+  function drawCheerleader(cl) {
+    const skinColors = ['#f5d0a9', '#f0c090', '#d4a86a', '#b08850', '#8a6535', '#5a3a1a'];
+    const hairColors = ['#1a1a1a', '#4a3222', '#d4a843', '#aa3322', '#dd6622', '#ffffff', '#3366cc'];
+    const x = cl.x, y = cl.y;
+    const skin = skinColors[cl.skin];
+    const hair = hairColors[cl.hair];
+
+    // Skirt
+    ctx.fillStyle = '#e84393';
+    ctx.beginPath();
+    ctx.moveTo(x - 12, y);
+    ctx.lineTo(x + 12, y);
+    ctx.lineTo(x + 16, y + 16);
+    ctx.lineTo(x - 16, y + 16);
+    ctx.closePath();
+    ctx.fill();
+
+    // Legs
+    ctx.fillStyle = skin;
+    ctx.fillRect(x - 5, y + 16, 4, 14);
+    ctx.fillRect(x + 1, y + 16, 4, 14);
+    // Shoes
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x - 6, y + 28, 6, 4);
+    ctx.fillRect(x, y + 28, 6, 4);
+
+    // Top
+    ctx.fillStyle = '#e84393';
+    ctx.fillRect(x - 8, y - 14, 16, 16);
+    // Letter on top
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('G', x, y - 2);
+
+    // Head
+    ctx.fillStyle = skin;
+    ctx.beginPath(); ctx.arc(x, y - 22, 8, 0, Math.PI * 2); ctx.fill();
+    // Hair
+    ctx.fillStyle = hair;
+    ctx.beginPath(); ctx.arc(x, y - 26, 7, Math.PI, 0); ctx.fill();
+    // Ponytail
+    ctx.fillRect(x + 6, y - 28, 4, 14);
+    // Eyes
+    ctx.fillStyle = '#222';
+    ctx.fillRect(x - 4, y - 23, 2, 2);
+    ctx.fillRect(x + 2, y - 23, 2, 2);
+    // Smile
+    ctx.beginPath();
+    ctx.arc(x, y - 19, 3, 0.1 * Math.PI, 0.9 * Math.PI);
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Pom-poms + arms based on pose
+    const pomColors = ['#ff4488', '#ff88aa'];
+    if (cl.pose === 'clap') {
+      // Arms up together
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x - 3, y - 30, 6, 10);
+      drawPomPom(x, y - 34, pomColors);
+    } else if (cl.pose === 'left') {
+      // Left arm up, right down
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x - 16, y - 28, 10, 4);
+      ctx.fillRect(x + 6, y - 6, 10, 4);
+      drawPomPom(x - 18, y - 30, pomColors);
+      drawPomPom(x + 18, y - 6, pomColors);
+    } else if (cl.pose === 'right') {
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x + 6, y - 28, 10, 4);
+      ctx.fillRect(x - 16, y - 6, 10, 4);
+      drawPomPom(x + 18, y - 30, pomColors);
+      drawPomPom(x - 18, y - 6, pomColors);
+    } else if (cl.pose === 'jump') {
+      // Both arms up, body higher
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x - 14, y - 30, 8, 4);
+      ctx.fillRect(x + 6, y - 30, 8, 4);
+      drawPomPom(x - 16, y - 34, pomColors);
+      drawPomPom(x + 16, y - 34, pomColors);
+    } else if (cl.pose === 'stomp') {
+      // Arms down wide
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x - 18, y, 10, 4);
+      ctx.fillRect(x + 8, y, 10, 4);
+      drawPomPom(x - 20, y, pomColors);
+      drawPomPom(x + 20, y, pomColors);
+    } else {
+      // Idle — arms at sides
+      ctx.fillStyle = '#e84393';
+      ctx.fillRect(x - 14, y - 8, 4, 12);
+      ctx.fillRect(x + 10, y - 8, 4, 12);
+      drawPomPom(x - 14, y + 2, pomColors);
+      drawPomPom(x + 14, y + 2, pomColors);
+    }
+  }
+
+  function drawPomPom(x, y, colors) {
+    for (let i = 0; i < 6; i++) {
+      ctx.fillStyle = colors[i % 2];
+      const a = (i / 6) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(x + Math.cos(a) * 4, y + Math.sin(a) * 4, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function nextMove() {
+    if (round >= totalRounds) {
+      running = false;
+      finishCheerleading();
+      return;
+    }
+    round++;
+    currentMove = CHEER_MOVES[Math.floor(Math.random() * CHEER_MOVES.length)];
+    moveTimer = 1.5;
+    waitingForInput = true;
+    promptEl.style.color = '#fff';
+    promptEl.textContent = currentMove.name + '  [' + currentMove.key + ']';
+  }
+
+  function onKey(e) {
+    if (!waitingForInput || !running) return;
+    e.preventDefault();
+    if (e.code === currentMove.code) {
+      score += 10 + combo * 2;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      flash = { color: '#44ff44', t: 0.4 };
+      waitingForInput = false;
+      // Set cheerleader poses
+      const poseMap = { 'Space': 'clap', 'KeyA': 'left', 'KeyD': 'right', 'KeyW': 'jump', 'KeyS': 'stomp' };
+      cheerleaders.forEach(c => c.pose = poseMap[currentMove.code] || 'idle');
+      promptEl.style.color = '#44ff44';
+      promptEl.textContent = 'PERFECT!';
+      SFX.kaChing();
+      setTimeout(() => {
+        cheerleaders.forEach(c => c.pose = 'idle');
+        nextMove();
+      }, 500);
+    } else {
+      combo = 0;
+      flash = { color: '#ff4444', t: 0.4 };
+      waitingForInput = false;
+      promptEl.style.color = '#ff4444';
+      promptEl.textContent = 'WRONG!';
+      setTimeout(() => nextMove(), 500);
+    }
+    scoreEl.textContent = 'Score: ' + score + ' | Combo: ' + combo;
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+
+    if (waitingForInput) {
+      moveTimer -= dt;
+      if (moveTimer <= 0) {
+        combo = 0;
+        waitingForInput = false;
+        flash = { color: '#ff4444', t: 0.3 };
+        promptEl.style.color = '#ff4444';
+        promptEl.textContent = 'TOO SLOW!';
+        scoreEl.textContent = 'Score: ' + score + ' | Combo: ' + combo;
+        setTimeout(() => nextMove(), 500);
+      }
+    }
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Gym floor
+    ctx.fillStyle = '#8B5E3C';
+    ctx.fillRect(0, 0, W, H);
+    // Court lines
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(15, 15, W - 30, H - 30);
+
+    // Bleachers (back)
+    ctx.fillStyle = '#555';
+    ctx.fillRect(0, 0, W, 60);
+    ctx.fillStyle = '#444';
+    ctx.fillRect(0, 0, W, 30);
+    // Mini crowd in bleachers
+    const crowdColors = ['#cc4400', '#4488cc', '#44aa44', '#aa44aa', '#cc8800', '#cc2244'];
+    for (let i = 0; i < 18; i++) {
+      const cx = 20 + i * 24;
+      const cy = i % 2 === 0 ? 18 : 45;
+      ctx.fillStyle = crowdColors[i % crowdColors.length];
+      ctx.fillRect(cx - 3, cy - 4, 6, 8);
+      ctx.fillStyle = '#f0c090';
+      ctx.beginPath(); ctx.arc(cx, cy - 8, 4, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // "GO TEAM!" banner
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(W / 2 - 50, 4, 100, 20);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GO TEAM!', W / 2, 19);
+
+    // Draw cheerleaders
+    cheerleaders.forEach(drawCheerleader);
+
+    // Timer bar for current move
+    if (waitingForInput && moveTimer > 0) {
+      const barW = 200;
+      const barX = W / 2 - barW / 2;
+      ctx.fillStyle = '#333';
+      ctx.fillRect(barX, H - 25, barW, 12);
+      const pct = moveTimer / 1.5;
+      ctx.fillStyle = pct > 0.3 ? '#44aa44' : '#ff4444';
+      ctx.fillRect(barX, H - 25, barW * pct, 12);
+    }
+
+    // Combo display
+    if (combo >= 3) {
+      ctx.fillStyle = '#ff8844';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(combo + 'x COMBO!', W / 2, H - 40);
+    }
+
+    // Flash
+    if (flash) {
+      ctx.fillStyle = flash.color + '33';
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // Round counter
+    ctx.fillStyle = '#fff';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Move ' + Math.min(round, totalRounds) + '/' + totalRounds, W - 20, H - 8);
+
+    requestAnimationFrame(draw);
+  }
+
+  function finishCheerleading() {
+    document.removeEventListener('keydown', onKey);
+    const funGain = 25 + Math.floor(score / 10);
+    needs.fun = Math.min(100, needs.fun + funGain);
+    overlay.innerHTML = '';
+    const endPanel = document.createElement('div');
+    endPanel.style.cssText = 'background:#0a0a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+    const t = document.createElement('div');
+    t.style.cssText = 'color:#e84393;font-size:1.2rem;font-weight:bold;margin-bottom:10px;';
+    t.textContent = 'Routine Complete!';
+    endPanel.appendChild(t);
+    const s = document.createElement('div');
+    s.style.cssText = 'color:#fff;font-size:1.4rem;font-weight:bold;margin-bottom:6px;';
+    s.textContent = 'Score: ' + score;
+    endPanel.appendChild(s);
+    const mc = document.createElement('div');
+    mc.style.cssText = 'color:#ff8844;font-size:0.9rem;margin-bottom:6px;';
+    mc.textContent = 'Best Combo: ' + maxCombo + 'x';
+    endPanel.appendChild(mc);
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#aaa;font-size:0.85rem;margin-bottom:6px;';
+    msg.textContent = maxCombo >= 10 ? 'Superstar cheerleader!' : maxCombo >= 6 ? 'Great routine!' : maxCombo >= 3 ? 'Nice moves!' : 'Keep practicing those moves!';
+    endPanel.appendChild(msg);
+    const r = document.createElement('div');
+    r.style.cssText = 'color:#4caf50;font-size:0.85rem;margin-bottom:14px;';
+    r.textContent = '+' + funGain + ' fun';
+    endPanel.appendChild(r);
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    btn.textContent = 'DONE';
+    btn.onclick = () => closeCourtOverlay();
+    endPanel.appendChild(btn);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+    wrap.appendChild(endPanel);
+    overlay.appendChild(wrap);
+  }
+
+  nextMove();
+  draw();
 }
 
 function buildSwimmingPool() {
@@ -3589,6 +4893,160 @@ function buildTown() {
   const merchLight = new THREE.PointLight(0xffeedd, 0.5, 10);
   merchLight.position.set(142, 3.2, 7);
   g.add(merchLight);
+
+  // === DISPLAY: Folded shirt stack on shelf (right wall) ===
+  // Shelf
+  const merchShelfMat = new THREE.MeshLambertMaterial({ color: 0x3a2a1a });
+  const shelf1 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 1.2), merchShelfMat);
+  shelf1.position.set(144.8, 1.2, 7);
+  g.add(shelf1);
+  const shelf2 = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.05, 1.2), merchShelfMat);
+  shelf2.position.set(144.8, 2.0, 7);
+  g.add(shelf2);
+  // Folded shirts on shelves (small colored rectangles)
+  const shirtColors = [0xcc2222, 0xcc2222, 0x1a1a2e];
+  shirtColors.forEach((c, i) => {
+    const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.3), new THREE.MeshLambertMaterial({ color: c }));
+    shirt.position.set(144.78, 1.3, 6.6 + i * 0.4);
+    g.add(shirt);
+    const shirt2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.1, 0.3), new THREE.MeshLambertMaterial({ color: c }));
+    shirt2.position.set(144.78, 2.1, 6.6 + i * 0.4);
+    g.add(shirt2);
+  });
+
+  // === DISPLAY: GG Poster on back wall ===
+  const dPosterCvs = document.createElement('canvas');
+  dPosterCvs.width = 256; dPosterCvs.height = 360;
+  const dpc = dPosterCvs.getContext('2d');
+  dpc.fillStyle = '#1a1a2e';
+  dpc.fillRect(0, 0, 256, 360);
+  dpc.fillStyle = '#cc2222';
+  dpc.font = 'bold 36px sans-serif';
+  dpc.textAlign = 'center';
+  dpc.fillText('GRAHAM', 128, 40);
+  // Always draw Graham on the display poster
+  drawPosterCharacter(dpc, 128, 175, 1, { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 });
+  // GG logo at bottom
+  dpc.fillStyle = '#c9a84c';
+  dpc.font = 'bold 44px serif';
+  dpc.textAlign = 'center';
+  dpc.fillText('GG', 128, 320);
+  // Gold border
+  dpc.strokeStyle = '#c9a84c';
+  dpc.lineWidth = 6;
+  dpc.strokeRect(6, 6, 244, 348);
+  const dPosterTex = new THREE.CanvasTexture(dPosterCvs);
+  const dPosterMat = new THREE.MeshLambertMaterial({ map: dPosterTex, emissive: 0x111111, emissiveIntensity: 0.3 });
+  const dPoster = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.1, 0.04), dPosterMat);
+  dPoster.position.set(143.5, 2.0, 4.22);
+  g.add(dPoster);
+  // Poster frame
+  const dPosterFrame = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.03), new THREE.MeshLambertMaterial({ color: 0x3a2a1a }));
+  dPosterFrame.position.set(143.5, 2.0, 4.19);
+  g.add(dPosterFrame);
+  // Price tag under poster
+  const pTagCvs = document.createElement('canvas');
+  pTagCvs.width = 128; pTagCvs.height = 32;
+  const ptc = pTagCvs.getContext('2d');
+  ptc.fillStyle = '#ffffff';
+  ptc.fillRect(0, 0, 128, 32);
+  ptc.fillStyle = '#222222';
+  ptc.font = 'bold 18px sans-serif';
+  ptc.textAlign = 'center';
+  ptc.fillText('$50', 64, 22);
+  const pTagTex = new THREE.CanvasTexture(pTagCvs);
+  const pTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: pTagTex }));
+  pTag.position.set(143.5, 1.35, 4.22);
+  g.add(pTag);
+
+  // === DISPLAY: GG Beaver on pedestal (left wall) ===
+  // Pedestal
+  const pedMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+  const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.45, 0.7, 12), pedMat);
+  pedestal.position.set(139.8, 0.35, 7);
+  g.add(pedestal);
+  const pedTop = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 12), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+  pedTop.position.set(139.8, 0.73, 7);
+  g.add(pedTop);
+  // Display beaver (static copy, not the actual pet)
+  const displayBeaver = new THREE.Group();
+  const dbFurMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const dbDarkMat = new THREE.MeshLambertMaterial({ color: 0x5a4010 });
+  const dbTailMat = new THREE.MeshLambertMaterial({ color: 0x3a2a0a });
+  const dbShirtMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  // Body
+  const dbBody = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.4, 0.7), dbFurMat);
+  dbBody.position.set(0, 0.45, 0); displayBeaver.add(dbBody);
+  // Shirt
+  const dbSTop = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.02, 0.5), dbShirtMat);
+  dbSTop.position.set(0, 0.66, 0); displayBeaver.add(dbSTop);
+  const dbSL = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.5), dbShirtMat);
+  dbSL.position.set(-0.23, 0.56, 0); displayBeaver.add(dbSL);
+  const dbSR = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.2, 0.5), dbShirtMat);
+  dbSR.position.set(0.23, 0.56, 0); displayBeaver.add(dbSR);
+  // Head
+  const dbHead = new THREE.Mesh(new THREE.SphereGeometry(0.22, 10, 8), dbFurMat);
+  dbHead.position.set(0, 0.78, 0.35); displayBeaver.add(dbHead);
+  // Eyes
+  [-0.09, 0.09].forEach(x => {
+    const ew = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    ew.position.set(x, 0.82, 0.52); displayBeaver.add(ew);
+    const ep = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    ep.position.set(x, 0.82, 0.56); displayBeaver.add(ep);
+  });
+  // Nose + teeth
+  const dbNose = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  dbNose.position.set(0, 0.76, 0.55); displayBeaver.add(dbNose);
+  [-0.025, 0.025].forEach(x => {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.06, 0.02), new THREE.MeshLambertMaterial({ color: 0xffffee }));
+    t.position.set(x, 0.7, 0.54); displayBeaver.add(t);
+  });
+  // Ears
+  [-0.18, 0.18].forEach(x => {
+    const ear = new THREE.Mesh(new THREE.SphereGeometry(0.06, 6, 4), dbDarkMat);
+    ear.position.set(x, 0.9, 0.3); displayBeaver.add(ear);
+  });
+  // Legs
+  [[-0.13, -0.25], [0.13, -0.25], [-0.13, 0.25], [0.13, 0.25]].forEach(([x, z]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.25, 0.12), dbDarkMat);
+    leg.position.set(x, 0.12, z); displayBeaver.add(leg);
+  });
+  // Tail
+  const dbTail = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.06, 0.45), dbTailMat);
+  dbTail.position.set(0, 0.32, -0.55); displayBeaver.add(dbTail);
+  displayBeaver.position.set(139.8, 0.76, 7);
+  displayBeaver.rotation.y = Math.PI * 0.3;
+  g.add(displayBeaver);
+  // Beaver price tag
+  const bTagCvs = document.createElement('canvas');
+  bTagCvs.width = 128; bTagCvs.height = 32;
+  const btc = bTagCvs.getContext('2d');
+  btc.fillStyle = '#ffffff';
+  btc.fillRect(0, 0, 128, 32);
+  btc.fillStyle = '#222222';
+  btc.font = 'bold 18px sans-serif';
+  btc.textAlign = 'center';
+  btc.fillText('$100', 64, 22);
+  const bTagTex = new THREE.CanvasTexture(bTagCvs);
+  const bTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: bTagTex }));
+  bTag.position.set(139.8, 0.68, 7.45);
+  g.add(bTag);
+
+  // === DISPLAY: Outfit mannequin price tag ===
+  const mTagCvs = document.createElement('canvas');
+  mTagCvs.width = 128; mTagCvs.height = 32;
+  const mtc = mTagCvs.getContext('2d');
+  mtc.fillStyle = '#ffffff';
+  mtc.fillRect(0, 0, 128, 32);
+  mtc.fillStyle = '#222222';
+  mtc.font = 'bold 18px sans-serif';
+  mtc.textAlign = 'center';
+  mtc.fillText('$40', 64, 22);
+  const mTagTex = new THREE.CanvasTexture(mTagCvs);
+  const mTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: mTagTex }));
+  mTag.position.set(142, 1.08, 5.22);
+  g.add(mTag);
+
   // Merch counter interactable — use visible counter mesh for raycasting
   interactables.push({ mesh: merchCounterMesh, group: g, type: 'merchCounter', label: 'Browse GG Merch', need: null, usePos: new THREE.Vector3(142, 0.15, 6), floor: 0 });
 
@@ -3895,7 +5353,7 @@ function buildTown() {
     rim.position.set(hx + (hx < 132 ? 0.4 : -0.4), 3, -23); g.add(rim);
   });
   // Court interactable
-  interactables.push({ mesh: courtFloor, group: g, type: 'basketball', label: 'Shoot Hoops', need: 'fun', usePos: new THREE.Vector3(132, 0.15, -22), floor: 0 });
+  interactables.push({ mesh: courtFloor, group: g, type: 'basketballCourt', label: 'Basketball Court', need: 'fun', usePos: new THREE.Vector3(132, 0.15, -22), floor: 0 });
 
   // === PLAYGROUND (park area, X=105-115, Z=16-23) ===
   // Sandbox
@@ -6182,9 +7640,6 @@ function startActivityMiniGame(obj, config) {
   } else if (type === 'arcadePlay') {
     hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> Move paddle';
     runArcadeGame(canvas, ctx, onDone);
-  } else if (type === 'basketball') {
-    hintEl.innerHTML = '<kbd>SPACE</kbd> Shoot at the right moment!';
-    runBasketballGame(canvas, ctx, onDone);
   } else if (type === 'fastfoodEat') {
     hintEl.innerHTML = '<kbd>←</kbd> <kbd>→</kbd> Catch the food!';
     runFastFoodCatchGame(canvas, ctx, onDone);
@@ -7619,6 +9074,12 @@ document.addEventListener('mousemove', (e) => {
 
 document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (gameStarted && !gameOver && jumpOffset === 0 && !currentAction) {
+      jumpVel = JUMP_SPEED;
+    }
+  }
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
   if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
   if (e.code === 'KeyC' && gameStarted && !gameOver && activePet !== 'none') {
@@ -7703,7 +9164,6 @@ const actionConfig = {
   gymWorkout: { label: 'Working out...', duration: 4, restore: 15, cost: 0, hungerDrain: 15 },
   restaurantEat: { label: 'Eating a meal...', duration: 4, restore: 70, cost: 10 },
   arcadePlay: { label: 'Playing arcade...', duration: 5, restore: 55, cost: 5 },
-  basketball: { label: 'Shooting hoops...', duration: 4, restore: 40, cost: 0, hungerDrain: 10 },
   fastfoodEat: { label: 'Eating junk food...', duration: 2.5, restore: 30, cost: 3 },
 };
 
@@ -7774,6 +9234,18 @@ function startAction(obj) {
     return;
   }
 
+  // GG TV — channel picker
+  if (obj.type === 'ggTV') {
+    openGGTVMenu();
+    return;
+  }
+
+  // Basketball Court — picker for play or cheer
+  if (obj.type === 'basketballCourt') {
+    startGGBasketball();
+    return;
+  }
+
   // Grand Piano is instant — fun boost
   if (obj.type === 'grandPiano') {
     needs.fun = Math.min(100, needs.fun + 50);
@@ -7798,7 +9270,7 @@ function startAction(obj) {
   currentAction = { obj, config, phase: 'walking' };
 }
 
-const ACTIVITY_MINIGAMES = ['libraryRead', 'gymWorkout', 'restaurantEat', 'arcadePlay', 'basketball', 'fastfoodEat'];
+const ACTIVITY_MINIGAMES = ['libraryRead', 'gymWorkout', 'restaurantEat', 'arcadePlay', 'fastfoodEat'];
 
 function beginAction(action) {
   const { config } = action;
@@ -9086,6 +10558,50 @@ function openMerchStore() {
   }
   panel.appendChild(posterBtn);
 
+  // --- GG Trivia TV ---
+  const divider3 = document.createElement('div');
+  divider3.style.cssText = 'border-top:1px solid #333;margin:16px 0;';
+  panel.appendChild(divider3);
+
+  const tvIcon = document.createElement('div');
+  tvIcon.style.cssText = 'font-size:2.5rem;margin-bottom:6px;';
+  tvIcon.textContent = '\u{1F4FA}';
+  panel.appendChild(tvIcon);
+
+  const tvDesc = document.createElement('div');
+  tvDesc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:12px;line-height:1.4;';
+  tvDesc.innerHTML = '<b style="color:#cc2222">GG Trivia TV</b> — Red TV that plays "The Great GG Trivia" game show!<br>Answer questions about Graham Games for fun!';
+  panel.appendChild(tvDesc);
+
+  const tvBtn = document.createElement('button');
+  tvBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (hasGGTV) {
+    tvBtn.style.background = '#444';
+    tvBtn.style.color = '#aaa';
+    tvBtn.textContent = 'OWNED';
+  } else if (!hasSecondFloor) {
+    tvBtn.style.background = '#444';
+    tvBtn.style.color = '#aaa';
+    tvBtn.textContent = '$75 — Requires second floor';
+  } else if (money < 75) {
+    tvBtn.style.background = '#444';
+    tvBtn.style.color = '#aaa';
+    tvBtn.textContent = '$75 — Not enough money';
+  } else {
+    tvBtn.style.background = '#c9a84c';
+    tvBtn.style.color = '#1a1a2e';
+    tvBtn.textContent = 'BUY — $75';
+    tvBtn.onclick = () => {
+      money -= 75;
+      hasGGTV = true;
+      buildGGTV();
+      SFX.kaChing();
+      closeMerchStore();
+      showTip('GG Trivia TV set up upstairs!');
+    };
+  }
+  panel.appendChild(tvBtn);
+
   const close = document.createElement('div');
   close.style.cssText = 'color:#888;font-size:0.75rem;margin-top:8px;cursor:pointer;';
   close.textContent = 'Click anywhere to close';
@@ -9338,6 +10854,10 @@ function updatePlayerY() {
 // ═══ UPDATE LOOP ═══
 let lastTime = performance.now();
 let walkAnim = 0;
+let jumpVel = 0;
+let jumpOffset = 0;
+const JUMP_SPEED = 5;
+const JUMP_GRAVITY = 14;
 
 function update() {
   if (!gameStarted || gameOver) return;
@@ -9558,11 +11078,18 @@ function update() {
     }
   }
 
+  // Jump physics
+  if (jumpOffset > 0 || jumpVel > 0) {
+    jumpOffset += jumpVel * dt;
+    jumpVel -= JUMP_GRAVITY * dt;
+    if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; }
+  }
+
   // First-person camera
   const bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) ? Math.sin(walkAnim) * 0.04 : 0;
   camera.position.set(
     character.position.x,
-    character.position.y + EYE_HEIGHT + bobY,
+    character.position.y + EYE_HEIGHT + bobY + jumpOffset,
     character.position.z
   );
   // Look direction from yaw/pitch
@@ -9784,6 +11311,15 @@ function restartGame() {
   }
   hasGGPoster = false;
   delete actionConfig.ggPoster;
+  // Reset GG TV
+  if (ggTVGroup) {
+    scene.remove(ggTVGroup);
+    for (let i = interactables.length - 1; i >= 0; i--) {
+      if (interactables[i].type === 'ggTV') interactables.splice(i, 1);
+    }
+    ggTVGroup = null;
+  }
+  hasGGTV = false;
   // Reset town/car state
   if (carGroup) { scene.remove(carGroup); carGroup = null; }
   if (townGroup) { scene.remove(townGroup); townGroup = null; }
@@ -9916,6 +11452,7 @@ function buildSaveData() {
     militaryTraining,
     hasBeaverPet,
     hasGGPoster,
+    hasGGTV,
   };
 }
 
@@ -9952,6 +11489,20 @@ function saveGame() {
     currentSlot = 2;
     promptSaveName(name => writeSaveToSlot(2, name));
   }
+}
+
+function renameSave() {
+  if (!gameStarted || gameOver) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  promptSaveName(name => {
+    currentSlotName = name;
+    if (currentSlot >= 0) {
+      const slots = getSlotsMetadata();
+      if (slots[currentSlot]) slots[currentSlot].name = name;
+      setSlotsMetadata(slots);
+    }
+    showTip('Name changed to: ' + name);
+  });
 }
 
 function loadSlot(index) {
@@ -10017,6 +11568,10 @@ function loadSlot(index) {
     if (save.hasGGPoster) {
       hasGGPoster = true;
       buildGGPoster();
+    }
+    if (save.hasGGTV) {
+      hasGGTV = true;
+      buildGGTV();
     }
   }
   currentFloor = save.currentFloor;
