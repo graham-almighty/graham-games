@@ -89,6 +89,14 @@ Each exam reveals a clue in the "Nurse's Notes" panel.
 - Stats accumulate across runs (totalPatients, totalFakersCaught)
 - Title screen shows high score, best day, patients treated, fakers caught
 
+## Save/Continue Progress
+- **localStorage key:** `school-nurse-progress` — full game state snapshot
+- Save anytime: HUD "SAVE" button during gameplay + "SAVE PROGRESS" on summary screen
+- Saves: day, score, reputation, all running totals, patient list (serialized), patient index, current screen
+- Continue button on title screen resumes exactly where you left off (mid-day or between days)
+- Progress cleared on new game or game over
+- Patients serialized via `serializePatient()`/`deserializePatient()` (condition stored as id+name strings)
+
 ## Theme
 - Accent color: `#4caa64` (medical green)
 - Dark background with green accents

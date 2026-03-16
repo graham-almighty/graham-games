@@ -147,22 +147,24 @@ To add a new purchasable expansion:
 - Excluded from "Living Large" achievement requirement
 - **GG Beaver pet** ($100 in-game money): Hip-height beaver with big cute eyes, buck teeth, paddle tail, wearing GG red shirt. +10 fun every 30s. Saved in `hasBeaverPet`. Follows player at home, hidden at town/mansion. Appears in pet menu when owned (works independently of G Bux pet unlock).
 - **GG Poster** ($50, requires second floor): Canvas texture poster always showing Graham (medium skin, curly blonde hair, male, GG merch outfit — never the player's character) with "GRAHAM" in red on top, "GG" in gold on bottom, gold border, dark wood frame. Located on second floor near bed at (-1, UPPER_Y+1.6, 4.9), floor 1. Interactable `ggPoster` gives +15 fun in 2s. Saved in `hasGGPoster`.
-- **GG TV** ($75, requires second floor): Retro boxy CRT TV (red plastic body, dark bezel, two dial knobs, speaker grille, rabbit-ear antenna, stubby feet) on floor upstairs at (-0.5, UPPER_Y, 4.75). Interactable `ggTV` opens channel picker. Saved in `hasGGTV`.
+- **GG TV** ($75, requires second floor): Retro boxy CRT TV (red plastic body, dark bezel, two dial knobs, speaker grille, rabbit-ear antenna, stubby feet) on right wall upstairs at (4.5, UPPER_Y, 3), rotated to face the bed. Screen uses `ggTVScreenCvs`/`ggTVScreenTex` canvas texture with boosted emissive glow. Interactable `ggTV` opens channel picker. Saved in `hasGGTV`.
   - **GG Trivia**: 89 trivia questions about all Graham Games. Pick 5 random, answer for fun (20 + correct*10).
   - **GG News**: 24 news stories reported by Tina Tonkins (side ponytail, blonde) and Chuck Chuckleton (short brown hair, all black). Canvas-drawn mini reporter characters at news desk with speech bubble subtitles and typewriter effect. +30 fun. Shows 3 random stories per viewing.
+  - **Screen Savers**: 5 animated screen savers (Bouncing Logo, Starfield, Matrix Rain, Lava Blobs, Pipes). Render live on the overlay AND the physical 3D TV screen texture (`updateTVScreenSaver()` every 3 frames). State in `window._ssState`/`window._ssRenderFrame`. +20 fun on close.
   - **TV Ads**: 8 product ads (`GG_TV_ADS` array) shown between news stories (2 per viewing). Each ad shows product name, icon, tagline, description, price, and effect. Ads hint about using the phone to order. Stored in `window._lastSeenAds` for phone catalog.
   - News reporters defined in `GG_NEWS_REPORTERS` with character appearance opts for `drawPosterCharacter()`.
-- **GG Landline** ($100 in-game money, requires basement): Retro dark red rotary phone on small wooden table in basement at (3, BASEMENT_Y+0.77, 3). Interactable `ggPhone` opens `openPhoneCatalog()` showing all TV ad products. Ordered items are permanently placed in the basement as colored boxes with interactable actions. Saved in `hasPhone`, orders in `phoneOrders` array of itemIds. Built by `buildPhone()`, stored in `phoneGroup`. Items built by `buildPhoneItem(itemId)`.
-  - **TV Ad Products** (8 unlockable items, placed in basement when ordered):
-    - Mega Blaster 3000 ($30) — `megaBlaster`, +25 fun
+- **GG Landline** ($100 in-game money, requires basement): Retro dark red rotary phone on small wooden table in basement at (3, BASEMENT_Y+0.77, 3). Interactable `ggPhone` opens `openPhoneCatalog()` with rotary dial pad UI. Saved in `hasPhone`, orders in `phoneOrders` array of itemIds. Built by `buildPhone()`, stored in `phoneGroup`. Items built by `buildPhoneItem(itemId)`.
+  - **Phone Book** ($10, dial 129-8364): Sets `hasPhoneBook` flag. When owned, phone UI shows directory of all product names and numbers below the dial pad. Owned items shown struck-through.
+  - **TV Ad Products** (8 unlockable items, placed on ground floor when ordered):
+    - Mega Blaster 3000 ($30) — `megaBlaster`, +25 fun. **Press E to fire bouncy orange foam balls** with physics (gravity, floor/wall bouncing, 5 bounce limit, 4s lifetime). Tracked in `foamBalls` array, updated by `updateFoamBalls(dt)`.
     - Turbo Sneakers XL ($40) — `turboSneakers`, +20 energy
     - Glow Lava Lamp EXTREME ($35) — `glowLamp`, +30 fun
     - Chef's Kiss Apron ($45) — `chefApron`, +35 hunger
-    - Ultra Comfy Pillow ($25) — `comfyPillow`, +30 energy
-    - Sparkle Shampoo ($20) — `sparkleShampoo`, +25 hygiene
-    - Joke Book Vol. 9 ($15) — `jokeBook`, +20 fun
+    - Ultra Comfy Pillow ($25) — `comfyPillow`, placed on bed (purple pillow mesh via `buildComfyPillow()`), boosts bed energy restore from 60 to 80. Tracked in `comfyPillowGroup`.
+    - Sparkle Shampoo ($20) — `sparkleShampoo`, +25 hygiene. First use sets `hasSparkleHair` — 6 white sparkle orbs orbit above the character's head (Y=1.55+), twinkle via opacity/scale pulse. Visible in mirror (`buildMirrorSparkles()`/`updateMirrorSparkles()`). Persists across saves.
+    - Joke Book Vol. 9 ($15) — `jokeBook`, instant action opens `openJokeBook()` overlay with 20 jokes (`JOKE_BOOK` array). Setup/punchline reveal mechanic, +20 fun on close.
     - Power Protein Bars ($35) — `proteinBars`, +25 hunger +15 energy
-  - Each item uses action config `phone_{itemId}` with 3s duration.
+  - Most items use action config `phone_{itemId}` with 3s duration. Exceptions: comfyPillow (bed boost), jokeBook (instant overlay), megaBlaster (E key).
 - **GG Superfan dialogue**: Cycles through fan-themed lines; offers "Browse Merch" button (pre-purchase) or "Equip GG Merch" (post-purchase). Uses `window._merchDialogIdx` for cycling.
 
 ## Driving System
@@ -181,7 +183,7 @@ To add a new purchasable expansion:
 
 **Metadata shape:** `[{name, day, money}, null, null]`
 
-**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked, hasBeaverPet, hasGGPoster, hasGGTV, hasPhone, phoneOrders, militaryTraining.
+**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked, hasBeaverPet, hasGGPoster, hasGGTV, hasPhone, hasPhoneBook, hasSparkleHair, phoneOrders, militaryTraining.
 
 **Rename save:** HUD "NAME" button calls `renameSave()` — prompts for new name, updates slot metadata.
 
