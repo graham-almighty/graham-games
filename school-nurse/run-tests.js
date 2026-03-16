@@ -30,7 +30,7 @@ const globalMock = {
           textContent: '',
           innerHTML: '',
           style: {},
-          classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+          classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
           querySelectorAll: () => [],
           disabled: false,
         };
@@ -74,7 +74,7 @@ globalMock.document.getElementById = (id) => {
   if (!mockElements[id]) {
     mockElements[id] = {
       textContent: '', innerHTML: '', style: {},
-      classList: { add: () => {}, remove: () => {}, toggle: () => {} },
+      classList: { add: () => {}, remove: () => {}, toggle: () => {}, contains: () => false },
       querySelectorAll: () => [],
       disabled: false,
     };
@@ -83,7 +83,7 @@ globalMock.document.getElementById = (id) => {
 };
 
 // Execute the script in a sandboxed context
-const fn = new Function(...keys, scriptMatch[1] + '\nreturn { ggLoad, ggSave, ggUnlockAchievement, SN_ACH, CONDITIONS, TREATMENTS, NAMES_M, NAMES_F, GRADES, SKIN_TONES, HAIR_COLORS, SHIRT_COLORS, HAIR_STYLES, pick, generatePatient, generateDayPatients, resetState, loadStats, saveStats, saveFinalStats, getTreatmentName, state: undefined, drawOffice, drawStudent, drawSpeechBubble, showScreen, startGame, updateHUD };');
+const fn = new Function(...keys, scriptMatch[1] + '\nreturn { ggLoad, ggSave, ggUnlockAchievement, SN_ACH, CONDITIONS, TREATMENTS, NAMES_M, NAMES_F, GRADES, SKIN_TONES, HAIR_COLORS, SHIRT_COLORS, HAIR_STYLES, pick, generatePatient, generateDayPatients, resetState, loadStats, saveStats, saveFinalStats, saveProgress, loadProgress, clearProgress, hasSavedProgress, continueGame, saveAndConfirm, serializePatient, deserializePatient, getCurrentScreen, getTreatmentName, state: undefined, drawOffice, drawStudent, drawSpeechBubble, showScreen, showDayScreen, showPatient, startGame, updateHUD, updateTitleStats };');
 const exports = fn(...vals);
 
 let passed = 0, failed = 0, total = 0;
@@ -572,6 +572,174 @@ test('Game uses canvas for office scene', () => {
 
 test('Game links back to launcher', () => {
   assert(html.includes("'../index.html'"), 'Missing launcher link');
+});
+
+// ═══════════════════════════════════
+console.log('\n=== SAVE PROGRESS ===');
+// ═══════════════════════════════════
+
+test('hasSavedProgress returns false when no save', () => {
+  resetStorage();
+  assertEqual(exports.hasSavedProgress(), false);
+});
+
+test('saveProgress stores game state', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveProgress();
+  const p = exports.loadProgress();
+  assert(p !== null, 'Should have saved progress');
+  assertEqual(p.day, 1, 'Should save day');
+  assertEqual(p.score, 0, 'Should save score');
+  assertEqual(p.reputation, 60, 'Should save reputation');
+  assertEqual(p.totalPatients, 0, 'Should save totalPatients');
+  assertEqual(p.totalFakersCaught, 0, 'Should save totalFakersCaught');
+  assertEqual(p.weekCorrect, 0, 'Should save weekCorrect');
+  assertEqual(p.weekMistakes, 0, 'Should save weekMistakes');
+});
+
+test('hasSavedProgress returns true after save', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveProgress();
+  assertEqual(exports.hasSavedProgress(), true);
+});
+
+test('clearProgress removes saved data', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveProgress();
+  assertEqual(exports.hasSavedProgress(), true);
+  exports.clearProgress();
+  assertEqual(exports.hasSavedProgress(), false);
+  assertEqual(exports.loadProgress(), null);
+});
+
+test('continueGame restores state from save', () => {
+  resetStorage();
+  exports.resetState();
+  // Simulate completing day 3 with some progress
+  exports.saveProgress();
+  // Verify continue doesn't throw
+  exports.continueGame();
+  // After continuing from day 1 save, should be on day 2
+});
+
+test('startGame clears saved progress', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveProgress();
+  assertEqual(exports.hasSavedProgress(), true);
+  exports.startGame();
+  assertEqual(exports.hasSavedProgress(), false);
+});
+
+test('saveAndConfirm saves progress and updates buttons', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveAndConfirm();
+  assertEqual(exports.hasSavedProgress(), true);
+  const btn = mockElements['save-btn'];
+  assert(btn, 'save-btn should exist');
+  // After setTimeout mock fires instantly, button resets
+  assertEqual(btn.disabled, false);
+  const hudBtn = mockElements['hud-save-btn'];
+  assert(hudBtn, 'hud-save-btn should exist');
+  assertEqual(hudBtn.disabled, false);
+});
+
+test('saveProgress preserves all state fields', () => {
+  resetStorage();
+  exports.resetState();
+  // Save will capture current state
+  exports.saveProgress();
+  const p = exports.loadProgress();
+  assert(typeof p.day === 'number', 'day should be number');
+  assert(typeof p.score === 'number', 'score should be number');
+  assert(typeof p.reputation === 'number', 'reputation should be number');
+  assert(typeof p.totalPatients === 'number', 'totalPatients should be number');
+  assert(typeof p.totalFakersCaught === 'number', 'totalFakersCaught should be number');
+  assert(typeof p.weekCorrect === 'number', 'weekCorrect should be number');
+  assert(typeof p.weekMistakes === 'number', 'weekMistakes should be number');
+});
+
+test('loadProgress returns null for corrupted data', () => {
+  storage['school-nurse-progress'] = 'not json{{{';
+  const result = exports.loadProgress();
+  assertEqual(result, null, 'Should return null for bad JSON');
+  resetStorage();
+});
+
+test('HTML has continue button', () => {
+  assert(html.includes('continue-btn'), 'Missing continue button');
+  assert(html.includes('continueGame'), 'Missing continueGame onclick');
+});
+
+test('HTML has save progress button on summary screen', () => {
+  assert(html.includes('save-btn'), 'Missing save button');
+  assert(html.includes('saveAndConfirm'), 'Missing saveAndConfirm onclick');
+  assert(html.includes('SAVE PROGRESS'), 'Missing SAVE PROGRESS text');
+});
+
+test('HTML has save button in HUD', () => {
+  assert(html.includes('hud-save-btn'), 'Missing HUD save button');
+  assert(html.includes('hud-save-btn'), 'Missing hud-save-btn id');
+});
+
+test('serializePatient round-trips correctly', () => {
+  const p = exports.generatePatient(false, 'easy');
+  const s = exports.serializePatient(p);
+  assert(typeof s.conditionId === 'string', 'Should have conditionId');
+  assert(typeof s.conditionName === 'string', 'Should have conditionName');
+  assert(s.condition === undefined, 'Should not have raw condition reference');
+  // Deserialize
+  const d = exports.deserializePatient(s);
+  assertEqual(d.name, p.name);
+  assertEqual(d.condition.id, p.condition.id);
+  assertEqual(d.condition.name, p.condition.name);
+  assertEqual(d.complaint, p.complaint);
+  assertEqual(d.faking, p.faking);
+  assertEqual(d.correctTreatment, p.correctTreatment);
+});
+
+test('serializePatient round-trips faker correctly', () => {
+  const p = exports.generatePatient(true, 'easy');
+  const s = exports.serializePatient(p);
+  const d = exports.deserializePatient(s);
+  assertEqual(d.faking, true);
+  assert(d.fakeReason, 'Faker should have fakeReason after round-trip');
+  assertEqual(d.condition.id, p.condition.id);
+});
+
+test('saveProgress includes mid-day state', () => {
+  resetStorage();
+  exports.resetState();
+  exports.showDayScreen();
+  exports.saveProgress();
+  const p = exports.loadProgress();
+  assert(Array.isArray(p.patients), 'Should save patients array');
+  assert(p.patients.length > 0, 'Should have patients');
+  assert(typeof p.patientIndex === 'number', 'Should save patientIndex');
+  assert(typeof p.dayCorrect === 'number', 'Should save dayCorrect');
+  assert(typeof p.dayMistakes === 'number', 'Should save dayMistakes');
+  assert(typeof p.screen === 'string', 'Should save screen');
+});
+
+test('Continue button shows day number', () => {
+  resetStorage();
+  exports.resetState();
+  exports.saveProgress();
+  exports.updateTitleStats();
+  const btn = mockElements['continue-btn'];
+  assert(btn.textContent.includes('Day 1'), 'Continue button should show saved day number');
+  assert(btn.style.display === '', 'Continue button should be visible');
+});
+
+test('Continue button hidden when no save', () => {
+  resetStorage();
+  exports.updateTitleStats();
+  const btn = mockElements['continue-btn'];
+  assertEqual(btn.style.display, 'none', 'Continue button should be hidden');
 });
 
 // ═══════════════════════════════════

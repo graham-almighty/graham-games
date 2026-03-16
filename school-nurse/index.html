@@ -200,6 +200,19 @@
     transition: width 0.5s;
     border-radius: 4px;
   }
+  .hud-save-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    padding: 3px 10px;
+    background: transparent;
+    border: 1px solid #4caa6466;
+    color: #4caa64;
+    cursor: pointer;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .hud-save-btn:hover { background: #4caa6433; color: #fff; }
 
   /* Game Layout */
   #game-area {
@@ -438,6 +451,7 @@
   <div class="title-sub">Treat the sick. Bust the fakers.</div>
   <div class="title-stats" id="title-stats"></div>
   <button class="btn" onclick="startGame()">PLAY</button>
+  <button class="btn" id="continue-btn" onclick="continueGame()" style="display:none;margin-top:4px">CONTINUE</button>
   <button class="btn secondary" onclick="window.location.href='../index.html'" style="margin-top:8px">EXIT TO LAUNCHER</button>
 </div>
 
@@ -455,6 +469,7 @@
     <span>Score <span class="hud-val" id="hud-score">0</span></span>
     <span>Rep <div class="rep-bar"><div class="rep-fill" id="hud-rep-fill"></div></div></span>
     <span>Patient <span class="hud-val" id="hud-patient">1/3</span></span>
+    <button class="hud-save-btn" id="hud-save-btn" onclick="saveAndConfirm()">SAVE</button>
   </div>
   <div id="game-area">
     <div id="canvas-wrap">
@@ -469,6 +484,7 @@
   <div class="day-announce" id="summary-title">END OF DAY 1</div>
   <div id="summary-body"></div>
   <button class="btn" id="summary-btn" onclick="nextDay()">NEXT DAY</button>
+  <button class="btn secondary" id="save-btn" onclick="saveAndConfirm()">SAVE PROGRESS</button>
 </div>
 
 <!-- Game Over Screen -->
@@ -803,6 +819,7 @@ function resetState() {
 // SAVE / LOAD STATS
 // ═══════════════════════════════════════════
 const SAVE_KEY = 'school-nurse-save';
+const PROGRESS_KEY = 'school-nurse-progress';
 function loadStats() {
   try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch(e) { return {}; }
 }
@@ -821,6 +838,99 @@ function saveFinalStats() {
   s.bestDay = Math.max(s.bestDay || 0, state.day);
   s.gamesPlayed = (s.gamesPlayed || 0) + 1;
   localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+}
+function serializePatient(p) {
+  return {
+    name: p.name, gender: p.gender, grade: p.grade,
+    skinTone: p.skinTone, hairColor: p.hairColor, hairStyle: p.hairStyle, shirtColor: p.shirtColor,
+    conditionId: p.condition.id, conditionName: p.condition.name,
+    complaint: p.complaint, faking: p.faking, examResults: p.examResults,
+    physicalLabel: p.physicalLabel, correctTreatment: p.correctTreatment,
+    conditionEffect: p.conditionEffect, fakeReason: p.fakeReason
+  };
+}
+function deserializePatient(d) {
+  const condition = CONDITIONS.find(c => c.id === d.conditionId) || { id: d.conditionId, name: d.conditionName };
+  return {
+    name: d.name, gender: d.gender, grade: d.grade,
+    skinTone: d.skinTone, hairColor: d.hairColor, hairStyle: d.hairStyle, shirtColor: d.shirtColor,
+    condition, complaint: d.complaint, faking: d.faking, examResults: d.examResults,
+    physicalLabel: d.physicalLabel, correctTreatment: d.correctTreatment,
+    conditionEffect: d.conditionEffect, fakeReason: d.fakeReason
+  };
+}
+function saveProgress() {
+  const data = {
+    day: state.day,
+    score: state.score,
+    reputation: state.reputation,
+    totalPatients: state.totalPatients,
+    totalCorrect: state.totalCorrect,
+    totalFakersCaught: state.totalFakersCaught,
+    weekCorrect: state.weekCorrect,
+    weekMistakes: state.weekMistakes,
+    // Mid-day state
+    patientIndex: state.patientIndex,
+    dayCorrect: state.dayCorrect,
+    dayTotal: state.dayTotal,
+    dayFakersCaught: state.dayFakersCaught,
+    dayMistakes: state.dayMistakes,
+    patients: state.patients.map(serializePatient),
+    phase: state.phase,
+    screen: getCurrentScreen()
+  };
+  localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+}
+function getCurrentScreen() {
+  for (const id of ['title-screen','day-screen','game-screen','summary-screen','gameover-screen']) {
+    const el = document.getElementById(id);
+    if (el && !el.classList.contains('hidden')) return id;
+  }
+  return 'title-screen';
+}
+function loadProgress() {
+  try { return JSON.parse(localStorage.getItem(PROGRESS_KEY)); } catch(e) { return null; }
+}
+function clearProgress() {
+  localStorage.removeItem(PROGRESS_KEY);
+}
+function hasSavedProgress() {
+  return !!loadProgress();
+}
+function continueGame() {
+  const p = loadProgress();
+  if (!p) return;
+  resetState();
+  state.day = p.day;
+  state.score = p.score;
+  state.reputation = p.reputation;
+  state.totalPatients = p.totalPatients;
+  state.totalCorrect = p.totalCorrect || 0;
+  state.totalFakersCaught = p.totalFakersCaught;
+  state.weekCorrect = p.weekCorrect || 0;
+  state.weekMistakes = p.weekMistakes || 0;
+  state.dayCorrect = p.dayCorrect || 0;
+  state.dayTotal = p.dayTotal || 0;
+  state.dayFakersCaught = p.dayFakersCaught || 0;
+  state.dayMistakes = p.dayMistakes || 0;
+
+  if (p.patients && p.patients.length) {
+    state.patients = p.patients.map(deserializePatient);
+    state.patientIndex = p.patientIndex || 0;
+    // Resume into the right screen
+    if (p.screen === 'game-screen' || p.screen === 'day-screen') {
+      showScreen('game-screen');
+      showPatient();
+      return;
+    }
+    if (p.screen === 'summary-screen') {
+      endDay();
+      return;
+    }
+  }
+  // Default: start the next day
+  state.day++;
+  showDayScreen();
 }
 
 // ═══════════════════════════════════════════
@@ -1632,6 +1742,7 @@ function showScreen(id) {
 }
 
 function startGame() {
+  clearProgress();
   resetState();
   showDayScreen();
 }
@@ -1714,7 +1825,21 @@ function nextDay() {
   showDayScreen();
 }
 
+function saveAndConfirm() {
+  saveProgress();
+  // Flash both save buttons if visible
+  const btns = [document.getElementById('save-btn'), document.getElementById('hud-save-btn')];
+  btns.forEach(btn => {
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = 'SAVED!';
+    btn.disabled = true;
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 1500);
+  });
+}
+
 function gameOver() {
+  clearProgress();
   saveFinalStats();
   const stats = loadStats();
 
@@ -1734,12 +1859,20 @@ function updateTitleStats() {
   const el = document.getElementById('title-stats');
   if (!s.gamesPlayed && !s.totalPatients) {
     el.innerHTML = 'Welcome, Nurse!<br>Treat the sick. Catch the fakers.';
-    return;
+  } else {
+    el.innerHTML = 'High Score: ' + (s.highScore || 0) +
+      ' &bull; Best Day: ' + (s.bestDay || 0) +
+      '<br>Patients Treated: ' + (s.totalPatients || 0) +
+      ' &bull; Fakers Caught: ' + (s.totalFakersCaught || 0);
   }
-  el.innerHTML = 'High Score: ' + (s.highScore || 0) +
-    ' &bull; Best Day: ' + (s.bestDay || 0) +
-    '<br>Patients Treated: ' + (s.totalPatients || 0) +
-    ' &bull; Fakers Caught: ' + (s.totalFakersCaught || 0);
+  const contBtn = document.getElementById('continue-btn');
+  const p = loadProgress();
+  if (p) {
+    contBtn.style.display = '';
+    contBtn.textContent = 'CONTINUE (Day ' + p.day + ')';
+  } else {
+    contBtn.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════
