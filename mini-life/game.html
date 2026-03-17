@@ -2309,6 +2309,7 @@ let comfyPillowGroup = null;
 let foamBalls = [];
 let hasPhoneBook = false;
 let hasSparkleHair = false;
+let sneakerColor = null; // null = no sneakers, hex number = wearing sneakers of that color
 let hairSparkles = [];
 let ggPosterGroup = null;
 let activePet = 'dog'; // 'dog', 'cat', 'beaver', or 'none'
@@ -3462,7 +3463,7 @@ const GG_TV_ADS = [
   { name: 'Power Protein Bars', price: 35, icon: '\u{1F4AA}', color: '#ef5350', itemId: 'proteinBars', phone: '555-0800',
     tagline: 'GAINS! GAINS! GAINS! (RESULTS NOT GUARANTEED)',
     desc: 'Tastes like cardboard but makes you FEEL like a champion. Now in bulk! Feed the whole family!',
-    effect: 'Unlocks: Protein Stash — +25 hunger +15 energy', statKey: 'hunger', statVal: 25, bonus: { key: 'energy', val: 15 } },
+    effect: 'Unlocks: Protein Stash — +25 hunger +15 energy + 10x SPEED for 20s!', statKey: 'hunger', statVal: 25, bonus: { key: 'energy', val: 15 } },
   { name: 'SCHOOL NURSE SIMULATOR', price: 0, icon: '\u{1FA7A}', color: '#4caa64', isGame: true,
     tagline: 'TREAT THE SICK! BUST THE FAKERS!',
     desc: 'A kid says their stomach hurts but their temperature is normal? FAKER! Examine patients, spot the liars, and save the truly sick. Can YOU survive as the school nurse?',
@@ -3724,19 +3725,23 @@ function buildPhoneItem(itemId) {
   if (itemId === 'comfyPillow') {
     return buildComfyPillow();
   }
-  const GY = 0.15;
+  // Glow Lamp: big lava lamp upstairs instead of basement box
+  if (itemId === 'glowLamp') {
+    return buildGlowLamp();
+  }
+  const BY = -3.35;
   const colors = { megaBlaster: 0xff6b35, turboSneakers: 0x00bcd4, glowLamp: 0xe040fb, chefApron: 0xff9800,
     sparkleShampoo: 0x26c6da, jokeBook: 0x66bb6a, proteinBars: 0xef5350 };
-  const positions = { megaBlaster: [3, GY+0.18, -4], turboSneakers: [4, GY+0.18, -3], glowLamp: [4, GY+0.18, -1],
-    chefApron: [4, GY+0.18, 1], sparkleShampoo: [3, GY+0.18, -2],
-    jokeBook: [4, GY+0.18, 0], proteinBars: [3, GY+0.18, -3] };
+  const positions = { megaBlaster: [-3, BY+0.18, 3], turboSneakers: [-2, BY+0.18, 3], glowLamp: [-1, BY+0.18, 3],
+    chefApron: [0, BY+0.18, 3], sparkleShampoo: [-3, BY+0.18, 4],
+    jokeBook: [-2, BY+0.18, 4], proteinBars: [-1, BY+0.18, 4] };
   const labels = { megaBlaster: 'Play with Blaster', turboSneakers: 'Try on Sneakers', glowLamp: 'Stare at Glow Lamp',
     chefApron: 'Raid Snack Fridge', sparkleShampoo: 'Use Spa Kit',
     jokeBook: 'Read Joke Book', proteinBars: 'Eat Protein Bar' };
   const c = colors[itemId] || 0xcccccc;
   const pos = positions[itemId] || [0, BY+0.5, 3];
   const g = new THREE.Group();
-  // Small colored box on a shelf/floor — represents the delivered item
+  // Small colored box on basement floor — represents the delivered item
   const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.35, 0.3), new THREE.MeshLambertMaterial({ color: c }));
   box.position.set(0, 0.175, 0);
   g.add(box);
@@ -3752,7 +3757,7 @@ function buildPhoneItem(itemId) {
     actionConfig['phone_' + itemId] = { label: labels[itemId] || 'Using...', duration: 3, restore: ad.statVal, cost: 0 };
     if (ad.bonus) actionConfig['phone_' + itemId].energyBonus = ad.bonus.val;
     interactables.push({ mesh: box, group: g, type: 'phone_' + itemId, label: labels[itemId] || 'Use Item',
-      need: ad.statKey, usePos: new THREE.Vector3(pos[0] - 1, GY, pos[2]), floor: 0 });
+      need: ad.statKey, usePos: new THREE.Vector3(pos[0] - 1, BY + 0.15, pos[2]), floor: -1 });
   }
   rebuildInteractMeshes();
   return g;
@@ -3780,6 +3785,85 @@ const JOKE_BOOK = [
   { setup: 'What do you call a can opener that doesn\'t work?', punch: 'A can\'t opener.' },
   { setup: 'Why did the tomato turn red?', punch: 'Because it saw the salad dressing.' },
 ];
+
+const SNEAKER_COLORS = [
+  { name: 'Red', hex: 0xff2222 }, { name: 'Blue', hex: 0x2255ee }, { name: 'Green', hex: 0x22cc44 },
+  { name: 'Yellow', hex: 0xffdd00 }, { name: 'Orange', hex: 0xff8800 }, { name: 'Purple', hex: 0x9933ff },
+  { name: 'Pink', hex: 0xff66aa }, { name: 'Cyan', hex: 0x00ccdd }, { name: 'Black', hex: 0x222222 },
+  { name: 'White', hex: 0xeeeeee }, { name: 'Gold', hex: 0xc9a84c }, { name: 'Neon Green', hex: 0x33ff33 },
+];
+
+function openSneakerPicker() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.innerHTML = '';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1a2e;border:2px solid #00bcd4;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#00bcd4;font-size:1.2rem;font-weight:bold;margin-bottom:4px;';
+  title.textContent = '\u{1F45F} Turbo Sneakers XL';
+  panel.appendChild(title);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aaa;font-size:0.75rem;margin-bottom:14px;';
+  sub.textContent = sneakerColor !== null ? 'Pick a new color or take them off!' : 'Pick your color and lace up!';
+  panel.appendChild(sub);
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;';
+  SNEAKER_COLORS.forEach(sc => {
+    const btn = document.createElement('button');
+    const hexStr = '#' + sc.hex.toString(16).padStart(6, '0');
+    const selected = sneakerColor === sc.hex;
+    btn.style.cssText = 'width:100%;aspect-ratio:1;border-radius:8px;border:3px solid ' + (selected ? '#fff' : '#333') + ';cursor:pointer;background:' + hexStr + ';position:relative;';
+    btn.title = sc.name;
+    if (selected) {
+      const check = document.createElement('div');
+      check.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;color:' + (sc.hex > 0x888888 ? '#222' : '#fff') + ';font-weight:bold;';
+      check.textContent = '\u2713';
+      btn.appendChild(check);
+    }
+    btn.onclick = () => {
+      sneakerColor = sc.hex;
+      rebuildPlayerCharacter();
+      needs.energy = Math.min(100, needs.energy + 20);
+      SFX.actionComplete();
+      overlay.style.display = 'none'; overlay.innerHTML = '';
+      showTip('Laced up ' + sc.name + ' Turbo Sneakers! Walk 2x faster!');
+    };
+    grid.appendChild(btn);
+  });
+  panel.appendChild(grid);
+  if (sneakerColor !== null) {
+    const removeBtn = document.createElement('button');
+    removeBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#553333;color:#ff8888;margin-bottom:10px;display:block;width:100%;';
+    removeBtn.textContent = 'Take Off Sneakers';
+    removeBtn.onclick = () => {
+      sneakerColor = null;
+      rebuildPlayerCharacter();
+      SFX.actionComplete();
+      overlay.style.display = 'none'; overlay.innerHTML = '';
+      showTip('Sneakers removed.');
+    };
+    panel.appendChild(removeBtn);
+  }
+  const close = document.createElement('button');
+  close.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  close.textContent = 'Cancel';
+  close.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+  panel.appendChild(close);
+  overlay.appendChild(panel);
+  overlay.onclick = (e) => { if (e.target === overlay) { overlay.style.display = 'none'; overlay.innerHTML = ''; } };
+}
+
+function rebuildPlayerCharacter() {
+  const pos = character.position.clone();
+  const rot = character.rotation.y;
+  scene.remove(character);
+  character = buildCharacter(charOpts);
+  character.position.copy(pos);
+  character.rotation.y = rot;
+  scene.add(character);
+}
 
 function openJokeBook() {
   if (document.pointerLockElement) document.exitPointerLock();
@@ -3892,8 +3976,8 @@ function updateFoamBalls(dt) {
     if (b.userData.life <= 0) { scene.remove(b); foamBalls.splice(i, 1); continue; }
     b.userData.vel.y -= 9.8 * dt;
     b.position.add(b.userData.vel.clone().multiplyScalar(dt));
-    // Floor bounce
-    const floorY = GROUND_Y + 0.15;
+    // Floor bounce — adjust for current floor level
+    const floorY = (currentFloor === -1 ? -3.35 : GROUND_Y) + 0.15;
     if (b.position.y < floorY) {
       b.position.y = floorY;
       b.userData.vel.y = Math.abs(b.userData.vel.y) * 0.6;
@@ -3902,11 +3986,17 @@ function updateFoamBalls(dt) {
       b.userData.bounces++;
       if (b.userData.bounces > 5) { scene.remove(b); foamBalls.splice(i, 1); }
     }
-    // Wall bounces (home interior -5 to 5)
-    if (b.position.x < -4.8) { b.position.x = -4.8; b.userData.vel.x = Math.abs(b.userData.vel.x) * 0.7; }
-    if (b.position.x > 4.8) { b.position.x = 4.8; b.userData.vel.x = -Math.abs(b.userData.vel.x) * 0.7; }
-    if (b.position.z < -4.8) { b.position.z = -4.8; b.userData.vel.z = Math.abs(b.userData.vel.z) * 0.7; }
-    if (b.position.z > 4.8) { b.position.z = 4.8; b.userData.vel.z = -Math.abs(b.userData.vel.z) * 0.7; }
+    // Wall bounces — use bounds based on current location
+    let bxMin, bxMax, bzMin, bzMax;
+    if (inTown) { bxMin = TOWN_BOUNDS.xMin; bxMax = TOWN_BOUNDS.xMax; bzMin = TOWN_BOUNDS.zMin; bzMax = TOWN_BOUNDS.zMax; }
+    else if (inMansion) { bxMin = MANSION_BOUNDS.xMin; bxMax = MANSION_BOUNDS.xMax; bzMin = MANSION_BOUNDS.zMin; bzMax = MANSION_BOUNDS.zMax; }
+    else if (currentFloor === -1) { bxMin = -4.8; bxMax = 8; bzMin = -4.8; bzMax = 4.8; }
+    else if (b.position.x > 5) { bxMin = 5; bxMax = 18; bzMin = -8; bzMax = 8; } // yard
+    else { bxMin = -4.8; bxMax = 4.8; bzMin = -4.8; bzMax = 4.8; } // home interior
+    if (b.position.x < bxMin) { b.position.x = bxMin; b.userData.vel.x = Math.abs(b.userData.vel.x) * 0.7; }
+    if (b.position.x > bxMax) { b.position.x = bxMax; b.userData.vel.x = -Math.abs(b.userData.vel.x) * 0.7; }
+    if (b.position.z < bzMin) { b.position.z = bzMin; b.userData.vel.z = Math.abs(b.userData.vel.z) * 0.7; }
+    if (b.position.z > bzMax) { b.position.z = bzMax; b.userData.vel.z = -Math.abs(b.userData.vel.z) * 0.7; }
   }
 }
 
@@ -4004,6 +4094,48 @@ function buildComfyPillow() {
   actionConfig.bed.restore = 80;
   actionConfig.bed.label = 'Sleeping (comfy!)...';
   comfyPillowGroup = g;
+  return g;
+}
+
+let glowLampGroup = null;
+function buildGlowLamp() {
+  const UY = 3.65;
+  const g = new THREE.Group();
+  // Base — metallic silver cylinder
+  const baseMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.25, 12), baseMat);
+  base.position.set(0, 0.125, 0);
+  g.add(base);
+  // Glass body — tall tapered cylinder, translucent magenta
+  const glassMat = new THREE.MeshLambertMaterial({ color: 0xe040fb, emissive: 0xe040fb, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 });
+  const glass = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 12), glassMat);
+  glass.position.set(0, 0.85, 0);
+  g.add(glass);
+  // Lava blobs inside — stacked glowing spheres
+  const blobMat = new THREE.MeshLambertMaterial({ color: 0xff44cc, emissive: 0xff44cc, emissiveIntensity: 0.6 });
+  const blob1 = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), blobMat);
+  blob1.position.set(0, 0.5, 0); blob1.scale.set(1, 1.3, 1); g.add(blob1);
+  const blob2 = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), blobMat);
+  blob2.position.set(0.04, 0.85, 0); blob2.scale.set(1.2, 1.1, 1); g.add(blob2);
+  const blob3 = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), blobMat);
+  blob3.position.set(-0.03, 1.15, 0); blob3.scale.set(1, 1.4, 1); g.add(blob3);
+  // Cap — metallic top
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 0.15, 12), baseMat);
+  cap.position.set(0, 1.52, 0);
+  g.add(cap);
+  // Point light for glow effect
+  const glow = new THREE.PointLight(0xe040fb, 0.4, 5);
+  glow.position.set(0, 0.9, 0);
+  g.add(glow);
+  // Place upstairs on left wall
+  g.position.set(-4, UY, 1);
+  scene.add(g);
+  // Register interactable
+  const ad = GG_TV_ADS.find(a => a.itemId === 'glowLamp');
+  actionConfig.phone_glowLamp = { label: 'Staring at Glow Lamp...', duration: 3, restore: ad.statVal, cost: 0 };
+  interactables.push({ mesh: glass, group: g, type: 'phone_glowLamp', label: 'Stare at Glow Lamp', need: 'fun', usePos: new THREE.Vector3(-3, UY, 1), floor: 1 });
+  rebuildInteractMeshes();
+  glowLampGroup = g;
   return g;
 }
 
@@ -5967,6 +6099,76 @@ function buildTown() {
   const mTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: mTagTex }));
   mTag.position.set(142, 1.08, 5.22);
   g.add(mTag);
+
+  // === DISPLAY: GG TV on counter (right side) ===
+  const dtvBody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.35), new THREE.MeshLambertMaterial({ color: 0xcc2222 }));
+  dtvBody.position.set(140.5, 1.3, 4.8); g.add(dtvBody);
+  const dtvScreen = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.28, 0.02), new THREE.MeshLambertMaterial({ color: 0x111122, emissive: 0x222244, emissiveIntensity: 0.5 }));
+  dtvScreen.position.set(140.5, 1.32, 4.98); g.add(dtvScreen);
+  const dtvBezel = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.34, 0.01), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+  dtvBezel.position.set(140.5, 1.32, 4.97); g.add(dtvBezel);
+  // Antenna ears
+  [-0.08, 0.08].forEach(x => {
+    const ant = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.25, 4), new THREE.MeshLambertMaterial({ color: 0x888888 }));
+    ant.position.set(140.5 + x, 1.62, 4.8); ant.rotation.z = x < 0 ? 0.3 : -0.3; g.add(ant);
+  });
+  // Dial knobs
+  [1.2, 1.35].forEach(y => {
+    const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.02, 8), new THREE.MeshLambertMaterial({ color: 0xc9a84c }));
+    knob.position.set(140.73, y, 4.98); knob.rotation.x = Math.PI / 2; g.add(knob);
+  });
+  // TV price tag
+  const tvTagCvs = document.createElement('canvas');
+  tvTagCvs.width = 128; tvTagCvs.height = 32;
+  const tvtc = tvTagCvs.getContext('2d');
+  tvtc.fillStyle = '#ffffff'; tvtc.fillRect(0, 0, 128, 32);
+  tvtc.fillStyle = '#222222'; tvtc.font = 'bold 18px sans-serif'; tvtc.textAlign = 'center'; tvtc.fillText('$75', 64, 22);
+  const tvTagTex = new THREE.CanvasTexture(tvTagCvs);
+  const tvTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: tvTagTex }));
+  tvTag.position.set(140.5, 1.08, 5.22); g.add(tvTag);
+
+  // === DISPLAY: GG Landline Phone on small table (left side of counter) ===
+  // Table
+  const dphTable = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshLambertMaterial({ color: 0x3a2a1a }));
+  dphTable.position.set(139.5, 0.25, 5.5); g.add(dphTable);
+  // Phone body (dark red, boxy)
+  const dphBase = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.12, 0.3), new THREE.MeshLambertMaterial({ color: 0x8b2222 }));
+  dphBase.position.set(139.5, 0.58, 5.5); g.add(dphBase);
+  // Rotary dial (circle on top)
+  const dphDial = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.02, 12), new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  dphDial.position.set(139.5, 0.65, 5.5); g.add(dphDial);
+  // Handset (lying across the top)
+  const dphHandset = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 0.06), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+  dphHandset.position.set(139.5, 0.68, 5.5); g.add(dphHandset);
+  // Earpiece + mouthpiece bumps
+  [-0.15, 0.15].forEach(x => {
+    const bump = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 4), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }));
+    bump.position.set(139.5 + x, 0.71, 5.5); g.add(bump);
+  });
+  // Phone price tag
+  const phTagCvs = document.createElement('canvas');
+  phTagCvs.width = 128; phTagCvs.height = 32;
+  const phtc = phTagCvs.getContext('2d');
+  phtc.fillStyle = '#ffffff'; phtc.fillRect(0, 0, 128, 32);
+  phtc.fillStyle = '#222222'; phtc.font = 'bold 18px sans-serif'; phtc.textAlign = 'center'; phtc.fillText('$100', 64, 22);
+  const phTagTex = new THREE.CanvasTexture(phTagCvs);
+  const phTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: phTagTex }));
+  phTag.position.set(139.5, 0.45, 5.8); g.add(phTag);
+
+  // === DISPLAY: GG Phone Book on counter (between TV and mannequin) ===
+  const dBook = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.04, 0.35), new THREE.MeshLambertMaterial({ color: 0xc9a84c }));
+  dBook.position.set(141.3, 1.09, 4.8); g.add(dBook);
+  const dBookCover = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.005, 0.33), new THREE.MeshLambertMaterial({ color: 0x8b6914 }));
+  dBookCover.position.set(141.3, 1.112, 4.8); g.add(dBookCover);
+  // Book price tag
+  const bkTagCvs = document.createElement('canvas');
+  bkTagCvs.width = 128; bkTagCvs.height = 32;
+  const bktc = bkTagCvs.getContext('2d');
+  bktc.fillStyle = '#ffffff'; bktc.fillRect(0, 0, 128, 32);
+  bktc.fillStyle = '#222222'; bktc.font = 'bold 18px sans-serif'; bktc.textAlign = 'center'; bktc.fillText('$10', 64, 22);
+  const bkTagTex = new THREE.CanvasTexture(bkTagCvs);
+  const bkTag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.02), new THREE.MeshLambertMaterial({ map: bkTagTex }));
+  bkTag.position.set(141.3, 1.08, 5.22); g.add(bkTag);
 
   // Merch counter interactable — use visible counter mesh for raycasting
   interactables.push({ mesh: merchCounterMesh, group: g, type: 'merchCounter', label: 'Browse GG Merch', need: null, usePos: new THREE.Vector3(142, 0.15, 6), floor: 0 });
@@ -9431,6 +9633,30 @@ function buildCharacter(opts) {
     }
   }
 
+  // Sneakers (if wearing)
+  if (sneakerColor !== null) {
+    const sneakMat = new THREE.MeshLambertMaterial({ color: sneakerColor });
+    const soleMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    [-0.15, 0.15].forEach(x => {
+      // Shoe body
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.28), sneakMat);
+      shoe.position.set(x, 0.05, 0.02);
+      group.add(shoe);
+      // Sole
+      const sole = new THREE.Mesh(new THREE.BoxGeometry(0.19, 0.03, 0.3), soleMat);
+      sole.position.set(x, -0.01, 0.02);
+      group.add(sole);
+      // Toe cap
+      const toe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.08, 0.06), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
+      toe.position.set(x, 0.04, 0.15);
+      group.add(toe);
+      // Lace stripe
+      const lace = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.015, 0.15), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+      lace.position.set(x, 0.1, 0.02);
+      group.add(lace);
+    });
+  }
+
   // Arms
   const armMat = wearingDress ? dressMat : shirtMat;
   const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), armMat);
@@ -9971,6 +10197,7 @@ let pitch = 0;
 let pointerLocked = false;
 const keys = {};
 const MOVE_SPEED = 3.5;
+let speedBoostTimer = 0; // seconds remaining of protein bar speed boost
 const MOUSE_SENS = 0.002;
 const EYE_HEIGHT = 1.5;
 
@@ -10178,6 +10405,12 @@ function startAction(obj) {
     return;
   }
 
+  // Turbo Sneakers — color picker
+  if (obj.type === 'phone_turboSneakers') {
+    openSneakerPicker();
+    return;
+  }
+
   // Grand Piano is instant — fun boost
   if (obj.type === 'grandPiano') {
     needs.fun = Math.min(100, needs.fun + 50);
@@ -10264,6 +10497,10 @@ function finishAction(action) {
     if (config.energyBonus) needs.energy = Math.min(100, needs.energy + config.energyBonus);
     if (obj.type === 'bookshelf' || obj.type === 'mansionLibrary') { booksRead++; if (booksRead >= 3) mlTry('ml_bookworm'); }
     if (obj.type === 'treadmill') { treadmillUses++; if (treadmillUses >= 3) mlTry('ml_gym_rat'); }
+    if (obj.type === 'phone_proteinBars') {
+      speedBoostTimer = 20; // 20 seconds of 10x speed
+      showTip('PROTEIN POWER! 10x speed for 20 seconds!');
+    }
     if (obj.type === 'phone_sparkleShampoo' && !hasSparkleHair) {
       hasSparkleHair = true;
       buildHairSparkles();
@@ -11586,6 +11823,66 @@ function openMerchStore() {
   }
   panel.appendChild(phoneBtn);
 
+  // --- GG Phone Book ---
+  const divider5 = document.createElement('div');
+  divider5.style.cssText = 'border-top:1px solid #333;margin:16px 0;';
+  panel.appendChild(divider5);
+
+  const pbIcon = document.createElement('div');
+  pbIcon.style.cssText = 'font-size:2.5rem;margin-bottom:6px;';
+  pbIcon.textContent = '\u{1F4D2}';
+  panel.appendChild(pbIcon);
+
+  const pbDesc = document.createElement('div');
+  pbDesc.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:12px;line-height:1.4;';
+  pbDesc.innerHTML = '<b style="color:#c9a84c">GG Phone Book</b> \u2014 The complete directory of everything you can order on the GG Landline!<br>Lists all products, prices, effects & phone numbers.';
+  panel.appendChild(pbDesc);
+
+  const pbBtn = document.createElement('button');
+  pbBtn.style.cssText = 'padding:10px 24px;border:none;border-radius:6px;font-size:0.95rem;cursor:pointer;font-weight:bold;margin-bottom:8px;';
+  if (hasPhoneBook) {
+    pbBtn.style.background = '#444';
+    pbBtn.style.color = '#aaa';
+    pbBtn.textContent = 'OWNED';
+  } else if (money < 10) {
+    pbBtn.style.background = '#444';
+    pbBtn.style.color = '#aaa';
+    pbBtn.textContent = '$10 \u2014 Not enough money';
+  } else {
+    pbBtn.style.background = '#c9a84c';
+    pbBtn.style.color = '#1a1a2e';
+    pbBtn.textContent = 'BUY \u2014 $10';
+    pbBtn.onclick = () => {
+      money -= 10;
+      hasPhoneBook = true;
+      SFX.kaChing();
+      closeMerchStore();
+      showTip('Got the GG Phone Book! Check it at the landline.');
+    };
+  }
+  panel.appendChild(pbBtn);
+
+  // Show product directory if phone book is owned
+  if (hasPhoneBook) {
+    const catDiv = document.createElement('div');
+    catDiv.style.cssText = 'text-align:left;margin-top:10px;font-size:0.7rem;line-height:1.7;color:#ccc;max-height:180px;overflow-y:auto;padding:6px 8px;background:#111;border-radius:6px;border:1px solid #333;';
+    const catHeader = document.createElement('div');
+    catHeader.style.cssText = 'color:#c9a84c;font-weight:bold;font-size:0.75rem;margin-bottom:6px;text-align:center;letter-spacing:1px;';
+    catHeader.textContent = '\u{1F4DE} PRODUCT DIRECTORY';
+    catDiv.appendChild(catHeader);
+    GG_TV_ADS.filter(a => !a.isGame).forEach(ad => {
+      const owned = phoneOrders.includes(ad.itemId);
+      const row = document.createElement('div');
+      row.style.cssText = 'padding:4px 0;border-bottom:1px solid #222;' + (owned ? 'opacity:0.4;text-decoration:line-through;' : '');
+      row.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;">'
+        + '<span>' + ad.icon + ' <b>' + ad.name + '</b></span>'
+        + '<span style="color:#33ff33;font-family:Courier New,monospace;">' + ad.phone + '</span></div>'
+        + '<div style="color:#aaa;font-size:0.65rem;">' + ad.effect + ' \u2014 <b style="color:#c9a84c">$' + ad.price + '</b></div>';
+      catDiv.appendChild(row);
+    });
+    panel.appendChild(catDiv);
+  }
+
   const close = document.createElement('div');
   close.style.cssText = 'color:#888;font-size:0.75rem;margin-top:8px;cursor:pointer;';
   close.textContent = 'Click anywhere to close';
@@ -11882,6 +12179,10 @@ function update() {
   // Money trickle
   money += 0.02 * dt;
 
+  // Speed boost timer
+  if (speedBoostTimer > 0) speedBoostTimer = Math.max(0, speedBoostTimer - dt);
+  const curSpeed = MOVE_SPEED * (sneakerColor !== null ? 2 : 1) * (speedBoostTimer > 0 ? 10 : 1);
+
   // First-person WASD movement
   if (moveTarget) {
     // Auto-walk to action target
@@ -11898,7 +12199,7 @@ function update() {
       }
     } else {
       dir.normalize();
-      character.position.add(dir.multiplyScalar(MOVE_SPEED * dt));
+      character.position.add(dir.multiplyScalar(curSpeed * dt));
       updatePlayerY();
     }
   } else if (!currentAction || currentAction.phase !== 'doing') {
@@ -11911,7 +12212,7 @@ function update() {
     if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
     if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
     if (move.lengthSq() > 0) {
-      move.normalize().multiplyScalar(MOVE_SPEED * dt);
+      move.normalize().multiplyScalar(curSpeed * dt);
       character.position.add(move);
       // Head bob + footsteps
       const prevWalk = walkAnim;
@@ -12318,6 +12619,7 @@ function restartGame() {
   hasPhone = false;
   hasPhoneBook = false;
   hasSparkleHair = false;
+  sneakerColor = null;
   removeHairSparkles();
   for (const b of foamBalls) scene.remove(b);
   foamBalls = [];
@@ -12328,6 +12630,10 @@ function restartGame() {
       if (comfyPillowGroup) { scene.remove(comfyPillowGroup); comfyPillowGroup = null; }
       actionConfig.bed.restore = 60;
       actionConfig.bed.label = 'Sleeping...';
+      continue;
+    }
+    if (itemId === 'glowLamp') {
+      if (glowLampGroup) { scene.remove(glowLampGroup); glowLampGroup = null; }
       continue;
     }
     delete actionConfig['phone_' + itemId];
@@ -12475,6 +12781,7 @@ function buildSaveData() {
     hasPhone,
     hasPhoneBook,
     hasSparkleHair,
+    sneakerColor,
     phoneOrders: [...phoneOrders],
   };
 }
@@ -12602,6 +12909,7 @@ function loadSlot(index) {
     buildPhone();
     if (save.hasPhoneBook) hasPhoneBook = true;
     if (save.hasSparkleHair) { hasSparkleHair = true; buildHairSparkles(); }
+    if (save.sneakerColor !== undefined && save.sneakerColor !== null) { sneakerColor = save.sneakerColor; rebuildPlayerCharacter(); }
     if (save.phoneOrders && save.phoneOrders.length) {
       phoneOrders = [...save.phoneOrders];
       phoneOrders.forEach(itemId => buildPhoneItem(itemId));
