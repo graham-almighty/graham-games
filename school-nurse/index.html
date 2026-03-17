@@ -418,6 +418,35 @@
     .day-announce { font-size: 1.5rem; }
     .game-over-title { font-size: 1.6rem; }
   }
+
+  /* Student Mode */
+  .suspicion-wrap { width:100%; height:10px; background:#333; border-radius:5px; overflow:hidden; margin:6px 0; }
+  .suspicion-fill { height:100%; transition:width 0.4s; border-radius:5px; }
+  .response-btn {
+    font-family: 'Segoe UI', sans-serif; font-size:0.82rem; padding:10px 12px;
+    background:#1a2a1a; border:1px solid #4caa6444; color:#ccc;
+    cursor:pointer; border-radius:6px; transition:all 0.2s;
+    text-align:left; width:100%; margin-bottom:6px; display:block;
+  }
+  .response-btn:hover { background:#2a3a2a; color:#fff; border-color:#4caa6488; }
+  .cond-btn {
+    font-family: 'Segoe UI', sans-serif; font-size:0.85rem; padding:12px 14px;
+    background:#1a1a2e; border:1px solid #ffffff22; color:#ccc;
+    cursor:pointer; border-radius:8px; transition:all 0.2s; text-align:left; width:100%;
+  }
+  .cond-btn:hover { background:#2a2a3e; color:#fff; border-color:#4c6caa88; }
+  .strike-display { display:inline-flex; gap:4px; vertical-align:middle; }
+  .strike-dot {
+    width:10px; height:10px; border-radius:50%;
+    border:1.5px solid #e07070; background:transparent; display:inline-block;
+  }
+  .strike-dot.filled { background:#e07070; }
+  .mode-btns { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:4px; }
+  .btn.student-mode {
+    background:linear-gradient(135deg,#aa8c4c33,#aa8c4c11);
+    border-color:#aa8c4c88; color:#ddb060;
+  }
+  .btn.student-mode:hover { background:#aa8c4c44; color:#fff; }
 </style>
 </head>
 <body>
@@ -450,8 +479,12 @@
   <h1>SCHOOL NURSE SIMULATOR</h1>
   <div class="title-sub">Treat the sick. Bust the fakers.</div>
   <div class="title-stats" id="title-stats"></div>
-  <button class="btn" onclick="startGame()">PLAY</button>
+  <div class="mode-btns">
+    <button class="btn" onclick="startGame()">&#129657; BE THE NURSE</button>
+    <button class="btn student-mode" onclick="startStudentMode()">&#127890; BE THE STUDENT</button>
+  </div>
   <button class="btn" id="continue-btn" onclick="continueGame()" style="display:none;margin-top:4px">CONTINUE</button>
+  <button class="btn student-mode" id="stu-continue-btn" onclick="continueStudentGame()" style="display:none;margin-top:4px">CONTINUE</button>
   <button class="btn secondary" onclick="window.location.href='../index.html'" style="margin-top:8px">EXIT TO LAUNCHER</button>
 </div>
 
@@ -489,11 +522,11 @@
 
 <!-- Game Over Screen -->
 <div id="gameover-screen" class="screen hidden">
-  <div class="game-over-title">YOU'VE BEEN FIRED!</div>
-  <div class="game-over-sub">Your reputation hit rock bottom...</div>
+  <div class="game-over-title" id="go-title">YOU'VE BEEN FIRED!</div>
+  <div class="game-over-sub" id="go-sub">Your reputation hit rock bottom...</div>
   <div class="final-stats" id="final-stats"></div>
-  <button class="btn" onclick="startGame()">TRY AGAIN</button>
-  <button class="btn secondary" onclick="showScreen('title-screen')" style="margin-top:8px">MENU</button>
+  <button class="btn" id="go-play-btn" onclick="startGame()">TRY AGAIN</button>
+  <button class="btn secondary" id="go-menu-btn" onclick="goToMenu()" style="margin-top:8px">MENU</button>
 </div>
 
 <script>
@@ -548,6 +581,12 @@ const SN_ACH = {
   sn_gut_feeling:    { name: 'Gut Feeling',            reward: 20 },
   sn_veteran_nurse:  { name: 'Veteran Nurse',         reward: 25 },
   sn_no_fakers:      { name: 'No Fakers Left Behind', reward: 35 },
+  // Student mode
+  sn_class_skipper:  { name: 'Class Skipper',          reward: 10 },
+  sn_smooth_talker:  { name: 'Smooth Talker',          reward: 25 },
+  sn_oscar_winner:   { name: 'Oscar Winner',            reward: 50 },
+  sn_really_sick:    { name: 'Actually Sick',            reward: 15 },
+  sn_perfect_hooky:  { name: 'Perfect Hooky',           reward: 30 },
 };
 
 function tryAch(id) {
@@ -1030,7 +1069,7 @@ function generateDayPatients(day) {
 // ═══════════════════════════════════════════
 let canvas, ctx;
 
-function drawOffice() {
+function drawOfficeBackground() {
   const w = canvas.width, h = canvas.height;
   ctx.clearRect(0, 0, w, h);
 
@@ -1079,10 +1118,12 @@ function drawOffice() {
 
   // Desk
   drawDesk(w * 0.02, h * 0.55, 80, 40);
+}
 
-  // Current patient
+function drawOffice() {
+  drawOfficeBackground();
   if (state.currentPatient) {
-    drawStudent(state.currentPatient, w * 0.32 + 45, h * 0.55 - 5);
+    drawStudent(state.currentPatient, canvas.width * 0.32 + 45, canvas.height * 0.55 - 5);
   }
 }
 
@@ -1742,8 +1783,10 @@ function showScreen(id) {
 }
 
 function startGame() {
+  studentMode = false;
   clearProgress();
   resetState();
+  restoreNurseHUD();
   showDayScreen();
 }
 
@@ -1763,7 +1806,11 @@ function showDayScreen() {
 
 function beginDay() {
   showScreen('game-screen');
-  showPatient();
+  if (studentMode) {
+    showConditionPicker();
+  } else {
+    showPatient();
+  }
 }
 
 function showPatient() {
@@ -1817,6 +1864,11 @@ function endDay() {
 }
 
 function nextDay() {
+  if (studentMode) {
+    stuState.day++;
+    showStudentDayScreen();
+    return;
+  }
   if (state.reputation <= 0) {
     gameOver();
     return;
@@ -1826,7 +1878,7 @@ function nextDay() {
 }
 
 function saveAndConfirm() {
-  saveProgress();
+  if (studentMode) saveStudentProgress(); else saveProgress();
   // Flash both save buttons if visible
   const btns = [document.getElementById('save-btn'), document.getElementById('hud-save-btn')];
   btns.forEach(btn => {
@@ -1843,6 +1895,11 @@ function gameOver() {
   saveFinalStats();
   const stats = loadStats();
 
+  document.getElementById('go-title').textContent = "YOU'VE BEEN FIRED!";
+  document.getElementById('go-sub').textContent = 'Your reputation hit rock bottom...';
+  document.getElementById('go-play-btn').textContent = 'TRY AGAIN';
+  document.getElementById('go-play-btn').onclick = startGame;
+
   let html = '';
   html += 'Days Survived: <strong>' + state.day + '</strong><br>';
   html += 'Final Score: <strong>' + state.score + '</strong><br>';
@@ -1856,23 +1913,705 @@ function gameOver() {
 
 function updateTitleStats() {
   const s = loadStats();
+  const ss = loadStudentStats();
   const el = document.getElementById('title-stats');
-  if (!s.gamesPlayed && !s.totalPatients) {
-    el.innerHTML = 'Welcome, Nurse!<br>Treat the sick. Catch the fakers.';
+  let txt = '';
+  if (!s.gamesPlayed && !s.totalPatients && !ss.gamesPlayed && !ss.totalSkips) {
+    txt = 'Welcome!<br>Play as the Nurse or the Student.';
   } else {
-    el.innerHTML = 'High Score: ' + (s.highScore || 0) +
-      ' &bull; Best Day: ' + (s.bestDay || 0) +
-      '<br>Patients Treated: ' + (s.totalPatients || 0) +
-      ' &bull; Fakers Caught: ' + (s.totalFakersCaught || 0);
+    if (s.totalPatients || s.gamesPlayed) {
+      txt += 'Nurse \u2014 High: ' + (s.highScore || 0) +
+        ' &bull; Best Day: ' + (s.bestDay || 0) +
+        '<br>Patients: ' + (s.totalPatients || 0) +
+        ' &bull; Fakers Caught: ' + (s.totalFakersCaught || 0);
+    }
+    if (ss.totalSkips || ss.gamesPlayed) {
+      if (txt) txt += '<br><br>';
+      txt += 'Student \u2014 High: ' + (ss.highScore || 0) +
+        ' &bull; Best Day: ' + (ss.bestDay || 0) +
+        '<br>Classes Skipped: ' + (ss.totalSkips || 0);
+    }
   }
+  el.innerHTML = txt;
+
   const contBtn = document.getElementById('continue-btn');
   const p = loadProgress();
   if (p) {
     contBtn.style.display = '';
-    contBtn.textContent = 'CONTINUE (Day ' + p.day + ')';
+    contBtn.textContent = 'CONTINUE NURSE (Day ' + p.day + ')';
   } else {
     contBtn.style.display = 'none';
   }
+
+  const stuContBtn = document.getElementById('stu-continue-btn');
+  const sp = loadStudentProgress();
+  if (sp) {
+    stuContBtn.style.display = '';
+    stuContBtn.textContent = 'CONTINUE STUDENT (Day ' + sp.day + ')';
+  } else {
+    stuContBtn.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════
+// STUDENT MODE
+// ═══════════════════════════════════════════
+let studentMode = false;
+let stuState = {};
+
+const STU_SAVE_KEY = 'school-nurse-student-save';
+const STU_PROGRESS_KEY = 'school-nurse-student-progress';
+
+function resetStudentState() {
+  stuState = {
+    day: 1, score: 0, strikes: 0, maxStrikes: 3,
+    roundIndex: 0, roundsPerDay: 2,
+    daySkips: 0, dayCaught: 0, totalSkips: 0,
+    chosenCondition: null, actuallySick: false,
+    suspicion: 0, examsThisRound: [], examIndex: 0,
+    nurseExpression: 'neutral',
+    playerAppearance: null,
+    _currentChoices: [], _sickSlot: -1, _complaint: ''
+  };
+}
+
+// Fakeable conditions (all except Allergic Reaction)
+const FAKEABLE_CONDITIONS = [
+  { condId: 'stomachAche', name: 'Stomach Ache', difficulty: 'easy', points: 100, icon: '\ud83e\udd22', physLabel: 'Press on Stomach' },
+  { condId: 'headache', name: 'Headache', difficulty: 'easy', points: 100, icon: '\ud83e\udd15', physLabel: 'Check Light Sensitivity' },
+  { condId: 'soreThroat', name: 'Sore Throat', difficulty: 'easy', points: 100, icon: '\ud83d\ude37', physLabel: 'Look at Throat' },
+  { condId: 'cough', name: 'Bad Cough', difficulty: 'easy', points: 100, icon: '\ud83e\udd27', physLabel: 'Listen to Breathing' },
+  { condId: 'nausea', name: 'Nausea', difficulty: 'medium', points: 125, icon: '\ud83e\udd2e', physLabel: 'Press on Stomach' },
+  { condId: 'twistedAnkle', name: 'Twisted Ankle', difficulty: 'medium', points: 125, icon: '\ud83e\uddb6', physLabel: 'Check the Ankle' },
+  { condId: 'eyeIrritation', name: 'Eye Irritation', difficulty: 'medium', points: 125, icon: '\ud83d\udc41\ufe0f', physLabel: 'Examine Eyes' },
+  { condId: 'scrapedKnee', name: 'Scraped Knee', difficulty: 'hard', points: 150, icon: '\ud83e\ude79', physLabel: 'Examine the Knee' },
+  { condId: 'fever', name: 'Fever', difficulty: 'hard', points: 150, icon: '\ud83c\udf21\ufe0f', physLabel: 'Feel Forehead' },
+];
+
+// Exam response text per exam type
+const STU_EXAM_TEXT = {
+  temperature: {
+    nurse: 'Let me take your temperature...',
+    responses: [
+      { text: 'Breathe on the thermometer to warm it up', icon: '\ud83d\udd25' },
+      { text: 'Just sit there and let it read', icon: '\ud83d\ude10' },
+      { text: '"I took cold medicine this morning..."', icon: '\ud83d\udca1' }
+    ]
+  },
+  physical: {
+    nurse: 'Let me check that...',
+    responses: [
+      { text: 'React big \u2014 "OWWW! That hurts!!"', icon: '\ud83d\ude31' },
+      { text: 'Wince a little and say "ouch"', icon: '\ud83d\ude23' },
+      { text: 'Pull away before she touches you', icon: '\ud83d\ude48' }
+    ]
+  },
+  observe: {
+    nurse: 'Hmm, let me just watch you for a moment...',
+    responses: [
+      { text: 'Put on your best sick face', icon: '\ud83c\udfad' },
+      { text: 'Sit still and look exhausted', icon: '\ud83d\ude34' },
+      { text: 'Add sound effects \u2014 cough, groan, sniffle', icon: '\ud83e\udd27' }
+    ]
+  },
+  questions: {
+    nurse: 'Can you tell me what happened?',
+    responses: [
+      { text: 'Make up a detailed backstory', icon: '\ud83d\udcd6' },
+      { text: 'Keep it short \u2014 "I just feel bad..."', icon: '\ud83e\udd10' },
+      { text: 'Get emotional \u2014 "I really don\'t feel good..."', icon: '\ud83d\ude22' }
+    ]
+  }
+};
+
+// Suspicion adjustments [bold, safe, clever] per exam per condition
+// Positive = more suspicious, negative = less suspicious
+const STU_SCORES = {
+  stomachAche: {
+    temperature: [12, -5, -10], physical: [10, -10, 5],
+    observe: [8, -8, 5], questions: [5, -5, -10]
+  },
+  headache: {
+    temperature: [12, -5, -10], physical: [5, -10, -5],
+    observe: [10, -10, 5], questions: [-8, -5, 5]
+  },
+  scrapedKnee: {
+    temperature: [15, -5, 8], physical: [15, 5, -5],
+    observe: [8, -8, 5], questions: [-10, 5, -5]
+  },
+  twistedAnkle: {
+    temperature: [12, -5, 5], physical: [8, -10, -5],
+    observe: [5, -5, -10], questions: [-10, 2, -5]
+  },
+  fever: {
+    temperature: [-5, 15, -10], physical: [8, -8, 5],
+    observe: [-10, -5, 5], questions: [-8, 2, -5]
+  },
+  soreThroat: {
+    temperature: [12, -5, -10], physical: [8, -10, 5],
+    observe: [8, -10, -8], questions: [5, -10, -5]
+  },
+  nausea: {
+    temperature: [12, -5, -10], physical: [8, -5, -10],
+    observe: [-5, -8, 5], questions: [5, -10, -8]
+  },
+  eyeIrritation: {
+    temperature: [12, -5, 5], physical: [5, -5, -10],
+    observe: [5, -8, 8], questions: [-10, 2, -5]
+  },
+  cough: {
+    temperature: [12, -5, -10], physical: [8, -8, 5],
+    observe: [8, 5, -10], questions: [-5, -5, -8]
+  }
+};
+
+function getNurseReaction(susChange) {
+  if (susChange <= -3) return pick([
+    "Hmm... you do look unwell.", "Oh, that doesn't sound good...",
+    "Poor thing...", "That must be tough..."
+  ]);
+  if (susChange <= 5) return pick([
+    "I see... let me check something else.", "Alright, noted.",
+    "Mm-hmm...", "Okay..."
+  ]);
+  if (susChange <= 10) return pick([
+    "Hmm, interesting...", "Is that so?", "Really now...",
+    "That's a bit unusual..."
+  ]);
+  return pick([
+    "That seems a bit odd...", "Hmm, I'm not so sure about that...",
+    "Something doesn't add up here...", "You sure about that?"
+  ]);
+}
+
+// Student mode save/load
+function loadStudentStats() {
+  try { return JSON.parse(localStorage.getItem(STU_SAVE_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveStudentStats() {
+  const s = loadStudentStats();
+  s.highScore = Math.max(s.highScore || 0, stuState.score);
+  s.totalSkips = (s.totalSkips || 0) + stuState.daySkips;
+  s.bestDay = Math.max(s.bestDay || 0, stuState.day);
+  localStorage.setItem(STU_SAVE_KEY, JSON.stringify(s));
+}
+function saveStudentFinalStats() {
+  const s = loadStudentStats();
+  s.highScore = Math.max(s.highScore || 0, stuState.score);
+  s.bestDay = Math.max(s.bestDay || 0, stuState.day);
+  s.gamesPlayed = (s.gamesPlayed || 0) + 1;
+  s.totalSkips = (s.totalSkips || 0) + stuState.daySkips;
+  localStorage.setItem(STU_SAVE_KEY, JSON.stringify(s));
+}
+function saveStudentProgress() {
+  const data = {
+    day: stuState.day, score: stuState.score, strikes: stuState.strikes,
+    totalSkips: stuState.totalSkips, roundIndex: stuState.roundIndex,
+    roundsPerDay: stuState.roundsPerDay, daySkips: stuState.daySkips,
+    dayCaught: stuState.dayCaught, playerAppearance: stuState.playerAppearance,
+    screen: getCurrentScreen()
+  };
+  localStorage.setItem(STU_PROGRESS_KEY, JSON.stringify(data));
+}
+function loadStudentProgress() {
+  try { return JSON.parse(localStorage.getItem(STU_PROGRESS_KEY)); } catch(e) { return null; }
+}
+function clearStudentProgress() { localStorage.removeItem(STU_PROGRESS_KEY); }
+
+// HUD management
+function setupStudentHUD() {
+  document.getElementById('hud').innerHTML =
+    '<span>Day <span class="hud-val" id="hud-day">' + stuState.day + '</span></span>' +
+    '<span>Score <span class="hud-val" id="hud-score">' + stuState.score + '</span></span>' +
+    '<span>Strikes <span class="strike-display" id="hud-strikes"></span></span>' +
+    '<span>Class <span class="hud-val" id="hud-patient">' + (stuState.roundIndex + 1) + '/' + stuState.roundsPerDay + '</span></span>' +
+    '<button class="hud-save-btn" onclick="saveAndConfirm()">SAVE</button>';
+  updateStrikeDots();
+}
+function updateStrikeDots() {
+  const el = document.getElementById('hud-strikes');
+  if (!el) return;
+  let h = '';
+  for (let i = 0; i < stuState.maxStrikes; i++) {
+    h += '<span class="strike-dot' + (i < stuState.strikes ? ' filled' : '') + '"></span>';
+  }
+  el.innerHTML = h;
+}
+function updateStudentHUD() {
+  const d = document.getElementById('hud-day');
+  if (d) d.textContent = stuState.day;
+  const s = document.getElementById('hud-score');
+  if (s) s.textContent = stuState.score;
+  const p = document.getElementById('hud-patient');
+  if (p) p.textContent = (stuState.roundIndex + 1) + '/' + stuState.roundsPerDay;
+  updateStrikeDots();
+}
+function restoreNurseHUD() {
+  document.getElementById('hud').innerHTML =
+    '<span>Day <span class="hud-val" id="hud-day">1</span></span>' +
+    '<span>Score <span class="hud-val" id="hud-score">0</span></span>' +
+    '<span>Rep <div class="rep-bar"><div class="rep-fill" id="hud-rep-fill"></div></div></span>' +
+    '<span>Patient <span class="hud-val" id="hud-patient">1/3</span></span>' +
+    '<button class="hud-save-btn" id="hud-save-btn" onclick="saveAndConfirm()">SAVE</button>';
+}
+
+// Canvas: draw nurse character
+function drawNurse(cx, footY) {
+  // Shoes
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx - 8, footY - 4, 7, 5);
+  ctx.fillRect(cx + 1, footY - 4, 7, 5);
+  // Legs
+  ctx.fillStyle = '#37474F';
+  ctx.fillRect(cx - 7, footY - 32, 6, 28);
+  ctx.fillRect(cx + 1, footY - 32, 6, 28);
+  // Body (scrubs)
+  ctx.fillStyle = '#90CAF9';
+  roundRect(cx - 11, footY - 60, 22, 30, 2);
+  // White coat
+  ctx.fillStyle = '#FAFAFA';
+  ctx.fillRect(cx - 13, footY - 62, 6, 34);
+  ctx.fillRect(cx + 7, footY - 62, 6, 34);
+  ctx.fillRect(cx - 13, footY - 62, 26, 3);
+  // Arms (coat sleeves)
+  ctx.fillStyle = '#FAFAFA';
+  ctx.fillRect(cx - 17, footY - 57, 5, 20);
+  ctx.fillRect(cx + 12, footY - 57, 5, 20);
+  // Hands
+  ctx.fillStyle = '#E0AC69';
+  ctx.fillRect(cx - 16, footY - 38, 4, 4);
+  ctx.fillRect(cx + 13, footY - 38, 4, 4);
+  // Clipboard
+  ctx.fillStyle = '#8D6E63';
+  ctx.fillRect(cx + 12, footY - 52, 9, 13);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx + 13, footY - 50, 7, 9);
+  // Head
+  const headY = footY - 72;
+  ctx.fillStyle = '#E0AC69';
+  ctx.beginPath(); ctx.arc(cx, headY, 10, 0, Math.PI * 2); ctx.fill();
+  // Hair (bun)
+  ctx.fillStyle = '#5D4037';
+  ctx.beginPath(); ctx.arc(cx, headY - 4, 10, Math.PI, 0); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, headY - 12, 5, 0, Math.PI * 2); ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(cx - 3, headY, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 3, headY, 2, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#333';
+  ctx.beginPath(); ctx.arc(cx - 3, headY, 1, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx + 3, headY, 1, 0, Math.PI * 2); ctx.fill();
+  // Glasses
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(cx - 3, headY, 3, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + 3, headY, 3, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx - 0.5, headY); ctx.lineTo(cx + 0.5, headY); ctx.stroke();
+  // Mouth expression
+  ctx.strokeStyle = '#666';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (stuState.nurseExpression === 'suspicious') {
+    ctx.arc(cx, headY + 6, 3, Math.PI + 0.3, -0.3);
+    ctx.stroke();
+    // Raised eyebrow
+    ctx.beginPath();
+    ctx.moveTo(cx - 6, headY - 5);
+    ctx.lineTo(cx - 1, headY - 7);
+  } else if (stuState.nurseExpression === 'sympathetic') {
+    ctx.arc(cx, headY + 3, 3, 0.2, Math.PI - 0.2);
+  } else {
+    ctx.moveTo(cx - 3, headY + 4);
+    ctx.lineTo(cx + 3, headY + 4);
+  }
+  ctx.stroke();
+  // Stethoscope
+  ctx.strokeStyle = '#78909C';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 4, footY - 62);
+  ctx.quadraticCurveTo(cx, footY - 55, cx + 4, footY - 62);
+  ctx.stroke();
+  ctx.fillStyle = '#B0BEC5';
+  ctx.beginPath(); ctx.arc(cx, footY - 53, 2, 0, Math.PI * 2); ctx.fill();
+  // Name tag
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(cx + 7, footY - 50, 10, 5);
+  ctx.fillStyle = '#E53935';
+  ctx.fillRect(cx + 7, footY - 50, 10, 1.5);
+}
+
+function drawStudentModeOffice(nurseDialogue) {
+  drawOfficeBackground();
+  // Draw player character on exam table
+  if (stuState.playerAppearance) {
+    const pa = stuState.playerAppearance;
+    let condEffect = null;
+    if (stuState.actuallySick && stuState.chosenCondition) {
+      const cond = CONDITIONS.find(c => c.id === stuState.chosenCondition.condId);
+      if (cond) condEffect = cond.conditionEffect;
+    }
+    drawStudent({
+      skinTone: pa.skinTone, hairColor: pa.hairColor,
+      hairStyle: pa.hairStyle, shirtColor: pa.shirtColor,
+      conditionEffect: condEffect, faking: !stuState.actuallySick
+    }, canvas.width * 0.32 + 45, canvas.height * 0.55 - 5);
+  }
+  // Draw nurse
+  drawNurse(100, canvas.height * 0.9);
+  // Nurse speech bubble
+  if (nurseDialogue) drawSpeechBubble(nurseDialogue);
+}
+
+// ═══ Student Mode Game Flow ═══
+
+function startStudentMode() {
+  studentMode = true;
+  clearStudentProgress();
+  resetStudentState();
+  stuState.playerAppearance = {
+    skinTone: pick(SKIN_TONES), hairColor: pick(HAIR_COLORS),
+    hairStyle: pick(HAIR_STYLES), shirtColor: pick(SHIRT_COLORS),
+    gender: Math.random() < 0.5 ? 'm' : 'f',
+    name: Math.random() < 0.5 ? pick(NAMES_M) : pick(NAMES_F)
+  };
+  showStudentDayScreen();
+}
+
+function showStudentDayScreen() {
+  stuState.roundsPerDay = stuState.day <= 2 ? 2 : 3;
+  stuState.roundIndex = 0;
+  stuState.daySkips = 0;
+  stuState.dayCaught = 0;
+
+  document.getElementById('day-title').textContent = 'DAY ' + stuState.day;
+  document.getElementById('day-sub').textContent = stuState.roundsPerDay + ' classes to survive today';
+  showScreen('day-screen');
+}
+
+function showConditionPicker() {
+  setupStudentHUD();
+  updateStudentHUD();
+
+  // Build condition pool based on day difficulty
+  let pool;
+  if (stuState.day <= 2) pool = FAKEABLE_CONDITIONS.filter(c => c.difficulty === 'easy');
+  else if (stuState.day <= 4) pool = FAKEABLE_CONDITIONS.filter(c => c.difficulty !== 'hard');
+  else pool = [...FAKEABLE_CONDITIONS];
+  if (pool.length < 3) pool = [...FAKEABLE_CONDITIONS];
+
+  // Pick 3 unique
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  const choices = shuffled.slice(0, 3);
+
+  // 20% chance one is "actually sick"
+  const sickSlot = Math.random() < 0.2 ? Math.floor(Math.random() * 3) : -1;
+
+  stuState._currentChoices = choices;
+  stuState._sickSlot = sickSlot;
+
+  const panel = uiPanel();
+  let html = '<div class="card"><h3>Time to Get Out of Class!</h3>';
+  html += '<div style="color:#aaa;font-size:0.82rem;margin-bottom:12px">Pick your excuse. Harder conditions = more points!</div>';
+
+  choices.forEach((c, i) => {
+    const isSick = (i === sickSlot);
+    const stars = c.difficulty === 'easy' ? '\u2b50' : c.difficulty === 'medium' ? '\u2b50\u2b50' : '\u2b50\u2b50\u2b50';
+    if (isSick) {
+      html += '<button class="cond-btn" onclick="pickCondition(' + i + ',true)" style="border-color:#4caa6466;margin-bottom:8px">';
+      html += '<div style="font-size:1rem">' + c.icon + ' ' + c.name + ' <span style="color:#4caa64;font-size:0.72rem">[ACTUALLY SICK!]</span></div>';
+      html += '<div style="font-size:0.72rem;color:#4caa64;margin-top:3px">You really DO feel sick! Easier to convince.</div>';
+      html += '</button>';
+    } else {
+      html += '<button class="cond-btn" onclick="pickCondition(' + i + ',false)" style="margin-bottom:8px">';
+      html += '<div style="font-size:1rem">' + c.icon + ' ' + c.name + ' <span style="font-size:0.72rem;color:#888">' + stars + '</span></div>';
+      html += '<div style="font-size:0.72rem;color:#888;margin-top:3px">' + c.points + ' pts &bull; ' + c.difficulty + '</div>';
+      html += '</button>';
+    }
+  });
+
+  html += '</div>';
+  panel.innerHTML = html;
+  stuState.nurseExpression = 'neutral';
+  drawStudentModeOffice('What seems to be the problem?');
+}
+
+function pickCondition(idx, isSick) {
+  const cond = stuState._currentChoices[idx];
+  stuState.chosenCondition = cond;
+  stuState.actuallySick = isSick;
+
+  // Base suspicion depends on difficulty
+  let base = isSick ? 5 : (cond.difficulty === 'easy' ? 15 : cond.difficulty === 'medium' ? 25 : 35);
+  // Day scaling: nurse gets smarter
+  base += Math.floor((stuState.day - 1) / 2) * 5;
+  stuState.suspicion = Math.max(0, Math.min(100, base));
+
+  // Pick 2 random exam types
+  const types = ['temperature', 'physical', 'observe', 'questions'];
+  const shuffled = types.sort(() => Math.random() - 0.5);
+  stuState.examsThisRound = [shuffled[0], shuffled[1]];
+  stuState.examIndex = 0;
+  stuState.nurseExpression = 'neutral';
+
+  // Get complaint text
+  const condData = CONDITIONS.find(c => c.id === cond.condId);
+  if (isSick) {
+    stuState._complaint = pick(condData.realComplaints);
+  } else {
+    const fakes = condData.fakeComplaints;
+    stuState._complaint = fakes.length ? pick(fakes)[0] : pick(condData.realComplaints);
+  }
+
+  showStudentExamIntro();
+}
+
+function showStudentExamIntro() {
+  const panel = uiPanel();
+  const cond = stuState.chosenCondition;
+  let html = '<div class="card"><h3>Nurse\'s Office</h3>';
+  html += '<div style="color:#aaa;font-size:0.82rem">You walk in complaining about: <strong style="color:#fff">' + cond.name + '</strong></div>';
+  html += '<div class="complaint-text" style="margin-top:6px">\u201c' + stuState._complaint + '\u201d</div>';
+  html += '</div>';
+
+  html += buildSuspicionCard();
+  html += '<button class="btn" onclick="showStudentExam()" style="width:100%">THE NURSE EXAMINES YOU \u2192</button>';
+  panel.innerHTML = html;
+  drawStudentModeOffice(stuState._complaint);
+}
+
+function buildSuspicionCard() {
+  const pct = Math.min(100, Math.max(0, stuState.suspicion));
+  const color = pct < 30 ? '#4caa64' : pct < 55 ? '#aaaa4c' : '#e07070';
+  return '<div class="card"><h3>Nurse\'s Suspicion</h3>' +
+    '<div class="suspicion-wrap"><div class="suspicion-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+    '<div style="font-size:0.68rem;color:#666;text-align:center">' +
+    (pct < 30 ? 'She seems to believe you...' : pct < 55 ? 'She\'s not sure yet...' : 'She looks suspicious!') +
+    '</div></div>';
+}
+
+function showStudentExam() {
+  if (stuState.examIndex >= stuState.examsThisRound.length) {
+    showStudentVerdict();
+    return;
+  }
+  const examType = stuState.examsThisRound[stuState.examIndex];
+  const examData = STU_EXAM_TEXT[examType];
+  let nurseText = examData.nurse;
+  if (examType === 'physical') {
+    nurseText = 'Let me ' + stuState.chosenCondition.physLabel.toLowerCase() + '...';
+  }
+
+  const panel = uiPanel();
+  let html = buildSuspicionCard();
+
+  html += '<div class="card">';
+  html += '<h3>Exam ' + (stuState.examIndex + 1) + ' of ' + stuState.examsThisRound.length + '</h3>';
+  html += '<div style="color:#fff;font-size:0.9rem;margin-bottom:10px">\ud83e\ude7a Nurse: \u201c' + nurseText + '\u201d</div>';
+  html += '<div style="color:#aaa;font-size:0.78rem;margin-bottom:8px">How do you respond?</div>';
+  examData.responses.forEach((r, i) => {
+    html += '<button class="response-btn" onclick="pickStudentResponse(' + i + ')">' + r.icon + ' ' + r.text + '</button>';
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+
+  stuState.nurseExpression = 'neutral';
+  drawStudentModeOffice(nurseText);
+}
+
+function pickStudentResponse(responseIdx) {
+  const examType = stuState.examsThisRound[stuState.examIndex];
+  const condId = stuState.chosenCondition.condId;
+  const scores = STU_SCORES[condId][examType];
+  let susChange = scores[responseIdx];
+
+  // If actually sick, halve suspicion gains
+  if (stuState.actuallySick && susChange > 0) susChange = Math.floor(susChange / 2);
+
+  // Each exam inherently adds a small amount
+  susChange += 5;
+
+  stuState.suspicion = Math.max(0, Math.min(100, stuState.suspicion + susChange));
+
+  const reaction = getNurseReaction(susChange);
+  stuState.nurseExpression = susChange <= -3 ? 'sympathetic' : susChange >= 8 ? 'suspicious' : 'neutral';
+
+  const panel = uiPanel();
+  let html = buildSuspicionCard();
+
+  html += '<div class="card">';
+  const rData = STU_EXAM_TEXT[examType].responses[responseIdx];
+  html += '<div style="color:#888;font-size:0.78rem;margin-bottom:4px">You: ' + rData.icon + ' ' + rData.text + '</div>';
+  html += '<div style="color:#fff;font-size:0.9rem;margin-top:8px">\ud83e\ude7a Nurse: \u201c' + reaction + '\u201d</div>';
+  if (susChange <= -3) {
+    html += '<div style="color:#4caa64;font-size:0.75rem;margin-top:6px">That seemed to work!</div>';
+  } else if (susChange >= 8) {
+    html += '<div style="color:#e07070;font-size:0.75rem;margin-top:6px">She looks suspicious...</div>';
+  } else {
+    html += '<div style="color:#aaaa4c;font-size:0.75rem;margin-top:6px">She doesn\'t seem sure.</div>';
+  }
+  html += '</div>';
+
+  stuState.examIndex++;
+  if (stuState.examIndex < stuState.examsThisRound.length) {
+    html += '<button class="btn" onclick="showStudentExam()" style="width:100%">NEXT EXAM \u2192</button>';
+  } else {
+    html += '<button class="btn" onclick="showStudentVerdict()" style="width:100%">THE VERDICT \u2192</button>';
+  }
+  panel.innerHTML = html;
+  drawStudentModeOffice(reaction);
+}
+
+function showStudentVerdict() {
+  const caught = stuState.suspicion >= 50;
+  let scoreChange = 0, strikeChange = 0, title, text, cls;
+
+  if (caught) {
+    if (stuState.actuallySick) {
+      title = 'NURSE GOT IT WRONG!';
+      text = 'She sent you back even though you were actually sick! Oh well...';
+      cls = 'negative';
+    } else {
+      title = 'BUSTED!';
+      text = pick([
+        '"Nice try, kiddo. Back to class!"',
+        '"I wasn\'t born yesterday. Back to class you go!"',
+        '"You\'re not fooling me. Get back to class!"',
+        '"I\'ve seen better acting in kindergarten plays. Back to class!"'
+      ]);
+      cls = 'negative';
+      strikeChange = 1;
+    }
+    stuState.dayCaught++;
+  } else {
+    if (stuState.actuallySick) {
+      title = 'SENT HOME!';
+      text = '"You\'re definitely not feeling well. Let me call your parents."';
+      cls = 'positive';
+      scoreChange = 75;
+    } else {
+      title = 'GOING HOME!';
+      text = pick([
+        '"Oh you poor thing! Go home and rest. I\'ll call your parents."',
+        '"You do look under the weather. I\'ll call home for you."',
+        '"Better safe than sorry. Let\'s get you home!"'
+      ]);
+      cls = 'positive';
+      scoreChange = stuState.chosenCondition.points;
+      if (stuState.chosenCondition.difficulty === 'hard') scoreChange += 50;
+      else if (stuState.chosenCondition.difficulty === 'medium') scoreChange += 25;
+    }
+    stuState.daySkips++;
+    stuState.totalSkips++;
+  }
+
+  stuState.score += scoreChange;
+  stuState.strikes += strikeChange;
+
+  // Achievements
+  if (!caught || stuState.actuallySick) {
+    if (stuState.totalSkips >= 1) tryAch('sn_class_skipper');
+    if (stuState.totalSkips >= 5) tryAch('sn_smooth_talker');
+    if (stuState.totalSkips >= 15) tryAch('sn_oscar_winner');
+    if (stuState.actuallySick && !caught) tryAch('sn_really_sick');
+  }
+
+  const panel = uiPanel();
+  let html = '<div class="card">';
+  html += '<h3 class="result-' + (cls === 'positive' ? 'correct' : 'wrong') + '">' + title + '</h3>';
+  html += '<div class="result-text">' + text + '</div>';
+  if (scoreChange > 0) {
+    html += '<div class="result-score positive">+' + scoreChange + ' points</div>';
+  }
+  if (strikeChange > 0) {
+    html += '<div class="result-score negative">Strike ' + stuState.strikes + ' of ' + stuState.maxStrikes + '!</div>';
+  }
+  html += '</div>';
+
+  if (stuState.strikes >= stuState.maxStrikes) {
+    html += '<button class="btn danger" onclick="studentGameOver()" style="width:100%">PARENTS CALLED... \u2192</button>';
+  } else if (stuState.roundIndex < stuState.roundsPerDay - 1) {
+    html += '<button class="btn" onclick="nextStudentRound()" style="width:100%">NEXT CLASS \u2192</button>';
+  } else {
+    html += '<button class="btn" onclick="endStudentDay()" style="width:100%">END OF DAY \u2192</button>';
+  }
+
+  panel.innerHTML = html;
+  updateStudentHUD();
+  stuState.nurseExpression = caught ? 'suspicious' : 'sympathetic';
+  drawStudentModeOffice(caught ? 'Back to class!' : 'Feel better!');
+}
+
+function nextStudentRound() {
+  stuState.roundIndex++;
+  updateStudentHUD();
+  showConditionPicker();
+}
+
+function endStudentDay() {
+  saveStudentStats();
+  if (stuState.daySkips === stuState.roundsPerDay) tryAch('sn_perfect_hooky');
+
+  document.getElementById('summary-title').textContent = 'END OF DAY ' + stuState.day;
+  let html = '<table class="summary-table">';
+  html += '<tr><td>Classes Skipped</td><td>' + stuState.daySkips + '/' + stuState.roundsPerDay + '</td></tr>';
+  html += '<tr><td>Times Caught</td><td style="color:' + (stuState.dayCaught > 0 ? '#e07070' : '#4caa64') + '">' + stuState.dayCaught + '</td></tr>';
+  html += '<tr><td>Total Score</td><td>' + stuState.score + '</td></tr>';
+  html += '<tr><td>Strikes</td><td>' + stuState.strikes + '/' + stuState.maxStrikes + '</td></tr>';
+  html += '</table>';
+  if (stuState.daySkips === stuState.roundsPerDay) {
+    html += '<div style="color:#4caa64;font-size:0.9rem;margin-bottom:8px">Perfect hooky! Skipped every class!</div>';
+  }
+  document.getElementById('summary-body').innerHTML = html;
+  showScreen('summary-screen');
+}
+
+function studentGameOver() {
+  clearStudentProgress();
+  saveStudentFinalStats();
+
+  document.getElementById('go-title').textContent = 'PARENTS CALLED!';
+  document.getElementById('go-sub').textContent = "You got caught faking too many times... Mom is NOT happy.";
+  document.getElementById('go-play-btn').textContent = 'TRY AGAIN';
+  document.getElementById('go-play-btn').onclick = startStudentMode;
+
+  let html = '';
+  html += 'Days Survived: <strong>' + stuState.day + '</strong><br>';
+  html += 'Final Score: <strong>' + stuState.score + '</strong><br>';
+  html += 'Classes Skipped: <strong>' + stuState.totalSkips + '</strong><br>';
+  html += 'Times Caught: <strong>' + stuState.strikes + '</strong>';
+  document.getElementById('final-stats').innerHTML = html;
+  showScreen('gameover-screen');
+}
+
+function continueStudentGame() {
+  const p = loadStudentProgress();
+  if (!p) return;
+  studentMode = true;
+  resetStudentState();
+  stuState.day = p.day;
+  stuState.score = p.score;
+  stuState.strikes = p.strikes;
+  stuState.totalSkips = p.totalSkips;
+  stuState.playerAppearance = p.playerAppearance;
+  stuState.roundsPerDay = p.roundsPerDay || 2;
+  stuState.daySkips = p.daySkips || 0;
+  stuState.dayCaught = p.dayCaught || 0;
+
+  if (p.screen === 'summary-screen') {
+    stuState.roundIndex = p.roundIndex || 0;
+    endStudentDay();
+    return;
+  }
+  stuState.day++;
+  showStudentDayScreen();
+}
+
+function goToMenu() {
+  studentMode = false;
+  restoreNurseHUD();
+  updateTitleStats();
+  showScreen('title-screen');
 }
 
 // ═══════════════════════════════════════════

@@ -3444,10 +3444,10 @@ const GG_TV_ADS = [
     tagline: 'IT GLOWS! IT FLOWS! IT... DOES THAT THING!',
     desc: 'Ten times brighter than a regular lava lamp! Stare at it for hours! Your eyes may or may not recover!',
     effect: 'Unlocks: Glow Lamp — +30 fun when used', statKey: 'fun', statVal: 30 },
-  { name: 'Chef\'s Kiss Apron', price: 45, icon: '\u{1F9D1}\u200D\u{1F373}', color: '#ff9800', itemId: 'chefApron', phone: '555-0460',
-    tagline: 'COOK LIKE A PRO! OR AT LEAST LOOK LIKE ONE!',
-    desc: 'Wearing this apron makes food taste 12% better. Comes with a tiny hat! (Hat not actually included.)',
-    effect: 'Unlocks: Snack Fridge — +35 hunger when used', statKey: 'hunger', statVal: 35 },
+  { name: 'GG Game Console', price: 100, icon: '\u{1F3AE}', color: '#7c4dff', itemId: 'gameConsole', phone: '555-0460',
+    tagline: 'THE ULTIMATE RETRO GAMING EXPERIENCE!',
+    desc: 'Play Snake, Pong, Memory Match and more! 5 built-in games! Additional cartridges sold at the GG Merch Store.',
+    effect: 'Unlocks: Game Console upstairs \u2014 play mini-games for fun!', statKey: 'fun', statVal: 40 },
   { name: 'Ultra Comfy Pillow', price: 25, icon: '\u{1F6CB}\uFE0F', color: '#7e57c2', itemId: 'comfyPillow', phone: '555-0570',
     tagline: 'THE FLUFFIEST PILLOW KNOWN TO MANKIND!',
     desc: 'Made from clouds. Actual clouds. We went up there and got them. Sleep has never been this good.',
@@ -3729,14 +3729,17 @@ function buildPhoneItem(itemId) {
   if (itemId === 'glowLamp') {
     return buildGlowLamp();
   }
+  if (itemId === 'gameConsole') {
+    return buildGameConsole();
+  }
   const BY = -3.35;
-  const colors = { megaBlaster: 0xff6b35, turboSneakers: 0x00bcd4, glowLamp: 0xe040fb, chefApron: 0xff9800,
+  const colors = { megaBlaster: 0xff6b35, turboSneakers: 0x00bcd4, glowLamp: 0xe040fb,
     sparkleShampoo: 0x26c6da, jokeBook: 0x66bb6a, proteinBars: 0xef5350 };
   const positions = { megaBlaster: [-3, BY+0.18, 3], turboSneakers: [-2, BY+0.18, 3], glowLamp: [-1, BY+0.18, 3],
-    chefApron: [0, BY+0.18, 3], sparkleShampoo: [-3, BY+0.18, 4],
-    jokeBook: [-2, BY+0.18, 4], proteinBars: [-1, BY+0.18, 4] };
+    sparkleShampoo: [0, BY+0.18, 3],
+    jokeBook: [-3, BY+0.18, 4], proteinBars: [-2, BY+0.18, 4] };
   const labels = { megaBlaster: 'Play with Blaster', turboSneakers: 'Try on Sneakers', glowLamp: 'Stare at Glow Lamp',
-    chefApron: 'Raid Snack Fridge', sparkleShampoo: 'Use Spa Kit',
+    sparkleShampoo: 'Use Spa Kit',
     jokeBook: 'Read Joke Book', proteinBars: 'Eat Protein Bar' };
   const c = colors[itemId] || 0xcccccc;
   const pos = positions[itemId] || [0, BY+0.5, 3];
@@ -3858,10 +3861,12 @@ function openSneakerPicker() {
 function rebuildPlayerCharacter() {
   const pos = character.position.clone();
   const rot = character.rotation.y;
+  const vis = character.visible;
   scene.remove(character);
   character = buildCharacter(charOpts);
   character.position.copy(pos);
   character.rotation.y = rot;
+  character.visible = vis;
   scene.add(character);
 }
 
@@ -10408,6 +10413,12 @@ function startAction(obj) {
   // Turbo Sneakers — color picker
   if (obj.type === 'phone_turboSneakers') {
     openSneakerPicker();
+    return;
+  }
+
+  // Game Console — opens game picker
+  if (obj.type === 'phone_gameConsole') {
+    openGameConsole();
     return;
   }
 

@@ -156,9 +156,9 @@ test('ggUnlockAchievement skips duplicate', () => {
 console.log('\n=== ACHIEVEMENT DEFINITIONS ===');
 // ═══════════════════════════════════
 
-test('All 10 achievements defined with correct fields', () => {
+test('All 15 achievements defined with correct fields', () => {
   const keys = Object.keys(exports.SN_ACH);
-  assertEqual(keys.length, 10, `Expected 10 achievements, got ${keys.length}`);
+  assertEqual(keys.length, 15, `Expected 15 achievements, got ${keys.length}`);
   for (const key of keys) {
     const a = exports.SN_ACH[key];
     assert(a.name, `Achievement ${key} missing name`);
@@ -167,12 +167,12 @@ test('All 10 achievements defined with correct fields', () => {
   }
 });
 
-test('Achievement total is 250G', () => {
+test('Achievement total is 380G', () => {
   let total = 0;
   for (const key of Object.keys(exports.SN_ACH)) {
     total += exports.SN_ACH[key].reward;
   }
-  assertEqual(total, 250, `Total should be 250G, got ${total}G`);
+  assertEqual(total, 380, `Total should be 380G, got ${total}G`);
 });
 
 test('All achievement IDs start with sn_', () => {
