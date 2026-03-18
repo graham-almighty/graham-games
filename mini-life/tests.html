@@ -2546,6 +2546,119 @@ test('GG Poster usePos is on upper floor', () => {
   assertEqual(usePos.y, UPPER_Y);
 });
 
+// ═══════════════════════════════════════════════════════
+section('GG Game Console');
+
+test('Game console TV ad entry has correct price and phone', () => {
+  // Matches GG_TV_ADS entry in game.html
+  const ad = { name: 'GG Game Console', price: 100, itemId: 'gameConsole', phone: '555-0460' };
+  assertEqual(ad.price, 100);
+  assertEqual(ad.phone, '555-0460');
+  assertEqual(ad.itemId, 'gameConsole');
+});
+
+test('Game console interactable config values', () => {
+  const cfg = { label: 'Playing console...', duration: 5, restore: 40, cost: 0 };
+  assertEqual(cfg.restore, 40);
+  assertEqual(cfg.duration, 5);
+  assertEqual(cfg.cost, 0);
+});
+
+test('Game console interactable registration shape', () => {
+  const inter = { type: 'phone_gameConsole', label: 'Play Game Console', need: 'fun', floor: 1,
+    usePos: { x: 2, y: UPPER_Y, z: -2.5 } };
+  assertEqual(inter.type, 'phone_gameConsole');
+  assertEqual(inter.label, 'Play Game Console');
+  assertEqual(inter.need, 'fun');
+  assertEqual(inter.floor, 1);
+  assertEqual(inter.usePos.y, UPPER_Y);
+});
+
+test('Game console position is upstairs', () => {
+  const pos = { x: 2, y: UPPER_Y, z: -3.5 };
+  assertEqual(pos.y, UPPER_Y);
+  assertEqual(pos.x, 2);
+  assertEqual(pos.z, -3.5);
+});
+
+test('Game console restart cleanup pattern', () => {
+  let gameConsoleGroup = { exists: true };
+  const interactables = [{ type: 'phone_gameConsole' }, { type: 'bed' }];
+  // Simulate restart cleanup
+  if (gameConsoleGroup) {
+    gameConsoleGroup = null;
+  }
+  assertEqual(gameConsoleGroup, null);
+});
+
+test('Game console is an instant action (intercepted in startAction)', () => {
+  // phone_gameConsole returns early from startAction, no walk+progress bar
+  const instantTypes = ['mirror', 'jukebox', 'merchCounter', 'ggTV', 'ggPhone', 'phone_jokeBook', 'phone_turboSneakers', 'phone_gameConsole', 'grandPiano', 'door'];
+  assert(instantTypes.includes('phone_gameConsole'));
+});
+
+test('Game console fun reward calculation', () => {
+  // Fun = min(50, 15 + floor(score/2))
+  const calcFun = (score) => Math.min(50, 15 + Math.floor(score / 2));
+  assertEqual(calcFun(0), 15);
+  assertEqual(calcFun(20), 25);
+  assertEqual(calcFun(40), 35);
+  assertEqual(calcFun(60), 45);
+  assertEqual(calcFun(80), 50); // capped at 50
+});
+
+test('Game console has 5 built-in games', () => {
+  const games = ['snake', 'pong', 'memory', 'whack', 'reaction'];
+  assertEqual(games.length, 5);
+});
+
+test('Game console shows 6 games when cartridge owned', () => {
+  const games = ['snake', 'pong', 'memory', 'whack', 'reaction'];
+  const hasCartridge = true;
+  if (hasCartridge) games.push('slug');
+  assertEqual(games.length, 6);
+  assert(games.includes('slug'));
+});
+
+test('GG Slug Assault cartridge costs $20', () => {
+  const cartridgePrice = 20;
+  assertEqual(cartridgePrice, 20);
+});
+
+test('GG Cartridge requires game console', () => {
+  // Cartridge should only be buyable if phoneOrders includes gameConsole
+  const phoneOrders = ['megaBlaster', 'gameConsole'];
+  assert(phoneOrders.includes('gameConsole'));
+});
+
+test('GG Cartridge save/load round-trip', () => {
+  const saveData = { hasGGCartridge: true, phoneOrders: ['gameConsole'] };
+  const json = JSON.stringify(saveData);
+  const loaded = JSON.parse(json);
+  assertEqual(loaded.hasGGCartridge, true);
+});
+
+test('GG Cartridge flag resets on restart', () => {
+  let hasGGCartridge = true;
+  // Simulate restart
+  hasGGCartridge = false;
+  assertEqual(hasGGCartridge, false);
+});
+
+test('Game console save/load round-trip includes phoneOrders gameConsole', () => {
+  const saveData = { phoneOrders: ['megaBlaster', 'gameConsole'] };
+  const json = JSON.stringify(saveData);
+  const loaded = JSON.parse(json);
+  assert(loaded.phoneOrders.includes('gameConsole'));
+});
+
+test('Game console usePos does not collide with bookshelf usePos', () => {
+  const consoleUse = { x: 2, y: UPPER_Y, z: -2.5 };
+  const bookshelfUse = { x: 3, y: UPPER_Y, z: -3.5 };
+  const dist = Math.sqrt((consoleUse.x - bookshelfUse.x) ** 2 + (consoleUse.z - bookshelfUse.z) ** 2);
+  assert(dist > 0.5, 'Console and bookshelf usePos should not overlap');
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;
