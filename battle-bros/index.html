@@ -547,7 +547,7 @@ const FIGHTERS = {
   volt: {
     name: 'Volt', desc: 'Electric brawler',
     hp: 120, speed: 1.15, punchDmg: 10, kickDmg: 14,
-    special: { name: 'Thunder Clap', damage: 28, type: 'aoe', cooldown: SPECIAL_COOLDOWN },
+    special: { name: 'Lightning Bolt', damage: 26, type: 'projectile', cooldown: SPECIAL_COOLDOWN },
     palette: makePalette('#e8b89d','#cccc00','#111111','#cc2222','#111111'),
     catchphrase: '"You never stood a chance!"',
   },
@@ -866,17 +866,20 @@ function spawnProjectile(f) {
   const spd = f.facing * 1.5;
   let color = '#ff6600';
   if (f.charId === 'frost') color = '#88bbff';
+  else if (f.charId === 'volt') color = '#ffff00';
   else if (f.charId === 'omega') color = '#ff0000';
   else if (f.charId === 'nova') color = '#ff88cc';
+  const isLightning = f.charId === 'volt';
   projectiles.push({
     x: f.x + (f.facing === 1 ? SPRITE_W : -8),
     y: f.y + 12,
-    vx: spd,
-    w: 8, h: 6,
+    vx: isLightning ? f.facing * 2.5 : spd,
+    w: isLightning ? 14 : 8, h: isLightning ? 8 : 6,
     owner: f.playerNum,
     damage: f.def.special.damage,
     color,
-    life: 120,
+    life: isLightning ? 80 : 120,
+    lightning: isLightning,
   });
 }
 
@@ -1228,11 +1231,37 @@ function drawHUD(ctx) {
 
 function drawProjectiles(ctx) {
   for (const p of projectiles) {
-    ctx.fillStyle = p.color;
-    ctx.fillRect(Math.floor(p.x), Math.floor(p.y), p.w, p.h);
-    // Glow
-    ctx.fillStyle = p.color + '44';
-    ctx.fillRect(Math.floor(p.x) - 1, Math.floor(p.y) - 1, p.w + 2, p.h + 2);
+    const px = Math.floor(p.x), py = Math.floor(p.y);
+    if (p.lightning) {
+      // Zig-zag lightning bolt
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(px, py + 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px + 7, py + 4);
+      ctx.lineTo(px + 10, py);
+      ctx.lineTo(px + 14, py + 4);
+      ctx.stroke();
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(px, py + 4);
+      ctx.lineTo(px + 4, py);
+      ctx.lineTo(px + 7, py + 4);
+      ctx.lineTo(px + 10, py);
+      ctx.lineTo(px + 14, py + 4);
+      ctx.stroke();
+      // Electric glow
+      ctx.fillStyle = p.color + '33';
+      ctx.fillRect(px - 2, py - 2, p.w + 4, p.h + 4);
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(px, py, p.w, p.h);
+      // Glow
+      ctx.fillStyle = p.color + '44';
+      ctx.fillRect(px - 1, py - 1, p.w + 2, p.h + 2);
+    }
   }
 }
 
