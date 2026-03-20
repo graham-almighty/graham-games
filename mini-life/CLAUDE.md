@@ -27,9 +27,9 @@
 - Basement stair: X=5.3 to 8, Z=-4.5 to -2.5
 
 **Town** (TOWN_ORIGIN X=122.5, Z=0):
-- Bounds: X=88-157, Z=-28 to 28
+- Bounds: X=88-172, Z=-28 to 28
 - Main road at X=118 (width 6), cross street at Z=-0.5 (width 5), sidewalks at X=114 and X=122
-- **North side buildings (Z=4-10):** Cafe (X=104-112), Library (X=92-100), Town Hall (X=127-137), GG Merch Store (X=139-145), Restaurant (X=148-156)
+- **North side buildings (Z=4-10):** Cafe (X=104-112), Library (X=92-100), Town Hall (X=127-137), GG Merch Store (X=139-145), Restaurant (X=148-156), Graham's House (X=160-168)
 - **South side buildings:** Shop (X=104-112, Z=-12 to -4.5), Gym (X=92-100, Z=-8 to -16), Arcade Hall (X=148-156, Z=-8 to -16), Army Fort (X=92-100, Z=-18 to -26), Fast Food "Mic Ronaldz" (X=148-156, Z=-18 to -26)
 - Basketball court: X=130-140, Z=-16 to -26 (with backboards)
 - Parking lot: X=130-140, Z=-12 to -4
@@ -167,6 +167,15 @@ To add a new purchasable expansion:
   - Most items use action config `phone_{itemId}` with 3s duration. Exceptions: comfyPillow (bed boost), jokeBook (instant overlay), megaBlaster (E key).
 - **GG Superfan dialogue**: Cycles through fan-themed lines; offers "Browse Merch" button (pre-purchase) or "Equip GG Merch" (post-purchase). Uses `window._merchDialogIdx` for cycling.
 
+## Graham's House
+
+**Location:** Town, X=160-168, Z=4-10 (east of Restaurant)
+- Teal-green exterior (`0x44886a`), dark brown roof, gold sign
+- Door gap at X=165.3-166.9 on Z=10 face
+- Interior: couch with red cushions, TV on stand, gaming desk with green-screen monitor, bookshelf with colored books, warm rug
+- NPC: "Graham" (medium skin, curly blonde hair, GG Merch outfit) — the game creator
+- **Dialogue:** 10 cycling lines (meta/humorous). Uses `window._grahamDialogIdx` for cycling. No quest or job — talk only.
+
 ## Driving System
 
 - `startDrivingTransition(destination)` — 'town', 'mansion', or 'home'
@@ -193,7 +202,7 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 ## NPC & Quest System
 
-**11 NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
+**12 NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair), Graham (medium skin, curly blonde hair, GG Merch outfit — inside Graham's House). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
 
 **4 Quests** (defined in `QUESTS`):
 | Quest | NPC | Condition | Reward |
