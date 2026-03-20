@@ -6684,7 +6684,7 @@ const TOWN_JOBS = {
 };
 
 const TOWN_ORIGIN = { x: 122.5, z: 0 }; // center of town
-const TOWN_BOUNDS = { xMin: 88, xMax: 157, zMin: -28, zMax: 28 };
+const TOWN_BOUNDS = { xMin: 88, xMax: 172, zMin: -28, zMax: 28 };
 const TOWN_PLAYER_SPAWN = { x: 135, y: 0.15, z: -8 }; // near parking lot
 const HOME_PLAYER_SPAWN = { x: 10, y: 0.15, z: 0.75 }; // near car in yard
 
@@ -6753,6 +6753,7 @@ const TOWN_NPC_DEFS = [
   { id: 'arcade_kid', name: 'Gamer Gary', x: 152, z: -11, skinTone: 2, hairColor: 6, hairStyle: 'curly', gender: 'male', outfit: 6 },
   { id: 'sergeant', name: 'Sgt. Briggs', x: 96, z: -22, skinTone: 4, hairColor: 0, hairStyle: 'buzz', gender: 'male', outfit: 5 },
   { id: 'frycook', name: 'Mic Ronaldz', x: 152, z: -21.5, skinTone: 1, hairColor: 0, hairStyle: 'short', gender: 'male', outfit: 1, scale: 0.55 },
+  { id: 'graham', name: 'Graham', x: 164, z: 5.5, skinTone: 2, hairColor: 2, hairStyle: 'curly', gender: 'male', outfit: 8 },
 ];
 
 function buildCar() {
@@ -6944,9 +6945,9 @@ function buildTown() {
   const lampMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
 
   // Town ground
-  const townGround = new THREE.Mesh(new THREE.PlaneGeometry(75, 62), mat.grass);
+  const townGround = new THREE.Mesh(new THREE.PlaneGeometry(90, 62), mat.grass);
   townGround.rotation.x = -Math.PI / 2;
-  townGround.position.set(TOWN_ORIGIN.x, -0.01, TOWN_ORIGIN.z);
+  townGround.position.set(130, -0.01, TOWN_ORIGIN.z);
   townGround.receiveShadow = true;
   g.add(townGround);
 
@@ -6962,23 +6963,23 @@ function buildTown() {
     g.add(marking);
   }
   // Cross street (runs east-west at Z=-0.5, connecting both sides)
-  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(69, 0.05, 5), roadMat);
-  crossRoad.position.set(TOWN_ORIGIN.x, 0.02, -0.5);
+  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(84, 0.05, 5), roadMat);
+  crossRoad.position.set(130, 0.02, -0.5);
   crossRoad.receiveShadow = true;
   g.add(crossRoad);
   // Cross street lane markings
-  for (let x = 90; x <= 155; x += 4) {
+  for (let x = 90; x <= 170; x += 4) {
     if (x > 115 && x < 121) continue; // skip intersection
     const cm = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.01, 0.2), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
     cm.position.set(x, 0.06, -0.5);
     g.add(cm);
   }
   // Cross street sidewalks (north and south sides)
-  const cswN = new THREE.Mesh(new THREE.BoxGeometry(69, 0.08, 1.5), sidewalkMat);
-  cswN.position.set(TOWN_ORIGIN.x, 0.04, 2.5);
+  const cswN = new THREE.Mesh(new THREE.BoxGeometry(84, 0.08, 1.5), sidewalkMat);
+  cswN.position.set(130, 0.04, 2.5);
   g.add(cswN);
-  const cswS = new THREE.Mesh(new THREE.BoxGeometry(69, 0.08, 1.5), sidewalkMat);
-  cswS.position.set(TOWN_ORIGIN.x, 0.04, -3.5);
+  const cswS = new THREE.Mesh(new THREE.BoxGeometry(84, 0.08, 1.5), sidewalkMat);
+  cswS.position.set(130, 0.04, -3.5);
   g.add(cswS);
   // Sidewalks (extended for longer main road)
   const swL = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 56), sidewalkMat);
@@ -7863,6 +7864,60 @@ function buildTown() {
     });
   });
 
+  // === GRAHAM'S HOUSE (X=160-168, Z=4-10) ===
+  const grahamHouseMat = new THREE.MeshLambertMaterial({ color: 0x44886a });
+  const grahamInnerMat = new THREE.MeshLambertMaterial({ color: 0xddccaa });
+  const grahamFloorMat = new THREE.MeshLambertMaterial({ color: 0xbb9966 });
+  const grahamRoofMat = new THREE.MeshLambertMaterial({ color: 0x553322 });
+  // Walls
+  makeWall(8.4, 3.5, 0.3, grahamHouseMat, 164, 1.75, 4);     // Back (Z=4)
+  makeWall(0.3, 3.5, 6, grahamHouseMat, 160, 1.75, 7);         // Left (X=160)
+  makeWall(0.3, 3.5, 6, grahamHouseMat, 168, 1.75, 7);         // Right (X=168)
+  makeWall(5.4, 3.5, 0.3, grahamHouseMat, 162.6, 1.75, 10);    // Front-left
+  makeWall(1.2, 3.5, 0.3, grahamHouseMat, 167.5, 1.75, 10);    // Front-right
+  makeWall(1.6, 1.2, 0.3, grahamHouseMat, 166.1, 2.9, 10);     // Above door
+  // Floor & inner wall
+  makeWall(8, 0.1, 6, grahamFloorMat, 164, 0.05, 7);
+  makeWall(7.4, 3, 0.05, grahamInnerMat, 164, 1.5, 4.2);
+  // Roof
+  const grahamRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 7), grahamRoofMat);
+  grahamRoof.position.set(164, 3.65, 7); g.add(grahamRoof);
+  // Sign
+  const ghSignMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.3 });
+  const ghSign = new THREE.Mesh(new THREE.BoxGeometry(3.5, 0.6, 0.1), ghSignMat);
+  ghSign.position.set(164, 3.2, 10.16); g.add(ghSign);
+  // Couch (left wall)
+  const ghCouchMat = new THREE.MeshLambertMaterial({ color: 0x884422 });
+  const ghCushionMat = new THREE.MeshLambertMaterial({ color: 0xcc5533 });
+  makeWall(0.5, 0.6, 2, ghCouchMat, 160.6, 0.3, 6);
+  makeWall(0.1, 0.8, 2, ghCouchMat, 160.35, 0.4, 6);
+  makeWall(0.4, 0.15, 0.8, ghCushionMat, 160.65, 0.65, 5.5);
+  makeWall(0.4, 0.15, 0.8, ghCushionMat, 160.65, 0.65, 6.5);
+  // TV on stand (back wall, left side)
+  makeWall(1.5, 0.6, 0.5, shelfMat, 162, 0.3, 4.5);
+  makeWall(1.2, 0.8, 0.1, lampMat, 162, 1.1, 4.4);
+  const ghTVScreen = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 0.02),
+    new THREE.MeshLambertMaterial({ color: 0x3366aa, emissive: 0x2244aa, emissiveIntensity: 0.5 }));
+  ghTVScreen.position.set(162, 1.1, 4.35); g.add(ghTVScreen);
+  // Gaming desk (right wall)
+  makeWall(1.5, 0.7, 0.8, deskMat, 167, 0.35, 5);
+  makeWall(0.8, 0.6, 0.1, lampMat, 167, 1.0, 4.7);
+  const ghMonScreen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.02),
+    new THREE.MeshLambertMaterial({ color: 0x22aa44, emissive: 0x118833, emissiveIntensity: 0.5 }));
+  ghMonScreen.position.set(167, 1.0, 4.65); g.add(ghMonScreen);
+  // Bookshelf (right wall near door)
+  makeWall(1.2, 2, 0.4, shelfMat, 167.2, 1, 8);
+  [0.5, 1, 1.5].forEach(sy => makeWall(1.1, 0.05, 0.35, shelfMat, 167.2, sy, 8));
+  [0xcc3333, 0x3333cc, 0x33aa33, 0xccaa33, 0xaa33cc].forEach((c, i) => {
+    const book = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.3, 0.2), new THREE.MeshLambertMaterial({ color: c }));
+    book.position.set(166.8 + i * 0.2, 0.25, 8); g.add(book);
+  });
+  // Rug
+  makeWall(3, 0.02, 2, new THREE.MeshLambertMaterial({ color: 0x994433 }), 163, 0.08, 7);
+  // Interior light
+  const ghLight = new THREE.PointLight(0xffeedd, 0.5, 10);
+  ghLight.position.set(164, 3.2, 7); g.add(ghLight);
+
   // Town car (in parking lot for return trip)
   townCarGroup = buildCar();
   townCarGroup.position.set(135, 0.15, -8);
@@ -7946,6 +8001,12 @@ const TOWN_BUILDINGS = [
   { xMin: 153.5, xMax: 153.8, zMin: -23.5, zMax: -20.5 },     // Right
   { xMin: 150.2, xMax: 151.6, zMin: -20.6, zMax: -20.4 },     // Front-left
   { xMin: 153.2, xMax: 153.8, zMin: -20.6, zMax: -20.4 },     // Front-right
+  // Graham's House walls (door gap at X=165.3-166.9 on Z=10 face)
+  { xMin: 159.8, xMax: 168.2, zMin: 3.8, zMax: 4.2 },      // Back
+  { xMin: 159.8, xMax: 160.2, zMin: 4, zMax: 10 },          // Left
+  { xMin: 167.8, xMax: 168.2, zMin: 4, zMax: 10 },          // Right
+  { xMin: 159.8, xMax: 165.3, zMin: 9.8, zMax: 10.2 },      // Front-left
+  { xMin: 166.9, xMax: 168.2, zMin: 9.8, zMax: 10.2 },      // Front-right
   // Basketball hoop poles
   { xMin: 126.8, xMax: 127.2, zMin: -23.3, zMax: -22.7 },
   { xMin: 136.8, xMax: 137.2, zMin: -23.3, zMax: -22.7 },
@@ -7961,7 +8022,7 @@ function buildTownNPCs() {
     if (def.scale) npcChar.scale.set(def.scale, def.scale, def.scale);
     npcChar.position.set(def.x, def.scale ? 0.15 * def.scale : 0.15, def.z);
     // Face toward building entrance
-    const npcRotations = { barista: 0, merchant: Math.PI, mayor: 0, old_pete: Math.PI, librarian: 0, trainer: Math.PI, chef: 0, arcade_kid: Math.PI, sergeant: 0, frycook: 0 };
+    const npcRotations = { barista: 0, merchant: Math.PI, mayor: 0, old_pete: Math.PI, librarian: 0, trainer: Math.PI, chef: 0, arcade_kid: Math.PI, sergeant: 0, frycook: 0, graham: 0 };
     npcChar.rotation.y = npcRotations[def.id] || 0;
     townGroup.add(npcChar);
     // Tag ALL meshes in the NPC group for raycast detection
@@ -8695,6 +8756,28 @@ function openNPCDialogue(npcId) {
     } else if (!owned) {
       addDialogueBtn(btnsEl, 'Browse Merch', 'npc-btn-accept', () => { closeNPCDialogue(); openMerchStore(); });
     }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
+
+  // Graham special dialogue
+  if (npcId === 'graham') {
+    const grahamLines = [
+      "Hey! Welcome to my house! Pretty cool place, right?",
+      "You know, I made all of this. Every building, every NPC. I'm basically a god here.",
+      "Don't touch my stuff. Actually, touch whatever you want. I'm pretty chill.",
+      "Want some advice? Keep your energy up and eat at Chef Rosa's. Best food in town!",
+      "I tried to make a game about making games but it got too meta. Even for me.",
+      "Did you know I'm a numbskull? It's true, it says so in the credits.",
+      "The GG Superfan is a bit intense but I appreciate the enthusiasm.",
+      "Sometimes I just sit here and watch the town go by. It's nice being in your own game.",
+      "If you see any bugs, that's not a bug. It's a feature. I definitely meant to do that.",
+      "You should check out the merch store. I don't get royalties but it's still cool.",
+    ];
+    if (!window._grahamDialogIdx) window._grahamDialogIdx = 0;
+    textEl.textContent = grahamLines[window._grahamDialogIdx % grahamLines.length];
+    window._grahamDialogIdx++;
     addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     overlay.classList.add('visible');
     return;
