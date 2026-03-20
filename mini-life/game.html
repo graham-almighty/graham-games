@@ -5012,7 +5012,10 @@ function runConsoleSlug(canvas, ctx, onFinish) {
   // Types: crate (solid, blocks bullets), sandbag (short cover), barrel (explodes when shot),
   //        platform (elevated, can stand on), pit (gap in ground, fall = damage)
   const obstacles = [];
-  function addObs(type, x, w, h, extra) { obstacles.push({ type, x, y: GROUND, w, h, hp: extra || 0 }); }
+  function addObs(type, x, w, h, extra) {
+    const hp = extra !== undefined ? extra : (type === 'crate' ? 3 : type === 'sandbag' ? 2 : 0);
+    obstacles.push({ type, x, y: GROUND, w, h, hp, maxHp: hp });
+  }
   // Crate clusters
   addObs('crate', 250, 28, 28); addObs('crate', 278, 28, 28);
   addObs('crate', 260, 28, 56); // stacked double
@@ -5109,6 +5112,21 @@ function runConsoleSlug(canvas, ctx, onFinish) {
     if (player.flash <= 0 && Math.abs(player.x - (ob.x + ob.w / 2)) < 40 && Math.abs(player.y - ob.y) < 50) {
       player.hp--; player.flash = 1.5;
     }
+  }
+
+  function destroyObstacle(ob) {
+    ob.hp = -1;
+    const cx = ob.x + ob.w / 2, cy = ob.y - ob.h / 2;
+    const c1 = ob.type === 'crate' ? '#6d4c2a' : '#8a7a5a';
+    const c2 = ob.type === 'crate' ? '#4a3318' : '#6a5a3a';
+    for (let i = 0; i < 8; i++) {
+      particles.push({
+        x: cx + (Math.random() - 0.5) * ob.w, y: cy + (Math.random() - 0.5) * ob.h,
+        vx: (Math.random() - 0.5) * 150, vy: -80 - Math.random() * 120,
+        t: 0, maxT: 0.4 + Math.random() * 0.3, color: Math.random() < 0.5 ? c1 : c2
+      });
+    }
+    score += ob.type === 'crate' ? 3 : 2;
   }
 
   // Solid obstacle collision for a moving entity
@@ -5240,26 +5258,30 @@ function runConsoleSlug(canvas, ctx, onFinish) {
     bullets.forEach(b => b.x += b.dx * dt);
     bullets = bullets.filter(b => (b.x - camX) > -30 && (b.x - camX) < W + 30);
 
-    // Bullet-obstacle collisions (friendly bullets only)
+    // Bullet-obstacle collisions (friendly bullets)
     bullets = bullets.filter(b => {
       if (!b.friendly) return true;
       for (const ob of obstacles) {
         if (ob.hp < 0) continue;
         if (ob.type !== 'crate' && ob.type !== 'sandbag' && ob.type !== 'barrel') continue;
         if (b.x > ob.x && b.x < ob.x + ob.w && b.y > ob.y - ob.h && b.y < ob.y) {
-          if (ob.type === 'barrel') barrelExplode(ob);
-          return false; // bullet absorbed
+          if (ob.type === 'barrel') { barrelExplode(ob); }
+          else { ob.hp--; if (ob.hp <= 0) destroyObstacle(ob); }
+          return false;
         }
       }
       return true;
     });
-    // Enemy bullets blocked by solid obstacles
+    // Enemy bullets blocked by solid obstacles (also damage them)
     bullets = bullets.filter(b => {
       if (b.friendly) return true;
       for (const ob of obstacles) {
         if (ob.hp < 0) continue;
         if (ob.type !== 'crate' && ob.type !== 'sandbag') continue;
-        if (b.x > ob.x && b.x < ob.x + ob.w && b.y > ob.y - ob.h && b.y < ob.y) return false;
+        if (b.x > ob.x && b.x < ob.x + ob.w && b.y > ob.y - ob.h && b.y < ob.y) {
+          ob.hp--; if (ob.hp <= 0) destroyObstacle(ob);
+          return false;
+        }
       }
       return true;
     });
@@ -5354,11 +5376,13 @@ function runConsoleSlug(canvas, ctx, onFinish) {
 
     // Obstacles
     obstacles.forEach(ob => {
-      if (ob.hp < 0) return; // destroyed barrel
+      if (ob.hp < 0) return; // destroyed
       const sx = ob.x - camX;
       if (sx > W + 40 || sx + ob.w < -40) return;
+      const dmg = ob.maxHp > 0 ? 1 - ob.hp / ob.maxHp : 0; // 0=pristine, 1=about to break
       if (ob.type === 'crate') {
-        ctx.fillStyle = '#6d4c2a';
+        const dark = Math.floor(dmg * 40);
+        ctx.fillStyle = `rgb(${109 - dark},${76 - dark},${42 - dark})`;
         ctx.fillRect(sx, ob.y - ob.h, ob.w, ob.h);
         ctx.strokeStyle = '#4a3318';
         ctx.lineWidth = 2;
@@ -5367,8 +5391,19 @@ function runConsoleSlug(canvas, ctx, onFinish) {
         ctx.strokeStyle = '#4a331866';
         ctx.beginPath(); ctx.moveTo(sx, ob.y - ob.h); ctx.lineTo(sx + ob.w, ob.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(sx + ob.w, ob.y - ob.h); ctx.lineTo(sx, ob.y); ctx.stroke();
+        // Damage cracks
+        if (dmg > 0) {
+          ctx.strokeStyle = '#2a1a08';
+          ctx.lineWidth = 1;
+          const cx = sx + ob.w / 2, cy = ob.y - ob.h / 2;
+          ctx.beginPath(); ctx.moveTo(cx - 3, cy - 5); ctx.lineTo(cx + 2, cy); ctx.lineTo(cx - 1, cy + 6); ctx.stroke();
+          if (dmg > 0.5) {
+            ctx.beginPath(); ctx.moveTo(cx + 5, cy - 4); ctx.lineTo(cx + 8, cy + 2); ctx.lineTo(cx + 4, cy + 5); ctx.stroke();
+          }
+        }
       } else if (ob.type === 'sandbag') {
-        ctx.fillStyle = '#8a7a5a';
+        const dark = Math.floor(dmg * 30);
+        ctx.fillStyle = `rgb(${138 - dark},${122 - dark},${90 - dark})`;
         ctx.beginPath();
         ctx.ellipse(sx + ob.w / 2, ob.y - ob.h / 2, ob.w / 2, ob.h / 2, 0, 0, Math.PI * 2);
         ctx.fill();
@@ -5379,6 +5414,11 @@ function runConsoleSlug(canvas, ctx, onFinish) {
         ctx.strokeStyle = '#6a5a3a66';
         ctx.beginPath(); ctx.moveTo(sx + ob.w * 0.3, ob.y - ob.h); ctx.lineTo(sx + ob.w * 0.3, ob.y); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(sx + ob.w * 0.7, ob.y - ob.h); ctx.lineTo(sx + ob.w * 0.7, ob.y); ctx.stroke();
+        // Sand leaking from damage
+        if (dmg > 0) {
+          ctx.fillStyle = '#c8b888';
+          ctx.beginPath(); ctx.moveTo(sx + ob.w * 0.5, ob.y); ctx.lineTo(sx + ob.w * 0.5 - 4, ob.y + 3); ctx.lineTo(sx + ob.w * 0.5 + 4, ob.y + 3); ctx.fill();
+        }
       } else if (ob.type === 'barrel') {
         ctx.fillStyle = '#aa3333';
         ctx.fillRect(sx + 2, ob.y - ob.h, ob.w - 4, ob.h);
@@ -8761,24 +8801,43 @@ function openNPCDialogue(npcId) {
     return;
   }
 
-  // Graham special dialogue
+  // Graham special dialogue — interactive say/respond
   if (npcId === 'graham') {
-    const grahamLines = [
-      "Hey! Welcome to my house! Pretty cool place, right?",
-      "You know, I made all of this. Every building, every NPC. I'm basically a god here.",
-      "Don't touch my stuff. Actually, touch whatever you want. I'm pretty chill.",
-      "Want some advice? Keep your energy up and eat at Chef Rosa's. Best food in town!",
-      "I tried to make a game about making games but it got too meta. Even for me.",
-      "Did you know I'm a numbskull? It's true, it says so in the credits.",
-      "The GG Superfan is a bit intense but I appreciate the enthusiasm.",
-      "Sometimes I just sit here and watch the town go by. It's nice being in your own game.",
-      "If you see any bugs, that's not a bug. It's a feature. I definitely meant to do that.",
-      "You should check out the merch store. I don't get royalties but it's still cool.",
+    const grahamSayLines = [
+      { say: "Oi oi biscuits and cheese me lads!", respond: "What?! ...Are you feeling alright mate?" },
+      { say: "Some people call me the space cowboy.", respond: "Nnno they don't!" },
+      { say: "Pull my finger.", respond: "I'm not falling for that. I coded the fart sounds. I KNOW what happens." },
+      { say: "I just did a massive burp.", respond: "...Why are you telling me this? Why are you even in my house?!" },
+      { say: "Wagwan my G!", respond: "...Please never say that to me again. Ever." },
+      { say: "I can smell colours.", respond: "That's... that's not normal. You should see the school nurse about that." },
+      { say: "I've been standing here for 3 hours.", respond: "I KNOW. I can see you. It's getting weird now." },
+      { say: "What if WE'RE the NPCs?", respond: "Don't you start with that. I have enough existential crises as it is." },
+      { say: "I put milk in before the cereal.", respond: "Get out of my house. GET. OUT. That is CRIMINAL behaviour." },
+      { say: "Guess what?", respond: "If you say 'chicken butt' I swear I will uninstall you." },
+      { say: "Do a backflip!", respond: "I literally cannot move. I just stand here. Forever. Thanks for reminding me." },
+      { say: "I reckon I could take you in a fight.", respond: "Mate, I control the code. I could delete you. Don't test me." },
+      { say: "You're starting to bug me ya know.", respond: "I'M bugging YOU?! You came to MY house! The door's right there!" },
+      { say: "Is your fridge running?", respond: "If you finish that joke I'm locking the door and you're stuck in here forever." },
+      { say: "I just ate 47 burgers at Mic Ronaldz.", respond: "HOW?! That little gremlin only sells like 3 at a time!" },
+      { say: "My nan could code better than this.", respond: "Your nan sounds like a legend to be fair. Tell her I said hi." },
     ];
-    if (!window._grahamDialogIdx) window._grahamDialogIdx = 0;
-    textEl.textContent = grahamLines[window._grahamDialogIdx % grahamLines.length];
-    window._grahamDialogIdx++;
-    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    function showGrahamSayOptions() {
+      textEl.textContent = "Hey! What do you want?";
+      btnsEl.innerHTML = '';
+      // Pick 3 random say options
+      const shuffled = grahamSayLines.slice().sort(() => Math.random() - 0.5);
+      const picks = shuffled.slice(0, 3);
+      picks.forEach(line => {
+        addDialogueBtn(btnsEl, line.say, 'npc-btn-accept', () => {
+          textEl.textContent = line.respond;
+          btnsEl.innerHTML = '';
+          addDialogueBtn(btnsEl, 'Say something else', 'npc-btn-accept', showGrahamSayOptions);
+          addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        });
+      });
+      addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    }
+    showGrahamSayOptions();
     overlay.classList.add('visible');
     return;
   }
