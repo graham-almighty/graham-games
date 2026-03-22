@@ -85,11 +85,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (125 total, 2795G earnable)
+### Achievement Summary (127 total, 2870G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
-| Mini Life | 18 | 520G |
+| Mini Life | 20 | 595G |
 | Tower Defense | 10 | 185G |
 | Ancient Warfare | 10 | 215G |
 | Rogue Depths | 10 | 200G |

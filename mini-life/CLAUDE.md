@@ -36,6 +36,18 @@
 - Park: Z=9-15 (trees, bench, fountain)
 - Player spawn: (135, 0.15, -8)
 
+**Graham Dimension** (GRAHAM_DIM_ORIGIN X=400, Z=0):
+- Bounds: X=380-420, Z=-20 to 20
+- Accessed via big red button in Graham's House (town) → portal cutscene → teleport
+- Town-like neighbourhood: grass ground, cross-shaped road with sidewalks, 6 coloured homes with fences/mailboxes/windows, trees, street lamps, benches
+- Giant Graham statue (3x scale) on gold pedestal at centre intersection
+- Gold GG pillars at 4 corners, red/gold perimeter walls with GG banners
+- 32 generic Graham clones (NPC dialogue with compliment buttons), 3 Boss Grahams (slightly larger, gold name tags)
+- Return portal (red button on gold pedestal) at south edge near spawn
+- Collisions: perimeter walls + statue base (GRAHAM_DIM_COLLISIONS array)
+- Player spawn: (400, 0.15, 18)
+- State: `inGrahamDimension`, `grahamDimGroup`, `grahamDimQuestsCompleted`, `gdTasksDone`, `gdJobLastDay`, `gdCloneEgoTargets`, `gdNpcBodyMeshes`
+
 **Mansion** (MANSION_ORIGIN X=280, Z=0):
 - Bounds: X=250-310, Z=-25 to 25
 - Building footprint: X=265-305, Z=-10 to 10
@@ -192,7 +204,7 @@ To add a new purchasable expansion:
 
 **Metadata shape:** `[{name, day, money}, null, null]`
 
-**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked, hasBeaverPet, hasGGPoster, hasGGTV, hasPhone, hasPhoneBook, hasSparkleHair, phoneOrders, militaryTraining.
+**Per-slot data:** needs, money, gameTime, day, charOpts, ownedOutfits, ownedFurniture, currentTrackId, doorOpen, hasSecondFloor, booksRead, treadmillUses, activePet, currentFloor, playerPos, yaw, pitch, hasCar, inTown, hasMansion, inMansion, questLog, questsCompleted, jobLastDay, totalShiftsWorked, hasBeaverPet, hasGGPoster, hasGGTV, hasPhone, hasPhoneBook, hasSparkleHair, phoneOrders, militaryTraining, inGrahamDimension, grahamDimQuestsCompleted, gdTasksDone, gdJobLastDay, gdCloneEgoTargets.
 
 **Rename save:** HUD "NAME" button calls `renameSave()` — prompts for new name, updates slot metadata.
 
@@ -202,7 +214,9 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 ## NPC & Quest System
 
-**12 NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair), Graham (medium skin, curly blonde hair, GG Merch outfit — inside Graham's House). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
+**12 Town NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair), Graham (medium skin, curly blonde hair, GG Merch outfit — inside Graham's House). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.
+
+**Graham Dimension NPCs** (built in `buildGrahamDimension()`): 32 generic Graham clones (`graham_clone_0` to `graham_clone_31`) + 3 Boss Grahams (`graham_boss_1/2/3`, scale 1.15, gold name tags). All use Graham's appearance (skinTone:2, curly blonde, GG Merch outfit). Stored in `gdNpcBodyMeshes` for raycasting (separate from town `npcBodyMeshes`).
 
 **4 Quests** (defined in `QUESTS`):
 | Quest | NPC | Condition | Reward |
@@ -225,6 +239,28 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 **Pay formula:** `basePay + floor(score / 2)`
 **Cooldown:** One job per NPC per day (`jobLastDay[npcId] === day`). `sergeant_mission` shares cooldown with `sergeant`.
+
+## Graham Dimension Jobs & Quest
+
+**Jobs** (tracked in `gdJobLastDay`, one per boss per day):
+| Boss NPC | Name | Pay Formula | Mini-game |
+|----------|------|-------------|-----------|
+| graham_boss_1 | Graham Says | $20 + rounds*3 | Simon-says: repeat W/A/S/D sequences, adds 1 key per round |
+| graham_boss_2 | Fan Mail Sorter | $15 + floor(score/2) | Letters slide down, A=approve fan mail, D=reject hate mail, 30s timer |
+
+**Quest** — Ego Boost Tour (Boss Graham #3, near statue):
+- Offer: "Compliment 5 clones"
+- Any clone counts (can't compliment same one twice), tracked via `questLog.ego_boost.complimentsGiven` and per-clone flags `questLog.ego_boost['c' + idx]`
+- Clone dialogue shows random one-liner + 3 random compliment buttons; picking a compliment during quest increments counter
+- Reward: $100 + 30 fun
+- `gdTasksDone` tracks which unique tasks (boss IDs + 'ego_boost') have been completed for the `ml_graham_master` achievement (requires all 3)
+
+**Portal Cutscene** (`startPortalCutscene()`):
+- Phase 0: Canvas-drawn Graham with flailing arms, typewriter speech bubble "Wait! Nooo! Don't press that!"
+- Phase 1: Swirling portal opens with concentric rings, spinning gold particles
+- Phase 2: Screen shake, "THE GRAHAM DIMENSION" text, white flash
+- Phase 3: Cleanup → `startDrivingTransition('grahamDimension')`
+- SKIP button (bottom-right, gold/dark style) sets phase=3 to skip instantly
 
 ## Military Progression
 
@@ -268,7 +304,7 @@ Preview system: separate `prevScene` with `updatePreview()` that rebuilds on any
 ## Materials (`mat` object)
 floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, pillow, tv, tvScreen, couch, couchCushion, shower, showerMetal, table, chrome, rubber, water, sand, rug, door, window, monitor, monitorScreen, keyboard.
 
-## Achievements (18, 520G)
+## Achievements (20, 595G)
 | ID | Name | Reward | Condition |
 |----|------|--------|-----------|
 | ml_new_home | New Home | 5G | Start first game |
@@ -289,6 +325,8 @@ floor, wall, wallInner, grass, skin, shirt, pants, hair, fridge, bed, bedsheet, 
 | ml_first_shift | First Shift | 10G | Complete a town job |
 | ml_hard_worker | Hard Worker | 25G | Complete 10 town job shifts |
 | ml_employee_month | Employee of the Month | 50G | Complete 25 town job shifts |
+| ml_graham_dimension | Another Dimension | 25G | Enter the Graham Dimension |
+| ml_graham_master | Graham's Favorite | 50G | Complete all 3 Graham Dimension tasks |
 
 ## G Bux Shop Items
 | ID | Cost | Effect |
