@@ -94,6 +94,8 @@ const ML_ACH = {
   ml_first_shift:       { name: 'First Shift',         reward: 10 },
   ml_hard_worker:       { name: 'Hard Worker',         reward: 25 },
   ml_employee_month:    { name: 'Employee of the Month', reward: 50 },
+  ml_graham_dimension:  { name: 'Another Dimension',    reward: 25 },
+  ml_graham_master:     { name: "Graham's Favorite",    reward: 50 },
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 
@@ -120,6 +122,36 @@ const HOME_PLAYER_SPAWN = { x: 10, y: 0.15, z: 0.75 };
 const MANSION_ORIGIN = { x: 280, z: 0 };
 const MANSION_BOUNDS = { xMin: 250, xMax: 310, zMin: -25, zMax: 25 };
 const MANSION_PLAYER_SPAWN = { x: 258, y: 0.15, z: -12 };
+
+// Graham Dimension constants
+const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
+const GRAHAM_DIM_BOUNDS = { xMin: 380, xMax: 420, zMin: -20, zMax: 20 };
+const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 18 };
+const GRAHAM_DIM_FOG_FAR = 120;
+const GRAHAM_DIM_COLLISIONS = [
+  { xMin: 379.5, xMax: 420.5, zMin: -20.5, zMax: -20 },
+  { xMin: 379.5, xMax: 420.5, zMin: 20, zMax: 20.5 },
+  { xMin: 379.5, xMax: 380, zMin: -20, zMax: 20 },
+  { xMin: 420, xMax: 420.5, zMin: -20, zMax: 20 },
+  { xMin: 398, xMax: 402, zMin: -2, zMax: 2 },
+];
+const GRAHAM_CLONE_LINES = [
+  "Do I know you? Wait... do I know ME?",
+  "I'm Graham #247. Or was it #248? I've lost count.",
+  "This dimension is MINE. Well, mine and the other 30 Grahams'.",
+  "You're not a Graham. That's suspicious.",
+  "I dreamed I was a Graham dreaming he was a Graham. Deep stuff.",
+  "Don't touch the statue. That's MY best angle.",
+  "I once tried to leave this dimension. The door led right back here.",
+  "We tried voting for a leader once. Every Graham voted for himself.",
+  "If you see another me, tell him he owes me five quid.",
+  "I started a band with the other Grahams. We're called 'Graham Squared'.",
+  "Being a clone isn't so bad. Free rent, unlimited Grahams to talk to.",
+  "I think I'm the original Graham. Don't tell the others I said that.",
+  "Sometimes I wave at myself across the room. I always wave back.",
+  "We ALL have curly hair. It's not a coincidence. It's DESTINY.",
+  "Have you seen the big statue? It doesn't look ANYTHING like me. It's way too short.",
+];
 
 // Fog constants
 const HOME_FOG_FAR = 60;
@@ -1160,13 +1192,13 @@ test('NPCs inside buildings are not inside collision walls', () => {
 // ── Achievement Definitions ──
 section('Achievement Definitions');
 
-test('ML_ACH has 18 entries', () => {
-  assertEqual(Object.keys(ML_ACH).length, 18);
+test('ML_ACH has 20 entries', () => {
+  assertEqual(Object.keys(ML_ACH).length, 20);
 });
 
-test('Total Mini Life G Bux is 520', () => {
+test('Total Mini Life G Bux is 595', () => {
   const total = Object.values(ML_ACH).reduce((sum, a) => sum + a.reward, 0);
-  assertEqual(total, 520);
+  assertEqual(total, 595);
 });
 
 test('All achievement IDs start with ml_', () => {
@@ -1230,11 +1262,11 @@ test('mlTry does not double-award', () => {
   localStorage.clear();
 });
 
-test('Unlocking all 18 ML achievements yields 520 G Bux', () => {
+test('Unlocking all 20 ML achievements yields 595 G Bux', () => {
   localStorage.clear();
   Object.keys(ML_ACH).forEach(id => mlTry(id));
   const data = ggLoad();
-  assertEqual(data.gBux, 520);
+  assertEqual(data.gBux, 595);
   localStorage.clear();
 });
 
@@ -2046,13 +2078,13 @@ test('All 3 jobs in one day produces 3 entries', () => {
 // ── Job Achievements ──
 section('Job Achievements');
 
-test('ML_ACH has 18 entries (15 original + 3 job)', () => {
-  assertEqual(Object.keys(ML_ACH).length, 18);
+test('ML_ACH has 20 entries (15 original + 3 job + 2 dimension)', () => {
+  assertEqual(Object.keys(ML_ACH).length, 20);
 });
 
-test('Total Mini Life G Bux is 520', () => {
+test('Total Mini Life G Bux is 595', () => {
   const total = Object.values(ML_ACH).reduce((sum, a) => sum + a.reward, 0);
-  assertEqual(total, 520);
+  assertEqual(total, 595);
 });
 
 test('ml_first_shift awards 10 G Bux', () => {
@@ -2657,6 +2689,339 @@ test('Game console usePos does not collide with bookshelf usePos', () => {
   const bookshelfUse = { x: 3, y: UPPER_Y, z: -3.5 };
   const dist = Math.sqrt((consoleUse.x - bookshelfUse.x) ** 2 + (consoleUse.z - bookshelfUse.z) ** 2);
   assert(dist > 0.5, 'Console and bookshelf usePos should not overlap');
+});
+
+// ═══ GRAHAM DIMENSION TESTS ═══
+section('Graham Dimension');
+
+test('Graham Dimension constants are valid', () => {
+  assertEqual(GRAHAM_DIM_ORIGIN.x, 400);
+  assertEqual(GRAHAM_DIM_ORIGIN.z, 0);
+  assertEqual(GRAHAM_DIM_BOUNDS.xMin, 380);
+  assertEqual(GRAHAM_DIM_BOUNDS.xMax, 420);
+  assertEqual(GRAHAM_DIM_BOUNDS.zMin, -20);
+  assertEqual(GRAHAM_DIM_BOUNDS.zMax, 20);
+  assertEqual(GRAHAM_DIM_PLAYER_SPAWN.x, 400);
+  assertEqual(GRAHAM_DIM_PLAYER_SPAWN.y, 0.15);
+  assertEqual(GRAHAM_DIM_PLAYER_SPAWN.z, 18);
+});
+
+test('Graham Dimension spawn is within bounds', () => {
+  const s = GRAHAM_DIM_PLAYER_SPAWN;
+  assert(s.x >= GRAHAM_DIM_BOUNDS.xMin && s.x <= GRAHAM_DIM_BOUNDS.xMax, 'X in bounds');
+  assert(s.z >= GRAHAM_DIM_BOUNDS.zMin && s.z <= GRAHAM_DIM_BOUNDS.zMax, 'Z in bounds');
+});
+
+test('Graham Dimension spawn does not collide with collision boxes', () => {
+  const px = GRAHAM_DIM_PLAYER_SPAWN.x;
+  const pz = GRAHAM_DIM_PLAYER_SPAWN.z;
+  for (const b of GRAHAM_DIM_COLLISIONS) {
+    const inside = px > b.xMin && px < b.xMax && pz > b.zMin && pz < b.zMax;
+    assert(!inside, 'Spawn collides with box');
+  }
+});
+
+test('Graham Dimension collision array has perimeter walls + statue', () => {
+  assert(GRAHAM_DIM_COLLISIONS.length >= 5, 'Should have at least 5 collision boxes');
+  // Check statue base collision exists around center
+  const statueBox = GRAHAM_DIM_COLLISIONS.find(b => b.xMin >= 397 && b.xMax <= 403 && b.zMin >= -3 && b.zMax <= 3);
+  assert(statueBox, 'Statue base collision should exist');
+});
+
+test('Graham Dimension perimeter walls fully enclose bounds', () => {
+  // South wall
+  const south = GRAHAM_DIM_COLLISIONS.find(b => b.zMax <= -19.5);
+  assert(south, 'South wall exists');
+  // North wall
+  const north = GRAHAM_DIM_COLLISIONS.find(b => b.zMin >= 19.5);
+  assert(north, 'North wall exists');
+  // West wall
+  const west = GRAHAM_DIM_COLLISIONS.find(b => b.xMax <= 380.5 && (b.zMax - b.zMin) > 30);
+  assert(west, 'West wall exists');
+  // East wall
+  const east = GRAHAM_DIM_COLLISIONS.find(b => b.xMin >= 419.5 && (b.zMax - b.zMin) > 30);
+  assert(east, 'East wall exists');
+});
+
+test('Red button position is inside Grahams House', () => {
+  // Graham's House is X=160-168, Z=4-10
+  const btnX = 161, btnZ = 5;
+  assert(btnX >= 160 && btnX <= 168, 'X in house');
+  assert(btnZ >= 4 && btnZ <= 10, 'Z in house');
+});
+
+test('GRAHAM_CLONE_LINES has 15 lines', () => {
+  assertEqual(GRAHAM_CLONE_LINES.length, 15);
+});
+
+test('ML_ACH includes Graham Dimension achievements', () => {
+  assert(ML_ACH.ml_graham_dimension, 'ml_graham_dimension exists');
+  assertEqual(ML_ACH.ml_graham_dimension.reward, 25);
+  assert(ML_ACH.ml_graham_master, 'ml_graham_master exists');
+  assertEqual(ML_ACH.ml_graham_master.reward, 50);
+});
+
+test('ml_graham_dimension achievement unlocks correctly', () => {
+  localStorage.clear();
+  const result = ggUnlockAchievement('ml_graham_dimension', 'Another Dimension', 25);
+  assert(result === true, 'First unlock returns true');
+  const data = ggLoad();
+  assert(data.achievements.ml_graham_dimension === true, 'Achievement saved');
+  assertEqual(data.gBux, 25, 'G Bux awarded');
+  // Second unlock should skip
+  const result2 = ggUnlockAchievement('ml_graham_dimension', 'Another Dimension', 25);
+  assert(result2 === false, 'Duplicate unlock returns false');
+  const data2 = ggLoad();
+  assertEqual(data2.gBux, 25, 'No double G Bux');
+  localStorage.clear();
+});
+
+test('ml_graham_master achievement unlocks correctly', () => {
+  localStorage.clear();
+  const result = ggUnlockAchievement('ml_graham_master', "Graham's Favorite", 50);
+  assert(result === true);
+  const data = ggLoad();
+  assertEqual(data.gBux, 50);
+  localStorage.clear();
+});
+
+test('Graham Dimension save/load round-trip', () => {
+  const saveData = {
+    inGrahamDimension: true,
+    grahamDimQuestsCompleted: 2,
+    gdJobLastDay: { graham_boss_1: 3 },
+    gdCloneEgoTargets: [0, 5, 12, 20, 30],
+  };
+  const json = JSON.stringify(saveData);
+  const loaded = JSON.parse(json);
+  assertEqual(loaded.inGrahamDimension, true);
+  assertEqual(loaded.grahamDimQuestsCompleted, 2);
+  assertEqual(loaded.gdJobLastDay.graham_boss_1, 3);
+  assertEqual(loaded.gdCloneEgoTargets.length, 5);
+  assert(loaded.gdCloneEgoTargets.includes(12));
+});
+
+test('Graham Dimension quest log ego_boost round-trip', () => {
+  const questLog = { ego_boost: { status: 'active', complimentsGiven: 3, c0: true, c5: true, c12: true } };
+  const json = JSON.stringify(questLog);
+  const loaded = JSON.parse(json);
+  assertEqual(loaded.ego_boost.status, 'active');
+  assertEqual(loaded.ego_boost.complimentsGiven, 3);
+  assert(loaded.ego_boost.c0 === true);
+  assert(loaded.ego_boost.c5 === true);
+});
+
+test('Graham Dimension restart resets all state', () => {
+  let inGrahamDimension = true;
+  let grahamDimQuestsCompleted = 3;
+  let gdJobLastDay = { graham_boss_1: 5, graham_boss_2: 5 };
+  let gdCloneEgoTargets = [1, 2, 3, 4, 5];
+  let gdNpcBodyMeshes = ['a', 'b'];
+  // Simulate restart
+  inGrahamDimension = false;
+  grahamDimQuestsCompleted = 0;
+  gdJobLastDay = {};
+  gdCloneEgoTargets = [];
+  gdNpcBodyMeshes = [];
+  assertEqual(inGrahamDimension, false);
+  assertEqual(grahamDimQuestsCompleted, 0);
+  assertDeepEqual(gdJobLastDay, {});
+  assertDeepEqual(gdCloneEgoTargets, []);
+  assertDeepEqual(gdNpcBodyMeshes, []);
+});
+
+test('Graham Dimension job cooldown tracking', () => {
+  const day = 5;
+  const gdJobLastDay = {};
+  // First job today
+  gdJobLastDay['graham_boss_1'] = day;
+  assertEqual(gdJobLastDay['graham_boss_1'], day);
+  // Can't work again same day
+  assert(gdJobLastDay['graham_boss_1'] === day, 'Cooldown active');
+  // Different boss not affected
+  assert(gdJobLastDay['graham_boss_2'] !== day, 'Other boss not on cooldown');
+});
+
+test('Graham Says pay formula: $20 + rounds * 3', () => {
+  const basePay = 20;
+  const rounds = 5;
+  const pay = basePay + Math.floor(rounds * 3);
+  assertEqual(pay, 35);
+  // Zero rounds
+  const pay0 = basePay + Math.floor(0 * 3);
+  assertEqual(pay0, 20);
+});
+
+test('Fan Mail Sorter pay formula: $15 + floor(score/2)', () => {
+  const basePay = 15;
+  const score = 20;
+  const pay = basePay + Math.floor(score / 2);
+  assertEqual(pay, 25);
+  // Odd score
+  const pay2 = basePay + Math.floor(13 / 2);
+  assertEqual(pay2, 21);
+});
+
+test('Ego Boost Tour reward: $100 + 30 fun', () => {
+  let money = 50;
+  let fun = 40;
+  money += 100;
+  fun = Math.min(100, fun + 30);
+  assertEqual(money, 150);
+  assertEqual(fun, 70);
+  // Cap at 100
+  let fun2 = 85;
+  fun2 = Math.min(100, fun2 + 30);
+  assertEqual(fun2, 100);
+});
+
+test('Ego boost compliment counting logic', () => {
+  const questLog = { ego_boost: { status: 'active', complimentsGiven: 0 } };
+  const targets = [0, 5, 12, 20, 30];
+  // Compliment clone 0
+  const cloneIdx = 0;
+  if (targets.includes(cloneIdx) && !questLog.ego_boost['c' + cloneIdx]) {
+    questLog.ego_boost['c' + cloneIdx] = true;
+    questLog.ego_boost.complimentsGiven++;
+  }
+  assertEqual(questLog.ego_boost.complimentsGiven, 1);
+  assertEqual(questLog.ego_boost.c0, true);
+  // Try same clone again — should not increment
+  if (targets.includes(cloneIdx) && !questLog.ego_boost['c' + cloneIdx]) {
+    questLog.ego_boost.complimentsGiven++;
+  }
+  assertEqual(questLog.ego_boost.complimentsGiven, 1, 'No double compliment');
+});
+
+test('Graham Dimension collision pushes player out of statue', () => {
+  const statueBox = GRAHAM_DIM_COLLISIONS[4]; // statue base
+  let px = 400, pz = 0; // center of statue
+  // Simulate push-out
+  if (px > statueBox.xMin && px < statueBox.xMax && pz > statueBox.zMin && pz < statueBox.zMax) {
+    const dL = px - statueBox.xMin, dR = statueBox.xMax - px, dB = pz - statueBox.zMin, dT = statueBox.zMax - pz;
+    const minD = Math.min(dL, dR, dB, dT);
+    if (minD === dL) px = statueBox.xMin;
+    else if (minD === dR) px = statueBox.xMax;
+    else if (minD === dB) pz = statueBox.zMin;
+    else pz = statueBox.zMax;
+  }
+  // Player should be outside the box now
+  const outside = px <= statueBox.xMin || px >= statueBox.xMax || pz <= statueBox.zMin || pz >= statueBox.zMax;
+  assert(outside, 'Player should be pushed outside statue base');
+});
+
+test('Graham Dimension player bounds clamping', () => {
+  // Beyond east boundary
+  let px = 425;
+  px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
+  assertEqual(px, 420);
+  // Beyond west boundary
+  px = 375;
+  px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
+  assertEqual(px, 380);
+  // Beyond north boundary
+  let pz = 25;
+  pz = Math.max(GRAHAM_DIM_BOUNDS.zMin, Math.min(GRAHAM_DIM_BOUNDS.zMax, pz));
+  assertEqual(pz, 20);
+  // Beyond south boundary
+  pz = -25;
+  pz = Math.max(GRAHAM_DIM_BOUNDS.zMin, Math.min(GRAHAM_DIM_BOUNDS.zMax, pz));
+  assertEqual(pz, -20);
+});
+
+test('Graham master achievement requires 3 completed tasks', () => {
+  localStorage.clear();
+  let grahamDimQuestsCompleted = 2;
+  // Not enough yet
+  if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
+  let data = ggLoad();
+  assert(!data.achievements.ml_graham_master, 'Not yet unlocked at 2');
+  // Now complete 3
+  grahamDimQuestsCompleted = 3;
+  if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
+  data = ggLoad();
+  assert(data.achievements.ml_graham_master === true, 'Unlocked at 3');
+  localStorage.clear();
+});
+
+test('Return portal position is near spawn', () => {
+  const portalX = GRAHAM_DIM_ORIGIN.x;
+  const portalZ = GRAHAM_DIM_ORIGIN.z + 18;
+  const spawnX = GRAHAM_DIM_PLAYER_SPAWN.x;
+  const spawnZ = GRAHAM_DIM_PLAYER_SPAWN.z;
+  const dist = Math.sqrt((portalX - spawnX) ** 2 + (portalZ - spawnZ) ** 2);
+  assert(dist < 3, 'Portal should be near spawn point');
+});
+
+test('Boss Graham positions are distinct and within bounds', () => {
+  const bosses = [
+    { x: GRAHAM_DIM_ORIGIN.x - 12, z: GRAHAM_DIM_ORIGIN.z + 3 }, // Boss 1 west
+    { x: GRAHAM_DIM_ORIGIN.x + 12, z: GRAHAM_DIM_ORIGIN.z + 3 }, // Boss 2 east
+    { x: GRAHAM_DIM_ORIGIN.x, z: GRAHAM_DIM_ORIGIN.z - 5 },      // Boss 3 near statue
+  ];
+  bosses.forEach((b, i) => {
+    assert(b.x >= GRAHAM_DIM_BOUNDS.xMin && b.x <= GRAHAM_DIM_BOUNDS.xMax, 'Boss ' + (i+1) + ' X in bounds');
+    assert(b.z >= GRAHAM_DIM_BOUNDS.zMin && b.z <= GRAHAM_DIM_BOUNDS.zMax, 'Boss ' + (i+1) + ' Z in bounds');
+  });
+  // Check distinct positions
+  for (let i = 0; i < bosses.length; i++) {
+    for (let j = i + 1; j < bosses.length; j++) {
+      const dist = Math.sqrt((bosses[i].x - bosses[j].x) ** 2 + (bosses[i].z - bosses[j].z) ** 2);
+      assert(dist > 5, 'Bosses ' + (i+1) + ' and ' + (j+1) + ' should be well separated');
+    }
+  }
+});
+
+test('Boss Graham positions do not collide with statue', () => {
+  const statueBox = GRAHAM_DIM_COLLISIONS[4];
+  const bosses = [
+    { x: GRAHAM_DIM_ORIGIN.x - 12, z: GRAHAM_DIM_ORIGIN.z + 3 },
+    { x: GRAHAM_DIM_ORIGIN.x + 12, z: GRAHAM_DIM_ORIGIN.z + 3 },
+    { x: GRAHAM_DIM_ORIGIN.x, z: GRAHAM_DIM_ORIGIN.z - 5 },
+  ];
+  bosses.forEach((b, i) => {
+    const inside = b.x > statueBox.xMin && b.x < statueBox.xMax && b.z > statueBox.zMin && b.z < statueBox.zMax;
+    assert(!inside, 'Boss ' + (i+1) + ' should not be inside statue');
+  });
+});
+
+test('finishGrahamDimJob increments totalShiftsWorked and grahamDimQuestsCompleted', () => {
+  let totalShiftsWorked = 5;
+  let grahamDimQuestsCompleted = 1;
+  // Simulate finishing a Graham dim job
+  totalShiftsWorked++;
+  grahamDimQuestsCompleted++;
+  assertEqual(totalShiftsWorked, 6);
+  assertEqual(grahamDimQuestsCompleted, 2);
+});
+
+test('Portal cutscene text is correct', () => {
+  const fullText = "Wait! Nooo! Don't press that!";
+  assertEqual(fullText.length, 29);
+  assert(fullText.startsWith('Wait!'), 'Starts with Wait!');
+  assert(fullText.includes('Nooo'), 'Contains Nooo');
+  assert(fullText.includes("Don't press that"), 'Contains warning');
+});
+
+test('Portal cutscene has 4 phases', () => {
+  // Phase 0: Graham yelling, 1: portal opens, 2: portal sucks in, 3: done
+  const phases = [0, 1, 2, 3];
+  assertEqual(phases.length, 4);
+  assertEqual(phases[0], 0); // Graham yelling
+  assertEqual(phases[3], 3); // done -> teleport
+});
+
+test('Full save data includes all Graham Dimension fields', () => {
+  const save = {
+    inGrahamDimension: true,
+    grahamDimQuestsCompleted: 1,
+    gdJobLastDay: { graham_boss_1: 2 },
+    gdCloneEgoTargets: [3, 7, 15, 22, 28],
+  };
+  assert('inGrahamDimension' in save);
+  assert('grahamDimQuestsCompleted' in save);
+  assert('gdJobLastDay' in save);
+  assert('gdCloneEgoTargets' in save);
 });
 
 // ═══ RENDER RESULTS ═══

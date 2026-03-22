@@ -1390,6 +1390,8 @@ const ML_ACH = {
   ml_first_shift:       { name: 'First Shift',         reward: 10 },
   ml_hard_worker:       { name: 'Hard Worker',         reward: 25 },
   ml_employee_month:    { name: 'Employee of the Month', reward: 50 },
+  ml_graham_dimension:  { name: 'Another Dimension',    reward: 25 },
+  ml_graham_master:     { name: "Graham's Favorite",    reward: 50 },
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 function mlCheckLivingLarge() {
@@ -4106,6 +4108,7 @@ function updateFoamBalls(dt) {
     let bxMin, bxMax, bzMin, bzMax;
     if (inTown) { bxMin = TOWN_BOUNDS.xMin; bxMax = TOWN_BOUNDS.xMax; bzMin = TOWN_BOUNDS.zMin; bzMax = TOWN_BOUNDS.zMax; }
     else if (inMansion) { bxMin = MANSION_BOUNDS.xMin; bxMax = MANSION_BOUNDS.xMax; bzMin = MANSION_BOUNDS.zMin; bzMax = MANSION_BOUNDS.zMax; }
+    else if (inGrahamDimension) { bxMin = GRAHAM_DIM_BOUNDS.xMin; bxMax = GRAHAM_DIM_BOUNDS.xMax; bzMin = GRAHAM_DIM_BOUNDS.zMin; bzMax = GRAHAM_DIM_BOUNDS.zMax; }
     else if (currentFloor === -1) { bxMin = -4.8; bxMax = 8; bzMin = -4.8; bzMax = 4.8; }
     else if (b.position.x > 5) { bxMin = 5; bxMax = 18; bzMin = -8; bzMax = 8; } // yard
     else { bxMin = -4.8; bxMax = 4.8; bzMin = -4.8; bzMax = 4.8; } // home interior
@@ -6740,6 +6743,43 @@ const MANSION_PLAYER_SPAWN = { x: 258, y: 0.15, z: -12 };
 const MANSION_UPPER_Y = 3.65;
 const MANSION_STAIR = { xMin: 285, xMax: 288, zMin: 3, zMax: 10 };
 
+// ═══ GRAHAM DIMENSION SYSTEM ═══
+let inGrahamDimension = false;
+let grahamDimGroup = null;
+let grahamDimQuestsCompleted = 0;
+let gdTasksDone = {}; // tracks which unique tasks done: { graham_boss_1: true, ... }
+let gdJobLastDay = {};
+const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
+const GRAHAM_DIM_BOUNDS = { xMin: 380, xMax: 420, zMin: -20, zMax: 20 };
+const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 18 };
+const GRAHAM_DIM_FOG_FAR = 120;
+const GRAHAM_DIM_COLLISIONS = [
+  // Perimeter walls
+  { xMin: 379.5, xMax: 420.5, zMin: -20.5, zMax: -20 },  // South wall
+  { xMin: 379.5, xMax: 420.5, zMin: 20, zMax: 20.5 },     // North wall
+  { xMin: 379.5, xMax: 380, zMin: -20, zMax: 20 },         // West wall
+  { xMin: 420, xMax: 420.5, zMin: -20, zMax: 20 },         // East wall
+  // Giant statue base
+  { xMin: 398, xMax: 402, zMin: -2, zMax: 2 },
+];
+const GRAHAM_CLONE_LINES = [
+  "Do I know you? Wait... do I know ME?",
+  "I'm Graham #247. Or was it #248? I've lost count.",
+  "This dimension is MINE. Well, mine and the other 30 Grahams'.",
+  "You're not a Graham. That's suspicious.",
+  "I dreamed I was a Graham dreaming he was a Graham. Deep stuff.",
+  "Don't touch the statue. That's MY best angle.",
+  "I once tried to leave this dimension. The door led right back here.",
+  "We tried voting for a leader once. Every Graham voted for himself.",
+  "If you see another me, tell him he owes me five quid.",
+  "I started a band with the other Grahams. We're called 'Graham Squared'.",
+  "Being a clone isn't so bad. Free rent, unlimited Grahams to talk to.",
+  "I think I'm the original Graham. Don't tell the others I said that.",
+  "Sometimes I wave at myself across the room. I always wave back.",
+  "We ALL have curly hair. It's not a coincidence. It's DESTINY.",
+  "Have you seen the big statue? It doesn't look ANYTHING like me. It's way too short.",
+];
+
 // Quest definitions
 const QUESTS = {
   coffee_run: {
@@ -6873,6 +6913,7 @@ function performTeleport(destination) {
   try {
     if (destination === 'town' && !townGroup) { townGroup = buildTown(); buildTownNPCs(); }
     if (destination === 'mansion' && !mansionGroup) { mansionGroup = buildMansion(); }
+    if (destination === 'grahamDimension' && !grahamDimGroup) { grahamDimGroup = buildGrahamDimension(); }
   } catch (e) {
     console.error('Build error:', e);
     showTip('Error loading destination — returning home.');
@@ -6881,13 +6922,36 @@ function performTeleport(destination) {
   // If build ran but group is still null, fall back to home
   if (destination === 'town' && !townGroup) { destination = 'home'; }
   if (destination === 'mansion' && !mansionGroup) { destination = 'home'; }
+  if (destination === 'grahamDimension' && !grahamDimGroup) { destination = 'town'; }
 
   // Teleport the player
-  if (destination === 'town') {
+  if (destination === 'grahamDimension') {
+    if (grahamDimGroup) grahamDimGroup.visible = true;
+    if (townGroup) townGroup.visible = false;
+    if (mansionGroup) mansionGroup.visible = false;
+    inTown = false;
+    inMansion = false;
+    inGrahamDimension = true;
+    currentFloor = 0;
+    character.position.set(GRAHAM_DIM_PLAYER_SPAWN.x, GRAHAM_DIM_PLAYER_SPAWN.y, GRAHAM_DIM_PLAYER_SPAWN.z);
+    yaw = Math.PI;
+    scene.fog.far = GRAHAM_DIM_FOG_FAR;
+    sunLight.shadow.camera.left = -40;
+    sunLight.shadow.camera.right = 40;
+    sunLight.shadow.camera.top = 30;
+    sunLight.shadow.camera.bottom = -30;
+    sunLight.shadow.camera.updateProjectionMatrix();
+    if (petDog) petDog.visible = false;
+    if (petCat) petCat.visible = false;
+    if (petBeaver) petBeaver.visible = false;
+    mlTry('ml_graham_dimension');
+  } else if (destination === 'town') {
     if (townGroup) townGroup.visible = true;
     if (mansionGroup) mansionGroup.visible = false;
+    if (grahamDimGroup) grahamDimGroup.visible = false;
     inTown = true;
     inMansion = false;
+    inGrahamDimension = false;
     currentFloor = 0;
     character.position.set(TOWN_PLAYER_SPAWN.x, TOWN_PLAYER_SPAWN.y, TOWN_PLAYER_SPAWN.z);
     yaw = Math.PI / 2;
@@ -6903,8 +6967,10 @@ function performTeleport(destination) {
   } else if (destination === 'mansion') {
     if (mansionGroup) mansionGroup.visible = true;
     if (townGroup) townGroup.visible = false;
+    if (grahamDimGroup) grahamDimGroup.visible = false;
     inTown = false;
     inMansion = true;
+    inGrahamDimension = false;
     currentFloor = 0;
     character.position.set(MANSION_PLAYER_SPAWN.x, MANSION_PLAYER_SPAWN.y, MANSION_PLAYER_SPAWN.z);
     yaw = Math.PI / 2;
@@ -6920,6 +6986,7 @@ function performTeleport(destination) {
   } else {
     inTown = false;
     inMansion = false;
+    inGrahamDimension = false;
     currentFloor = 0;
     character.position.set(HOME_PLAYER_SPAWN.x, HOME_PLAYER_SPAWN.y, HOME_PLAYER_SPAWN.z);
     yaw = Math.PI;
@@ -6931,6 +6998,7 @@ function performTeleport(destination) {
     sunLight.shadow.camera.updateProjectionMatrix();
     if (townGroup) townGroup.visible = false;
     if (mansionGroup) mansionGroup.visible = false;
+    if (grahamDimGroup) grahamDimGroup.visible = false;
     if (petDog) petDog.visible = activePet === 'dog';
     if (petCat) petCat.visible = activePet === 'cat';
     if (petBeaver) petBeaver.visible = activePet === 'beaver';
@@ -6953,7 +7021,7 @@ function startDrivingTransition(destination) {
   // Show overlay and wait for it to paint before doing heavy work
   const overlay = document.getElementById('drive-overlay');
   const text = document.getElementById('drive-text');
-  text.textContent = destination === 'town' ? 'Driving to town...' : destination === 'mansion' ? 'Driving to mansion...' : 'Driving home...';
+  text.textContent = destination === 'town' ? 'Driving to town...' : destination === 'mansion' ? 'Driving to mansion...' : destination === 'grahamDimension' ? 'Entering the Graham Dimension...' : 'Driving home...';
   overlay.classList.add('visible');
 
   // Use rAF + setTimeout to ensure the overlay is painted before blocking the thread
@@ -7958,6 +8026,26 @@ function buildTown() {
   const ghLight = new THREE.PointLight(0xffeedd, 0.5, 10);
   ghLight.position.set(164, 3.2, 7); g.add(ghLight);
 
+  // Big Red Button — portal to Graham Dimension (back wall, right side)
+  const rbPedestal = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.7, 0.8),
+    new THREE.MeshLambertMaterial({ color: 0x8a6a2c }));
+  rbPedestal.position.set(161, 0.35, 5);
+  rbPedestal.castShadow = true;
+  g.add(rbPedestal);
+  const rbTop = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.06, 0.9),
+    new THREE.MeshLambertMaterial({ color: 0xc9a84c }));
+  rbTop.position.set(161, 0.71, 5);
+  g.add(rbTop);
+  const rbButton = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.12, 16),
+    new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.5 }));
+  rbButton.position.set(161, 0.8, 5);
+  g.add(rbButton);
+  const rbGlow = new THREE.PointLight(0xff4444, 0.3, 3);
+  rbGlow.position.set(161, 1.2, 5);
+  g.add(rbGlow);
+
+  interactables.push({ mesh: rbButton, group: g, type: 'redButton', label: 'Press Button', need: null, usePos: new THREE.Vector3(161, 0.15, 6), floor: 0 });
+
   // Town car (in parking lot for return trip)
   townCarGroup = buildCar();
   townCarGroup.position.set(135, 0.15, -8);
@@ -8075,6 +8163,360 @@ function buildTownNPCs() {
     townNPCs.push({ id: def.id, group: npcChar });
   });
   rebuildInteractMeshes();
+}
+
+// ═══ GRAHAM DIMENSION ═══
+let gdNpcBodyMeshes = [];
+let gdCloneEgoTargets = []; // indices of clones marked for ego boost quest
+
+function buildGrahamDimension() {
+  const g = new THREE.Group();
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const goldMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.15 });
+  const darkGoldMat = new THREE.MeshLambertMaterial({ color: 0x8a6a2c });
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x992222, emissive: 0x441111, emissiveIntensity: 0.1 });
+  const pillarMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.2 });
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+  const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+  const lampMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+  const lampGlowMat = new THREE.MeshLambertMaterial({ color: 0xffeecc, emissive: 0xffcc88, emissiveIntensity: 0.3 });
+  const fenceMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5C3A1E });
+  const leafMat = new THREE.MeshLambertMaterial({ color: 0x2D7A2D });
+  const benchWoodMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+
+  function makeWall(w, h, d, material, x, y, z) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+    return m;
+  }
+
+  // === GRASS GROUND ===
+  const grassGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), mat.grass);
+  grassGround.rotation.x = -Math.PI / 2;
+  grassGround.position.set(OX, -0.01, OZ);
+  grassGround.receiveShadow = true;
+  g.add(grassGround);
+
+  // === PERIMETER WALLS (tall gold/red, 6 high) ===
+  const wH = 6;
+  const wS = new THREE.Mesh(new THREE.BoxGeometry(41, wH, 0.5), wallMat);
+  wS.position.set(OX, wH / 2, OZ - 20.25); wS.castShadow = true; g.add(wS);
+  const wN = new THREE.Mesh(new THREE.BoxGeometry(41, wH, 0.5), wallMat);
+  wN.position.set(OX, wH / 2, OZ + 20.25); wN.castShadow = true; g.add(wN);
+  const wW = new THREE.Mesh(new THREE.BoxGeometry(0.5, wH, 40), wallMat);
+  wW.position.set(OX - 20.25, wH / 2, OZ); wW.castShadow = true; g.add(wW);
+  const wE = new THREE.Mesh(new THREE.BoxGeometry(0.5, wH, 40), wallMat);
+  wE.position.set(OX + 20.25, wH / 2, OZ); wE.castShadow = true; g.add(wE);
+
+  // GG Banners on walls
+  [wS, wN, wW, wE].forEach(w => {
+    const bc = document.createElement('canvas');
+    bc.width = 128; bc.height = 64;
+    const bctx = bc.getContext('2d');
+    bctx.fillStyle = '#992222';
+    bctx.fillRect(0, 0, 128, 64);
+    bctx.fillStyle = '#c9a84c';
+    bctx.font = 'bold 28px serif';
+    bctx.textAlign = 'center';
+    bctx.fillText('G G', 64, 40);
+    bctx.fillRect(20, 48, 88, 3);
+    const bannerTex = new THREE.CanvasTexture(bc);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 0.05),
+      new THREE.MeshLambertMaterial({ map: bannerTex, emissive: 0x332211, emissiveIntensity: 0.2 }));
+    banner.position.copy(w.position);
+    banner.position.y = 4;
+    banner.rotation.copy(w.rotation);
+    if (w === wW || w === wE) banner.rotation.y = Math.PI / 2;
+    g.add(banner);
+  });
+
+  // === ROADS ===
+  // Main road (runs north-south, X=OX)
+  const mainRoad = new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 40), roadMat);
+  mainRoad.position.set(OX, 0.02, OZ);
+  mainRoad.receiveShadow = true;
+  g.add(mainRoad);
+  for (let z = -18; z <= 18; z += 3) {
+    const marking = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 1), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
+    marking.position.set(OX, 0.06, OZ + z);
+    g.add(marking);
+  }
+  // Cross street (runs east-west, Z=OZ)
+  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(40, 0.05, 4), roadMat);
+  crossRoad.position.set(OX, 0.02, OZ);
+  crossRoad.receiveShadow = true;
+  g.add(crossRoad);
+  for (let x = -18; x <= 18; x += 3) {
+    if (Math.abs(x) < 3) continue;
+    const cm = new THREE.Mesh(new THREE.BoxGeometry(1, 0.01, 0.15), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
+    cm.position.set(OX + x, 0.06, OZ);
+    g.add(cm);
+  }
+  // Sidewalks
+  [OX - 2.5, OX + 2.5].forEach(sx => {
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.07, 40), sidewalkMat);
+    sw.position.set(sx, 0.035, OZ);
+    g.add(sw);
+  });
+  [OZ - 2.5, OZ + 2.5].forEach(sz => {
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(40, 0.07, 1.2), sidewalkMat);
+    sw.position.set(OX, 0.035, sz);
+    g.add(sw);
+  });
+
+  // === GIANT GRAHAM STATUE at intersection center ===
+  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.06, 16), goldMat);
+  plaza.position.set(OX, 0.03, OZ);
+  g.add(plaza);
+  const statueOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
+  const statue = buildCharacter(statueOpts);
+  statue.scale.set(3, 3, 3);
+  const pedestal = new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 3), darkGoldMat);
+  pedestal.position.set(OX, 0.75, OZ);
+  pedestal.castShadow = true;
+  g.add(pedestal);
+  const pedestalTop = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.15, 3.3), goldMat);
+  pedestalTop.position.set(OX, 1.5, OZ);
+  g.add(pedestalTop);
+  statue.position.set(OX, 1.65, OZ);
+  g.add(statue);
+  // Nameplate
+  const npCanvas = document.createElement('canvas');
+  npCanvas.width = 128; npCanvas.height = 32;
+  const npCtx = npCanvas.getContext('2d');
+  npCtx.fillStyle = '#c9a84c';
+  npCtx.fillRect(0, 0, 128, 32);
+  npCtx.fillStyle = '#1a1a1a';
+  npCtx.font = 'bold 16px serif';
+  npCtx.textAlign = 'center';
+  npCtx.fillText('GRAHAM', 64, 22);
+  const npTex = new THREE.CanvasTexture(npCanvas);
+  const nameplate = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.4, 0.05),
+    new THREE.MeshLambertMaterial({ map: npTex }));
+  nameplate.position.set(OX, 0.9, OZ + 1.53);
+  g.add(nameplate);
+
+  // === GRAHAM HOMES (6 small houses in the quadrants) ===
+  const houseColors = [0x44886a, 0x5a7a44, 0x886a44, 0x4a6688, 0x7a4466, 0x448888];
+  const roofColors  = [0x553322, 0x445522, 0x554433, 0x334455, 0x553344, 0x335555];
+  const gdFloorMat = new THREE.MeshLambertMaterial({ color: 0xbb9966 });
+  const gdInnerMat = new THREE.MeshLambertMaterial({ color: 0xddccaa });
+  const homeSpots = [
+    { x: OX - 12, z: OZ + 10 },  // NW
+    { x: OX - 12, z: OZ - 10 },  // SW
+    { x: OX + 12, z: OZ + 10 },  // NE
+    { x: OX + 12, z: OZ - 10 },  // SE
+    { x: OX - 12, z: OZ - 16 },  // far SW
+    { x: OX + 12, z: OZ + 16 },  // far NE
+  ];
+  homeSpots.forEach((hs, hi) => {
+    const hx = hs.x, hz = hs.z;
+    const houseMat = new THREE.MeshLambertMaterial({ color: houseColors[hi] });
+    const hRoofMat = new THREE.MeshLambertMaterial({ color: roofColors[hi] });
+    // Walls (6x5 house, 3 tall, door gap on south face)
+    makeWall(6.3, 3, 0.3, houseMat, hx, 1.5, hz - 2.5);      // Back
+    makeWall(0.3, 3, 5, houseMat, hx - 3, 1.5, hz);            // Left
+    makeWall(0.3, 3, 5, houseMat, hx + 3, 1.5, hz);            // Right
+    makeWall(1.8, 3, 0.3, houseMat, hx - 2.1, 1.5, hz + 2.5); // Front-left
+    makeWall(1.8, 3, 0.3, houseMat, hx + 2.1, 1.5, hz + 2.5); // Front-right
+    makeWall(1.5, 0.8, 0.3, houseMat, hx, 2.6, hz + 2.5);     // Above door
+    // Floor
+    makeWall(6, 0.1, 5, gdFloorMat, hx, 0.05, hz);
+    // Interior back wall accent
+    makeWall(5.6, 2.5, 0.05, gdInnerMat, hx, 1.25, hz - 2.3);
+    // Roof
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(7, 0.25, 6), hRoofMat);
+    roof.position.set(hx, 3.12, hz);
+    g.add(roof);
+    // Windows (front face)
+    const winMat = new THREE.MeshLambertMaterial({ color: 0x88bbdd, emissive: 0x446688, emissiveIntensity: 0.3 });
+    makeWall(0.8, 0.6, 0.05, winMat, hx - 2.1, 1.8, hz + 2.55);
+    makeWall(0.8, 0.6, 0.05, winMat, hx + 2.1, 1.8, hz + 2.55);
+    // Interior light
+    const iLight = new THREE.PointLight(0xffeedd, 0.4, 8);
+    iLight.position.set(hx, 2.5, hz);
+    g.add(iLight);
+    // Yard fence
+    const fenceZ = hz + 4;
+    makeWall(6, 0.6, 0.08, fenceMat, hx, 0.3, fenceZ);
+    [-2.5, 0, 2.5].forEach(dx => makeWall(0.1, 0.7, 0.1, fenceMat, hx + dx, 0.35, fenceZ));
+    // Red mailbox
+    const mbMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+    makeWall(0.3, 0.25, 0.2, mbMat, hx + 2, 0.9, fenceZ - 0.5);
+    makeWall(0.08, 0.7, 0.08, lampMat, hx + 2, 0.5, fenceZ - 0.5);
+  });
+
+  // === TREES ===
+  const treeSpots = [
+    [-7, 6], [-7, -6], [7, 6], [7, -6],
+    [-16, 0], [16, 0], [-16, 16], [16, -16],
+    [-8, 14], [8, -14], [-8, -14], [8, 14],
+    [0, 16], [0, -16], [-16, -8], [16, 8],
+  ];
+  treeSpots.forEach(([dx, dz]) => {
+    const tx = OX + dx + (Math.random() - 0.5), tz = OZ + dz + (Math.random() - 0.5);
+    if (Math.abs(tx - OX) < 3.5 || Math.abs(tz - OZ) < 3.5) return; // avoid roads
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.3, 2.5, 6), trunkMat);
+    trunk.position.set(tx, 1.25, tz);
+    trunk.castShadow = true;
+    g.add(trunk);
+    const leaves = new THREE.Mesh(new THREE.SphereGeometry(1.2, 8, 6), leafMat);
+    leaves.position.set(tx, 3, tz);
+    leaves.castShadow = true;
+    g.add(leaves);
+  });
+
+  // === STREET LAMPS ===
+  [[-10, 4], [10, 4], [-10, -4], [10, -4], [4, 10], [-4, -10]].forEach(([dx, dz]) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5, 6), lampMat);
+    pole.position.set(OX + dx, 1.75, OZ + dz);
+    g.add(pole);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lampGlowMat);
+    lamp.position.set(OX + dx, 3.6, OZ + dz);
+    g.add(lamp);
+    const pl = new THREE.PointLight(0xffcc88, 0.25, 8);
+    pl.position.set(OX + dx, 3.5, OZ + dz);
+    g.add(pl);
+  });
+
+  // === PARK BENCHES ===
+  [[-6, 3.5], [6, -3.5]].forEach(([dx, dz]) => {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.5), benchWoodMat);
+    seat.position.set(OX + dx, 0.5, OZ + dz);
+    g.add(seat);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.6, 0.08), benchWoodMat);
+    back.position.set(OX + dx, 0.8, OZ + dz - 0.25);
+    g.add(back);
+    [-0.8, 0.8].forEach(dl => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.5), lampMat);
+      leg.position.set(OX + dx + dl, 0.25, OZ + dz);
+      g.add(leg);
+    });
+  });
+
+  // === GOLD PILLARS at corners ===
+  [[-17, -17], [-17, 17], [17, -17], [17, 17]].forEach(([dx, dz]) => {
+    const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 5, 8), pillarMat);
+    pil.position.set(OX + dx, 2.5, OZ + dz);
+    pil.castShadow = true;
+    g.add(pil);
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.7, 8, 6),
+      new THREE.MeshLambertMaterial({ color: 0xffcc44, emissive: 0xffaa22, emissiveIntensity: 0.6 }));
+    top.position.set(OX + dx, 5.2, OZ + dz);
+    g.add(top);
+    const pLight = new THREE.PointLight(0xffcc44, 0.3, 15);
+    pLight.position.set(OX + dx, 5.5, OZ + dz);
+    g.add(pLight);
+  });
+
+  // === LIGHTING ===
+  const mainLight = new THREE.PointLight(0xffcc66, 0.6, 50);
+  mainLight.position.set(OX, 8, OZ);
+  g.add(mainLight);
+  const ambientGold = new THREE.PointLight(0xffaa44, 0.3, 40);
+  ambientGold.position.set(OX, 3, OZ);
+  g.add(ambientGold);
+
+  // === RETURN PORTAL ===
+  const portalPedestal = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 1), darkGoldMat);
+  portalPedestal.position.set(OX, 0.3, OZ + 18);
+  portalPedestal.castShadow = true;
+  g.add(portalPedestal);
+  const portalBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.15, 16),
+    new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.5 }));
+  portalBtn.position.set(OX, 0.68, OZ + 18);
+  g.add(portalBtn);
+  const portalGlow = new THREE.PointLight(0xff4444, 0.4, 5);
+  portalGlow.position.set(OX, 1.2, OZ + 18);
+  g.add(portalGlow);
+  const psCanvas = document.createElement('canvas');
+  psCanvas.width = 128; psCanvas.height = 32;
+  const psCtx = psCanvas.getContext('2d');
+  psCtx.fillStyle = '#cc2222';
+  psCtx.fillRect(0, 0, 128, 32);
+  psCtx.fillStyle = '#ffffff';
+  psCtx.font = 'bold 14px sans-serif';
+  psCtx.textAlign = 'center';
+  psCtx.fillText('EXIT PORTAL', 64, 22);
+  const psTex = new THREE.CanvasTexture(psCanvas);
+  const portalSign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.05),
+    new THREE.MeshLambertMaterial({ map: psTex }));
+  portalSign.position.set(OX, 1.2, OZ + 18.5);
+  g.add(portalSign);
+
+  interactables.push({ mesh: portalBtn, group: g, type: 'dimPortal', label: 'Return to Town', need: null, usePos: new THREE.Vector3(OX, 0.15, OZ + 17), floor: 0 });
+
+  // === 30+ GRAHAM CLONES ===
+  const grahamOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
+  gdNpcBodyMeshes = [];
+
+  // Clone positions — scattered grid avoiding center statue and portal
+  const clonePositions = [];
+  for (let cx = -16; cx <= 16; cx += 4) {
+    for (let cz = -16; cz <= 16; cz += 4) {
+      // Skip center (statue) and portal area
+      if (Math.abs(cx) < 4 && Math.abs(cz) < 4) continue;
+      if (Math.abs(cx) < 2 && cz > 14) continue;
+      clonePositions.push({ x: OX + cx + (Math.random() - 0.5) * 1.5, z: OZ + cz + (Math.random() - 0.5) * 1.5 });
+    }
+  }
+  // Shuffle and take 32
+  clonePositions.sort(() => Math.random() - 0.5);
+  const genericClones = clonePositions.slice(0, 32);
+
+  genericClones.forEach((pos, i) => {
+    const clone = buildCharacter(grahamOpts);
+    clone.position.set(pos.x, 0.15, pos.z);
+    clone.rotation.y = Math.random() * Math.PI * 2;
+    g.add(clone);
+    clone.traverse(child => {
+      if (child.isMesh) {
+        child.userData = { type: 'npc', npcId: 'graham_clone_' + i };
+        gdNpcBodyMeshes.push(child);
+      }
+    });
+  });
+
+  // 3 Boss Grahams — slightly larger, at distinct spots
+  const bossPositions = [
+    { x: OX - 12, z: OZ + 3, id: 'graham_boss_1', name: 'Boss Graham #1' },  // West neighbourhood
+    { x: OX + 12, z: OZ + 3, id: 'graham_boss_2', name: 'Boss Graham #2' },  // East neighbourhood
+    { x: OX, z: OZ - 5, id: 'graham_boss_3', name: 'Boss Graham #3' },       // Near statue
+  ];
+  bossPositions.forEach(bp => {
+    const boss = buildCharacter(grahamOpts);
+    boss.scale.set(1.15, 1.15, 1.15);
+    boss.position.set(bp.x, 0.15, bp.z);
+    boss.rotation.y = Math.PI; // Face south toward player
+    g.add(boss);
+    boss.traverse(child => {
+      if (child.isMesh) {
+        child.userData = { type: 'npc', npcId: bp.id };
+        gdNpcBodyMeshes.push(child);
+      }
+    });
+    // Gold name tag above boss
+    const ntCanvas = document.createElement('canvas');
+    ntCanvas.width = 128; ntCanvas.height = 32;
+    const ntCtx = ntCanvas.getContext('2d');
+    ntCtx.fillStyle = '#c9a84c';
+    ntCtx.font = 'bold 14px sans-serif';
+    ntCtx.textAlign = 'center';
+    ntCtx.fillText(bp.name, 64, 22);
+    const ntTex = new THREE.CanvasTexture(ntCanvas);
+    const ntSprite = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.4),
+      new THREE.MeshBasicMaterial({ map: ntTex, transparent: true }));
+    ntSprite.position.set(bp.x, 2.2, bp.z);
+    g.add(ntSprite);
+  });
+
+  rebuildInteractMeshes();
+  scene.add(g);
+  g.visible = false;
+  return g;
 }
 
 // ═══ MANSION ═══
@@ -8762,9 +9204,138 @@ function openNPCDialogue(npcId) {
   const nameEl = document.getElementById('npc-dialogue-name');
   const textEl = document.getElementById('npc-dialogue-text');
   const btnsEl = document.getElementById('npc-dialogue-btns');
+  btnsEl.innerHTML = '';
+
+  // Graham Dimension NPCs
+  if (npcId.startsWith('graham_clone_')) {
+    nameEl.textContent = 'Graham Clone';
+    const cloneIdx = parseInt(npcId.split('_')[2]);
+    // Any clone counts for the ego boost quest — just can't compliment the same one twice
+    const isEgoTarget = questLog.ego_boost && questLog.ego_boost.status === 'active'
+      && (questLog.ego_boost.complimentsGiven || 0) < 5 && !questLog.ego_boost['c' + cloneIdx];
+
+    function showCloneChat() {
+      textEl.textContent = GRAHAM_CLONE_LINES[Math.floor(Math.random() * GRAHAM_CLONE_LINES.length)];
+      btnsEl.innerHTML = '';
+      // Compliment options (3 random compliments)
+      const compliments = [
+        "You look great today, Graham!",
+        "Looking sharp, Graham!",
+        "Has anyone told you you're brilliant?",
+        "Love the curly hair, mate!",
+        "You're the best Graham here. Don't tell the others.",
+        "That GG shirt looks amazing on you!",
+        "You're absolutely smashing it!",
+        "Top-tier Graham right here!",
+      ];
+      const shuffled = compliments.slice().sort(() => Math.random() - 0.5);
+      const picks = shuffled.slice(0, 3);
+      picks.forEach(line => {
+        addDialogueBtn(btnsEl, line, 'npc-btn-accept', () => {
+          if (isEgoTarget && !questLog.ego_boost['c' + cloneIdx]) {
+            questLog.ego_boost['c' + cloneIdx] = true;
+            questLog.ego_boost.complimentsGiven = (questLog.ego_boost.complimentsGiven || 0) + 1;
+            textEl.textContent = "*blushes* Aww, thanks! That means a lot coming from a non-Graham.";
+            showTip('Compliment given! (' + questLog.ego_boost.complimentsGiven + '/5)');
+          } else {
+            const responses = [
+              "*blushes* Oh stop it, you!",
+              "Tell me something I don't know!",
+              "I KNEW I was the best Graham!",
+              "Finally, someone with taste.",
+              "You're not so bad yourself. For a non-Graham.",
+              "I'm going to remember this forever. All 3 seconds of my memory.",
+            ];
+            textEl.textContent = responses[Math.floor(Math.random() * responses.length)];
+          }
+          btnsEl.innerHTML = '';
+          addDialogueBtn(btnsEl, 'Say something else', 'npc-btn-accept', showCloneChat);
+          addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        });
+      });
+      addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    }
+    showCloneChat();
+    overlay.classList.add('visible');
+    return;
+  }
+  if (npcId === 'graham_boss_1') {
+    nameEl.textContent = 'Boss Graham #1';
+    textEl.textContent = "Welcome, welcome! Fancy a game of Graham Says? I call the moves, you follow. It pays well!";
+    if (gdJobLastDay['graham_boss_1'] === day) {
+      const disBtn = document.createElement('button');
+      disBtn.textContent = 'Already played today';
+      disBtn.className = 'npc-btn-close';
+      disBtn.disabled = true;
+      disBtn.style.opacity = '0.5';
+      btnsEl.appendChild(disBtn);
+    } else {
+      addDialogueBtn(btnsEl, 'Work: Graham Says ($20+)', 'npc-btn-accept', () => startGrahamDimJob('graham_boss_1'));
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
+  if (npcId === 'graham_boss_2') {
+    nameEl.textContent = 'Boss Graham #2';
+    textEl.textContent = "I get SO much fan mail. And hate mail. Help me sort it! I'll pay you, obviously.";
+    if (gdJobLastDay['graham_boss_2'] === day) {
+      const disBtn = document.createElement('button');
+      disBtn.textContent = 'Already played today';
+      disBtn.className = 'npc-btn-close';
+      disBtn.disabled = true;
+      disBtn.style.opacity = '0.5';
+      btnsEl.appendChild(disBtn);
+    } else {
+      addDialogueBtn(btnsEl, 'Work: Fan Mail Sorter ($15+)', 'npc-btn-accept', () => startGrahamDimJob('graham_boss_2'));
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
+  if (npcId === 'graham_boss_3') {
+    nameEl.textContent = 'Boss Graham #3';
+    if (!questLog.ego_boost) {
+      textEl.textContent = "My clones are feeling down. Go compliment 5 of them for me! Just click on them and say something nice.";
+      addDialogueBtn(btnsEl, 'Accept Quest', 'npc-btn-accept', () => {
+        // Pick 5 random clone indices as targets
+        const indices = [];
+        for (let i = 0; i < 32; i++) indices.push(i);
+        indices.sort(() => Math.random() - 0.5);
+        gdCloneEgoTargets = indices.slice(0, 5);
+        questLog.ego_boost = { status: 'active', complimentsGiven: 0 };
+        showTip('Quest accepted: Ego Boost Tour — Compliment 5 clones!');
+        closeNPCDialogue();
+      });
+    } else if (questLog.ego_boost.status === 'active') {
+      if ((questLog.ego_boost.complimentsGiven || 0) >= 5) {
+        textEl.textContent = "You did it! They all look so happy now. Here's your reward!";
+        addDialogueBtn(btnsEl, 'Collect Reward', 'npc-btn-accept', () => {
+          questLog.ego_boost.status = 'completed';
+          money += 100;
+          needs.fun = Math.min(100, needs.fun + 30);
+          if (!gdTasksDone['ego_boost']) {
+            gdTasksDone['ego_boost'] = true;
+            grahamDimQuestsCompleted++;
+          }
+          SFX.kaChing();
+          showTip('Quest complete! +$100, +30 fun');
+          if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+          checkGrahamMaster();
+          closeNPCDialogue();
+        });
+      } else {
+        textEl.textContent = "Keep going! You've complimented " + (questLog.ego_boost.complimentsGiven || 0) + "/5 clones so far.";
+      }
+    } else {
+      textEl.textContent = "Thanks for cheering everyone up! You're a true Graham.";
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
 
   nameEl.textContent = def.name;
-  btnsEl.innerHTML = '';
 
   // Merch clerk special dialogue
   if (npcId === 'merch_clerk') {
@@ -9052,6 +9623,602 @@ function finishTownJob(npcId, score) {
   const overlay = document.getElementById('job-overlay');
   overlay.classList.remove('visible');
   setTimeout(() => { overlay.innerHTML = ''; }, 500);
+}
+
+// ═══ GRAHAM DIMENSION PORTAL CUTSCENE ═══
+function startPortalCutscene() {
+  if (npcDialogueOpen || currentAction || driveDestOpen || jobMiniGameRunning) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  jobMiniGameRunning = true; // block movement
+
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.style.background = '#00000000';
+  overlay.classList.add('visible');
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 800; cvs.height = 500;
+  cvs.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);max-width:100vw;max-height:100vh;z-index:100;';
+  overlay.appendChild(cvs);
+  const ctx = cvs.getContext('2d');
+
+  // Skip button
+  const skipBtn = document.createElement('button');
+  skipBtn.textContent = 'SKIP';
+  skipBtn.style.cssText = 'position:fixed;bottom:30px;right:30px;z-index:101;padding:8px 22px;border:2px solid #c9a84c;border-radius:6px;background:#00000088;color:#c9a84c;font-size:0.9rem;font-weight:bold;cursor:pointer;backdrop-filter:blur(4px);letter-spacing:0.05em;';
+  skipBtn.onmouseover = () => { skipBtn.style.background = '#000000cc'; };
+  skipBtn.onmouseout = () => { skipBtn.style.background = '#00000088'; };
+  skipBtn.onclick = () => { phase = 3; };
+  overlay.appendChild(skipBtn);
+  const W = cvs.width, H = cvs.height;
+
+  let phase = 0; // 0=graham yelling, 1=portal opens, 2=portal sucks in, 3=done
+  let timer = 0;
+  let lastTime = performance.now();
+  let portalRadius = 0;
+  let portalAngle = 0;
+  let shakeX = 0, shakeY = 0;
+  let flashAlpha = 0;
+  let textAlpha = 1;
+  let grahamText = '';
+  let charIndex = 0;
+  const fullText = "Wait! Nooo! Don't press that!";
+  let charTimer = 0;
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timer += dt;
+
+    // Screen shake during portal phase
+    if (phase >= 1 && phase < 3) {
+      const intensity = phase === 2 ? 8 : 3;
+      shakeX = (Math.random() - 0.5) * intensity;
+      shakeY = (Math.random() - 0.5) * intensity;
+    } else {
+      shakeX = 0; shakeY = 0;
+    }
+
+    ctx.save();
+    ctx.translate(shakeX, shakeY);
+
+    // Background
+    const bgAlpha = phase === 0 ? 0.7 : Math.min(0.95, 0.7 + timer * 0.15);
+    ctx.fillStyle = 'rgba(10, 5, 20, ' + bgAlpha + ')';
+    ctx.fillRect(-10, -10, W + 20, H + 20);
+
+    // Phase 0: Graham yelling with typewriter text
+    if (phase === 0) {
+      // Typewriter effect
+      charTimer += dt;
+      if (charIndex < fullText.length && charTimer > 0.04) {
+        charTimer = 0;
+        charIndex++;
+        grahamText = fullText.substring(0, charIndex);
+      }
+
+      // Draw Graham character (simplified)
+      const gx = W / 2, gy = H / 2 - 20;
+
+      // Graham's body
+      ctx.fillStyle = '#cc2222'; // GG Merch red shirt
+      ctx.fillRect(gx - 25, gy + 15, 50, 55);
+      ctx.fillStyle = '#1a1a1a'; // pants
+      ctx.fillRect(gx - 22, gy + 70, 20, 45);
+      ctx.fillRect(gx + 2, gy + 70, 20, 45);
+      // Arms (flailing!)
+      const armWave = Math.sin(timer * 12) * 30;
+      ctx.save();
+      ctx.translate(gx - 30, gy + 25);
+      ctx.rotate((-45 + armWave) * Math.PI / 180);
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(-8, 0, 16, 40);
+      ctx.fillStyle = '#c4956a'; // skin
+      ctx.beginPath(); ctx.arc(0, 45, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.translate(gx + 30, gy + 25);
+      ctx.rotate((45 - armWave) * Math.PI / 180);
+      ctx.fillStyle = '#cc2222';
+      ctx.fillRect(-8, 0, 16, 40);
+      ctx.fillStyle = '#c4956a';
+      ctx.beginPath(); ctx.arc(0, 45, 7, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // Head
+      ctx.fillStyle = '#c4956a';
+      ctx.beginPath(); ctx.arc(gx, gy, 22, 0, Math.PI * 2); ctx.fill();
+      // Curly hair (blonde)
+      ctx.fillStyle = '#d4a840';
+      [[-14, -18], [0, -22], [14, -18], [-18, -10], [18, -10], [-12, -22], [12, -22], [0, -26]].forEach(([dx, dy]) => {
+        ctx.beginPath(); ctx.arc(gx + dx, gy + dy, 7, 0, Math.PI * 2); ctx.fill();
+      });
+      // Eyes (wide open, panicked)
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(gx - 8, gy - 3, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx + 8, gy - 3, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#222';
+      ctx.beginPath(); ctx.arc(gx - 8, gy - 3, 2.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(gx + 8, gy - 3, 2.5, 0, Math.PI * 2); ctx.fill();
+      // Mouth (open, yelling)
+      ctx.fillStyle = '#333';
+      ctx.beginPath();
+      ctx.ellipse(gx, gy + 10, 8, 6 + Math.sin(timer * 8) * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Speech bubble
+      if (grahamText.length > 0) {
+        ctx.font = 'bold 22px "Segoe UI", sans-serif';
+        const tw = ctx.measureText(grahamText).width;
+        const bx = gx - tw / 2 - 18;
+        const by = gy - 95;
+        const bw = tw + 36;
+        const bh = 48;
+        // Bubble bg
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(bx + 10, by);
+        ctx.lineTo(bx + bw - 10, by);
+        ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + 10);
+        ctx.lineTo(bx + bw, by + bh - 10);
+        ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - 10, by + bh);
+        // Tail
+        ctx.lineTo(bx + bw / 2 + 10, by + bh);
+        ctx.lineTo(bx + bw / 2, by + bh + 15);
+        ctx.lineTo(bx + bw / 2 - 10, by + bh);
+        ctx.lineTo(bx + 10, by + bh);
+        ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - 10);
+        ctx.lineTo(bx, by + 10);
+        ctx.quadraticCurveTo(bx, by, bx + 10, by);
+        ctx.fill();
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // Text
+        ctx.fillStyle = '#cc2222';
+        ctx.textAlign = 'center';
+        ctx.fillText(grahamText, gx, by + 32);
+      }
+
+      // Transition to phase 1 after text finishes + pause
+      if (charIndex >= fullText.length && timer > 2.5) {
+        phase = 1;
+        timer = 0;
+      }
+    }
+
+    // Phase 1: Portal opens
+    if (phase >= 1 && phase < 3) {
+      portalAngle += dt * 3;
+      if (phase === 1) {
+        portalRadius = Math.min(200, portalRadius + dt * 120);
+        if (portalRadius >= 200) { phase = 2; timer = 0; }
+      }
+
+      const cx = W / 2, cy = H / 2;
+
+      // Draw swirling portal
+      const numRings = 8;
+      for (let i = numRings; i >= 0; i--) {
+        const r = portalRadius * (i / numRings);
+        const hue = ((i * 40 + portalAngle * 30) % 360);
+        const sat = 70 + i * 3;
+        const lightness = phase === 2 ? 40 + (numRings - i) * 5 + timer * 15 : 30 + (numRings - i) * 4;
+        ctx.fillStyle = 'hsl(' + hue + ', ' + sat + '%, ' + Math.min(90, lightness) + '%)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r * 1.3, r, portalAngle + i * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Spinning particles
+      for (let p = 0; p < 20; p++) {
+        const angle = portalAngle * 2 + p * (Math.PI * 2 / 20);
+        const dist = portalRadius * (0.3 + Math.sin(timer * 3 + p) * 0.7);
+        const px = cx + Math.cos(angle) * dist * 1.3;
+        const py = cy + Math.sin(angle) * dist;
+        const size = 2 + Math.sin(timer * 5 + p) * 1.5;
+        ctx.fillStyle = 'rgba(255, 215, 0, ' + (0.4 + Math.sin(timer * 4 + p) * 0.3) + ')';
+        ctx.beginPath();
+        ctx.arc(px, py, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Center glow
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, portalRadius * 0.4);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.6)');
+      grad.addColorStop(1, 'rgba(201, 168, 76, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, portalRadius * 0.5, portalRadius * 0.35, portalAngle, 0, Math.PI * 2);
+      ctx.fill();
+
+      // "GRAHAM DIMENSION" text emerging
+      if (phase === 2) {
+        const textScale = Math.min(1, timer * 1.5);
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.scale(textScale, textScale);
+        ctx.font = 'bold 36px "Segoe UI", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(201, 168, 76, ' + Math.min(1, timer) + ')';
+        ctx.fillText('THE GRAHAM DIMENSION', 0, 10);
+        ctx.strokeStyle = 'rgba(100, 50, 10, ' + Math.min(0.8, timer * 0.8) + ')';
+        ctx.lineWidth = 1;
+        ctx.strokeText('THE GRAHAM DIMENSION', 0, 10);
+        ctx.restore();
+      }
+    }
+
+    // Phase 2: Suck in and white flash
+    if (phase === 2) {
+      flashAlpha = Math.max(0, (timer - 1.5) * 2);
+      if (flashAlpha > 0) {
+        ctx.fillStyle = 'rgba(255, 240, 200, ' + Math.min(1, flashAlpha) + ')';
+        ctx.fillRect(-10, -10, W + 20, H + 20);
+      }
+      if (timer > 2.2) {
+        phase = 3;
+        timer = 0;
+      }
+    }
+
+    ctx.restore();
+
+    // Phase 3: Done — proceed to teleport
+    if (phase === 3) {
+      jobMiniGameRunning = false;
+      overlay.classList.remove('visible');
+      overlay.innerHTML = '';
+      overlay.style.background = '';
+      startDrivingTransition('grahamDimension');
+      return;
+    }
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// ═══ GRAHAM DIMENSION JOBS ═══
+function checkGrahamMaster() {
+  if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
+}
+
+function startGrahamDimJob(bossId) {
+  closeNPCDialogue();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+
+  let hintHtml = '';
+  if (bossId === 'graham_boss_1') hintHtml = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Repeat the sequence';
+  else if (bossId === 'graham_boss_2') hintHtml = '<kbd>A</kbd> Approve fan mail  <kbd>D</kbd> Reject hate mail';
+
+  const { canvas, ctx } = setupFullscreenGame(overlay, 640, 360, hintHtml);
+  overlay.classList.add('visible');
+
+  if (bossId === 'graham_boss_1') {
+    runGrahamSays(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
+  } else if (bossId === 'graham_boss_2') {
+    runFanMailSorter(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
+  }
+}
+
+function finishGrahamDimJob(bossId, score) {
+  if (document.fullscreenElement) document.exitFullscreen();
+  jobMiniGameRunning = false;
+  const finalScore = Math.max(0, score);
+  let pay;
+  if (bossId === 'graham_boss_1') {
+    pay = 20 + Math.floor(finalScore * 3);
+  } else {
+    pay = 15 + Math.floor(finalScore / 2);
+  }
+  money += pay;
+  needs.energy = Math.max(0, needs.energy - 10);
+  gdJobLastDay[bossId] = day;
+  totalShiftsWorked++;
+  if (!gdTasksDone[bossId]) {
+    gdTasksDone[bossId] = true;
+    grahamDimQuestsCompleted++;
+  }
+  SFX.jobComplete();
+  SFX.kaChing();
+  mlTry('ml_first_shift');
+  if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
+  if (totalShiftsWorked >= 25) mlTry('ml_employee_month');
+  if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+  checkGrahamMaster();
+  showTip('Job done! Earned $' + pay);
+  const overlay = document.getElementById('job-overlay');
+  overlay.classList.remove('visible');
+  setTimeout(() => { overlay.innerHTML = ''; }, 500);
+}
+
+// --- Graham Says (Simon Says mini-game) ---
+function runGrahamSays(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const KEYS = ['W', 'A', 'S', 'D'];
+  const KEY_COLORS = { W: '#44aaff', A: '#ff4444', S: '#44ff44', D: '#ffaa44' };
+  const KEY_LABELS = { W: 'UP', A: 'LEFT', S: 'DOWN', D: 'RIGHT' };
+  let sequence = [];
+  let playerIndex = 0;
+  let phase = 'showing'; // 'showing', 'input', 'gameover'
+  let showIndex = 0;
+  let showTimer = 0;
+  let roundsCompleted = 0;
+  let lastTime = performance.now();
+  let flash = null;
+  let gameOverTimer = 0;
+  let running = true;
+
+  function addToSequence() {
+    sequence.push(KEYS[Math.floor(Math.random() * 4)]);
+  }
+  // Start with 3 keys
+  for (let i = 0; i < 3; i++) addToSequence();
+
+  function startShowPhase() {
+    phase = 'showing';
+    showIndex = 0;
+    showTimer = 0;
+    playerIndex = 0;
+  }
+  startShowPhase();
+
+  function onKey(e) {
+    if (!running || phase !== 'input') return;
+    const k = e.key.toUpperCase();
+    if (!KEYS.includes(k)) return;
+    e.preventDefault();
+    flash = { key: k, t: 0.3 };
+    if (k === sequence[playerIndex]) {
+      SFX.jobCorrect();
+      playerIndex++;
+      if (playerIndex >= sequence.length) {
+        // Round complete
+        roundsCompleted++;
+        addToSequence();
+        setTimeout(startShowPhase, 500);
+      }
+    } else {
+      // Wrong — game over
+      SFX.jobWrong();
+      phase = 'gameover';
+      gameOverTimer = 2;
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Background
+    ctx.fillStyle = '#1a0a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    // Title
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 24px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAHAM SAYS', W / 2, 30);
+
+    // Round counter
+    ctx.fillStyle = '#aaa';
+    ctx.font = '14px monospace';
+    ctx.fillText('Round: ' + (roundsCompleted + 1) + '  |  Sequence: ' + sequence.length, W / 2, 52);
+
+    // Draw 4 key boxes
+    const boxSize = 80, gap = 20;
+    const startX = (W - 4 * boxSize - 3 * gap) / 2;
+    const boxY = 120;
+    KEYS.forEach((k, i) => {
+      const bx = startX + i * (boxSize + gap);
+      const isActive = (phase === 'showing' && showIndex < sequence.length && sequence[showIndex] === k && showTimer < 0.4);
+      const isFlash = flash && flash.key === k;
+      ctx.fillStyle = (isActive || isFlash) ? KEY_COLORS[k] : '#333';
+      ctx.fillRect(bx, boxY, boxSize, boxSize);
+      ctx.strokeStyle = KEY_COLORS[k];
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, boxY, boxSize, boxSize);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText(k, bx + boxSize / 2, boxY + 45);
+      ctx.font = '12px monospace';
+      ctx.fillText(KEY_LABELS[k], bx + boxSize / 2, boxY + 70);
+    });
+
+    // Show sequence display
+    if (phase === 'showing') {
+      showTimer += dt;
+      if (showTimer >= 0.7) {
+        showTimer = 0;
+        showIndex++;
+        if (showIndex >= sequence.length) {
+          phase = 'input';
+        }
+      }
+      ctx.fillStyle = '#ffcc44';
+      ctx.font = '16px monospace';
+      ctx.fillText('Watch the sequence...', W / 2, 260);
+    } else if (phase === 'input') {
+      ctx.fillStyle = '#44ff44';
+      ctx.font = '16px monospace';
+      ctx.fillText('Your turn! (' + playerIndex + '/' + sequence.length + ')', W / 2, 260);
+      // Show remaining sequence as dots
+      const dotY = 290;
+      sequence.forEach((k, i) => {
+        const dx = W / 2 + (i - sequence.length / 2) * 20;
+        ctx.fillStyle = i < playerIndex ? '#44ff44' : '#555';
+        ctx.beginPath();
+        ctx.arc(dx, dotY, 6, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    } else if (phase === 'gameover') {
+      gameOverTimer -= dt;
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 28px monospace';
+      ctx.fillText('WRONG!', W / 2, 270);
+      ctx.fillStyle = '#aaa';
+      ctx.font = '16px monospace';
+      ctx.fillText('Rounds completed: ' + roundsCompleted, W / 2, 300);
+      if (gameOverTimer <= 0) {
+        running = false;
+        document.removeEventListener('keydown', onKey);
+        onFinish(roundsCompleted);
+        return;
+      }
+    }
+
+    if (running) requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Fan Mail Sorter mini-game ---
+function runFanMailSorter(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  let letters = [];
+  let score = 0;
+  let misses = 0;
+  let timeLeft = 30;
+  let lastTime = performance.now();
+  let spawnTimer = 0;
+  let spawnInterval = 1.5;
+  let running = true;
+  let flash = null;
+
+  const FAN_ICONS = ['\u2665', '\u2605', '\u263A', '\u266B']; // heart, star, smiley, note
+  const HATE_ICONS = ['\u2639', '\u2620', '\u26A0', '\u2718']; // frown, skull, warning, x
+
+  function spawnLetter() {
+    const isFan = Math.random() > 0.4;
+    letters.push({
+      x: 50 + Math.random() * (W - 100),
+      y: -30,
+      fan: isFan,
+      icon: isFan ? FAN_ICONS[Math.floor(Math.random() * FAN_ICONS.length)] : HATE_ICONS[Math.floor(Math.random() * HATE_ICONS.length)],
+      speed: 80 + Math.random() * 60 + (30 - timeLeft) * 3,
+    });
+  }
+
+  function onKey(e) {
+    if (!running) return;
+    const k = e.key.toUpperCase();
+    if (k !== 'A' && k !== 'D') return;
+    e.preventDefault();
+    // Find nearest letter in bottom half
+    const sortable = letters.filter(l => l.y > H / 3 && l.y < H - 20);
+    if (sortable.length === 0) return;
+    sortable.sort((a, b) => b.y - a.y); // closest to bottom first
+    const target = sortable[0];
+    if ((k === 'A' && target.fan) || (k === 'D' && !target.fan)) {
+      score++;
+      flash = { color: '#44ff44', t: 0.2 };
+      SFX.jobCorrect();
+    } else {
+      misses++;
+      flash = { color: '#ff4444', t: 0.2 };
+      SFX.jobWrong();
+    }
+    letters.splice(letters.indexOf(target), 1);
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.05);
+    lastTime = now;
+    timeLeft -= dt;
+    if (flash) { flash.t -= dt; if (flash.t <= 0) flash = null; }
+
+    // Spawn
+    spawnTimer += dt;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnInterval = Math.max(0.4, spawnInterval - 0.04);
+      spawnLetter();
+    }
+
+    // Move letters
+    for (let i = letters.length - 1; i >= 0; i--) {
+      letters[i].y += letters[i].speed * dt;
+      if (letters[i].y > H + 30) {
+        misses++;
+        letters.splice(i, 1);
+      }
+    }
+
+    // Draw bg
+    ctx.fillStyle = '#2a1a0e';
+    ctx.fillRect(0, 0, W, H);
+    // Desk
+    ctx.fillStyle = '#5a3a28';
+    ctx.fillRect(0, H - 60, W, 60);
+    ctx.fillStyle = '#7a5a48';
+    ctx.fillRect(0, H - 62, W, 4);
+
+    // Letters
+    letters.forEach(l => {
+      ctx.fillStyle = l.fan ? '#ffe0e0' : '#e0e0e0';
+      ctx.fillRect(l.x - 22, l.y - 18, 44, 36);
+      ctx.strokeStyle = l.fan ? '#cc4444' : '#666';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(l.x - 22, l.y - 18, 44, 36);
+      ctx.fillStyle = l.fan ? '#cc2222' : '#444';
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(l.icon, l.x, l.y + 8);
+    });
+
+    // Flash
+    if (flash) {
+      ctx.fillStyle = flash.color;
+      ctx.globalAlpha = flash.t / 0.2 * 0.3;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 22px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('FAN MAIL SORTER', W / 2, 28);
+    ctx.fillStyle = '#aaa';
+    ctx.font = '14px monospace';
+    ctx.fillText('A = Approve fan mail (\u2665\u2605)  |  D = Reject hate mail (\u2639\u2620)', W / 2, 50);
+    // Score & time
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('Sorted: ' + score, 10, H - 30);
+    ctx.fillText('Missed: ' + misses, 10, H - 10);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = timeLeft < 5 ? '#ff4444' : '#fff';
+    ctx.fillText('Time: ' + Math.ceil(Math.max(0, timeLeft)) + 's', W - 10, H - 30);
+
+    if (timeLeft <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      // Show results briefly
+      ctx.fillStyle = '#00000088';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#c9a84c';
+      ctx.font = 'bold 28px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText("TIME'S UP!", W / 2, H / 2 - 20);
+      ctx.fillStyle = '#fff';
+      ctx.font = '18px monospace';
+      ctx.fillText('Correctly sorted: ' + score, W / 2, H / 2 + 15);
+      setTimeout(() => onFinish(score), 1500);
+      return;
+    }
+
+    if (running) requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
 }
 
 // --- Cafe: Order Rush ---
@@ -11733,7 +12900,7 @@ function updateCrosshairRaycast() {
   // Cast from camera center
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
-  const allTargets = interactMeshes.concat(petBodyMeshes).concat(inTown ? npcBodyMeshes : []);
+  const allTargets = interactMeshes.concat(petBodyMeshes).concat(inTown ? npcBodyMeshes : []).concat(inGrahamDimension ? gdNpcBodyMeshes : []);
   const hits = raycaster.intersectObjects(allTargets, true);
   const tip = document.getElementById('action-tip');
   const crosshair = document.getElementById('crosshair');
@@ -11751,8 +12918,10 @@ function updateCrosshairRaycast() {
     const hitObj = hits[0].object;
     if (hitObj.userData && hitObj.userData.type === 'npc') {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
-      hoveredObj = { type: 'npc', npcId: hitObj.userData.npcId };
-      tip.textContent = 'Click: Talk to ' + (npcDef ? npcDef.name : 'NPC');
+      const nid = hitObj.userData.npcId;
+      hoveredObj = { type: 'npc', npcId: nid };
+      const gdName = nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid.startsWith('graham_clone') ? 'Graham Clone' : null;
+      tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
       return;
@@ -11831,6 +13000,14 @@ function startAction(obj) {
   }
   if (obj.type === 'mansionCar') {
     startDrivingTransition('home');
+    return;
+  }
+  if (obj.type === 'redButton') {
+    startPortalCutscene();
+    return;
+  }
+  if (obj.type === 'dimPortal') {
+    startDrivingTransition('town');
     return;
   }
 
@@ -13799,6 +14976,23 @@ function update() {
       }
       character.position.x = px;
       character.position.z = pz;
+    } else if (inGrahamDimension) {
+      // Graham Dimension bounds
+      px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
+      pz = Math.max(GRAHAM_DIM_BOUNDS.zMin, Math.min(GRAHAM_DIM_BOUNDS.zMax, pz));
+      // Collision — push out of AABBs
+      for (const b of GRAHAM_DIM_COLLISIONS) {
+        if (px > b.xMin && px < b.xMax && pz > b.zMin && pz < b.zMax) {
+          const dL = px - b.xMin, dR = b.xMax - px, dB = pz - b.zMin, dT = b.zMax - pz;
+          const minD = Math.min(dL, dR, dB, dT);
+          if (minD === dL) px = b.xMin;
+          else if (minD === dR) px = b.xMax;
+          else if (minD === dB) pz = b.zMin;
+          else pz = b.zMax;
+        }
+      }
+      character.position.x = px;
+      character.position.z = pz;
     } else if (basementLoaded && currentFloor === -1) {
       // Basement level — allow passage through stair opening
       const inGap = pz >= BSTAIR.zMin && pz <= BSTAIR.zMax;
@@ -14203,6 +15397,17 @@ function restartGame() {
   currentSlotName = '';
   npcDialogueOpen = false;
   currentNPCId = null;
+  // Reset Graham Dimension state
+  if (grahamDimGroup) { scene.remove(grahamDimGroup); grahamDimGroup = null; }
+  inGrahamDimension = false;
+  grahamDimQuestsCompleted = 0;
+  gdTasksDone = {};
+  gdJobLastDay = {};
+  gdNpcBodyMeshes = [];
+  gdCloneEgoTargets = [];
+  for (let i = interactables.length - 1; i >= 0; i--) {
+    if (interactables[i].type === 'dimPortal' || interactables[i].type === 'redButton') interactables.splice(i, 1);
+  }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
   mansionCarGroup = null;
@@ -14326,6 +15531,11 @@ function buildSaveData() {
     hasSparkleHair,
     sneakerColor,
     phoneOrders: [...phoneOrders],
+    inGrahamDimension,
+    grahamDimQuestsCompleted,
+    gdTasksDone: { ...gdTasksDone },
+    gdJobLastDay: { ...gdJobLastDay },
+    gdCloneEgoTargets: [...gdCloneEgoTargets],
   };
 }
 
@@ -14539,6 +15749,27 @@ function loadSlot(index) {
     sunLight.shadow.camera.updateProjectionMatrix();
   }
 
+  // Restore Graham Dimension state
+  if (save.grahamDimQuestsCompleted) grahamDimQuestsCompleted = save.grahamDimQuestsCompleted;
+  if (save.gdTasksDone) gdTasksDone = save.gdTasksDone;
+  if (save.gdJobLastDay) gdJobLastDay = save.gdJobLastDay;
+  if (save.gdCloneEgoTargets) gdCloneEgoTargets = save.gdCloneEgoTargets;
+  if (save.inGrahamDimension) {
+    if (!grahamDimGroup) grahamDimGroup = buildGrahamDimension();
+    grahamDimGroup.visible = true;
+    if (townGroup) townGroup.visible = false;
+    if (mansionGroup) mansionGroup.visible = false;
+    inGrahamDimension = true;
+    inTown = false;
+    inMansion = false;
+    scene.fog.far = GRAHAM_DIM_FOG_FAR;
+    sunLight.shadow.camera.left = -40;
+    sunLight.shadow.camera.right = 40;
+    sunLight.shadow.camera.top = 30;
+    sunLight.shadow.camera.bottom = -30;
+    sunLight.shadow.camera.updateProjectionMatrix();
+  }
+
   // Load G Bux content
   mlLoadGBuxContent();
 
@@ -14559,6 +15790,8 @@ function loadSlot(index) {
   if (totalShiftsWorked >= 1) mlTry('ml_first_shift');
   if (totalShiftsWorked >= 10) mlTry('ml_hard_worker');
   if (totalShiftsWorked >= 25) mlTry('ml_employee_month');
+  if (save.inGrahamDimension) mlTry('ml_graham_dimension');
+  if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
   mlCheckLivingLarge();
 }
 
