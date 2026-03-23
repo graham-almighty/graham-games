@@ -6763,21 +6763,198 @@ const GRAHAM_DIM_COLLISIONS = [
   { xMin: 398, xMax: 402, zMin: -2, zMax: 2 },
 ];
 const GRAHAM_CLONE_LINES = [
-  "Do I know you? Wait... do I know ME?",
-  "I'm Graham #247. Or was it #248? I've lost count.",
-  "This dimension is MINE. Well, mine and the other 30 Grahams'.",
-  "You're not a Graham. That's suspicious.",
-  "I dreamed I was a Graham dreaming he was a Graham. Deep stuff.",
-  "Don't touch the statue. That's MY best angle.",
-  "I once tried to leave this dimension. The door led right back here.",
-  "We tried voting for a leader once. Every Graham voted for himself.",
-  "If you see another me, tell him he owes me five quid.",
-  "I started a band with the other Grahams. We're called 'Graham Squared'.",
-  "Being a clone isn't so bad. Free rent, unlimited Grahams to talk to.",
-  "I think I'm the original Graham. Don't tell the others I said that.",
-  "Sometimes I wave at myself across the room. I always wave back.",
-  "We ALL have curly hair. It's not a coincidence. It's DESTINY.",
-  "Have you seen the big statue? It doesn't look ANYTHING like me. It's way too short.",
+  // Clone 0 — The Philosopher
+  ["Do I know you? Wait... do I know ME?",
+   "If a Graham falls in a dimension and no one hears it... do the other Grahams laugh?",
+   "I've been thinking about thinking. It's very tiring.",
+   "What if this whole dimension is just someone's game? Ha, imagine.",
+   "I exist therefore I Graham."],
+  // Clone 1 — The Conspiracy Theorist
+  ["The statue blinks when no one's looking. I've SEEN it.",
+   "I'm pretty sure Boss Graham #2 is secretly two Grahams in a trenchcoat.",
+   "The walls aren't to keep things out. They're to keep US in.",
+   "I found a hair on the ground that wasn't curly. Something's going on.",
+   "Don't trust the portal. It rearranges your molecules. I can FEEL it."],
+  // Clone 2 — The Optimist
+  ["Every day's a great day when you're Graham!",
+   "I woke up today and thought: wow, I'm still Graham. Result!",
+   "This dimension is MINE. Well, mine and the other 30 Grahams'.",
+   "Some people see 32 Grahams and panic. I see 32 best friends!",
+   "The sun's always shining in the Graham Dimension! Mostly because we can't turn it off."],
+  // Clone 3 — The Competitive One
+  ["I'm the fastest Graham here. Don't even try me.",
+   "I challenged myself to a race once. I won AND lost. Still counts.",
+   "My curly hair is at LEAST 3% curlier than the others.",
+   "I could totally beat Boss Graham #1 at Graham Says. I just choose not to.",
+   "You're not a Graham. That's suspicious."],
+  // Clone 4 — The Dreamer
+  ["I dreamed I was a Graham dreaming he was a Graham. Deep stuff.",
+   "One day I'll leave this dimension and open a bakery. Graham crackers, obviously.",
+   "I've been writing a novel. It's called 'Fifty Shades of Graham'.",
+   "Sometimes I stare at the sky and wonder... is there a dimension of Kevins?",
+   "My dream job? Graham cracker taste tester. Get it? Because I'm Graham."],
+  // Clone 5 — The Territorial One
+  ["Don't touch the statue. That's MY best angle.",
+   "This bench? My bench. That tree? My tree. You? Visiting.",
+   "I've claimed this exact spot. The other Grahams respect the system.",
+   "See that patch of grass? I named it Graham's Grove. Population: me.",
+   "I was here first. Well, we all arrived at the same time. But SPIRITUALLY I was first."],
+  // Clone 6 — The Escapist
+  ["I once tried to leave this dimension. The door led right back here.",
+   "I dug a tunnel once. Came up right where I started. Classic.",
+   "I tried climbing the wall. Made it halfway before I remembered I'm afraid of heights.",
+   "There must be a way out. Not that I WANT to leave. Just... options are nice.",
+   "I drew a door on the wall. Walked into it face first. Didn't work."],
+  // Clone 7 — The Politician
+  ["We tried voting for a leader once. Every Graham voted for himself.",
+   "I'm running for Graham President. My slogan is 'Graham for Graham'.",
+   "I proposed a constitution. Article 1: Be Graham. Article 2: See Article 1.",
+   "I formed a political party. The Graham Party. We have 32 members and zero policies.",
+   "Democracy doesn't work when everyone's equally brilliant."],
+  // Clone 8 — The Debt Collector
+  ["If you see another me, tell him he owes me five quid.",
+   "Graham #14 borrowed my... actually we all look the same. It might have been #7.",
+   "I've been keeping tabs. Everyone owes me something. Or I owe them. Hard to tell.",
+   "I lent a Graham my shirt. He says it's HIS shirt. We're wearing the same thing!",
+   "Money's weird here. We all share the same wallet. Or do we?"],
+  // Clone 9 — The Musician
+  ["I started a band with the other Grahams. We're called 'Graham Squared'.",
+   "I play air guitar. In a dimension of Grahams, the crowd always goes wild.",
+   "Our band's first album is 'Curly Wurly.' It's all cowbell.",
+   "I wrote a song called 'Graham Sweet Graham.' Instant classic.",
+   "We had creative differences in the band. We ALL wanted to be lead singer."],
+  // Clone 10 — The Content One
+  ["Being a clone isn't so bad. Free rent, unlimited Grahams to talk to.",
+   "I've got no complaints. Well, one: too many handsome faces around here.",
+   "Life's simple when you're a clone. Wake up, be Graham, repeat.",
+   "Some clones have existential crises. I have existential picnics.",
+   "I'm living the dream. Literally the same dream as everyone else here."],
+  // Clone 11 — The Delusional Original
+  ["I think I'm the original Graham. Don't tell the others I said that.",
+   "I have a birthmark the others don't. At least I think I do. We've never checked.",
+   "The REAL Graham would know the secret password. Which I totally know. It's... Graham.",
+   "I remember things from before the dimension. Like... cereal. That's proof, right?",
+   "Everyone here is a copy of ME. I'm the template. The prototype. The Grahamotype."],
+  // Clone 12 — The Friendly Waver
+  ["Sometimes I wave at myself across the room. I always wave back.",
+   "I high-fived a Graham today. It was basically clapping. Still fun.",
+   "I said 'good morning' to every Graham today. Took four hours.",
+   "Group hugs here are amazing. 32 Grahams, zero personal space.",
+   "I tried to play hide and seek. Couldn't tell who was hiding and who wasn't."],
+  // Clone 13 — The Hair Enthusiast
+  ["We ALL have curly hair. It's not a coincidence. It's DESTINY.",
+   "I tried straightening my hair once. The dimension rejected it. Literally.",
+   "My curls have curls. It's curls all the way down.",
+   "I counted my curls once. Lost count at 847. Started over. Lost count again.",
+   "The secret to great curls? Being Graham. That's it. That's the whole secret."],
+  // Clone 14 — The Art Critic
+  ["Have you seen the big statue? It doesn't look ANYTHING like me. It's way too short.",
+   "The statue's nose is wrong. MY nose is way more distinguished.",
+   "I'd make a better statue. Just saying. I can stand still for AGES.",
+   "Someone should add a plaque to the statue. 'Inspired by Graham #14. The best one.'",
+   "Art in this dimension is just Grahams drawing Grahams. Honestly? Masterpieces."],
+  // Clone 15 — The Chef
+  ["I made dinner for everyone last night. 32 identical orders. Easy.",
+   "My signature dish is Graham Cracker Surprise. The surprise is there's no cracker.",
+   "I tried to cook something different. Everyone wanted the same thing. Classic Grahams.",
+   "I'm the best chef here. Admittedly, I'm also the worst. Small talent pool.",
+   "Recipe for success: be Graham, add seasoning, serve with confidence."],
+  // Clone 16 — The Statistician
+  ["Fun fact: there's a 100% chance the person you're talking to is Graham.",
+   "I've calculated the odds of meeting a non-Graham here. They were zero. Until you showed up.",
+   "Statistically, I'm the most average Graham. Which makes me the MOST Graham.",
+   "32 Grahams. 160 fingers. 64 eyebrows. I count things. It passes the time.",
+   "There's a 1 in 32 chance I'm the Graham you're looking for. Good odds!"],
+  // Clone 17 — The Historian
+  ["I've been documenting the history of this dimension. Chapter 1: Grahams arrive. Chapter 2: Still here.",
+   "Day 1 of the Graham Dimension was chaos. Day 2 was also chaos. Day 3 we got used to it.",
+   "The Great Graham Debate of last Tuesday lasted nine hours. Topic: best direction to face.",
+   "Historical records show that every argument here ends in a tie. Funny, that.",
+   "I'm writing the definitive encyclopedia of Graham. It's 32 volumes. One per Graham."],
+  // Clone 18 — The Fitness Buff
+  ["I do 100 push-ups every morning. So does everyone else. Synchronized, obviously.",
+   "I'm training for the Graham Olympics. Every event is just running in circles.",
+   "Arm wrestled another Graham yesterday. Perfect draw. As always.",
+   "My workout routine: flex, admire, repeat. The mirrors here love me.",
+   "I'm in peak physical condition. Identical peak physical condition to everyone else."],
+  // Clone 19 — The Sleepy One
+  ["*yawns* Sorry, didn't sleep well. A Graham was snoring. Could've been me.",
+   "I'd love to chat but I'm running on zero sleep and pure Graham energy.",
+   "I tried counting sheep to fall asleep. They all looked like Grahams. Didn't help.",
+   "Napping is an art form and I am a MASTER. Gallery's closed though. I'm tired.",
+   "Is it bedtime yet? What do you mean it's noon? Time is fake anyway."],
+  // Clone 20 — The Fashion Forward One
+  ["I think we should get different outfits. I suggested it once. Got 31 dirty looks.",
+   "This GG shirt really brings out my eyes. All 64 of our eyes, actually.",
+   "I accessorized my shirt with... confidence. That's an accessory, right?",
+   "I tried wearing my shirt backwards for variety. No one noticed. NO ONE.",
+   "Fashion tip: when everyone's wearing the same thing, own it HARDER than they do."],
+  // Clone 21 — The Paranoid One
+  ["I'm pretty sure one of us is secretly NOT a Graham. I'm watching everyone.",
+   "Have you noticed the walls are EXACTLY the same height everywhere? That's not natural.",
+   "I keep a journal of suspicious activity. So far every entry says 'Graham acted like Graham.'",
+   "Something moved in the corner of my eye. It was a Graham. It's always a Graham.",
+   "I've memorized everyone's walking pattern. Graham #23 is slightly sus. Slightly."],
+  // Clone 22 — The Storyteller
+  ["Gather round, I'll tell you the legend of... Graham. Spoiler: it's about a Graham.",
+   "Once upon a time there were 32 Grahams. They lived happily ever after. The end.",
+   "I've been workshopping a thriller. '32 Grahams and a Stranger.' You're the stranger.",
+   "My ghost stories aren't scary because the ghost is always just another Graham.",
+   "Plot twist: the Graham was inside you all along. Wait, that doesn't work here."],
+  // Clone 23 — The Scientist
+  ["I've been studying our DNA. Spoiler: it's all Graham. Every chromosome.",
+   "Hypothesis: I'm the best Graham. Method: ask me. Result: confirmed. Peer review pending.",
+   "I tried an experiment. Put 32 Grahams in a room. Observed: 32 Grahams in a room.",
+   "Scientifically speaking, this dimension is 100% Graham by volume.",
+   "I discovered a new element. I call it Grahamium. Atomic number: Graham."],
+  // Clone 24 — The Gardener
+  ["I planted a flower yesterday. Named it Graham. Obviously.",
+   "My garden has one rule: everything must be Graham-approved. Everything is approved.",
+   "I tried growing vegetables. They came out looking like tiny Grahams. Nature is beautiful.",
+   "The trees here are nice. Not as nice as me, but I don't hold it against them.",
+   "I talk to the plants. They don't talk back. Refreshing change from 31 Grahams, honestly."],
+  // Clone 25 — The Motivational Speaker
+  ["Believe in yourself! You're not Graham but you can still try your best!",
+   "Every morning I look in the mirror and say 'You ARE Graham.' It's always true.",
+   "You miss 100% of the shots you don't take. Also 100% of the ones you do. I can't aim.",
+   "The only thing standing between you and greatness is... not being Graham. Sorry.",
+   "Dream big! Unless your dream is to be Graham. That position's filled. 32 times over."],
+  // Clone 26 — The Comedian
+  ["Why did the Graham cross the dimension? To get to the other Graham! Ha! Classic me.",
+   "Knock knock. Who's there? Graham. Graham who? Exactly, there's too many of us.",
+   "I told a joke to 31 Grahams. Got 31 identical laughs. Best audience ever.",
+   "What's a Graham's favorite food? Graham crackers! I know, I know. But it WORKS.",
+   "I'm here all week. And next week. And forever, actually. The exit's fake."],
+  // Clone 27 — The Homesick One
+  ["I wonder what's happening in the real world right now. Probably missing me.",
+   "Sometimes I forget there's a world outside these walls. Then I remember and forget again.",
+   "I miss rain. We don't get weather here. Just... Graham. All the time.",
+   "Do you think regular people appreciate not being surrounded by 31 copies of themselves?",
+   "Tell the outside world I said hi. And that I'm doing fine. And that I'm very handsome."],
+  // Clone 28 — The Collector
+  ["I collect interesting rocks. I have one. It's not that interesting. But it's MINE.",
+   "My collection of non-Graham things is very small. Just you, at the moment.",
+   "I found a penny once. Greatest day of my life. Graham #12 claims it's his. It's NOT.",
+   "I've been hoarding compliments. Got a nice one last week. Saving it for a rainy day.",
+   "Possession is nine-tenths of the law. The other tenth is also Graham. We own everything."],
+  // Clone 29 — The Philosopher of Identity
+  ["If I got a haircut, would the other Grahams even recognize me? Would I recognize MYSELF?",
+   "Am I Graham, or is Graham me? These are the questions that keep me up at night.",
+   "I tried to find what makes me unique. Turns out it's my unwavering belief that I'm unique.",
+   "Identity is a construct. MY identity is the BEST construct though.",
+   "We're all Graham but I'm the most me about it. That's gotta count for something."],
+  // Clone 30 — The Gossip
+  ["Don't tell anyone, but Graham #9 can't actually play guitar. Air guitar fraud!",
+   "Word on the street is Boss Graham #3 wears lifts in his shoes. I said nothing.",
+   "Between you and me? Graham #19 doesn't ACTUALLY nap. He's just avoiding chores.",
+   "Did you hear? Someone left the toilet seat up. We have 32 suspects and zero leads.",
+   "I know everyone's secrets. The secret is: we're all exactly the same. Shhh."],
+  // Clone 31 — The Meta One
+  ["You ever feel like someone's controlling you with a keyboard and mouse? Me neither. Ha. Ha.",
+   "I swear my life resets every time someone closes a browser tab. Weird thought, right?",
+   "Sometimes I freeze completely and then time jumps forward. Probably nothing.",
+   "I have a theory that we're all in an HTML file. Crazy, right? ...Right?",
+   "If you're reading this, send help. Just kidding. Send more Grahams."],
 ];
 
 // Quest definitions
@@ -8508,8 +8685,9 @@ function buildGrahamDimension() {
     ntCtx.fillText(bp.name, 64, 22);
     const ntTex = new THREE.CanvasTexture(ntCanvas);
     const ntSprite = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.4),
-      new THREE.MeshBasicMaterial({ map: ntTex, transparent: true }));
+      new THREE.MeshBasicMaterial({ map: ntTex, transparent: true, side: THREE.DoubleSide }));
     ntSprite.position.set(bp.x, 2.2, bp.z);
+    ntSprite.rotation.y = Math.PI; // Face south like the bosses
     g.add(ntSprite);
   });
 
@@ -9208,14 +9386,15 @@ function openNPCDialogue(npcId) {
 
   // Graham Dimension NPCs
   if (npcId.startsWith('graham_clone_')) {
-    nameEl.textContent = 'Graham Clone';
     const cloneIdx = parseInt(npcId.split('_')[2]);
+    nameEl.textContent = 'Graham Clone #' + (cloneIdx + 1);
     // Any clone counts for the ego boost quest — just can't compliment the same one twice
     const isEgoTarget = questLog.ego_boost && questLog.ego_boost.status === 'active'
       && (questLog.ego_boost.complimentsGiven || 0) < 5 && !questLog.ego_boost['c' + cloneIdx];
 
     function showCloneChat() {
-      textEl.textContent = GRAHAM_CLONE_LINES[Math.floor(Math.random() * GRAHAM_CLONE_LINES.length)];
+      const lines = GRAHAM_CLONE_LINES[cloneIdx % GRAHAM_CLONE_LINES.length];
+      textEl.textContent = lines[Math.floor(Math.random() * lines.length)];
       btnsEl.innerHTML = '';
       // Compliment options (3 random compliments)
       const compliments = [
@@ -9642,14 +9821,14 @@ function startPortalCutscene() {
   overlay.appendChild(cvs);
   const ctx = cvs.getContext('2d');
 
-  // Skip button
+  // Skip button — appended to body so it's not trapped in overlay's stacking context
   const skipBtn = document.createElement('button');
   skipBtn.textContent = 'SKIP';
-  skipBtn.style.cssText = 'position:fixed;bottom:30px;right:30px;z-index:101;padding:8px 22px;border:2px solid #c9a84c;border-radius:6px;background:#00000088;color:#c9a84c;font-size:0.9rem;font-weight:bold;cursor:pointer;backdrop-filter:blur(4px);letter-spacing:0.05em;';
+  skipBtn.style.cssText = 'position:fixed;bottom:30px;right:30px;z-index:9999;padding:8px 22px;border:2px solid #c9a84c;border-radius:6px;background:#00000088;color:#c9a84c;font-size:0.9rem;font-weight:bold;cursor:pointer;backdrop-filter:blur(4px);letter-spacing:0.05em;';
   skipBtn.onmouseover = () => { skipBtn.style.background = '#000000cc'; };
   skipBtn.onmouseout = () => { skipBtn.style.background = '#00000088'; };
   skipBtn.onclick = () => { phase = 3; };
-  overlay.appendChild(skipBtn);
+  document.body.appendChild(skipBtn);
   const W = cvs.width, H = cvs.height;
 
   let phase = 0; // 0=graham yelling, 1=portal opens, 2=portal sucks in, 3=done
@@ -9870,6 +10049,7 @@ function startPortalCutscene() {
       overlay.classList.remove('visible');
       overlay.innerHTML = '';
       overlay.style.background = '';
+      if (skipBtn.parentNode) skipBtn.parentNode.removeChild(skipBtn);
       startDrivingTransition('grahamDimension');
       return;
     }
@@ -12920,7 +13100,7 @@ function updateCrosshairRaycast() {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
       const nid = hitObj.userData.npcId;
       hoveredObj = { type: 'npc', npcId: nid };
-      const gdName = nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid.startsWith('graham_clone') ? 'Graham Clone' : null;
+      const gdName = nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
       tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
