@@ -1096,6 +1096,189 @@ for (let i = 0; i < 30; i++) {
 }
 </script>
 
+<!-- Music toggle button -->
+<button id="music-btn" style="position:fixed;bottom:12px;right:12px;z-index:9999;background:#1a1a2e;border:1px solid #c9a84c44;color:#c9a84c;font-family:Cinzel,serif;font-size:0.7rem;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all 0.2s;opacity:0.7;" onmouseover="this.style.opacity='1';this.style.borderColor='#c9a84c'" onmouseout="this.style.opacity='0.7';this.style.borderColor='#c9a84c44'">MUSIC: OFF</button>
+
+<script>
+// === PROCEDURAL ELECTRONIC MUSIC (dark, glitchy, synth-driven) ===
+(function() {
+  let musicCtx = null, musicPlaying = false, musicNodes = [];
+  const btn = document.getElementById('music-btn');
+
+  function createMusic() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    musicCtx = ctx;
+    const master = ctx.createGain();
+    master.gain.value = 0.18;
+    master.connect(ctx.destination);
+
+    // --- KICK DRUM (four-on-the-floor) ---
+    const BPM = 130, beatLen = 60 / BPM;
+    const loopLen = beatLen * 16; // 4 bars
+
+    function scheduleLoop() {
+      if (!musicPlaying) return;
+      const now = ctx.currentTime;
+
+      for (let i = 0; i < 16; i++) {
+        const t = now + i * beatLen;
+        // Kick on every beat
+        const kickOsc = ctx.createOscillator();
+        const kickGain = ctx.createGain();
+        kickOsc.type = 'sine';
+        kickOsc.frequency.setValueAtTime(150, t);
+        kickOsc.frequency.exponentialRampToValueAtTime(30, t + 0.12);
+        kickGain.gain.setValueAtTime(0.7, t);
+        kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        kickOsc.connect(kickGain);
+        kickGain.connect(master);
+        kickOsc.start(t);
+        kickOsc.stop(t + 0.25);
+
+        // Hi-hat on off-beats (8ths)
+        for (let h = 0; h < 2; h++) {
+          const ht = t + h * beatLen / 2;
+          if (h === 0 && i % 2 === 0) continue; // skip some for groove
+          const noise = ctx.createBufferSource();
+          const nBuf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate);
+          const nd = nBuf.getChannelData(0);
+          for (let s = 0; s < nd.length; s++) nd[s] = (Math.random() * 2 - 1) * (1 - s / nd.length);
+          noise.buffer = nBuf;
+          const hhGain = ctx.createGain();
+          hhGain.gain.setValueAtTime(h === 1 ? 0.08 : 0.05, ht);
+          hhGain.gain.exponentialRampToValueAtTime(0.001, ht + 0.04);
+          const hhFilter = ctx.createBiquadFilter();
+          hhFilter.type = 'highpass';
+          hhFilter.frequency.value = 8000;
+          noise.connect(hhFilter);
+          hhFilter.connect(hhGain);
+          hhGain.connect(master);
+          noise.start(ht);
+          noise.stop(ht + 0.05);
+        }
+
+        // Snare on beats 4, 8, 12, 16
+        if (i % 4 === 3) {
+          const snOsc = ctx.createOscillator();
+          const snNoise = ctx.createBufferSource();
+          const snBuf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate);
+          const snd = snBuf.getChannelData(0);
+          for (let s = 0; s < snd.length; s++) snd[s] = (Math.random() * 2 - 1) * (1 - s / snd.length);
+          snNoise.buffer = snBuf;
+          const snGain = ctx.createGain();
+          snGain.gain.setValueAtTime(0.2, t);
+          snGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+          snOsc.type = 'triangle';
+          snOsc.frequency.setValueAtTime(200, t);
+          snOsc.frequency.exponentialRampToValueAtTime(80, t + 0.05);
+          const snOscGain = ctx.createGain();
+          snOscGain.gain.setValueAtTime(0.15, t);
+          snOscGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+          snOsc.connect(snOscGain);
+          snOscGain.connect(master);
+          snNoise.connect(snGain);
+          snGain.connect(master);
+          snOsc.start(t);
+          snOsc.stop(t + 0.1);
+          snNoise.start(t);
+          snNoise.stop(t + 0.12);
+        }
+      }
+
+      // --- BASS SYNTH (dark, pulsing) ---
+      const bassNotes = [55, 55, 65.41, 55, 49, 49, 55, 49, // Am, C, Em pattern
+                         55, 55, 65.41, 73.42, 49, 49, 55, 49];
+      for (let i = 0; i < 16; i++) {
+        const t = now + i * beatLen;
+        const bOsc = ctx.createOscillator();
+        const bOsc2 = ctx.createOscillator();
+        const bGain = ctx.createGain();
+        const bFilter = ctx.createBiquadFilter();
+        bOsc.type = 'sawtooth';
+        bOsc2.type = 'square';
+        bOsc.frequency.value = bassNotes[i];
+        bOsc2.frequency.value = bassNotes[i] * 1.002; // slight detune
+        bFilter.type = 'lowpass';
+        bFilter.frequency.setValueAtTime(400, t);
+        bFilter.frequency.exponentialRampToValueAtTime(150, t + beatLen * 0.8);
+        bGain.gain.setValueAtTime(0.2, t);
+        bGain.gain.setValueAtTime(0.2, t + beatLen * 0.7);
+        bGain.gain.exponentialRampToValueAtTime(0.001, t + beatLen * 0.95);
+        bOsc.connect(bFilter);
+        bOsc2.connect(bFilter);
+        bFilter.connect(bGain);
+        bGain.connect(master);
+        bOsc.start(t);
+        bOsc.stop(t + beatLen);
+        bOsc2.start(t);
+        bOsc2.stop(t + beatLen);
+      }
+
+      // --- ARPEGGIO (cold, glitchy synth) ---
+      const arpNotes = [220, 261.63, 329.63, 392, 329.63, 261.63, 220, 196,
+                        220, 293.66, 349.23, 392, 349.23, 293.66, 220, 196];
+      const sixteenth = beatLen / 2;
+      for (let i = 0; i < 32; i++) {
+        const t = now + i * sixteenth;
+        if (Math.random() < 0.15) continue; // random gaps for glitch feel
+        const aOsc = ctx.createOscillator();
+        const aGain = ctx.createGain();
+        aOsc.type = 'square';
+        aOsc.frequency.value = arpNotes[i % 16] * (i < 16 ? 1 : 2);
+        const aFilter = ctx.createBiquadFilter();
+        aFilter.type = 'lowpass';
+        aFilter.frequency.value = 1800 + Math.sin(i * 0.5) * 800;
+        aGain.gain.setValueAtTime(0.06, t);
+        aGain.gain.exponentialRampToValueAtTime(0.001, t + sixteenth * 0.8);
+        aOsc.connect(aFilter);
+        aFilter.connect(aGain);
+        aGain.connect(master);
+        aOsc.start(t);
+        aOsc.stop(t + sixteenth);
+      }
+
+      // --- PAD (eerie sustained chord) ---
+      [110, 130.81, 164.81, 196].forEach(freq => {
+        const pOsc = ctx.createOscillator();
+        const pGain = ctx.createGain();
+        pOsc.type = 'sawtooth';
+        pOsc.frequency.value = freq;
+        const pFilter = ctx.createBiquadFilter();
+        pFilter.type = 'lowpass';
+        pFilter.frequency.value = 600;
+        pFilter.Q.value = 2;
+        pGain.gain.setValueAtTime(0, now);
+        pGain.gain.linearRampToValueAtTime(0.04, now + 1);
+        pGain.gain.setValueAtTime(0.04, now + loopLen - 1);
+        pGain.gain.linearRampToValueAtTime(0, now + loopLen);
+        pOsc.connect(pFilter);
+        pFilter.connect(pGain);
+        pGain.connect(master);
+        pOsc.start(now);
+        pOsc.stop(now + loopLen + 0.1);
+      });
+
+      // Schedule next loop
+      setTimeout(scheduleLoop, (loopLen - 0.5) * 1000);
+    }
+
+    scheduleLoop();
+  }
+
+  btn.addEventListener('click', () => {
+    if (musicPlaying) {
+      musicPlaying = false;
+      if (musicCtx) { musicCtx.close(); musicCtx = null; }
+      btn.textContent = 'MUSIC: OFF';
+    } else {
+      musicPlaying = true;
+      createMusic();
+      btn.textContent = 'MUSIC: ON';
+    }
+  });
+})();
+</script>
+
 <div class="launcher">
 
   <!-- SERPENT DOUBLE-G LOGO -->

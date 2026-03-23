@@ -6414,6 +6414,1088 @@ function runCourtCheerleading() {
   draw();
 }
 
+// === CLONE ARENA MINI-GAMES ===
+const ARENA_ACTS = [
+  { name: 'Air Guitar Solo', emoji: '🎸', anim: 'guitar',
+    lines: ["*WEEDLYWEEDLYWEEEE*", "FACE-MELTING SOLO!", "*windmill strum*", "Thank you, clone nation!"] },
+  { name: 'Interpretive Dance', emoji: '💃', anim: 'dance',
+    lines: ["*wiggles like a noodle*", "*spins dramatically*", "This represents... being a clone!", "*falls over gracefully*"] },
+  { name: 'Stand-Up Comedy', emoji: '🎤', anim: 'standup',
+    lines: ["Why did the clone cross the road?", "To get to the OTHER Graham!", "I'm not saying we all look alike...", "...but the mirror is VERY confusing here!"] },
+  { name: 'Dramatic Poetry', emoji: '📜', anim: 'poetry',
+    lines: ["*clears throat*", "Roses are Graham, Violets are Graham...", "Everything is Graham, I am also Graham.", "*bows deeply*"] },
+  { name: 'Magic Show', emoji: '🎩', anim: 'magic',
+    lines: ["Watch me pull a Graham from this hat!", "*reaches in*", "It's... another Graham!", "Plot twist: the hat is also Graham."] },
+  { name: 'Beatboxing', emoji: '🥁', anim: 'beatbox',
+    lines: ["Boots and cats and boots and cats", "*sick beat drop*", "BRRRA PA PA PA!", "*mic drop*"] },
+  { name: 'Karate Demo', emoji: '🥋', anim: 'karate',
+    lines: ["HIIII-YA!", "*chops the air*", "*kicks invisible enemy*", "The enemy was... self-doubt."] },
+  { name: 'Cooking Demo', emoji: '🍳', anim: 'cooking',
+    lines: ["Today we make... Graham Crackers!", "*cracks egg aggressively*", "Add a pinch of Graham...", "It tastes like existential dread. Delicious!"] },
+  { name: 'Motivational Speech', emoji: '💪', anim: 'speech',
+    lines: ["You are ALL Graham!", "And Graham is GREAT!", "If I can be Graham, YOU can be Graham!", "*cries inspirationally*"] },
+  { name: 'Talent-less Talent', emoji: '🤷', anim: 'nothing',
+    lines: ["I'm just gonna... stand here.", "*stands*", "*still standing*", "Thank you, I'll be here all eternity."] },
+];
+
+const ARENA_CROWD_REACTIONS = [
+  { text: 'BOOO!', color: '#ff4444' },
+  { text: 'meh...', color: '#888888' },
+  { text: 'not bad!', color: '#ffaa44' },
+  { text: 'YEAH!!', color: '#44ff44' },
+  { text: 'ENCORE!', color: '#ff44ff' },
+  { text: '*clapping*', color: '#44ccff' },
+  { text: 'GRAHAM! GRAHAM!', color: '#c9a84c' },
+  { text: '*throws tomato*', color: '#ff2222' },
+  { text: 'LEGENDARY!', color: '#ffcc00' },
+  { text: '10/10!', color: '#00ff88' },
+];
+
+function openCloneArena() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.classList.add('visible');
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1008;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.3rem;font-weight:bold;margin-bottom:6px;font-family:Cinzel,serif;';
+  title.textContent = 'Clone Arena';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aa8844;font-size:0.75rem;margin-bottom:16px;';
+  sub.textContent = 'Welcome to the arena, Graham!';
+  panel.appendChild(sub);
+
+  const opts = [
+    { name: 'Watch Show', desc: 'Watch clones perform ridiculous acts!', fn: runArenaWatch },
+    { name: 'Perform!', desc: 'Take the stage and wow the crowd!', fn: runArenaPerform },
+  ];
+
+  opts.forEach(o => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #c9a84c44;border-radius:8px;background:#2a1a0a;color:#ddd;font-size:0.95rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    const nm = document.createElement('div');
+    nm.style.cssText = 'font-weight:bold;color:#c9a84c;margin-bottom:2px;';
+    nm.textContent = o.name;
+    btn.appendChild(nm);
+    const ds = document.createElement('div');
+    ds.style.cssText = 'font-size:0.75rem;color:#aa8844;';
+    ds.textContent = o.desc;
+    btn.appendChild(ds);
+    btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#3a2a1a'; };
+    btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#2a1a0a'; };
+    btn.onclick = () => o.fn();
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:12px;padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Leave';
+  closeBtn.onclick = () => closeCourtOverlay();
+  panel.appendChild(closeBtn);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+}
+
+function runArenaWatch() {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  // Act picker — let player choose 3 acts
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1008;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:420px;text-align:center;font-family:Segoe UI,sans-serif;max-height:90vh;overflow-y:auto;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = 'Pick 3 Acts to Watch';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aa8844;font-size:0.75rem;margin-bottom:12px;';
+  sub.textContent = 'Select your lineup for the show!';
+  panel.appendChild(sub);
+
+  const chosen = [];
+  const countEl = document.createElement('div');
+  countEl.style.cssText = 'color:#fff;font-size:0.8rem;margin-bottom:10px;';
+  countEl.textContent = '0 / 3 selected';
+  panel.appendChild(countEl);
+
+  const actBtns = [];
+  ARENA_ACTS.forEach((act, idx) => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:8px 10px;margin:4px 0;border:1px solid #c9a84c33;border-radius:6px;background:#2a1a0a;color:#ddd;font-size:0.85rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    btn.textContent = act.emoji + ' ' + act.name;
+    btn.onclick = () => {
+      const ci = chosen.indexOf(idx);
+      if (ci >= 0) {
+        chosen.splice(ci, 1);
+        btn.style.background = '#2a1a0a';
+        btn.style.borderColor = '#c9a84c33';
+      } else if (chosen.length < 3) {
+        chosen.push(idx);
+        btn.style.background = '#3a2a0a';
+        btn.style.borderColor = '#c9a84c';
+      }
+      countEl.textContent = chosen.length + ' / 3 selected';
+      startBtn.disabled = chosen.length !== 3;
+      startBtn.style.opacity = chosen.length === 3 ? '1' : '0.4';
+    };
+    btn.onmouseover = () => { if (!chosen.includes(idx)) btn.style.background = '#3a2a0a'; };
+    btn.onmouseout = () => { if (!chosen.includes(idx)) btn.style.background = '#2a1a0a'; };
+    panel.appendChild(btn);
+    actBtns.push(btn);
+  });
+
+  const startBtn = document.createElement('button');
+  startBtn.style.cssText = 'margin-top:12px;padding:10px 24px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;opacity:0.4;';
+  startBtn.textContent = 'Start Show!';
+  startBtn.disabled = true;
+  startBtn.onclick = () => {
+    const acts = chosen.map(i => ARENA_ACTS[i]);
+    playArenaShow(acts);
+  };
+  panel.appendChild(startBtn);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:6px;padding:6px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Back';
+  closeBtn.onclick = () => openCloneArena();
+  panel.appendChild(closeBtn);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+}
+
+function playArenaShow(acts) {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 500; cvs.height = 340;
+  cvs.style.cssText = 'display:block;margin:0 auto;border:2px solid #c9a84c;border-radius:8px;max-width:95vw;';
+  const ctx = cvs.getContext('2d');
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:8px;';
+  wrap.appendChild(cvs);
+
+  const hintEl = document.createElement('div');
+  hintEl.style.cssText = 'color:#aa8844;font-size:0.8rem;text-align:center;';
+  hintEl.innerHTML = 'Press <b>SPACE</b> to applaud! Press <b>D</b> to throw tomatoes!';
+  wrap.appendChild(hintEl);
+
+  overlay.appendChild(wrap);
+
+  let currentAct = 0;
+  let lineIdx = 0;
+  let lineTimer = 0;
+  let actTimer = 0;
+  const LINE_DURATION = 2.0;
+  let crowdReactions = [];
+  let playerReaction = null;
+  let playerReactionTimer = 0;
+  let totalFun = 0;
+  let running = true;
+  let lastTime = performance.now();
+  let tomatoes = []; // flying tomato projectiles
+
+  const crowdClones = [];
+  for (let i = 0; i < 8; i++) {
+    crowdClones.push({ x: 40 + i * 55, bounce: Math.random() * Math.PI * 2, excited: 0 });
+  }
+
+  function drawGrahamMini(x, y, scale, anim, frame) {
+    const s = scale || 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(-8, -20, 16, 16);
+    ctx.fillStyle = '#c4915e';
+    ctx.beginPath();
+    ctx.arc(0, -28, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#dbb644';
+    for (let h = -6; h <= 6; h += 3) {
+      ctx.beginPath();
+      ctx.arc(h, -35, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-4, -30, 2, 2);
+    ctx.fillRect(2, -30, 2, 2);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(-6, -4, 5, 10);
+    ctx.fillRect(1, -4, 5, 10);
+    ctx.fillStyle = '#cc2222';
+    if (anim === 'guitar') {
+      const armAngle = Math.sin(frame * 8) * 0.4;
+      ctx.save(); ctx.translate(-10, -16); ctx.rotate(-0.3 + armAngle); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+      ctx.save(); ctx.translate(6, -16); ctx.rotate(0.3 - armAngle); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+    } else if (anim === 'dance') {
+      const sway = Math.sin(frame * 4) * 8;
+      ctx.fillRect(-12 + sway, -18, 4, 12);
+      ctx.fillRect(8 - sway, -18, 4, 12);
+    } else if (anim === 'karate') {
+      const kick = Math.abs(Math.sin(frame * 6));
+      ctx.fillRect(-14, -18, 4, 12);
+      ctx.fillRect(8, -18 - kick * 10, 4, 12);
+    } else if (anim === 'magic') {
+      ctx.fillRect(-12, -24, 4, 12);
+      ctx.fillRect(8, -20 + Math.sin(frame * 3) * 6, 4, 12);
+    } else {
+      ctx.fillRect(-12, -18, 4, 12);
+      ctx.fillRect(8, -18 + Math.sin(frame * 2) * 3, 4, 12);
+    }
+    ctx.restore();
+  }
+
+  const W = cvs.width, H = cvs.height;
+  const performerX = W / 2, performerY = H - 148;
+
+  function onKey(e) {
+    if (!running) return;
+    if (e.code === 'Space') {
+      e.preventDefault();
+      playerReaction = { text: '*CLAP CLAP*', color: '#44ff44' };
+      playerReactionTimer = 1.2;
+      crowdClones.forEach(c => c.excited = 1.0);
+    } else if (e.code === 'KeyD') {
+      // Launch a tomato from random crowd position toward performer
+      const fromX = 40 + Math.random() * 400;
+      const fromY = H - 30;
+      tomatoes.push({ x: fromX, y: fromY, vx: (performerX - fromX) * 1.5, vy: (performerY - 30 - fromY) * 1.5 - 60, life: 1.5, splat: false });
+      playerReaction = { text: '*throws tomato*', color: '#ff4444' };
+      playerReactionTimer = 1.0;
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+
+    actTimer += dt;
+    lineTimer += dt;
+    if (lineTimer >= LINE_DURATION) {
+      lineTimer = 0;
+      lineIdx++;
+      if (lineIdx >= acts[currentAct].lines.length) {
+        for (let r = 0; r < 3; r++) {
+          crowdReactions.push({
+            ...ARENA_CROWD_REACTIONS[Math.floor(Math.random() * ARENA_CROWD_REACTIONS.length)],
+            x: 60 + Math.random() * 380, y: H - 30 - Math.random() * 20, life: 1.5
+          });
+        }
+        totalFun += 10 + Math.floor(Math.random() * 10);
+        currentAct++;
+        lineIdx = 0; lineTimer = 0; actTimer = 0;
+        if (currentAct >= acts.length) { finishWatch(); return; }
+      }
+    }
+
+    // Update tomatoes
+    tomatoes.forEach(t => {
+      if (t.splat) { t.life -= dt; return; }
+      t.x += t.vx * dt;
+      t.y += t.vy * dt;
+      t.vy += 200 * dt; // gravity
+      // Check if hit performer area
+      if (Math.abs(t.x - performerX) < 25 && Math.abs(t.y - performerY + 20) < 30) {
+        t.splat = true; t.life = 0.8;
+        t.splatX = t.x; t.splatY = t.y;
+      }
+      // Off screen
+      if (t.y > H + 20) t.life = 0;
+    });
+    tomatoes = tomatoes.filter(t => t.life > 0);
+
+    crowdReactions = crowdReactions.filter(r => { r.life -= dt; r.y -= dt * 20; return r.life > 0; });
+    crowdClones.forEach(c => { c.bounce += dt * 3; c.excited = Math.max(0, c.excited - dt); });
+    if (playerReactionTimer > 0) playerReactionTimer -= dt;
+
+    // Draw background
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(0, 0, W, H);
+
+    // Arena walls
+    ctx.fillStyle = '#aa8855';
+    ctx.fillRect(0, 0, W, 90);
+    ctx.fillStyle = '#887744';
+    for (let ax = 30; ax < W; ax += 70) {
+      ctx.beginPath(); ctx.arc(ax, 90, 25, Math.PI, 0); ctx.fill();
+      ctx.fillRect(ax - 25, 50, 8, 40);
+      ctx.fillRect(ax + 17, 50, 8, 40);
+    }
+    // Graham statues on top
+    ctx.fillStyle = '#c9a84c';
+    [80, W - 80].forEach(sx => {
+      ctx.fillRect(sx - 5, 20, 10, 30);
+      ctx.beginPath(); ctx.arc(sx, 15, 6, 0, Math.PI * 2); ctx.fill();
+    });
+
+    // Sand floor
+    ctx.fillStyle = '#ddcc88';
+    ctx.fillRect(0, H - 80, W, 80);
+    ctx.fillStyle = '#ccbb77';
+    ctx.fillRect(0, H - 80, W, 3);
+
+    // Stage
+    ctx.fillStyle = '#8a6a2c';
+    ctx.fillRect(W / 2 - 60, H - 140, 120, 12);
+    ctx.fillStyle = '#c9a84c';
+    ctx.fillRect(W / 2 - 55, H - 141, 110, 3);
+
+    // Spotlights
+    ctx.globalAlpha = 0.08;
+    [W / 2 - 30, W / 2, W / 2 + 30].forEach(sx => {
+      ctx.fillStyle = '#ffcc44';
+      ctx.beginPath(); ctx.moveTo(sx - 5, 90); ctx.lineTo(sx - 40, H - 140); ctx.lineTo(sx + 40, H - 140); ctx.lineTo(sx + 5, 90); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+
+    // Performer
+    const act = acts[currentAct];
+    drawGrahamMini(performerX, performerY, 1.8, act.anim, actTimer);
+
+    // Tomato splats on performer
+    tomatoes.forEach(t => {
+      if (t.splat) {
+        ctx.globalAlpha = Math.min(1, t.life / 0.3);
+        ctx.fillStyle = '#cc2222';
+        ctx.beginPath(); ctx.arc(t.splatX, t.splatY, 8, 0, Math.PI * 2); ctx.fill();
+        // Splatter drops
+        ctx.fillStyle = '#ff3333';
+        for (let d = 0; d < 5; d++) {
+          const dx = (d - 2) * 6, dy = d * 3;
+          ctx.beginPath(); ctx.arc(t.splatX + dx, t.splatY + dy, 3, 0, Math.PI * 2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+      } else {
+        // Flying tomato
+        ctx.fillStyle = '#cc2222';
+        ctx.beginPath(); ctx.arc(t.x, t.y, 6, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#44aa22';
+        ctx.fillRect(t.x - 2, t.y - 7, 4, 3); // stem
+      }
+    });
+
+    // Act name + emoji
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 16px Cinzel, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(act.emoji + ' ' + act.name + ' ' + act.emoji, W / 2, 115);
+
+    // Speech bubble
+    if (lineIdx < act.lines.length) {
+      const line = act.lines[lineIdx];
+      ctx.fillStyle = '#00000088';
+      const tw = ctx.measureText(line).width;
+      ctx.fillRect(W / 2 - tw / 2 - 12, 122, tw + 24, 26);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '13px Segoe UI, sans-serif';
+      ctx.fillText(line, W / 2, 140);
+    }
+
+    // Crowd
+    for (let i = 0; i < crowdClones.length; i++) {
+      const c = crowdClones[i];
+      drawGrahamMini(c.x, H - 30 + Math.sin(c.bounce) * (2 + c.excited * 6), 0.7, acts[currentAct].anim, actTimer + i * 0.5);
+    }
+
+    // Crowd reactions
+    crowdReactions.forEach(r => {
+      ctx.globalAlpha = Math.min(1, r.life);
+      ctx.fillStyle = r.color;
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(r.text, r.x, r.y);
+    });
+    ctx.globalAlpha = 1;
+
+    // Player reaction
+    if (playerReactionTimer > 0 && playerReaction) {
+      ctx.fillStyle = playerReaction.color;
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = Math.min(1, playerReactionTimer / 0.3);
+      ctx.fillText(playerReaction.text, W / 2, H - 10);
+      ctx.globalAlpha = 1;
+    }
+
+    // Act counter
+    ctx.fillStyle = '#aa8844';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('Act ' + (currentAct + 1) + ' / ' + acts.length, W - 10, 18);
+
+    requestAnimationFrame(draw);
+  }
+
+  function finishWatch() {
+    running = false;
+    document.removeEventListener('keydown', onKey);
+    totalFun = Math.min(50, Math.max(20, totalFun));
+    needs.fun = Math.min(100, needs.fun + totalFun);
+    SFX.actionComplete();
+
+    overlay.innerHTML = '';
+    const endPanel = document.createElement('div');
+    endPanel.style.cssText = 'background:#1a1008;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+    const t = document.createElement('div');
+    t.style.cssText = 'color:#c9a84c;font-size:1.2rem;font-weight:bold;margin-bottom:10px;font-family:Cinzel,serif;';
+    t.textContent = 'Show Complete!';
+    endPanel.appendChild(t);
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#ddd;font-size:0.9rem;margin-bottom:6px;';
+    msg.textContent = 'You watched ' + acts.length + ' clone acts!';
+    endPanel.appendChild(msg);
+    const r = document.createElement('div');
+    r.style.cssText = 'color:#4caf50;font-size:0.9rem;margin-bottom:14px;';
+    r.textContent = '+' + totalFun + ' fun';
+    endPanel.appendChild(r);
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    btn.textContent = 'DONE';
+    btn.onclick = () => closeCourtOverlay();
+    endPanel.appendChild(btn);
+    const w = document.createElement('div');
+    w.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+    w.appendChild(endPanel);
+    overlay.appendChild(w);
+  }
+
+  draw();
+}
+
+function runArenaPerform() {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  // Act picker for perform mode
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1008;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:420px;text-align:center;font-family:Segoe UI,sans-serif;max-height:90vh;overflow-y:auto;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = 'Choose Your Act!';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#aa8844;font-size:0.75rem;margin-bottom:12px;';
+  sub.textContent = 'Pick what you want to perform on stage!';
+  panel.appendChild(sub);
+
+  ARENA_ACTS.forEach((act) => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:8px 10px;margin:4px 0;border:1px solid #c9a84c33;border-radius:6px;background:#2a1a0a;color:#ddd;font-size:0.85rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    btn.textContent = act.emoji + ' ' + act.name;
+    btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#3a2a0a'; };
+    btn.onmouseout = () => { btn.style.borderColor = '#c9a84c33'; btn.style.background = '#2a1a0a'; };
+    btn.onclick = () => startPerformGame(act);
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:10px;padding:6px 16px;border:none;border-radius:6px;font-size:0.8rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Back';
+  closeBtn.onclick = () => openCloneArena();
+  panel.appendChild(closeBtn);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+}
+
+function startPerformGame(chosenAct) {
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+
+  const cvs = document.createElement('canvas');
+  cvs.width = 500; cvs.height = 340;
+  cvs.style.cssText = 'display:block;margin:0 auto;border:2px solid #c9a84c;border-radius:8px;max-width:95vw;';
+  const ctx = cvs.getContext('2d');
+
+  const wrapG = document.createElement('div');
+  wrapG.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:8px;';
+  wrapG.appendChild(cvs);
+
+  // Act-specific controls and theming
+  const ACT_CONTROLS = {
+    guitar:  { labels: { '1': 'E', '2': 'A', '3': 'D', '4': 'G' }, hint: 'Strum the chords!', speed: 160 },
+    dance:   { labels: { '1': 'UP', '2': 'L', '3': 'DN', '4': 'R' }, hint: 'Hit the dance moves!', speed: 140 },
+    standup: { labels: { '1': 'HA', '2': 'LOL', '3': 'HEH', '4': 'XD' }, hint: 'Land the punchlines!', speed: 130 },
+    poetry:  { labels: { '1': 'ROSE', '2': 'VINE', '3': 'MOON', '4': 'STAR' }, hint: 'Recite with passion!', speed: 120 },
+    magic:   { labels: { '1': 'POOF', '2': 'ZAP', '3': 'SNAP', '4': 'WAVE' }, hint: 'Cast your spells!', speed: 170 },
+    beatbox: { labels: { '1': 'BM', '2': 'TS', '3': 'PF', '4': 'KK' }, hint: 'Drop the beat!', speed: 180 },
+    karate:  { labels: { '1': 'KICK', '2': 'CHOP', '3': 'BLOCK', '4': 'PUNCH' }, hint: 'Nail the combo!', speed: 165 },
+    cooking: { labels: { '1': 'CHOP', '2': 'STIR', '3': 'FLIP', '4': 'TASTE' }, hint: 'Follow the recipe!', speed: 140 },
+    speech:  { labels: { '1': 'YES!', '2': 'WOW', '3': 'CLAP', '4': 'GO!' }, hint: 'Pump up the crowd!', speed: 125 },
+    nothing: { labels: { '1': '...', '2': '..', '3': '.', '4': 'zzz' }, hint: 'Do... something?', speed: 100 },
+  };
+  const ctrl = ACT_CONTROLS[chosenAct.anim] || ACT_CONTROLS.guitar;
+
+  const hintEl = document.createElement('div');
+  hintEl.style.cssText = 'color:#aa8844;font-size:0.8rem;text-align:center;';
+  hintEl.innerHTML = chosenAct.emoji + ' <b>' + chosenAct.name + '</b> — ' + ctrl.hint + ' Use <b>1 2 3 4</b>!';
+  wrapG.appendChild(hintEl);
+
+  overlay.appendChild(wrapG);
+
+  const W = cvs.width, H = cvs.height;
+  const KEYS = ['1', '2', '3', '4'];
+  const KEY_COLORS = { '1': '#44aaff', '2': '#ff4444', '3': '#ffcc44', '4': '#44ff44' };
+  const KEY_CODES = { Digit1: '1', Digit2: '2', Digit3: '3', Digit4: '4', Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4' };
+  const LANE_X = { '1': W / 2 - 75, '2': W / 2 - 25, '3': W / 2 + 25, '4': W / 2 + 75 };
+  const TARGET_Y = H - 100;
+  const HIT_ZONE = 25;
+  const NOTE_SPEED = ctrl.speed;
+
+  // Generate 20 notes with act-specific patterns
+  const notes = [];
+  let spawnTime = 1.5;
+  for (let i = 0; i < 20; i++) {
+    const key = KEYS[Math.floor(Math.random() * 4)];
+    notes.push({ key, spawnTime, y: -20, active: true, hit: false, missed: false });
+    spawnTime += 0.4 + Math.random() * (chosenAct.anim === 'nothing' ? 1.2 : 0.5);
+  }
+
+  let score = 0, combo = 0, maxCombo = 0, hits = 0, misses = 0;
+  let gameTimer = 0;
+  let running = true;
+  let lastTime = performance.now();
+  let crowdExcitement = 0;
+  let flashEffects = [];
+
+  // Crowd clones
+  const crowdClones = [];
+  for (let i = 0; i < 8; i++) {
+    crowdClones.push({ x: 40 + i * 55, bounce: Math.random() * Math.PI * 2 });
+  }
+
+  function onKey(e) {
+    if (!running) return;
+    const k = KEY_CODES[e.code];
+    if (!k) return;
+    e.preventDefault();
+
+    // Find closest active note in this lane near the target
+    let closest = null, closestDist = Infinity;
+    notes.forEach(n => {
+      if (!n.active || n.key !== k) return;
+      const dist = Math.abs(n.y - TARGET_Y);
+      if (dist < HIT_ZONE && dist < closestDist) {
+        closest = n;
+        closestDist = dist;
+      }
+    });
+
+    if (closest) {
+      closest.active = false;
+      closest.hit = true;
+      hits++;
+      combo++;
+      if (combo > maxCombo) maxCombo = combo;
+      const accuracy = 1 - closestDist / HIT_ZONE;
+      const points = Math.floor(10 + accuracy * 15 + combo * 2);
+      score += points;
+      crowdExcitement = Math.min(1, crowdExcitement + 0.15);
+      flashEffects.push({ x: LANE_X[k], y: TARGET_Y, life: 0.5, color: KEY_COLORS[k], text: accuracy > 0.7 ? 'PERFECT!' : 'GOOD!' });
+    } else {
+      combo = 0;
+      crowdExcitement = Math.max(0, crowdExcitement - 0.1);
+      flashEffects.push({ x: LANE_X[k], y: TARGET_Y, life: 0.4, color: '#ff444488', text: 'MISS' });
+    }
+  }
+  document.addEventListener('keydown', onKey);
+
+  function drawGrahamPerformer(x, y, scale, anim, frame) {
+    const s = scale || 1;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(-8, -20, 16, 16);
+    ctx.fillStyle = '#c4915e';
+    ctx.beginPath();
+    ctx.arc(0, -28, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#dbb644';
+    for (let h = -6; h <= 6; h += 3) {
+      ctx.beginPath();
+      ctx.arc(h, -35, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#222';
+    ctx.fillRect(-4, -30, 2, 2);
+    ctx.fillRect(2, -30, 2, 2);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillRect(-6, -4, 5, 10);
+    ctx.fillRect(1, -4, 5, 10);
+    ctx.fillStyle = '#cc2222';
+    if (anim === 'guitar') {
+      const a = Math.sin(frame * 8) * 0.4;
+      ctx.save(); ctx.translate(-10, -16); ctx.rotate(-0.3 + a); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+      ctx.save(); ctx.translate(6, -16); ctx.rotate(0.3 - a); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+    } else if (anim === 'dance') {
+      const sway = Math.sin(frame * 4) * 8;
+      ctx.fillRect(-12 + sway, -18, 4, 12);
+      ctx.fillRect(8 - sway, -18, 4, 12);
+    } else if (anim === 'karate') {
+      const kick = Math.abs(Math.sin(frame * 6));
+      ctx.fillRect(-14, -18, 4, 12);
+      ctx.fillRect(8, -18 - kick * 10, 4, 12);
+    } else if (anim === 'magic') {
+      ctx.fillRect(-12, -24, 4, 12);
+      ctx.fillRect(8, -20 + Math.sin(frame * 3) * 6, 4, 12);
+    } else if (anim === 'beatbox') {
+      const bop = Math.sin(frame * 10) * 3;
+      ctx.fillRect(-12, -18 + bop, 4, 12);
+      ctx.fillRect(8, -18 - bop, 4, 12);
+    } else if (anim === 'cooking') {
+      ctx.fillRect(-12, -20 + Math.sin(frame * 5) * 4, 4, 12);
+      ctx.fillRect(8, -14, 4, 12);
+    } else if (anim === 'speech') {
+      const pump = Math.abs(Math.sin(frame * 3)) * 8;
+      ctx.fillRect(-12, -18 - pump, 4, 12);
+      ctx.fillRect(8, -18 - pump, 4, 12);
+    } else if (anim === 'nothing') {
+      ctx.fillRect(-12, -18, 4, 12);
+      ctx.fillRect(8, -18, 4, 12);
+    } else {
+      const armL = Math.sin(frame * 6) * 0.5;
+      const armR = Math.cos(frame * 6) * 0.5;
+      ctx.save(); ctx.translate(-10, -16); ctx.rotate(-0.3 + armL); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+      ctx.save(); ctx.translate(6, -16); ctx.rotate(0.3 + armR); ctx.fillRect(0, 0, 4, 14); ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+    gameTimer += dt;
+
+    // Update notes
+    let allDone = true;
+    notes.forEach(n => {
+      if (gameTimer >= n.spawnTime && n.active) {
+        n.y += NOTE_SPEED * dt;
+        if (n.y > TARGET_Y + HIT_ZONE + 20) {
+          n.active = false;
+          n.missed = true;
+          misses++;
+          combo = 0;
+          crowdExcitement = Math.max(0, crowdExcitement - 0.05);
+        }
+      }
+      if (n.active || (gameTimer < n.spawnTime)) allDone = false;
+    });
+
+    // Update effects
+    flashEffects = flashEffects.filter(f => { f.life -= dt; f.y -= dt * 30; return f.life > 0; });
+    crowdExcitement = Math.max(0, crowdExcitement - dt * 0.05);
+    crowdClones.forEach(c => c.bounce += dt * (2 + crowdExcitement * 4));
+
+    if (allDone && notes.every(n => !n.active)) {
+      finishPerform();
+      return;
+    }
+
+    // Draw
+    ctx.fillStyle = '#1a1008';
+    ctx.fillRect(0, 0, W, H);
+
+    // Arena walls
+    ctx.fillStyle = '#aa8855';
+    ctx.fillRect(0, 0, W, 60);
+    ctx.fillStyle = '#887744';
+    for (let ax = 30; ax < W; ax += 70) {
+      ctx.beginPath();
+      ctx.arc(ax, 60, 20, Math.PI, 0);
+      ctx.fill();
+    }
+
+    // Lanes background
+    ctx.fillStyle = '#ffffff08';
+    KEYS.forEach(k => {
+      ctx.fillRect(LANE_X[k] - 18, 60, 36, H - 120);
+    });
+
+    // Target zone
+    ctx.fillStyle = '#ffffff15';
+    ctx.fillRect(W / 2 - 110, TARGET_Y - HIT_ZONE, 220, HIT_ZONE * 2);
+    ctx.strokeStyle = '#c9a84c44';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(W / 2 - 110, TARGET_Y - HIT_ZONE, 220, HIT_ZONE * 2);
+
+    // Target markers (act-specific labels)
+    KEYS.forEach(k => {
+      ctx.strokeStyle = KEY_COLORS[k] + '66';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(LANE_X[k], TARGET_Y, 16, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = KEY_COLORS[k] + '33';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff88';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ctrl.labels[k], LANE_X[k], TARGET_Y + 3);
+    });
+
+    // Notes (falling — act-themed labels)
+    notes.forEach(n => {
+      if (!n.active || gameTimer < n.spawnTime) return;
+      ctx.fillStyle = KEY_COLORS[n.key];
+      ctx.beginPath();
+      ctx.arc(LANE_X[n.key], n.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ctrl.labels[n.key], LANE_X[n.key], n.y + 3);
+    });
+
+    // Flash effects
+    flashEffects.forEach(f => {
+      ctx.globalAlpha = Math.min(1, f.life / 0.2);
+      ctx.fillStyle = f.color;
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - 10);
+      ctx.globalAlpha = 1;
+    });
+
+    // Performer (bottom left)
+    drawGrahamPerformer(60, H - 55, 1.3, chosenAct.anim, gameTimer);
+
+    // Sand floor
+    ctx.fillStyle = '#ddcc88';
+    ctx.fillRect(0, H - 40, W, 40);
+
+    // Crowd
+    for (let i = 0; i < crowdClones.length; i++) {
+      const c = crowdClones[i];
+      const bounceY = Math.sin(c.bounce) * (2 + crowdExcitement * 8);
+      drawGrahamPerformer(c.x + 160, H - 25 + bounceY, 0.5, chosenAct.anim, gameTimer + i * 0.4);
+    }
+
+    // HUD
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Score: ' + score, 10, 20);
+    ctx.fillStyle = combo >= 5 ? '#ff44ff' : '#fff';
+    ctx.fillText('Combo: ' + combo + 'x', 10, 38);
+
+    // Crowd excitement meter
+    ctx.fillStyle = '#333';
+    ctx.fillRect(W - 110, 10, 100, 12);
+    const meterColor = crowdExcitement > 0.7 ? '#44ff44' : crowdExcitement > 0.3 ? '#ffcc44' : '#ff4444';
+    ctx.fillStyle = meterColor;
+    ctx.fillRect(W - 110, 10, crowdExcitement * 100, 12);
+    ctx.strokeStyle = '#c9a84c';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(W - 110, 10, 100, 12);
+    ctx.fillStyle = '#fff';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('CROWD', W - 60, 20);
+
+    // Act name
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(chosenAct.emoji + ' ' + chosenAct.name, W / 2, 52);
+
+    requestAnimationFrame(draw);
+  }
+
+  function finishPerform() {
+    running = false;
+    document.removeEventListener('keydown', onKey);
+    const funGain = 25 + Math.floor(score / 15);
+    const moneyGain = 10 + Math.floor(score / 10);
+    needs.fun = Math.min(100, needs.fun + funGain);
+    money += moneyGain;
+    SFX.actionComplete();
+
+    overlay.innerHTML = '';
+    const endPanel = document.createElement('div');
+    endPanel.style.cssText = 'background:#1a1008;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:340px;text-align:center;font-family:Segoe UI,sans-serif;';
+    const t = document.createElement('div');
+    t.style.cssText = 'color:#c9a84c;font-size:1.2rem;font-weight:bold;margin-bottom:10px;font-family:Cinzel,serif;';
+    t.textContent = 'Performance Complete!';
+    endPanel.appendChild(t);
+    const s = document.createElement('div');
+    s.style.cssText = 'color:#fff;font-size:1.4rem;font-weight:bold;margin-bottom:6px;';
+    s.textContent = 'Score: ' + score;
+    endPanel.appendChild(s);
+    const mc = document.createElement('div');
+    mc.style.cssText = 'color:#ff8844;font-size:0.9rem;margin-bottom:4px;';
+    mc.textContent = 'Best Combo: ' + maxCombo + 'x';
+    endPanel.appendChild(mc);
+    const acc = document.createElement('div');
+    acc.style.cssText = 'color:#aaa;font-size:0.85rem;margin-bottom:6px;';
+    acc.textContent = hits + '/' + (hits + misses) + ' notes hit';
+    endPanel.appendChild(acc);
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#ddd;font-size:0.85rem;margin-bottom:6px;';
+    msg.textContent = maxCombo >= 15 ? 'LEGENDARY performance!' : maxCombo >= 10 ? 'The crowd went WILD!' : maxCombo >= 5 ? 'Great show!' : 'The crowd was... polite.';
+    endPanel.appendChild(msg);
+    const rewards = document.createElement('div');
+    rewards.style.cssText = 'color:#4caf50;font-size:0.9rem;margin-bottom:14px;';
+    rewards.textContent = '+' + funGain + ' fun  |  +$' + moneyGain;
+    endPanel.appendChild(rewards);
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    btn.textContent = 'DONE';
+    btn.onclick = () => closeCourtOverlay();
+    endPanel.appendChild(btn);
+    const w = document.createElement('div');
+    w.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+    w.appendChild(endPanel);
+    overlay.appendChild(w);
+  }
+
+  draw();
+}
+
+// === GRAHAM APPLICATION MINI-GAME ===
+const GRAHAM_APPLICATION_QUESTIONS = [
+  { q: "What is your name?", options: ["Graham", "Not Graham", "I forgot"], correct: 0 },
+  { q: "What is the best name?", options: ["Kevin", "Graham", "Steve"], correct: 1 },
+  { q: "How many Grahams is too many?", options: ["There's no such thing!", "32", "1"], correct: 0 },
+  { q: "Describe your hair.", options: ["Curly and blonde, obviously", "Straight", "What's hair?"], correct: 0 },
+  { q: "What are your qualifications?", options: ["I am Graham", "10 years of experience", "I have a degree"], correct: 0 },
+  { q: "Why do you want to work here?", options: ["Because I AM here", "Good benefits", "My mum told me to"], correct: 0 },
+  { q: "What is the Graham Industries dress code?", options: ["GG Merch. Always.", "Business casual", "Pyjamas"], correct: 0 },
+  { q: "How do you handle conflict with a coworker?", options: ["We're all Graham, there IS no conflict", "Talk it out", "Fight to the death"], correct: 0 },
+  { q: "Where do you see yourself in 5 years?", options: ["Still being Graham", "CEO", "On a beach"], correct: 0 },
+  { q: "What's your greatest weakness?", options: ["LOL Dolls", "I work too hard", "Chocolate"], correct: 0 },
+];
+
+function openGrahamIndustriesJobs() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.classList.add('visible');
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:#1a1a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:380px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#c9a84c;font-size:1.2rem;font-weight:bold;margin-bottom:6px;font-family:Cinzel,serif;';
+  title.textContent = 'Graham Industries';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#888;font-size:0.75rem;margin-bottom:14px;';
+  sub.textContent = 'Welcome back, employee! Pick a job:';
+  panel.appendChild(sub);
+
+  const jobs = [
+    { name: 'Paperwork Filing', desc: 'Sort funny paperwork into cabinets ($18+)', id: 'graham_hr', disabled: gdJobLastDay['graham_hr'] === day },
+    { name: 'Pepper Sabotage Mission', desc: 'Plant peppers in non-Graham computers ($25+)', id: 'graham_hr_mission', disabled: gdJobLastDay['graham_hr_mission'] === day },
+  ];
+
+  jobs.forEach(j => {
+    const btn = document.createElement('button');
+    btn.style.cssText = 'display:block;width:100%;padding:12px;margin:8px 0;border:1px solid #c9a84c44;border-radius:8px;background:#2a1a3e;color:#ddd;font-size:0.95rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+    if (j.disabled) {
+      btn.style.opacity = '0.4';
+      btn.style.cursor = 'default';
+    }
+    const nm = document.createElement('div');
+    nm.style.cssText = 'font-weight:bold;color:#c9a84c;margin-bottom:2px;';
+    nm.textContent = j.name;
+    btn.appendChild(nm);
+    const ds = document.createElement('div');
+    ds.style.cssText = 'font-size:0.75rem;color:#888;';
+    ds.textContent = j.disabled ? 'Already done today' : j.desc;
+    btn.appendChild(ds);
+    if (!j.disabled) {
+      btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#3a2a4e'; };
+      btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#2a1a3e'; };
+      btn.onclick = () => { closeCourtOverlay(); startGrahamDimJob(j.id); };
+    }
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'margin-top:12px;padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Leave';
+  closeBtn.onclick = () => closeCourtOverlay();
+  panel.appendChild(closeBtn);
+
+  wrap.appendChild(panel);
+  overlay.appendChild(wrap);
+}
+
+function startGrahamApplication() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  jobMiniGameRunning = true;
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.classList.add('visible');
+
+  // Pick 5 random questions
+  const shuffled = [...GRAHAM_APPLICATION_QUESTIONS].sort(() => Math.random() - 0.5);
+  const questions = shuffled.slice(0, 5);
+  let currentQ = 0;
+  let score = 0;
+
+  function showQuestion() {
+    overlay.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#1a1a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:420px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color:#c9a84c;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+    title.textContent = 'Graham Industries Application';
+    panel.appendChild(title);
+
+    const progress = document.createElement('div');
+    progress.style.cssText = 'color:#888;font-size:0.75rem;margin-bottom:14px;';
+    progress.textContent = 'Question ' + (currentQ + 1) + ' of ' + questions.length;
+    panel.appendChild(progress);
+
+    const q = questions[currentQ];
+    const qText = document.createElement('div');
+    qText.style.cssText = 'color:#fff;font-size:1rem;margin-bottom:16px;font-weight:bold;';
+    qText.textContent = q.q;
+    panel.appendChild(qText);
+
+    // Shuffle options so correct answer isn't always first
+    const shuffledOpts = q.options.map((opt, idx) => ({ opt, isCorrect: idx === q.correct }));
+    shuffledOpts.sort(() => Math.random() - 0.5);
+    const correctShuffledIdx = shuffledOpts.findIndex(o => o.isCorrect);
+
+    shuffledOpts.forEach((so, idx) => {
+      const btn = document.createElement('button');
+      btn.style.cssText = 'display:block;width:100%;padding:10px;margin:6px 0;border:1px solid #c9a84c44;border-radius:8px;background:#2a1a3e;color:#ddd;font-size:0.9rem;cursor:pointer;transition:all 0.15s;text-align:left;';
+      btn.textContent = so.opt;
+      btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#3a2a4e'; };
+      btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#2a1a3e'; };
+      btn.onclick = () => {
+        const correct = so.isCorrect;
+        if (correct) score++;
+
+        // Show result briefly
+        btn.style.background = correct ? '#1a4a1a' : '#4a1a1a';
+        btn.style.borderColor = correct ? '#44ff44' : '#ff4444';
+        btn.textContent += correct ? ' ✓' : ' ✗';
+
+        // Show correct answer if wrong
+        if (!correct) {
+          const correctBtn = panel.querySelectorAll('button')[correctShuffledIdx];
+          if (correctBtn) {
+            correctBtn.style.background = '#1a4a1a';
+            correctBtn.style.borderColor = '#44ff44';
+          }
+        }
+
+        // Disable all buttons
+        panel.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+
+        setTimeout(() => {
+          currentQ++;
+          if (currentQ >= questions.length) {
+            finishApplication();
+          } else {
+            showQuestion();
+          }
+        }, 800);
+      };
+      panel.appendChild(btn);
+    });
+
+    wrap.appendChild(panel);
+    overlay.appendChild(wrap);
+  }
+
+  function finishApplication() {
+    overlay.innerHTML = '';
+    const passed = score >= 3;
+    const funGain = 20 + score * 5;
+    const moneyGain = passed ? 50 : 10;
+    needs.fun = Math.min(100, needs.fun + funGain);
+    money += moneyGain;
+    if (passed && !gdTasksDone['graham_hr']) {
+      gdTasksDone['graham_hr'] = true;
+      grahamDimQuestsCompleted++;
+      checkGrahamMaster();
+    }
+    SFX.actionComplete();
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#1a1a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px;max-width:380px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+    const title = document.createElement('div');
+    title.style.cssText = 'color:' + (passed ? '#44ff44' : '#ff4444') + ';font-size:1.3rem;font-weight:bold;margin-bottom:10px;font-family:Cinzel,serif;';
+    title.textContent = passed ? 'APPLICATION APPROVED!' : 'APPLICATION DENIED';
+    panel.appendChild(title);
+
+    const scoreEl = document.createElement('div');
+    scoreEl.style.cssText = 'color:#fff;font-size:1.1rem;margin-bottom:8px;';
+    scoreEl.textContent = score + '/' + questions.length + ' correct';
+    panel.appendChild(scoreEl);
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:#aaa;font-size:0.85rem;margin-bottom:8px;';
+    msg.textContent = passed
+      ? "Welcome aboard! You are now an Honorary Graham. Please report to your desk. Your desk is everywhere."
+      : "Unfortunately, you weren't Graham enough. The correct answer was always Graham. Come back when you're more Graham.";
+    panel.appendChild(msg);
+
+    const rewards = document.createElement('div');
+    rewards.style.cssText = 'color:#4caf50;font-size:0.9rem;margin-bottom:14px;';
+    rewards.textContent = '+' + funGain + ' fun  |  +$' + moneyGain;
+    panel.appendChild(rewards);
+
+    const btn = document.createElement('button');
+    btn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:#c9a84c;color:#1a1a2e;';
+    btn.textContent = 'DONE';
+    btn.onclick = () => closeCourtOverlay();
+    panel.appendChild(btn);
+
+    wrap.appendChild(panel);
+    overlay.appendChild(wrap);
+  }
+
+  showQuestion();
+}
+
 function buildSwimmingPool() {
   const poolGroup = new THREE.Group();
   const rimMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
@@ -6750,17 +7832,18 @@ let grahamDimQuestsCompleted = 0;
 let gdTasksDone = {}; // tracks which unique tasks done: { graham_boss_1: true, ... }
 let gdJobLastDay = {};
 const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
-const GRAHAM_DIM_BOUNDS = { xMin: 380, xMax: 420, zMin: -20, zMax: 20 };
-const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 18 };
-const GRAHAM_DIM_FOG_FAR = 120;
+const GRAHAM_DIM_BOUNDS = { xMin: 340, xMax: 460, zMin: -100, zMax: 60 };
+const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 50 };
+const GRAHAM_DIM_FOG_FAR = 200;
 const GRAHAM_DIM_COLLISIONS = [
-  // Perimeter walls
-  { xMin: 379.5, xMax: 420.5, zMin: -20.5, zMax: -20 },  // South wall
-  { xMin: 379.5, xMax: 420.5, zMin: 20, zMax: 20.5 },     // North wall
-  { xMin: 379.5, xMax: 380, zMin: -20, zMax: 20 },         // West wall
-  { xMin: 420, xMax: 420.5, zMin: -20, zMax: 20 },         // East wall
   // Giant statue base
   { xMin: 398, xMax: 402, zMin: -2, zMax: 2 },
+  // Arena outer walls (center at 400, -81, radius 10)
+  { xMin: 389, xMax: 389.5, zMin: -92, zMax: -71 },        // Arena west wall
+  { xMin: 410.5, xMax: 411, zMin: -92, zMax: -71 },        // Arena east wall
+  { xMin: 389, xMax: 411, zMin: -92.5, zMax: -92 },        // Arena south wall
+  { xMin: 389, xMax: 397.5, zMin: -71.5, zMax: -71 },      // Arena north-left wall
+  { xMin: 402.5, xMax: 411, zMin: -71.5, zMax: -71 },      // Arena north-right wall
 ];
 const GRAHAM_CLONE_LINES = [
   // Clone 0 — The Philosopher
@@ -6772,9 +7855,9 @@ const GRAHAM_CLONE_LINES = [
   // Clone 1 — The Conspiracy Theorist
   ["The statue blinks when no one's looking. I've SEEN it.",
    "I'm pretty sure Boss Graham #2 is secretly two Grahams in a trenchcoat.",
-   "The walls aren't to keep things out. They're to keep US in.",
    "I found a hair on the ground that wasn't curly. Something's going on.",
-   "Don't trust the portal. It rearranges your molecules. I can FEEL it."],
+   "Don't trust the portal. It rearranges your molecules. I can FEEL it.",
+   "The grass grows differently on Tuesdays. I've been taking notes."],
   // Clone 2 — The Optimist
   ["Every day's a great day when you're Graham!",
    "I woke up today and thought: wow, I'm still Graham. Result!",
@@ -8361,6 +9444,7 @@ function buildGrahamDimension() {
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x5C3A1E });
   const leafMat = new THREE.MeshLambertMaterial({ color: 0x2D7A2D });
   const benchWoodMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const grahamOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
 
   function makeWall(w, h, d, material, x, y, z) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
@@ -8371,62 +9455,29 @@ function buildGrahamDimension() {
   }
 
   // === GRASS GROUND ===
-  const grassGround = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), mat.grass);
+  const grassGround = new THREE.Mesh(new THREE.PlaneGeometry(120, 160), mat.grass);
   grassGround.rotation.x = -Math.PI / 2;
-  grassGround.position.set(OX, -0.01, OZ);
+  grassGround.position.set(OX, -0.01, OZ - 20);
   grassGround.receiveShadow = true;
   g.add(grassGround);
 
-  // === PERIMETER WALLS (tall gold/red, 6 high) ===
-  const wH = 6;
-  const wS = new THREE.Mesh(new THREE.BoxGeometry(41, wH, 0.5), wallMat);
-  wS.position.set(OX, wH / 2, OZ - 20.25); wS.castShadow = true; g.add(wS);
-  const wN = new THREE.Mesh(new THREE.BoxGeometry(41, wH, 0.5), wallMat);
-  wN.position.set(OX, wH / 2, OZ + 20.25); wN.castShadow = true; g.add(wN);
-  const wW = new THREE.Mesh(new THREE.BoxGeometry(0.5, wH, 40), wallMat);
-  wW.position.set(OX - 20.25, wH / 2, OZ); wW.castShadow = true; g.add(wW);
-  const wE = new THREE.Mesh(new THREE.BoxGeometry(0.5, wH, 40), wallMat);
-  wE.position.set(OX + 20.25, wH / 2, OZ); wE.castShadow = true; g.add(wE);
-
-  // GG Banners on walls
-  [wS, wN, wW, wE].forEach(w => {
-    const bc = document.createElement('canvas');
-    bc.width = 128; bc.height = 64;
-    const bctx = bc.getContext('2d');
-    bctx.fillStyle = '#992222';
-    bctx.fillRect(0, 0, 128, 64);
-    bctx.fillStyle = '#c9a84c';
-    bctx.font = 'bold 28px serif';
-    bctx.textAlign = 'center';
-    bctx.fillText('G G', 64, 40);
-    bctx.fillRect(20, 48, 88, 3);
-    const bannerTex = new THREE.CanvasTexture(bc);
-    const banner = new THREE.Mesh(new THREE.BoxGeometry(4, 2, 0.05),
-      new THREE.MeshLambertMaterial({ map: bannerTex, emissive: 0x332211, emissiveIntensity: 0.2 }));
-    banner.position.copy(w.position);
-    banner.position.y = 4;
-    banner.rotation.copy(w.rotation);
-    if (w === wW || w === wE) banner.rotation.y = Math.PI / 2;
-    g.add(banner);
-  });
-
   // === ROADS ===
-  // Main road (runs north-south, X=OX)
-  const mainRoad = new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 40), roadMat);
-  mainRoad.position.set(OX, 0.02, OZ);
+  // Main road (runs north-south, X=OX) — long road through the whole dimension
+  const mainRoad = new THREE.Mesh(new THREE.BoxGeometry(4, 0.05, 120), roadMat);
+  mainRoad.position.set(OX, 0.02, OZ - 20);
   mainRoad.receiveShadow = true;
   g.add(mainRoad);
-  for (let z = -18; z <= 18; z += 3) {
+  for (let z = -70; z <= 50; z += 3) {
     const marking = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.01, 1), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
     marking.position.set(OX, 0.06, OZ + z);
     g.add(marking);
   }
   // Cross street (runs east-west, Z=OZ)
-  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(40, 0.05, 4), roadMat);
+  const crossRoad = new THREE.Mesh(new THREE.BoxGeometry(100, 0.05, 4), roadMat);
   crossRoad.position.set(OX, 0.02, OZ);
   crossRoad.receiveShadow = true;
   g.add(crossRoad);
-  for (let x = -18; x <= 18; x += 3) {
+  for (let x = -45; x <= 45; x += 3) {
     if (Math.abs(x) < 3) continue;
     const cm = new THREE.Mesh(new THREE.BoxGeometry(1, 0.01, 0.15), new THREE.MeshLambertMaterial({ color: 0xffcc00 }));
     cm.position.set(OX + x, 0.06, OZ);
@@ -8434,20 +9485,17 @@ function buildGrahamDimension() {
   }
   // Sidewalks
   [OX - 2.5, OX + 2.5].forEach(sx => {
-    const sw = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.07, 40), sidewalkMat);
-    sw.position.set(sx, 0.035, OZ);
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.07, 120), sidewalkMat);
+    sw.position.set(sx, 0.035, OZ - 20);
     g.add(sw);
   });
   [OZ - 2.5, OZ + 2.5].forEach(sz => {
-    const sw = new THREE.Mesh(new THREE.BoxGeometry(40, 0.07, 1.2), sidewalkMat);
+    const sw = new THREE.Mesh(new THREE.BoxGeometry(100, 0.07, 1.2), sidewalkMat);
     sw.position.set(OX, 0.035, sz);
     g.add(sw);
   });
 
   // === GIANT GRAHAM STATUE at intersection center ===
-  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 0.06, 16), goldMat);
-  plaza.position.set(OX, 0.03, OZ);
-  g.add(plaza);
   const statueOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
   const statue = buildCharacter(statueOpts);
   statue.scale.set(3, 3, 3);
@@ -8476,62 +9524,185 @@ function buildGrahamDimension() {
   nameplate.position.set(OX, 0.9, OZ + 1.53);
   g.add(nameplate);
 
-  // === GRAHAM HOMES (6 small houses in the quadrants) ===
-  const houseColors = [0x44886a, 0x5a7a44, 0x886a44, 0x4a6688, 0x7a4466, 0x448888];
-  const roofColors  = [0x553322, 0x445522, 0x554433, 0x334455, 0x553344, 0x335555];
-  const gdFloorMat = new THREE.MeshLambertMaterial({ color: 0xbb9966 });
-  const gdInnerMat = new THREE.MeshLambertMaterial({ color: 0xddccaa });
+  // === GRAHAM HOMES (6 red/black houses in the quadrants) ===
+  const gdHouseMat = new THREE.MeshLambertMaterial({ color: 0xaa2222 });
+  const gdRoofMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const gdFloorMat = new THREE.MeshLambertMaterial({ color: 0x3a2222 });
+  const gdInnerMat = new THREE.MeshLambertMaterial({ color: 0x551111 });
+  const bunkFrameMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const bunkBedMat = new THREE.MeshLambertMaterial({ color: 0xaa2222 });
+  const bunkPillowMat = new THREE.MeshLambertMaterial({ color: 0xddcccc });
+  const showerMetalMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  const tvBodyMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  const tvScreenMat = new THREE.MeshLambertMaterial({ color: 0x224488, emissive: 0x112244, emissiveIntensity: 0.4 });
   const homeSpots = [
-    { x: OX - 12, z: OZ + 10 },  // NW
-    { x: OX - 12, z: OZ - 10 },  // SW
-    { x: OX + 12, z: OZ + 10 },  // NE
-    { x: OX + 12, z: OZ - 10 },  // SE
-    { x: OX - 12, z: OZ - 16 },  // far SW
-    { x: OX + 12, z: OZ + 16 },  // far NE
+    { x: OX - 30, z: OZ + 20 },  // far NW
+    { x: OX - 30, z: OZ - 20 },  // far SW
+    { x: OX + 30, z: OZ + 20 },  // far NE
+    { x: OX + 30, z: OZ - 20 },  // far SE
+    { x: OX - 20, z: OZ + 40 },  // north-west
+    { x: OX + 20, z: OZ + 40 },  // north-east
   ];
   homeSpots.forEach((hs, hi) => {
     const hx = hs.x, hz = hs.z;
-    const houseMat = new THREE.MeshLambertMaterial({ color: houseColors[hi] });
-    const hRoofMat = new THREE.MeshLambertMaterial({ color: roofColors[hi] });
     // Walls (6x5 house, 3 tall, door gap on south face)
-    makeWall(6.3, 3, 0.3, houseMat, hx, 1.5, hz - 2.5);      // Back
-    makeWall(0.3, 3, 5, houseMat, hx - 3, 1.5, hz);            // Left
-    makeWall(0.3, 3, 5, houseMat, hx + 3, 1.5, hz);            // Right
-    makeWall(1.8, 3, 0.3, houseMat, hx - 2.1, 1.5, hz + 2.5); // Front-left
-    makeWall(1.8, 3, 0.3, houseMat, hx + 2.1, 1.5, hz + 2.5); // Front-right
-    makeWall(1.5, 0.8, 0.3, houseMat, hx, 2.6, hz + 2.5);     // Above door
+    makeWall(6.3, 3, 0.3, gdHouseMat, hx, 1.5, hz - 2.5);      // Back
+    makeWall(0.3, 3, 5, gdHouseMat, hx - 3, 1.5, hz);            // Left
+    makeWall(0.3, 3, 5, gdHouseMat, hx + 3, 1.5, hz);            // Right
+    makeWall(1.8, 3, 0.3, gdHouseMat, hx - 2.1, 1.5, hz + 2.5); // Front-left
+    makeWall(1.8, 3, 0.3, gdHouseMat, hx + 2.1, 1.5, hz + 2.5); // Front-right
+    makeWall(1.5, 0.8, 0.3, gdHouseMat, hx, 2.6, hz + 2.5);     // Above door
     // Floor
     makeWall(6, 0.1, 5, gdFloorMat, hx, 0.05, hz);
     // Interior back wall accent
     makeWall(5.6, 2.5, 0.05, gdInnerMat, hx, 1.25, hz - 2.3);
-    // Roof
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(7, 0.25, 6), hRoofMat);
+    // Roof (black)
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(7, 0.25, 6), gdRoofMat);
     roof.position.set(hx, 3.12, hz);
     g.add(roof);
     // Windows (front face)
     const winMat = new THREE.MeshLambertMaterial({ color: 0x88bbdd, emissive: 0x446688, emissiveIntensity: 0.3 });
     makeWall(0.8, 0.6, 0.05, winMat, hx - 2.1, 1.8, hz + 2.55);
     makeWall(0.8, 0.6, 0.05, winMat, hx + 2.1, 1.8, hz + 2.55);
-    // Interior light
-    const iLight = new THREE.PointLight(0xffeedd, 0.4, 8);
+    // Interior light (warmer red tint)
+    const iLight = new THREE.PointLight(0xff8866, 0.5, 8);
     iLight.position.set(hx, 2.5, hz);
     g.add(iLight);
+
+    // === BUNK BED (left side of house) ===
+    // Frame (black metal)
+    makeWall(1.8, 0.1, 1.2, bunkFrameMat, hx - 2, 0.6, hz - 1.5);  // Lower platform
+    makeWall(1.8, 0.1, 1.2, bunkFrameMat, hx - 2, 1.7, hz - 1.5);  // Upper platform
+    // Posts
+    [[-0.85, -0.55], [-0.85, 0.55], [0.85, -0.55], [0.85, 0.55]].forEach(([dx, dz]) => {
+      makeWall(0.08, 2.4, 0.08, bunkFrameMat, hx - 2 + dx, 1.2, hz - 1.5 + dz);
+    });
+    // Ladder
+    makeWall(0.06, 2.0, 0.06, bunkFrameMat, hx - 1.1, 1.1, hz - 1.0);
+    makeWall(0.06, 2.0, 0.06, bunkFrameMat, hx - 1.1, 1.1, hz - 2.0);
+    [0.5, 0.9, 1.3, 1.7].forEach(ry => makeWall(0.04, 0.04, 1.0, bunkFrameMat, hx - 1.1, ry, hz - 1.5));
+    // Red mattresses
+    makeWall(1.6, 0.12, 1.0, bunkBedMat, hx - 2, 0.72, hz - 1.5);  // Lower
+    makeWall(1.6, 0.12, 1.0, bunkBedMat, hx - 2, 1.82, hz - 1.5);  // Upper
+    // Pillows
+    makeWall(0.4, 0.1, 0.3, bunkPillowMat, hx - 2.5, 0.82, hz - 1.5);  // Lower
+    makeWall(0.4, 0.1, 0.3, bunkPillowMat, hx - 2.5, 1.92, hz - 1.5);  // Upper
+
+    // Baby Graham Clone on lower bunk
+    const babyId1 = 'baby_graham_' + (hi * 2);
+    const sleeper1 = buildCharacter(grahamOpts);
+    sleeper1.rotation.x = -Math.PI / 2;  // Lying down
+    sleeper1.rotation.z = Math.PI;        // Head toward back wall
+    sleeper1.position.set(hx - 2, 0.9, hz - 1.5);
+    sleeper1.scale.set(0.55, 0.55, 0.55);
+    g.add(sleeper1);
+    sleeper1.traverse(child => {
+      if (child.isMesh) {
+        child.userData = { type: 'npc', npcId: babyId1 };
+        gdNpcBodyMeshes.push(child);
+      }
+    });
+    // Name tag for lower baby
+    const bt1Cvs = document.createElement('canvas');
+    bt1Cvs.width = 192; bt1Cvs.height = 32;
+    const bt1Ctx = bt1Cvs.getContext('2d');
+    bt1Ctx.fillStyle = '#c9a84c';
+    bt1Ctx.font = 'bold 13px sans-serif';
+    bt1Ctx.textAlign = 'center';
+    bt1Ctx.fillText('Baby Graham #' + (hi * 2 + 1), 96, 22);
+    const bt1Tex = new THREE.CanvasTexture(bt1Cvs);
+    const bt1Tag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3),
+      new THREE.MeshBasicMaterial({ map: bt1Tex, transparent: true, side: THREE.DoubleSide }));
+    bt1Tag.position.set(hx - 2, 1.4, hz - 1.5);
+    g.add(bt1Tag);
+
+    // Baby Graham Clone on upper bunk
+    const babyId2 = 'baby_graham_' + (hi * 2 + 1);
+    const sleeper2 = buildCharacter(grahamOpts);
+    sleeper2.rotation.x = -Math.PI / 2;
+    sleeper2.rotation.z = Math.PI;
+    sleeper2.position.set(hx - 2, 2.0, hz - 1.5);
+    sleeper2.scale.set(0.55, 0.55, 0.55);
+    g.add(sleeper2);
+    sleeper2.traverse(child => {
+      if (child.isMesh) {
+        child.userData = { type: 'npc', npcId: babyId2 };
+        gdNpcBodyMeshes.push(child);
+      }
+    });
+    // Name tag for upper baby
+    const bt2Cvs = document.createElement('canvas');
+    bt2Cvs.width = 192; bt2Cvs.height = 32;
+    const bt2Ctx = bt2Cvs.getContext('2d');
+    bt2Ctx.fillStyle = '#c9a84c';
+    bt2Ctx.font = 'bold 13px sans-serif';
+    bt2Ctx.textAlign = 'center';
+    bt2Ctx.fillText('Baby Graham #' + (hi * 2 + 2), 96, 22);
+    const bt2Tex = new THREE.CanvasTexture(bt2Cvs);
+    const bt2Tag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.3),
+      new THREE.MeshBasicMaterial({ map: bt2Tex, transparent: true, side: THREE.DoubleSide }));
+    bt2Tag.position.set(hx - 2, 2.5, hz - 1.5);
+    g.add(bt2Tag);
+
+    // === SHOWER (back-right corner) ===
+    // Shower base
+    makeWall(1.0, 0.1, 1.0, showerMetalMat, hx + 2, 0.05, hz - 1.8);
+    // Shower walls (two sides, open front)
+    makeWall(0.06, 2.2, 1.0, new THREE.MeshLambertMaterial({ color: 0xcccccc, transparent: true, opacity: 0.5 }), hx + 2.5, 1.1, hz - 1.8);
+    makeWall(1.0, 2.2, 0.06, new THREE.MeshLambertMaterial({ color: 0xcccccc, transparent: true, opacity: 0.5 }), hx + 2, 1.1, hz - 2.3);
+    // Shower head
+    const showerPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.5, 6), showerMetalMat);
+    showerPipe.position.set(hx + 2.4, 1.75, hz - 2.2);
+    g.add(showerPipe);
+    const showerHead = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.08, 0.06, 8), showerMetalMat);
+    showerHead.position.set(hx + 2.2, 2.2, hz - 2.0);
+    g.add(showerHead);
+
+    // === TV (right side, on small stand) ===
+    // TV stand
+    makeWall(0.8, 0.4, 0.4, bunkFrameMat, hx + 2, 0.2, hz + 1.2);
+    // TV body
+    makeWall(0.9, 0.6, 0.15, tvBodyMat, hx + 2, 0.7, hz + 1.2);
+    // TV screen
+    makeWall(0.75, 0.45, 0.01, tvScreenMat, hx + 2, 0.7, hz + 1.28);
+
+    // === SMALL TABLE with mug (center-right) ===
+    makeWall(0.6, 0.4, 0.6, new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), hx + 0.5, 0.2, hz + 1.2);
+    // Mug
+    const mug = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 8), new THREE.MeshLambertMaterial({ color: 0xcc2222 }));
+    mug.position.set(hx + 0.5, 0.46, hz + 1.2);
+    g.add(mug);
+
+    // === RUG (center floor) ===
+    const rug = new THREE.Mesh(new THREE.BoxGeometry(2, 0.02, 1.5), new THREE.MeshLambertMaterial({ color: 0x881111 }));
+    rug.position.set(hx, 0.11, hz + 0.5);
+    g.add(rug);
+
     // Yard fence
     const fenceZ = hz + 4;
     makeWall(6, 0.6, 0.08, fenceMat, hx, 0.3, fenceZ);
     [-2.5, 0, 2.5].forEach(dx => makeWall(0.1, 0.7, 0.1, fenceMat, hx + dx, 0.35, fenceZ));
     // Red mailbox
-    const mbMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
-    makeWall(0.3, 0.25, 0.2, mbMat, hx + 2, 0.9, fenceZ - 0.5);
+    makeWall(0.3, 0.25, 0.2, new THREE.MeshLambertMaterial({ color: 0xcc2222 }), hx + 2, 0.9, fenceZ - 0.5);
     makeWall(0.08, 0.7, 0.08, lampMat, hx + 2, 0.5, fenceZ - 0.5);
+
+    // Collision box for this house (walls are solid)
+    GRAHAM_DIM_COLLISIONS.push(
+      { xMin: hx - 3.15, xMax: hx - 1.2, zMin: hz - 2.65, zMax: hz + 2.35 },  // Left half
+      { xMin: hx + 1.2, xMax: hx + 3.15, zMin: hz - 2.65, zMax: hz + 2.35 },   // Right half
+      { xMin: hx - 1.2, xMax: hx + 1.2, zMin: hz - 2.65, zMax: hz - 2.35 },    // Back wall center
+    );
   });
 
   // === TREES ===
   const treeSpots = [
-    [-7, 6], [-7, -6], [7, 6], [7, -6],
-    [-16, 0], [16, 0], [-16, 16], [16, -16],
-    [-8, 14], [8, -14], [-8, -14], [8, 14],
-    [0, 16], [0, -16], [-16, -8], [16, 8],
+    [-10, 8], [-10, -8], [10, 8], [10, -8],
+    [-25, 0], [25, 0], [-40, 30], [40, -30],
+    [-15, 30], [15, -30], [-15, -30], [15, 30],
+    [0, 35], [0, -35], [-35, -10], [35, 10],
+    [-45, 15], [45, -15], [-20, -40], [20, 45],
+    [-40, -20], [40, 20], [-10, 45], [10, -50],
+    [-35, 35], [35, -35], [-50, 0], [50, 0],
   ];
   treeSpots.forEach(([dx, dz]) => {
     const tx = OX + dx + (Math.random() - 0.5), tz = OZ + dz + (Math.random() - 0.5);
@@ -8547,7 +9718,7 @@ function buildGrahamDimension() {
   });
 
   // === STREET LAMPS ===
-  [[-10, 4], [10, 4], [-10, -4], [10, -4], [4, 10], [-4, -10]].forEach(([dx, dz]) => {
+  [[-15, 4], [15, 4], [-15, -4], [15, -4], [4, 15], [-4, -15], [-30, 4], [30, 4], [4, 35], [-4, -35], [-40, 4], [40, 4]].forEach(([dx, dz]) => {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3.5, 6), lampMat);
     pole.position.set(OX + dx, 1.75, OZ + dz);
     g.add(pole);
@@ -8560,7 +9731,7 @@ function buildGrahamDimension() {
   });
 
   // === PARK BENCHES ===
-  [[-6, 3.5], [6, -3.5]].forEach(([dx, dz]) => {
+  [[-8, 5], [8, -5], [-25, 12], [25, -12], [-15, -25], [15, 30]].forEach(([dx, dz]) => {
     const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.1, 0.5), benchWoodMat);
     seat.position.set(OX + dx, 0.5, OZ + dz);
     g.add(seat);
@@ -8574,8 +9745,8 @@ function buildGrahamDimension() {
     });
   });
 
-  // === GOLD PILLARS at corners ===
-  [[-17, -17], [-17, 17], [17, -17], [17, 17]].forEach(([dx, dz]) => {
+  // === GOLD PILLARS along roads ===
+  [[-35, 4], [35, 4], [-35, -4], [35, -4], [4, 35], [-4, -35], [4, -50], [-4, 45]].forEach(([dx, dz]) => {
     const pil = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.7, 5, 8), pillarMat);
     pil.position.set(OX + dx, 2.5, OZ + dz);
     pil.castShadow = true;
@@ -8597,17 +9768,368 @@ function buildGrahamDimension() {
   ambientGold.position.set(OX, 3, OZ);
   g.add(ambientGold);
 
+  // === GRAHAM INDUSTRIES OFFICE ===
+  const offX = OX + 40, offZ = OZ - 10;  // Center: (440, -10) — well away from houses
+  const officeMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+  const officeGlassMat = new THREE.MeshLambertMaterial({ color: 0x88aacc, emissive: 0x336688, emissiveIntensity: 0.2, transparent: true, opacity: 0.7 });
+  const officeDarkMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+  const officeFloorMat = new THREE.MeshLambertMaterial({ color: 0x444444 });
+  const officeAccentMat = new THREE.MeshLambertMaterial({ color: 0xaa2222 });
+
+  // Walls (8x7 building, 5 tall — taller than houses)
+  makeWall(8.3, 5, 0.3, officeMat, offX, 2.5, offZ - 3.5);       // Back
+  makeWall(0.3, 5, 7, officeMat, offX - 4, 2.5, offZ);             // Left
+  makeWall(0.3, 5, 7, officeMat, offX + 4, 2.5, offZ);             // Right
+  makeWall(2.5, 5, 0.3, officeMat, offX - 2.75, 2.5, offZ + 3.5); // Front-left
+  makeWall(2.5, 5, 0.3, officeMat, offX + 2.75, 2.5, offZ + 3.5); // Front-right
+  makeWall(3, 1.5, 0.3, officeMat, offX, 4.25, offZ + 3.5);       // Above door
+  // Floor
+  makeWall(8, 0.1, 7, officeFloorMat, offX, 0.05, offZ);
+  // Flat concrete roof
+  const officeRoof = new THREE.Mesh(new THREE.BoxGeometry(9, 0.3, 8), officeDarkMat);
+  officeRoof.position.set(offX, 5.15, offZ);
+  g.add(officeRoof);
+
+  // Glass windows (rows of windows on each side)
+  for (let wy = 1.5; wy <= 3.5; wy += 2) {
+    // Front face windows
+    makeWall(1.2, 0.8, 0.05, officeGlassMat, offX - 2.75, wy, offZ + 3.55);
+    makeWall(1.2, 0.8, 0.05, officeGlassMat, offX + 2.75, wy, offZ + 3.55);
+    // Back face windows
+    makeWall(1.2, 0.8, 0.05, officeGlassMat, offX - 2, wy, offZ - 3.55);
+    makeWall(1.2, 0.8, 0.05, officeGlassMat, offX, wy, offZ - 3.55);
+    makeWall(1.2, 0.8, 0.05, officeGlassMat, offX + 2, wy, offZ - 3.55);
+    // Side face windows
+    makeWall(0.05, 0.8, 1.2, officeGlassMat, offX - 4.05, wy, offZ - 1);
+    makeWall(0.05, 0.8, 1.2, officeGlassMat, offX + 4.05, wy, offZ - 1);
+    makeWall(0.05, 0.8, 1.2, officeGlassMat, offX - 4.05, wy, offZ + 1.5);
+    makeWall(0.05, 0.8, 1.2, officeGlassMat, offX + 4.05, wy, offZ + 1.5);
+  }
+
+  // Red accent stripe
+  makeWall(8.5, 0.2, 0.05, officeAccentMat, offX, 5.0, offZ + 3.55);
+  makeWall(8.5, 0.2, 0.05, officeAccentMat, offX, 5.0, offZ - 3.55);
+  makeWall(0.05, 0.2, 7.1, officeAccentMat, offX - 4.05, 5.0, offZ);
+  makeWall(0.05, 0.2, 7.1, officeAccentMat, offX + 4.05, 5.0, offZ);
+
+  // "GRAHAM INDUSTRIES" sign
+  const offSignCvs = document.createElement('canvas');
+  offSignCvs.width = 256; offSignCvs.height = 48;
+  const offSignCtx = offSignCvs.getContext('2d');
+  offSignCtx.fillStyle = '#333333';
+  offSignCtx.fillRect(0, 0, 256, 48);
+  offSignCtx.fillStyle = '#c9a84c';
+  offSignCtx.font = 'bold 22px Cinzel, serif';
+  offSignCtx.textAlign = 'center';
+  offSignCtx.fillText('GRAHAM INDUSTRIES', 128, 32);
+  const offSignTex = new THREE.CanvasTexture(offSignCvs);
+  const officeSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.7, 0.1),
+    new THREE.MeshLambertMaterial({ map: offSignTex, emissive: 0x332211, emissiveIntensity: 0.15 }));
+  officeSign.position.set(offX, 5.5, offZ + 3.55);
+  g.add(officeSign);
+
+  // Interior light
+  const offLight = new THREE.PointLight(0xffffff, 0.5, 12);
+  offLight.position.set(offX, 4, offZ);
+  g.add(offLight);
+
+  // === OFFICE INTERIOR ===
+  // Reception desk (near door)
+  makeWall(2.5, 1.0, 0.6, officeDarkMat, offX, 0.5, offZ + 2);
+  // Desk top (red accent)
+  makeWall(2.6, 0.06, 0.7, officeAccentMat, offX, 1.03, offZ + 2);
+  // Computer on desk
+  makeWall(0.4, 0.3, 0.05, tvBodyMat, offX + 0.5, 1.3, offZ + 1.8); // Monitor
+  makeWall(0.35, 0.22, 0.01, tvScreenMat, offX + 0.5, 1.3, offZ + 1.78); // Screen
+  makeWall(0.15, 0.02, 0.1, tvBodyMat, offX + 0.5, 1.04, offZ + 1.85); // Stand
+  // Keyboard
+  makeWall(0.3, 0.02, 0.1, officeDarkMat, offX + 0.5, 1.04, offZ + 2.15);
+  // Pen holder
+  const penHolder = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.1, 8), officeAccentMat);
+  penHolder.position.set(offX - 0.5, 1.1, offZ + 2);
+  g.add(penHolder);
+
+  // Filing cabinets (back wall)
+  for (let fc = -2; fc <= 2; fc += 2) {
+    makeWall(1.2, 1.8, 0.6, officeMat, offX + fc, 0.9, offZ - 3);
+    // Drawer handles
+    for (let dh = 0.3; dh <= 1.5; dh += 0.4) {
+      makeWall(0.3, 0.03, 0.02, showerMetalMat, offX + fc, dh, offZ - 2.68);
+    }
+  }
+
+  // Office chairs (two in front of desk)
+  [-1, 1].forEach(side => {
+    const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.5), officeDarkMat);
+    chairSeat.position.set(offX + side, 0.45, offZ + 2.8);
+    g.add(chairSeat);
+    const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.06), officeDarkMat);
+    chairBack.position.set(offX + side, 0.7, offZ + 3.05);
+    g.add(chairBack);
+  });
+
+  // Water cooler (left side)
+  const coolerBody = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.0, 0.4), new THREE.MeshLambertMaterial({ color: 0xcccccc }));
+  coolerBody.position.set(offX - 3, 0.5, offZ + 1);
+  g.add(coolerBody);
+  const coolerJug = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.18, 0.5, 8),
+    new THREE.MeshLambertMaterial({ color: 0x88ccff, transparent: true, opacity: 0.6 }));
+  coolerJug.position.set(offX - 3, 1.25, offZ + 1);
+  g.add(coolerJug);
+
+  // Potted plant (right side)
+  const potMat = new THREE.MeshLambertMaterial({ color: 0x663322 });
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.15, 0.3, 8), potMat);
+  pot.position.set(offX + 3, 0.15, offZ + 1);
+  g.add(pot);
+  const plant = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 6), leafMat);
+  plant.position.set(offX + 3, 0.55, offZ + 1);
+  g.add(plant);
+
+  // Office NPC: "HR Graham" (behind desk)
+  const hrGraham = buildCharacter(grahamOpts);
+  hrGraham.position.set(offX + 2, 0.15, offZ + 2.5);
+  hrGraham.rotation.y = -Math.PI / 2; // Facing west (toward door)
+  g.add(hrGraham);
+  hrGraham.traverse(child => {
+    if (child.isMesh) {
+      child.userData = { type: 'npc', npcId: 'graham_hr' };
+      gdNpcBodyMeshes.push(child);
+    }
+  });
+  // Gold name tag
+  const hrTagCvs = document.createElement('canvas');
+  hrTagCvs.width = 128; hrTagCvs.height = 32;
+  const hrTagCtx = hrTagCvs.getContext('2d');
+  hrTagCtx.fillStyle = '#c9a84c';
+  hrTagCtx.font = 'bold 14px sans-serif';
+  hrTagCtx.textAlign = 'center';
+  hrTagCtx.fillText('HR Graham', 64, 22);
+  const hrTagTex = new THREE.CanvasTexture(hrTagCvs);
+  const hrTag = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 0.4),
+    new THREE.MeshBasicMaterial({ map: hrTagTex, transparent: true, side: THREE.DoubleSide }));
+  hrTag.position.set(offX + 2, 2.2, offZ + 2.5);
+  hrTag.rotation.y = Math.PI;
+  g.add(hrTag);
+
+  // "APPLY HERE" sign outside office door — clickable interactable
+  const applySignCvs = document.createElement('canvas');
+  applySignCvs.width = 192; applySignCvs.height = 48;
+  const applyCtx = applySignCvs.getContext('2d');
+  applyCtx.fillStyle = '#aa2222';
+  applyCtx.fillRect(0, 0, 192, 48);
+  applyCtx.fillStyle = '#ffffff';
+  applyCtx.font = 'bold 20px sans-serif';
+  applyCtx.textAlign = 'center';
+  applyCtx.fillText('APPLY HERE!', 96, 32);
+  const applySignTex = new THREE.CanvasTexture(applySignCvs);
+  const applySignMat = new THREE.MeshLambertMaterial({ map: applySignTex, emissive: 0x441111, emissiveIntensity: 0.3 });
+  const applySignMesh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.1), applySignMat);
+  applySignMesh.position.set(offX, 1.5, offZ + 3.7);
+  g.add(applySignMesh);
+  // Sign post
+  makeWall(0.1, 1.5, 0.1, lampMat, offX, 0.75, offZ + 3.7);
+
+  interactables.push({
+    mesh: applySignMesh, group: g, type: 'grahamInterview',
+    label: 'Apply to be a Graham!', need: null,
+    usePos: new THREE.Vector3(offX, 0.15, offZ + 4.5), floor: 0
+  });
+
+  // Office collision boxes
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: offX - 4.15, xMax: offX - 1.5, zMin: offZ - 3.65, zMax: offZ + 3.35 },  // Left half
+    { xMin: offX + 1.5, xMax: offX + 4.15, zMin: offZ - 3.65, zMax: offZ + 3.35 },   // Right half
+    { xMin: offX - 1.5, xMax: offX + 1.5, zMin: offZ - 3.65, zMax: offZ - 3.35 },    // Back wall center
+  );
+
+  // === ROAD TO ARENA (south) ===
+  // Torches along the south road to the arena
+  [-3.5, 3.5].forEach(dx => {
+    for (let dz = -30; dz >= -70; dz -= 15) {
+      const tPole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2), lampMat);
+      tPole.position.set(OX + dx, 1, OZ + dz);
+      g.add(tPole);
+      const tFlame = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 4),
+        new THREE.MeshLambertMaterial({ color: 0xff6622, emissive: 0xff4400, emissiveIntensity: 0.8 }));
+      tFlame.position.set(OX + dx, 2.1, OZ + dz);
+      g.add(tFlame);
+      const tLight = new THREE.PointLight(0xff6622, 0.3, 6);
+      tLight.position.set(OX + dx, 2.2, OZ + dz);
+      g.add(tLight);
+    }
+  });
+
+  // === CLONE ARENA (COLOSSEUM) ===
+  const AX = OX, AZ = OZ - 81; // Arena center (far south)
+  const arenaRadius = 10;
+  const arenaMat = new THREE.MeshLambertMaterial({ color: 0xccbb88 }); // Sandstone
+  const arenaStone = new THREE.MeshLambertMaterial({ color: 0xaa9966 });
+  const arenaDark = new THREE.MeshLambertMaterial({ color: 0x887755 });
+  const sandMat = new THREE.MeshLambertMaterial({ color: 0xddcc88 }); // Sandy arena floor
+  const archMat = new THREE.MeshLambertMaterial({ color: 0xbbaa77 });
+
+  // Arena ground (sand circle)
+  const arenaGround = new THREE.Mesh(new THREE.CircleGeometry(arenaRadius + 1, 24), sandMat);
+  arenaGround.rotation.x = -Math.PI / 2;
+  arenaGround.position.set(AX, 0.01, AZ);
+  arenaGround.receiveShadow = true;
+  g.add(arenaGround);
+
+  // Outer wall (solid continuous ring with entrance gap)
+  const wallSegs = 32;
+  for (let i = 0; i < wallSegs; i++) {
+    const angle = (i / wallSegs) * Math.PI * 2;
+    // Skip north entrance (gap for doorway, ~30 degrees around PI/2)
+    if (angle > 1.3 && angle < 1.85) continue;
+    const cx = AX + Math.cos(angle) * (arenaRadius + 0.5);
+    const cz = AZ + Math.sin(angle) * (arenaRadius + 0.5);
+    const segW = (2 * Math.PI * (arenaRadius + 0.5)) / wallSegs + 0.15; // overlap slightly for no gaps
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(1, 7, segW), arenaMat);
+    seg.position.set(cx, 3.5, cz);
+    seg.rotation.y = -angle + Math.PI / 2;
+    seg.castShadow = true;
+    g.add(seg);
+  }
+
+  // Tiered seating (3 tiers — smallest radius at bottom, largest at top like a colosseum)
+  for (let tier = 0; tier < 3; tier++) {
+    const tierR = 5 + tier * 2; // Inner ring at 5, middle at 7, outer at 9
+    const tierY = 0.5 + tier * 1.2;
+    const seatGeo = new THREE.BoxGeometry(2.5, 0.3, 0.6);
+    const seatMat2 = tier % 2 === 0 ? arenaStone : arenaDark;
+    // More seats on outer tiers
+    const seatCount = 8 + tier * 2;
+    for (let s = 0; s < seatCount; s++) {
+      const sa = (s / seatCount) * Math.PI * 2;
+      // Skip north entrance area
+      if (sa > 1.2 && sa < 1.95) continue;
+      const sx = AX + Math.cos(sa) * tierR;
+      const sz = AZ + Math.sin(sa) * tierR;
+      const seat = new THREE.Mesh(seatGeo, seatMat2);
+      seat.position.set(sx, tierY, sz);
+      seat.rotation.y = -sa + Math.PI / 2;
+      seat.castShadow = true; seat.receiveShadow = true;
+      g.add(seat);
+    }
+    // Tier riser wall (circular step supporting this tier)
+    const riserSegments = seatCount + 2;
+    for (let r = 0; r < riserSegments; r++) {
+      const ra = (r / riserSegments) * Math.PI * 2;
+      if (ra > 1.2 && ra < 1.95) continue;
+      const rx = AX + Math.cos(ra) * (tierR - 0.3);
+      const rz = AZ + Math.sin(ra) * (tierR - 0.3);
+      const riser = new THREE.Mesh(new THREE.BoxGeometry(1.5, tierY + 0.15, 0.4), arenaDark);
+      riser.position.set(rx, (tierY + 0.15) / 2, rz);
+      riser.rotation.y = -ra + Math.PI / 2;
+      riser.receiveShadow = true;
+      g.add(riser);
+    }
+  }
+
+  // Arched entrance (north side, facing corridor)
+  const archL = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6, 0.8), archMat);
+  archL.position.set(AX - 2, 3, AZ + arenaRadius + 0.5);
+  archL.castShadow = true; g.add(archL);
+  const archR = new THREE.Mesh(new THREE.BoxGeometry(0.8, 6, 0.8), archMat);
+  archR.position.set(AX + 2, 3, AZ + arenaRadius + 0.5);
+  archR.castShadow = true; g.add(archR);
+  const archTop = new THREE.Mesh(new THREE.BoxGeometry(5.6, 1, 1.2), archMat);
+  archTop.position.set(AX, 6.5, AZ + arenaRadius + 0.5);
+  archTop.castShadow = true; g.add(archTop);
+  // "CLONE ARENA" sign on arch
+  const arenaSignCvs = document.createElement('canvas');
+  arenaSignCvs.width = 256; arenaSignCvs.height = 48;
+  const asCtx = arenaSignCvs.getContext('2d');
+  asCtx.fillStyle = '#887744';
+  asCtx.fillRect(0, 0, 256, 48);
+  asCtx.fillStyle = '#c9a84c';
+  asCtx.font = 'bold 28px Cinzel, serif';
+  asCtx.textAlign = 'center';
+  asCtx.fillText('CLONE ARENA', 128, 34);
+  const arenaSignTex = new THREE.CanvasTexture(arenaSignCvs);
+  const arenaSign = new THREE.Mesh(new THREE.BoxGeometry(4, 0.7, 0.1),
+    new THREE.MeshLambertMaterial({ map: arenaSignTex, emissive: 0x332211, emissiveIntensity: 0.15 }));
+  arenaSign.position.set(AX, 7.2, AZ + arenaRadius + 0.5);
+  g.add(arenaSign);
+
+  // Graham thumbs-up statues (4 around the arena, replacing Roman statues)
+  const thumbStatuePositions = [
+    { x: AX - 8, z: AZ - 5, ry: Math.PI / 4 },
+    { x: AX + 8, z: AZ - 5, ry: -Math.PI / 4 },
+    { x: AX - 8, z: AZ + 4, ry: -Math.PI / 4 },
+    { x: AX + 8, z: AZ + 4, ry: Math.PI / 4 },
+  ];
+  thumbStatuePositions.forEach(sp => {
+    // Gold pedestal
+    const ped = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1, 1.2), darkGoldMat);
+    ped.position.set(sp.x, 0.5, sp.z);
+    ped.castShadow = true; g.add(ped);
+    const pedTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 1.4), goldMat);
+    pedTop.position.set(sp.x, 1.05, sp.z);
+    g.add(pedTop);
+    // Graham figure (1.5x scale)
+    const thumbGraham = buildCharacter(grahamOpts);
+    thumbGraham.scale.set(1.5, 1.5, 1.5);
+    thumbGraham.position.set(sp.x, 1.15, sp.z);
+    thumbGraham.rotation.y = sp.ry;
+    g.add(thumbGraham);
+  });
+
+  // Stage platform (center of arena)
+  const stage = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.8, 0.4, 12), darkGoldMat);
+  stage.position.set(AX, 0.2, AZ);
+  stage.castShadow = true; stage.receiveShadow = true;
+  g.add(stage);
+  const stageTop = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.05, 12), goldMat);
+  stageTop.position.set(AX, 0.42, AZ);
+  g.add(stageTop);
+
+  // Arena spotlights
+  const spotColors = [0xff4444, 0x4444ff, 0xffcc44, 0x44ff44];
+  spotColors.forEach((col, si) => {
+    const sa = (si / 4) * Math.PI * 2 + Math.PI / 4;
+    const sl = new THREE.PointLight(col, 0.25, 12);
+    sl.position.set(AX + Math.cos(sa) * 5, 5, AZ + Math.sin(sa) * 5);
+    g.add(sl);
+  });
+  // Main arena light
+  const arenaMainLight = new THREE.PointLight(0xffcc66, 0.5, 25);
+  arenaMainLight.position.set(AX, 8, AZ);
+  g.add(arenaMainLight);
+
+  // Clone audience (8 clones seated on top tier)
+  const audienceAngles = [0, 0.7, 2.2, 2.9, 3.5, 4.2, 5.0, 5.7];
+  audienceAngles.forEach(aa => {
+    const ar = 9; // Top tier radius
+    const ac = buildCharacter(grahamOpts);
+    ac.position.set(AX + Math.cos(aa) * ar, 2.9, AZ + Math.sin(aa) * ar);
+    ac.rotation.y = aa + Math.PI; // Face center
+    g.add(ac);
+  });
+
+  // Arena interactable (step onto stage to start)
+  const arenaInteractMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 8),
+    new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.4 }));
+  arenaInteractMesh.position.set(AX, 0.45, AZ + 3);
+  g.add(arenaInteractMesh);
+  interactables.push({
+    mesh: arenaInteractMesh, group: g, type: 'cloneArena',
+    label: 'Clone Arena', need: null,
+    usePos: new THREE.Vector3(AX, 0.15, AZ + 3.5), floor: 0
+  });
+
   // === RETURN PORTAL ===
   const portalPedestal = new THREE.Mesh(new THREE.BoxGeometry(1, 0.6, 1), darkGoldMat);
-  portalPedestal.position.set(OX, 0.3, OZ + 18);
+  portalPedestal.position.set(OX, 0.3, OZ + 50);
   portalPedestal.castShadow = true;
   g.add(portalPedestal);
   const portalBtn = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.15, 16),
     new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.5 }));
-  portalBtn.position.set(OX, 0.68, OZ + 18);
+  portalBtn.position.set(OX, 0.68, OZ + 50);
   g.add(portalBtn);
   const portalGlow = new THREE.PointLight(0xff4444, 0.4, 5);
-  portalGlow.position.set(OX, 1.2, OZ + 18);
+  portalGlow.position.set(OX, 1.2, OZ + 50);
   g.add(portalGlow);
   const psCanvas = document.createElement('canvas');
   psCanvas.width = 128; psCanvas.height = 32;
@@ -8621,23 +10143,33 @@ function buildGrahamDimension() {
   const psTex = new THREE.CanvasTexture(psCanvas);
   const portalSign = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.4, 0.05),
     new THREE.MeshLambertMaterial({ map: psTex }));
-  portalSign.position.set(OX, 1.2, OZ + 18.5);
+  portalSign.position.set(OX, 1.2, OZ + 50.5);
   g.add(portalSign);
 
-  interactables.push({ mesh: portalBtn, group: g, type: 'dimPortal', label: 'Return to Town', need: null, usePos: new THREE.Vector3(OX, 0.15, OZ + 17), floor: 0 });
+  interactables.push({ mesh: portalBtn, group: g, type: 'dimPortal', label: 'Return to Town', need: null, usePos: new THREE.Vector3(OX, 0.15, OZ + 49), floor: 0 });
 
   // === 30+ GRAHAM CLONES ===
-  const grahamOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
   gdNpcBodyMeshes = [];
 
-  // Clone positions — scattered grid avoiding center statue and portal
+  // Clone positions — scattered across the expanded dimension, avoiding buildings
   const clonePositions = [];
-  for (let cx = -16; cx <= 16; cx += 4) {
-    for (let cz = -16; cz <= 16; cz += 4) {
-      // Skip center (statue) and portal area
-      if (Math.abs(cx) < 4 && Math.abs(cz) < 4) continue;
-      if (Math.abs(cx) < 2 && cz > 14) continue;
-      clonePositions.push({ x: OX + cx + (Math.random() - 0.5) * 1.5, z: OZ + cz + (Math.random() - 0.5) * 1.5 });
+  for (let cx = -45; cx <= 45; cx += 8) {
+    for (let cz = -45; cz <= 50; cz += 8) {
+      // Skip center (statue)
+      if (Math.abs(cx) < 5 && Math.abs(cz) < 5) continue;
+      // Skip portal area
+      if (Math.abs(cx) < 3 && cz > 45) continue;
+      // Skip arena area (center at 0, -81 relative)
+      if (Math.abs(cx) < 12 && cz < -68) continue;
+      // Skip office area (center at +40, -10 relative)
+      if (cx > 34 && cx < 46 && cz > -16 && cz < -4) continue;
+      // Skip house positions (6 houses with ~8 unit radius exclusion)
+      let nearHouse = false;
+      [[-30, 20], [-30, -20], [30, 20], [30, -20], [-20, 40], [20, 40]].forEach(([hx, hz]) => {
+        if (Math.abs(cx - hx) < 6 && Math.abs(cz - hz) < 6) nearHouse = true;
+      });
+      if (nearHouse) continue;
+      clonePositions.push({ x: OX + cx + (Math.random() - 0.5) * 3, z: OZ + cz + (Math.random() - 0.5) * 3 });
     }
   }
   // Shuffle and take 32
@@ -8659,9 +10191,9 @@ function buildGrahamDimension() {
 
   // 3 Boss Grahams — slightly larger, at distinct spots
   const bossPositions = [
-    { x: OX - 12, z: OZ + 3, id: 'graham_boss_1', name: 'Boss Graham #1' },  // West neighbourhood
-    { x: OX + 12, z: OZ + 3, id: 'graham_boss_2', name: 'Boss Graham #2' },  // East neighbourhood
-    { x: OX, z: OZ - 5, id: 'graham_boss_3', name: 'Boss Graham #3' },       // Near statue
+    { x: OX - 20, z: OZ + 8, id: 'graham_boss_1', name: 'Boss Graham #1' },  // West area
+    { x: OX + 20, z: OZ + 8, id: 'graham_boss_2', name: 'Boss Graham #2' },  // East area
+    { x: OX, z: OZ - 12, id: 'graham_boss_3', name: 'Boss Graham #3' },      // South of statue
   ];
   bossPositions.forEach(bp => {
     const boss = buildCharacter(grahamOpts);
@@ -9385,6 +10917,22 @@ function openNPCDialogue(npcId) {
   btnsEl.innerHTML = '';
 
   // Graham Dimension NPCs
+  if (npcId.startsWith('baby_graham_')) {
+    const babyIdx = parseInt(npcId.split('_')[2]);
+    nameEl.textContent = 'Baby Graham Clone #' + (babyIdx + 1);
+    const sleepLines = [
+      "*zzzzz...* ...mumble... I'm the best Graham... *zzzzz*",
+      "*snore* ...no YOU'RE a clone... *snore*",
+      "*zzzzz...* ...five more minutes... *zzzzz*",
+      "*snore* ...the hair... must stay curly... *snore*",
+      "*zzzzz...* ...Graham crackers for dinner... *zzzzz*",
+      "*snore* ...I dreamt I was the original... *snore*",
+    ];
+    textEl.textContent = sleepLines[Math.floor(Math.random() * sleepLines.length)];
+    addDialogueBtn(btnsEl, 'Shh... let them sleep', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
   if (npcId.startsWith('graham_clone_')) {
     const cloneIdx = parseInt(npcId.split('_')[2]);
     nameEl.textContent = 'Graham Clone #' + (cloneIdx + 1);
@@ -9435,6 +10983,42 @@ function openNPCDialogue(npcId) {
       addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     }
     showCloneChat();
+    overlay.classList.add('visible');
+    return;
+  }
+  if (npcId === 'graham_hr') {
+    nameEl.textContent = 'HR Graham';
+    const applied = gdTasksDone['graham_hr'];
+    if (applied) {
+      textEl.textContent = "Welcome back, employee! We've got two assignments available today. Paperwork's piling up, and... we also need someone for a special ops mission. Very hush-hush.";
+      if (gdJobLastDay['graham_hr'] === day) {
+        const disBtn = document.createElement('button');
+        disBtn.textContent = 'Paperwork: Already filed today';
+        disBtn.className = 'npc-btn-close';
+        disBtn.disabled = true;
+        disBtn.style.opacity = '0.5';
+        btnsEl.appendChild(disBtn);
+      } else {
+        addDialogueBtn(btnsEl, 'Work: Paperwork Filing ($18+)', 'npc-btn-accept', () => startGrahamDimJob('graham_hr'));
+      }
+      if (gdJobLastDay['graham_hr_mission'] === day) {
+        const disBtn2 = document.createElement('button');
+        disBtn2.textContent = 'Mission: Already deployed today';
+        disBtn2.className = 'npc-btn-close';
+        disBtn2.disabled = true;
+        disBtn2.style.opacity = '0.5';
+        btnsEl.appendChild(disBtn2);
+      } else {
+        addDialogueBtn(btnsEl, 'Mission: Pepper Sabotage ($25+)', 'npc-btn-accept', () => startGrahamDimJob('graham_hr_mission'));
+      }
+    } else {
+      textEl.textContent = "Welcome to Graham Industries! We're always hiring. Well, we're always hiring Grahams. Want to apply?";
+      addDialogueBtn(btnsEl, 'Apply to be a Graham!', 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        startGrahamApplication();
+      });
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     overlay.classList.add('visible');
     return;
   }
@@ -10072,6 +11656,8 @@ function startGrahamDimJob(bossId) {
   let hintHtml = '';
   if (bossId === 'graham_boss_1') hintHtml = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Repeat the sequence';
   else if (bossId === 'graham_boss_2') hintHtml = '<kbd>A</kbd> Approve fan mail  <kbd>D</kbd> Reject hate mail';
+  else if (bossId === 'graham_hr') hintHtml = '<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> File papers into the correct cabinet!';
+  else if (bossId === 'graham_hr_mission') hintHtml = '<kbd>A</kbd>/<kbd>D</kbd> Move  <kbd>SPACE</kbd> Plant pepper!';
 
   const { canvas, ctx } = setupFullscreenGame(overlay, 640, 360, hintHtml);
   overlay.classList.add('visible');
@@ -10080,6 +11666,10 @@ function startGrahamDimJob(bossId) {
     runGrahamSays(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   } else if (bossId === 'graham_boss_2') {
     runFanMailSorter(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
+  } else if (bossId === 'graham_hr') {
+    runPaperworkFiling(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
+  } else if (bossId === 'graham_hr_mission') {
+    runPepperMission(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   }
 }
 
@@ -10090,6 +11680,10 @@ function finishGrahamDimJob(bossId, score) {
   let pay;
   if (bossId === 'graham_boss_1') {
     pay = 20 + Math.floor(finalScore * 3);
+  } else if (bossId === 'graham_hr') {
+    pay = 18 + Math.floor(finalScore / 2);
+  } else if (bossId === 'graham_hr_mission') {
+    pay = 25 + Math.floor(finalScore * 2);
   } else {
     pay = 15 + Math.floor(finalScore / 2);
   }
@@ -10399,6 +11993,604 @@ function runFanMailSorter(canvas, ctx, onFinish) {
     if (running) requestAnimationFrame(draw);
   }
   requestAnimationFrame(draw);
+}
+
+// --- Graham Industries: Paperwork Filing ---
+function runPaperworkFiling(canvas, ctx, onFinish) {
+  const W = canvas.width, H = canvas.height;
+  const CABINETS = [
+    { label: 'COMPLAINTS', color: '#cc4444', key: 'Digit1', numKey: 'Numpad1' },
+    { label: 'FAN MAIL', color: '#44cc44', key: 'Digit2', numKey: 'Numpad2' },
+    { label: 'MEMOS', color: '#4488cc', key: 'Digit3', numKey: 'Numpad3' },
+  ];
+  const PAPER_TYPES = [
+    { text: '"Graham stole my lunch!"', cab: 0 },
+    { text: '"The clones are too loud"', cab: 0 },
+    { text: '"My desk is haunted"', cab: 0 },
+    { text: '"Who ate my Graham crackers?!"', cab: 0 },
+    { text: '"Graham is AMAZING!"', cab: 1 },
+    { text: '"Best boss ever! (all 3 of them)"', cab: 1 },
+    { text: '"I love working here!"', cab: 1 },
+    { text: '"10/10 would clone again"', cab: 1 },
+    { text: '"Meeting at 3pm (all Grahams)"', cab: 2 },
+    { text: '"Reminder: be more Graham"', cab: 2 },
+    { text: '"Dress code update: still GG merch"', cab: 2 },
+    { text: '"Toilet paper budget: URGENT"', cab: 2 },
+    { text: '"Clone #17 wants a raise"', cab: 0 },
+    { text: '"You guys are the best Grahams"', cab: 1 },
+    { text: '"Office party: bring yourself"', cab: 2 },
+    { text: '"LOL Dolls found in breakroom"', cab: 0 },
+  ];
+
+  let papers = [];
+  let score = 0;
+  let misses = 0;
+  let timer = 30;
+  let spawnTimer = 0;
+  let running = true;
+  let lastTime = performance.now();
+  let currentPaper = null;
+  let flashColor = null;
+  let flashTimer = 0;
+
+  function spawnPaper() {
+    const p = PAPER_TYPES[Math.floor(Math.random() * PAPER_TYPES.length)];
+    currentPaper = { ...p, y: 60, x: W / 2, falling: true };
+  }
+  spawnPaper();
+
+  function onKey(e) {
+    if (!running || !currentPaper) return;
+    let cabIdx = -1;
+    CABINETS.forEach((c, i) => {
+      if (e.code === c.key || e.code === c.numKey) cabIdx = i;
+    });
+    if (cabIdx < 0) return;
+    e.preventDefault();
+    if (cabIdx === currentPaper.cab) {
+      score++;
+      flashColor = '#44ff44';
+    } else {
+      misses++;
+      flashColor = '#ff4444';
+    }
+    flashTimer = 0.4;
+    currentPaper = null;
+    setTimeout(() => { if (running) spawnPaper(); }, 300);
+  }
+  document.addEventListener('keydown', onKey);
+
+  function draw() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+    timer -= dt;
+    if (flashTimer > 0) flashTimer -= dt;
+    if (timer <= 0) {
+      running = false;
+      document.removeEventListener('keydown', onKey);
+      onFinish(score);
+      return;
+    }
+
+    // Update paper position (slowly falls)
+    if (currentPaper && currentPaper.falling) {
+      currentPaper.y += 40 * dt;
+      if (currentPaper.y > H - 100) {
+        currentPaper.y = H - 100;
+        currentPaper.falling = false;
+      }
+    }
+
+    // Draw
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    // Office background
+    ctx.fillStyle = '#2a2a3e';
+    ctx.fillRect(0, 0, W, 40);
+    ctx.fillStyle = '#c9a84c';
+    ctx.font = 'bold 16px Cinzel, serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAHAM INDUSTRIES — Paperwork Filing', W / 2, 28);
+
+    // Cabinets at bottom
+    const cabW = W / 3 - 20;
+    CABINETS.forEach((cab, i) => {
+      const cx = 15 + i * (W / 3);
+      ctx.fillStyle = cab.color + '44';
+      ctx.fillRect(cx, H - 80, cabW, 70);
+      ctx.strokeStyle = cab.color;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(cx, H - 80, cabW, 70);
+      ctx.fillStyle = cab.color;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('[' + (i + 1) + '] ' + cab.label, cx + cabW / 2, H - 40);
+    });
+
+    // Current paper
+    if (currentPaper) {
+      ctx.fillStyle = '#ffffee';
+      ctx.fillRect(currentPaper.x - 80, currentPaper.y, 160, 50);
+      ctx.strokeStyle = '#aaa';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(currentPaper.x - 80, currentPaper.y, 160, 50);
+      ctx.fillStyle = '#333';
+      ctx.font = '11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(currentPaper.text, currentPaper.x, currentPaper.y + 22);
+      // Hint: which cabinet?
+      ctx.fillStyle = CABINETS[currentPaper.cab].color;
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('File in: ' + CABINETS[currentPaper.cab].label, currentPaper.x, currentPaper.y + 42);
+    }
+
+    // Flash effect
+    if (flashTimer > 0 && flashColor) {
+      ctx.globalAlpha = flashTimer / 0.4 * 0.3;
+      ctx.fillStyle = flashColor;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+    }
+
+    // HUD
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('Filed: ' + score, 10, 60);
+    ctx.fillStyle = '#ff8844';
+    ctx.fillText('Misfiled: ' + misses, 10, 78);
+    ctx.fillStyle = '#c9a84c';
+    ctx.textAlign = 'right';
+    ctx.fillText('Time: ' + Math.ceil(timer) + 's', W - 10, 60);
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
+// --- Graham Industries: 3D Pepper Sabotage Mission ---
+function runPepperMission(canvas, ctx, onFinish) {
+  // Ignore the 2D canvas — build 3D scene in the overlay
+  const overlay = document.getElementById('job-overlay');
+  overlay.innerHTML = '';
+  overlay.style.background = '#000';
+
+  const W = window.innerWidth, H = window.innerHeight;
+  const pmScene = new THREE.Scene();
+  pmScene.background = new THREE.Color(0x080810);
+  pmScene.fog = new THREE.Fog(0x080810, 5, 30);
+
+  const pmCamera = new THREE.PerspectiveCamera(70, W / H, 0.1, 50);
+  pmCamera.position.set(0, 1.6, 12);
+
+  const pmRenderer = new THREE.WebGLRenderer({ antialias: true });
+  pmRenderer.setSize(W, H);
+  pmRenderer.shadowMap.enabled = true;
+  overlay.appendChild(pmRenderer.domElement);
+  pmRenderer.domElement.style.cssText = 'display:block;width:100%;height:100%;';
+
+  // HUD overlay
+  const hud = document.createElement('div');
+  hud.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;font-family:Segoe UI,sans-serif;';
+  overlay.appendChild(hud);
+
+  // Crosshair
+  const cross = document.createElement('div');
+  cross.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ff4444;font-size:24px;text-shadow:0 0 6px #ff0000;';
+  cross.textContent = '+';
+  hud.appendChild(cross);
+
+  // HUD text elements
+  const hudTop = document.createElement('div');
+  hudTop.style.cssText = 'position:absolute;top:10px;left:0;width:100%;text-align:center;color:#ff4444;font-size:1rem;font-weight:bold;font-family:Cinzel,serif;text-shadow:0 0 10px #ff0000;';
+  hudTop.textContent = 'CLASSIFIED: PEPPER SABOTAGE';
+  hud.appendChild(hudTop);
+
+  const hudLeft = document.createElement('div');
+  hudLeft.style.cssText = 'position:absolute;top:40px;left:12px;color:#fff;font-size:0.8rem;';
+  hud.appendChild(hudLeft);
+
+  const hudRight = document.createElement('div');
+  hudRight.style.cssText = 'position:absolute;top:40px;right:12px;color:#c9a84c;font-size:0.8rem;text-align:right;';
+  hud.appendChild(hudRight);
+
+  const hudMsg = document.createElement('div');
+  hudMsg.style.cssText = 'position:absolute;bottom:60px;left:0;width:100%;text-align:center;color:#ff8844;font-size:0.9rem;font-weight:bold;text-shadow:0 0 8px #ff4400;transition:opacity 0.3s;';
+  hud.appendChild(hudMsg);
+
+  const hudHint = document.createElement('div');
+  hudHint.style.cssText = 'position:absolute;bottom:20px;left:0;width:100%;text-align:center;color:#888;font-size:0.7rem;';
+  hudHint.textContent = 'WASD move | E shoot pepper | F aim | ESC quit';
+  hud.appendChild(hudHint);
+
+  // === OFFICE ENVIRONMENT ===
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0x222233 });
+  const wallMat3 = new THREE.MeshLambertMaterial({ color: 0x1a1a2a });
+  const cubeMat = new THREE.MeshLambertMaterial({ color: 0x333344 });
+  const deskMat3 = new THREE.MeshLambertMaterial({ color: 0x5a4a3a });
+  const monitorMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x336688, emissive: 0x112233, emissiveIntensity: 0.5 });
+  const pepperScreenMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.6 });
+  const pepperMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.3 });
+  const guardMat = new THREE.MeshLambertMaterial({ color: 0x3333aa });
+  const guardHeadMat = new THREE.MeshLambertMaterial({ color: 0xddbb99 });
+  const ceilMat = new THREE.MeshLambertMaterial({ color: 0x111118 });
+
+  // Floor
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), floorMat);
+  floor.position.set(0, 0, 0);
+  floor.receiveShadow = true;
+  pmScene.add(floor);
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), ceilMat);
+  ceil.position.set(0, 3, 0);
+  pmScene.add(ceil);
+
+  // Walls
+  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.3), wallMat3), { position: new THREE.Vector3(0, 1.5, -15) }));
+  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.3), wallMat3), { position: new THREE.Vector3(0, 1.5, 15) }));
+  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(-15, 1.5, 0) }));
+  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(15, 1.5, 0) }));
+
+  // Ambient (very dim)
+  pmScene.add(new THREE.AmbientLight(0x111122, 0.3));
+
+  // Flickering ceiling lights
+  const ceilLights = [];
+  [[-6, -6], [6, -6], [-6, 6], [6, 6], [0, 0]].forEach(([x, z]) => {
+    const pl = new THREE.PointLight(0xccddff, 0.3, 10);
+    pl.position.set(x, 2.8, z);
+    pmScene.add(pl);
+    ceilLights.push(pl);
+    // Light fixture
+    const fix = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.3), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
+    fix.position.set(x, 2.95, z);
+    pmScene.add(fix);
+  });
+
+  // Cubicles with computers
+  const NAMES = ['Kevin', 'Steve', 'Brian', 'Derek', 'Trevor', 'Chad', 'Todd', 'Brad', 'Keith', 'Nigel', 'Barry', 'Colin'];
+  const computers3d = [];
+  const cubePositions = [
+    [-8, -8], [-4, -8], [0, -8], [4, -8], [8, -8],
+    [-8, -3], [-4, -3], [4, -3], [8, -3],
+    [-8, 3], [-4, 3], [4, 3], [8, 3],
+    [-8, 8], [-4, 8], [0, 8], [4, 8], [8, 8],
+  ];
+  cubePositions.forEach(([cx, cz], ci) => {
+    // Cubicle walls (3 sides)
+    const cw1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.08), cubeMat);
+    cw1.position.set(cx, 0.75, cz - 1);
+    pmScene.add(cw1);
+    const cw2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
+    cw2.position.set(cx - 1.1, 0.75, cz);
+    pmScene.add(cw2);
+    const cw3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
+    cw3.position.set(cx + 1.1, 0.75, cz);
+    pmScene.add(cw3);
+
+    // Desk
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.8), deskMat3);
+    desk.position.set(cx, 0.75, cz - 0.5);
+    pmScene.add(desk);
+
+    // Monitor
+    const mon = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.05), monitorMat);
+    mon.position.set(cx, 1.15, cz - 0.8);
+    pmScene.add(mon);
+    const scr = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.01), screenMat);
+    scr.position.set(cx, 1.15, cz - 0.77);
+    pmScene.add(scr);
+
+    // Name plate
+    const name = NAMES[ci % NAMES.length];
+    computers3d.push({ x: cx, z: cz, name, peppered: false, screenMesh: scr, mon });
+  });
+
+  // Guards
+  const guards3d = [];
+  const guardDefs = [
+    { x: -5, z: 0, patrolZ: [-10, 10], speed: 2.5, name: 'Security Steve' },
+    { x: 5, z: 5, patrolZ: [-8, 12], speed: 3, name: 'Guard Gary' },
+    { x: 0, z: -5, patrolX: [-10, 10], speed: 2, name: 'Officer Nigel' },
+  ];
+  guardDefs.forEach(gd => {
+    const gGroup = new THREE.Group();
+    // Body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), guardMat);
+    body.position.y = 1;
+    gGroup.add(body);
+    // Head
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), guardHeadMat);
+    head.position.y = 1.55;
+    gGroup.add(head);
+    // Flashlight (cone of light)
+    const flashlight = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
+    flashlight.position.set(0, 1.2, 0);
+    flashlight.target.position.set(0, 0.5, -4);
+    gGroup.add(flashlight);
+    gGroup.add(flashlight.target);
+    // Flashlight body (small cylinder)
+    const flBody = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6),
+      new THREE.MeshLambertMaterial({ color: 0x333333 }));
+    flBody.rotation.x = Math.PI / 2;
+    flBody.position.set(0.2, 1.2, -0.15);
+    gGroup.add(flBody);
+
+    gGroup.position.set(gd.x, 0, gd.z);
+    pmScene.add(gGroup);
+    guards3d.push({ group: gGroup, flashlight, dir: 1, ...gd });
+  });
+
+  // Flying peppers
+  const flyingPeppers = [];
+
+  // === DRAMATIC MUSIC (Web Audio) ===
+  const mCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const mGain = mCtx.createGain();
+  mGain.gain.value = 0.12;
+  mGain.connect(mCtx.destination);
+
+  function playDramaticLoop() {
+    if (!pmRunning) return;
+    const now = mCtx.currentTime;
+    const bpm = 100, bl = 60 / bpm;
+    // Deep bass drone
+    [55, 55.5].forEach(f => {
+      const o = mCtx.createOscillator();
+      const g = mCtx.createGain();
+      o.type = 'sawtooth'; o.frequency.value = f;
+      const flt = mCtx.createBiquadFilter();
+      flt.type = 'lowpass'; flt.frequency.value = 200;
+      g.gain.setValueAtTime(0.15, now);
+      g.gain.setValueAtTime(0.15, now + bl * 15);
+      g.gain.linearRampToValueAtTime(0, now + bl * 16);
+      o.connect(flt); flt.connect(g); g.connect(mGain);
+      o.start(now); o.stop(now + bl * 16 + 0.1);
+    });
+    // Tense stabs
+    for (let i = 0; i < 16; i++) {
+      if (i % 4 !== 0 && i % 4 !== 3) continue;
+      const t = now + i * bl;
+      [130.81, 155.56, 196].forEach(f => {
+        const o = mCtx.createOscillator();
+        const g = mCtx.createGain();
+        o.type = 'square'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.08, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+        o.connect(g); g.connect(mGain);
+        o.start(t); o.stop(t + 0.2);
+      });
+    }
+    // Heartbeat kick
+    for (let i = 0; i < 8; i++) {
+      const t = now + i * bl * 2;
+      const o = mCtx.createOscillator();
+      const g = mCtx.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(80, t);
+      o.frequency.exponentialRampToValueAtTime(20, t + 0.2);
+      g.gain.setValueAtTime(0.4, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+      o.connect(g); g.connect(mGain);
+      o.start(t); o.stop(t + 0.35);
+    }
+    setTimeout(playDramaticLoop, bl * 15.5 * 1000);
+  }
+  playDramaticLoop();
+
+  // === GAME STATE ===
+  let pmRunning = true;
+  let pmYaw = Math.PI, pmPitch = 0;
+  let pmScore = 0, pmTimer = 40;
+  let pmKeys = {};
+  let aiming = false;
+  let msgText = 'Shoot peppers at the computers! Avoid the flashlights!';
+  let msgTimer = 3;
+  let caughtFlash = 0;
+  const MOVE_SPEED = 4;
+  const MOUSE_SENS_PM = 0.003;
+
+  function pmOnKeyDown(e) {
+    pmKeys[e.code] = true;
+    if (e.code === 'KeyE' && pmRunning) {
+      e.preventDefault();
+      firePepper();
+    }
+    if (e.code === 'KeyF') aiming = true;
+    if (e.code === 'Escape') {
+      pmRunning = false;
+      cleanup();
+      onFinish(pmScore);
+    }
+  }
+  function pmOnKeyUp(e) {
+    pmKeys[e.code] = false;
+    if (e.code === 'KeyF') aiming = false;
+  }
+  function pmOnMouse(e) {
+    if (!pmRunning) return;
+    pmYaw -= e.movementX * MOUSE_SENS_PM;
+    pmPitch -= e.movementY * MOUSE_SENS_PM;
+    pmPitch = Math.max(-1.2, Math.min(1.2, pmPitch));
+  }
+  function pmOnClick() {
+    pmRenderer.domElement.requestPointerLock();
+  }
+
+  document.addEventListener('keydown', pmOnKeyDown);
+  document.addEventListener('keyup', pmOnKeyUp);
+  document.addEventListener('mousemove', pmOnMouse);
+  pmRenderer.domElement.addEventListener('click', pmOnClick);
+  pmRenderer.domElement.requestPointerLock();
+
+  function firePepper() {
+    const dir = new THREE.Vector3(0, 0, -1);
+    dir.applyEuler(new THREE.Euler(pmPitch, pmYaw, 0, 'YXZ'));
+    const pepper = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), pepperMat);
+    pepper.position.copy(pmCamera.position);
+    pepper.position.y -= 0.1;
+    pmScene.add(pepper);
+    flyingPeppers.push({ mesh: pepper, vel: dir.multiplyScalar(18), life: 3 });
+  }
+
+  function cleanup() {
+    pmRunning = false;
+    document.removeEventListener('keydown', pmOnKeyDown);
+    document.removeEventListener('keyup', pmOnKeyUp);
+    document.removeEventListener('mousemove', pmOnMouse);
+    if (document.pointerLockElement) document.exitPointerLock();
+    pmRenderer.dispose();
+    mCtx.close();
+  }
+
+  let lastT = performance.now();
+  function pmLoop() {
+    if (!pmRunning) return;
+    const now = performance.now();
+    const dt = Math.min((now - lastT) / 1000, 0.05);
+    lastT = now;
+
+    pmTimer -= dt;
+    if (msgTimer > 0) msgTimer -= dt;
+    if (caughtFlash > 0) caughtFlash -= dt;
+
+    if (pmTimer <= 0) {
+      cleanup();
+      onFinish(pmScore);
+      return;
+    }
+
+    // Player movement
+    const forward = new THREE.Vector3(-Math.sin(pmYaw), 0, -Math.cos(pmYaw));
+    const right = new THREE.Vector3(Math.cos(pmYaw), 0, -Math.sin(pmYaw));
+    const spd = MOVE_SPEED * dt;
+    if (pmKeys['KeyW']) pmCamera.position.addScaledVector(forward, spd);
+    if (pmKeys['KeyS']) pmCamera.position.addScaledVector(forward, -spd);
+    if (pmKeys['KeyA']) pmCamera.position.addScaledVector(right, -spd);
+    if (pmKeys['KeyD']) pmCamera.position.addScaledVector(right, spd);
+    // Clamp to room
+    pmCamera.position.x = Math.max(-14, Math.min(14, pmCamera.position.x));
+    pmCamera.position.z = Math.max(-14, Math.min(14, pmCamera.position.z));
+    pmCamera.position.y = 1.6;
+
+    // Camera look
+    const fov = aiming ? 35 : 70;
+    if (Math.abs(pmCamera.fov - fov) > 1) {
+      pmCamera.fov += (fov - pmCamera.fov) * 0.15;
+      pmCamera.updateProjectionMatrix();
+    }
+    const lookDir = new THREE.Vector3(0, 0, -1);
+    lookDir.applyEuler(new THREE.Euler(pmPitch, pmYaw, 0, 'YXZ'));
+    pmCamera.lookAt(pmCamera.position.clone().add(lookDir));
+
+    // Guard patrol
+    guards3d.forEach(g => {
+      if (g.patrolZ) {
+        g.group.position.z += g.dir * g.speed * dt;
+        if (g.group.position.z > g.patrolZ[1]) g.dir = -1;
+        if (g.group.position.z < g.patrolZ[0]) g.dir = 1;
+        g.group.rotation.y = g.dir > 0 ? 0 : Math.PI;
+      } else if (g.patrolX) {
+        g.group.position.x += g.dir * g.speed * dt;
+        if (g.group.position.x > g.patrolX[1]) g.dir = -1;
+        if (g.group.position.x < g.patrolX[0]) g.dir = 1;
+        g.group.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      g.flashlight.target.position.set(0, 0.5, g.dir > 0 ? -4 : 4);
+
+      // Detect player in flashlight cone
+      const gp = g.group.position;
+      const dx = pmCamera.position.x - gp.x;
+      const dz = pmCamera.position.z - gp.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 5) {
+        // Check if player is in front of guard
+        const guardForward = new THREE.Vector3(0, 0, -1).applyEuler(g.group.rotation);
+        const toPlayer = new THREE.Vector3(dx, 0, dz).normalize();
+        const dot = guardForward.dot(toPlayer);
+        if (dot > 0.5 && dist < 4) {
+          caughtFlash = 0.8;
+          pmScore = Math.max(0, pmScore - 1);
+          // Teleport player back to start
+          pmCamera.position.set(0, 1.6, 12);
+          const msgs = ['SPOTTED! Guard ' + g.name + ' caught you!', 'BUSTED! Back to the entrance!', g.name + ' saw you! -1 point!'];
+          msgText = msgs[Math.floor(Math.random() * msgs.length)];
+          msgTimer = 2;
+        }
+      }
+    });
+
+    // Flying peppers
+    for (let i = flyingPeppers.length - 1; i >= 0; i--) {
+      const p = flyingPeppers[i];
+      p.mesh.position.addScaledVector(p.vel, dt);
+      p.life -= dt;
+      // Check hit on computers
+      for (const comp of computers3d) {
+        if (comp.peppered) continue;
+        const dx = p.mesh.position.x - comp.x;
+        const dz = p.mesh.position.z - (comp.z - 0.8);
+        const dy = p.mesh.position.y - 1.15;
+        if (Math.abs(dx) < 0.5 && Math.abs(dz) < 0.5 && Math.abs(dy) < 0.4) {
+          comp.peppered = true;
+          comp.screenMesh.material = pepperScreenMat;
+          pmScore++;
+          const msgs = [
+            comp.name + "'s PC is getting SPICY!",
+            'Pepper in ' + comp.name + "'s hard drive!",
+            comp.name + ' is gonna have a HOT surprise!',
+            'That\'ll teach ' + comp.name + '!',
+          ];
+          msgText = msgs[Math.floor(Math.random() * msgs.length)];
+          msgTimer = 1.5;
+          p.life = 0;
+          break;
+        }
+      }
+      // Hit walls/floor
+      if (Math.abs(p.mesh.position.x) > 15 || Math.abs(p.mesh.position.z) > 15 || p.mesh.position.y < 0 || p.mesh.position.y > 3) {
+        p.life = 0;
+      }
+      if (p.life <= 0) {
+        pmScene.remove(p.mesh);
+        flyingPeppers.splice(i, 1);
+      }
+    }
+
+    // Flicker ceiling lights
+    ceilLights.forEach((l, i) => {
+      l.intensity = 0.25 + Math.sin(now * 0.003 + i * 2) * 0.08 + Math.random() * 0.02;
+    });
+
+    // Crosshair color
+    cross.style.color = aiming ? '#ffcc44' : '#ff4444';
+    cross.textContent = aiming ? '( + )' : '+';
+
+    // Update HUD
+    hudLeft.innerHTML = '<span style="color:#44ff44">Sabotaged: ' + pmScore + '/' + computers3d.length + '</span>';
+    hudRight.innerHTML = 'Time: ' + Math.ceil(pmTimer) + 's';
+    if (msgTimer > 0) {
+      hudMsg.style.opacity = Math.min(1, msgTimer / 0.5);
+      hudMsg.textContent = msgText;
+    } else {
+      hudMsg.style.opacity = '0';
+    }
+
+    // Caught red flash
+    if (caughtFlash > 0) {
+      overlay.style.background = 'rgba(255,0,0,' + (caughtFlash * 0.3) + ')';
+    } else {
+      overlay.style.background = '#000';
+    }
+
+    pmRenderer.render(pmScene, pmCamera);
+    requestAnimationFrame(pmLoop);
+  }
+  pmLoop();
 }
 
 // --- Cafe: Order Rush ---
@@ -13100,7 +15292,7 @@ function updateCrosshairRaycast() {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
       const nid = hitObj.userData.npcId;
       hoveredObj = { type: 'npc', npcId: nid };
-      const gdName = nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
+      const gdName = nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
       tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
@@ -13236,6 +15428,22 @@ function startAction(obj) {
   // Basketball Court — picker for play or cheer
   if (obj.type === 'basketballCourt') {
     startGGBasketball();
+    return;
+  }
+
+  // Clone Arena — picker for watch or perform
+  if (obj.type === 'cloneArena') {
+    openCloneArena();
+    return;
+  }
+
+  // Graham Industries — interview or jobs
+  if (obj.type === 'grahamInterview') {
+    if (gdTasksDone['graham_hr']) {
+      openGrahamIndustriesJobs();
+    } else {
+      startGrahamApplication();
+    }
     return;
   }
 
@@ -15586,7 +17794,7 @@ function restartGame() {
   gdNpcBodyMeshes = [];
   gdCloneEgoTargets = [];
   for (let i = interactables.length - 1; i >= 0; i--) {
-    if (interactables[i].type === 'dimPortal' || interactables[i].type === 'redButton') interactables.splice(i, 1);
+    if (interactables[i].type === 'dimPortal' || interactables[i].type === 'redButton' || interactables[i].type === 'cloneArena' || interactables[i].type === 'grahamInterview') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }

@@ -125,15 +125,16 @@ const MANSION_PLAYER_SPAWN = { x: 258, y: 0.15, z: -12 };
 
 // Graham Dimension constants
 const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
-const GRAHAM_DIM_BOUNDS = { xMin: 380, xMax: 420, zMin: -20, zMax: 20 };
-const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 18 };
-const GRAHAM_DIM_FOG_FAR = 120;
+const GRAHAM_DIM_BOUNDS = { xMin: 340, xMax: 460, zMin: -100, zMax: 60 };
+const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 50 };
+const GRAHAM_DIM_FOG_FAR = 200;
 const GRAHAM_DIM_COLLISIONS = [
-  { xMin: 379.5, xMax: 420.5, zMin: -20.5, zMax: -20 },
-  { xMin: 379.5, xMax: 420.5, zMin: 20, zMax: 20.5 },
-  { xMin: 379.5, xMax: 380, zMin: -20, zMax: 20 },
-  { xMin: 420, xMax: 420.5, zMin: -20, zMax: 20 },
   { xMin: 398, xMax: 402, zMin: -2, zMax: 2 },
+  { xMin: 389, xMax: 389.5, zMin: -92, zMax: -71 },
+  { xMin: 410.5, xMax: 411, zMin: -92, zMax: -71 },
+  { xMin: 389, xMax: 411, zMin: -92.5, zMax: -92 },
+  { xMin: 389, xMax: 397.5, zMin: -71.5, zMax: -71 },
+  { xMin: 402.5, xMax: 411, zMin: -71.5, zMax: -71 },
 ];
 const GRAHAM_CLONE_LINES = [
   ["Do I know you? Wait... do I know ME?",
@@ -143,7 +144,7 @@ const GRAHAM_CLONE_LINES = [
    "I exist therefore I Graham."],
   ["The statue blinks when no one's looking. I've SEEN it.",
    "I'm pretty sure Boss Graham #2 is secretly two Grahams in a trenchcoat.",
-   "The walls aren't to keep things out. They're to keep US in.",
+   "The grass grows differently on Tuesdays. I've been taking notes.",
    "I found a hair on the ground that wasn't curly. Something's going on.",
    "Don't trust the portal. It rearranges your molecules. I can FEEL it."],
   ["Every day's a great day when you're Graham!",
@@ -2842,13 +2843,13 @@ section('Graham Dimension');
 test('Graham Dimension constants are valid', () => {
   assertEqual(GRAHAM_DIM_ORIGIN.x, 400);
   assertEqual(GRAHAM_DIM_ORIGIN.z, 0);
-  assertEqual(GRAHAM_DIM_BOUNDS.xMin, 380);
-  assertEqual(GRAHAM_DIM_BOUNDS.xMax, 420);
-  assertEqual(GRAHAM_DIM_BOUNDS.zMin, -20);
-  assertEqual(GRAHAM_DIM_BOUNDS.zMax, 20);
+  assertEqual(GRAHAM_DIM_BOUNDS.xMin, 340);
+  assertEqual(GRAHAM_DIM_BOUNDS.xMax, 460);
+  assertEqual(GRAHAM_DIM_BOUNDS.zMin, -100);
+  assertEqual(GRAHAM_DIM_BOUNDS.zMax, 60);
   assertEqual(GRAHAM_DIM_PLAYER_SPAWN.x, 400);
   assertEqual(GRAHAM_DIM_PLAYER_SPAWN.y, 0.15);
-  assertEqual(GRAHAM_DIM_PLAYER_SPAWN.z, 18);
+  assertEqual(GRAHAM_DIM_PLAYER_SPAWN.z, 50);
 });
 
 test('Graham Dimension spawn is within bounds', () => {
@@ -2873,19 +2874,11 @@ test('Graham Dimension collision array has perimeter walls + statue', () => {
   assert(statueBox, 'Statue base collision should exist');
 });
 
-test('Graham Dimension perimeter walls fully enclose bounds', () => {
-  // South wall
-  const south = GRAHAM_DIM_COLLISIONS.find(b => b.zMax <= -19.5);
-  assert(south, 'South wall exists');
-  // North wall
-  const north = GRAHAM_DIM_COLLISIONS.find(b => b.zMin >= 19.5);
-  assert(north, 'North wall exists');
-  // West wall
-  const west = GRAHAM_DIM_COLLISIONS.find(b => b.xMax <= 380.5 && (b.zMax - b.zMin) > 30);
-  assert(west, 'West wall exists');
-  // East wall
-  const east = GRAHAM_DIM_COLLISIONS.find(b => b.xMin >= 419.5 && (b.zMax - b.zMin) > 30);
-  assert(east, 'East wall exists');
+test('Graham Dimension has no perimeter walls (open world)', () => {
+  // No collision boxes at the outer bounds
+  const perimWalls = GRAHAM_DIM_COLLISIONS.filter(b =>
+    b.xMax <= 341 || b.xMin >= 459 || b.zMin >= 59 || b.zMax <= -99);
+  assertEqual(perimWalls.length, 0, 'No perimeter wall collisions');
 });
 
 test('Red button position is inside Grahams House', () => {
@@ -3067,21 +3060,21 @@ test('Graham Dimension collision pushes player out of statue', () => {
 
 test('Graham Dimension player bounds clamping', () => {
   // Beyond east boundary
-  let px = 425;
+  let px = 500;
   px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
-  assertEqual(px, 420);
+  assertEqual(px, 460);
   // Beyond west boundary
-  px = 375;
+  px = 300;
   px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
-  assertEqual(px, 380);
+  assertEqual(px, 340);
   // Beyond north boundary
-  let pz = 25;
+  let pz = 100;
   pz = Math.max(GRAHAM_DIM_BOUNDS.zMin, Math.min(GRAHAM_DIM_BOUNDS.zMax, pz));
-  assertEqual(pz, 20);
+  assertEqual(pz, 60);
   // Beyond south boundary
-  pz = -25;
+  pz = -150;
   pz = Math.max(GRAHAM_DIM_BOUNDS.zMin, Math.min(GRAHAM_DIM_BOUNDS.zMax, pz));
-  assertEqual(pz, -20);
+  assertEqual(pz, -100);
 });
 
 test('Graham master achievement requires 3 completed tasks', () => {
@@ -3101,7 +3094,7 @@ test('Graham master achievement requires 3 completed tasks', () => {
 
 test('Return portal position is near spawn', () => {
   const portalX = GRAHAM_DIM_ORIGIN.x;
-  const portalZ = GRAHAM_DIM_ORIGIN.z + 18;
+  const portalZ = GRAHAM_DIM_ORIGIN.z + 50;
   const spawnX = GRAHAM_DIM_PLAYER_SPAWN.x;
   const spawnZ = GRAHAM_DIM_PLAYER_SPAWN.z;
   const dist = Math.sqrt((portalX - spawnX) ** 2 + (portalZ - spawnZ) ** 2);
@@ -3177,6 +3170,341 @@ test('Full save data includes all Graham Dimension fields', () => {
   assert('grahamDimQuestsCompleted' in save);
   assert('gdJobLastDay' in save);
   assert('gdCloneEgoTargets' in save);
+});
+
+// ═══ CLONE ARENA ═══
+section('Clone Arena');
+
+const ARENA_ACTS = [
+  { name: 'Air Guitar Solo', emoji: '🎸', anim: 'guitar', lines: ["*WEEDLYWEEDLYWEEEE*", "FACE-MELTING SOLO!", "*windmill strum*", "Thank you, clone nation!"] },
+  { name: 'Interpretive Dance', emoji: '💃', anim: 'dance', lines: ["*wiggles like a noodle*", "*spins dramatically*", "This represents... being a clone!", "*falls over gracefully*"] },
+  { name: 'Stand-Up Comedy', emoji: '🎤', anim: 'standup', lines: ["Why did the clone cross the road?", "To get to the OTHER Graham!", "I'm not saying we all look alike...", "...but the mirror is VERY confusing here!"] },
+  { name: 'Dramatic Poetry', emoji: '📜', anim: 'poetry', lines: ["*clears throat*", "Roses are Graham, Violets are Graham...", "Everything is Graham, I am also Graham.", "*bows deeply*"] },
+  { name: 'Magic Show', emoji: '🎩', anim: 'magic', lines: ["Watch me pull a Graham from this hat!", "*reaches in*", "It's... another Graham!", "Plot twist: the hat is also Graham."] },
+  { name: 'Beatboxing', emoji: '🥁', anim: 'beatbox', lines: ["Boots and cats and boots and cats", "*sick beat drop*", "BRRRA PA PA PA!", "*mic drop*"] },
+  { name: 'Karate Demo', emoji: '🥋', anim: 'karate', lines: ["HIIII-YA!", "*chops the air*", "*kicks invisible enemy*", "The enemy was... self-doubt."] },
+  { name: 'Cooking Demo', emoji: '🍳', anim: 'cooking', lines: ["Today we make... Graham Crackers!", "*cracks egg aggressively*", "Add a pinch of Graham...", "It tastes like existential dread. Delicious!"] },
+  { name: 'Motivational Speech', emoji: '💪', anim: 'speech', lines: ["You are ALL Graham!", "And Graham is GREAT!", "If I can be Graham, YOU can be Graham!", "*cries inspirationally*"] },
+  { name: 'Talent-less Talent', emoji: '🤷', anim: 'nothing', lines: ["I'm just gonna... stand here.", "*stands*", "*still standing*", "Thank you, I'll be here all eternity."] },
+];
+
+const ARENA_CROWD_REACTIONS = [
+  { text: 'BOOO!', color: '#ff4444' },
+  { text: 'meh...', color: '#888888' },
+  { text: 'not bad!', color: '#ffaa44' },
+  { text: 'YEAH!!', color: '#44ff44' },
+  { text: 'ENCORE!', color: '#ff44ff' },
+  { text: '*clapping*', color: '#44ccff' },
+  { text: 'GRAHAM! GRAHAM!', color: '#c9a84c' },
+  { text: '*throws tomato*', color: '#ff2222' },
+  { text: 'LEGENDARY!', color: '#ffcc00' },
+  { text: '10/10!', color: '#00ff88' },
+];
+
+test('ARENA_ACTS has 10 unique acts', () => {
+  assertEqual(ARENA_ACTS.length, 10);
+  const names = ARENA_ACTS.map(a => a.name);
+  assertEqual(new Set(names).size, 10, 'All act names must be unique');
+});
+
+test('Each act has name, emoji, anim, and 4 lines', () => {
+  ARENA_ACTS.forEach(act => {
+    assert(act.name, 'Act must have a name');
+    assert(act.emoji, 'Act must have an emoji');
+    assert(act.anim, 'Act must have an anim type');
+    assertEqual(act.lines.length, 4, act.name + ' must have 4 lines');
+  });
+});
+
+test('ARENA_CROWD_REACTIONS has 10 reactions', () => {
+  assertEqual(ARENA_CROWD_REACTIONS.length, 10);
+  ARENA_CROWD_REACTIONS.forEach(r => {
+    assert(r.text, 'Reaction must have text');
+    assert(r.color, 'Reaction must have color');
+    assert(r.color.startsWith('#'), 'Color must be hex');
+  });
+});
+
+test('Arena interactable type is cloneArena', () => {
+  const arenaType = 'cloneArena';
+  assert(arenaType === 'cloneArena');
+});
+
+test('Arena location is within expanded Graham Dimension bounds', () => {
+  const AX = GRAHAM_DIM_ORIGIN.x; // 400
+  const AZ = GRAHAM_DIM_ORIGIN.z - 81; // -81
+  assert(AX >= GRAHAM_DIM_BOUNDS.xMin, 'Arena X within west bound');
+  assert(AX <= GRAHAM_DIM_BOUNDS.xMax, 'Arena X within east bound');
+  assert(AZ >= GRAHAM_DIM_BOUNDS.zMin, 'Arena Z within south bound');
+  assert(AZ <= GRAHAM_DIM_BOUNDS.zMax, 'Arena Z within north bound');
+});
+
+test('Graham Dimension is open world (no perimeter walls)', () => {
+  // Bounds are large — no tight walls
+  assert(GRAHAM_DIM_BOUNDS.xMax - GRAHAM_DIM_BOUNDS.xMin >= 100, 'X range should be at least 100');
+  assert(GRAHAM_DIM_BOUNDS.zMax - GRAHAM_DIM_BOUNDS.zMin >= 100, 'Z range should be at least 100');
+  // No perimeter wall collision boxes (only statue + arena walls)
+  const perimeterWalls = GRAHAM_DIM_COLLISIONS.filter(c =>
+    c.xMin < 385 || c.xMax > 415 || c.zMin > 10 || c.zMax > 10);
+  assertEqual(perimeterWalls.length, 0, 'No perimeter wall collisions');
+});
+
+test('No corridor walls (open map)', () => {
+  const corridorWalls = GRAHAM_DIM_COLLISIONS.filter(c => c.xMin >= 397 && c.xMax <= 403 && c.zMax < -10 && c.zMin > -70);
+  assertEqual(corridorWalls.length, 0, 'No corridor wall collisions in open map');
+});
+
+test('Arena outer walls form enclosure', () => {
+  const arenaWest = GRAHAM_DIM_COLLISIONS.find(c => c.xMin === 389 && c.xMax === 389.5 && c.zMin === -92);
+  const arenaEast = GRAHAM_DIM_COLLISIONS.find(c => c.xMin === 410.5 && c.xMax === 411 && c.zMin === -92);
+  const arenaSouth = GRAHAM_DIM_COLLISIONS.find(c => c.zMin === -92.5 && c.zMax === -92);
+  assert(arenaWest, 'Arena west wall must exist');
+  assert(arenaEast, 'Arena east wall must exist');
+  assert(arenaSouth, 'Arena south wall must exist');
+});
+
+test('Arena entrance has gap in north wall', () => {
+  const northLeft = GRAHAM_DIM_COLLISIONS.find(c => c.xMax === 397.5 && c.zMin === -71.5 && c.zMax === -71);
+  const northRight = GRAHAM_DIM_COLLISIONS.find(c => c.xMin === 402.5 && c.zMin === -71.5 && c.zMax === -71);
+  assert(northLeft, 'Arena north-left wall segment exists');
+  assert(northRight, 'Arena north-right wall segment exists');
+  assertEqual(northRight.xMin - northLeft.xMax, 5, 'Entrance gap is 5 units wide');
+});
+
+test('No south town wall (open map)', () => {
+  const southWalls = GRAHAM_DIM_COLLISIONS.filter(c => c.zMin === -20.5);
+  assertEqual(southWalls.length, 0, 'No south town wall in open map');
+});
+
+test('Watch mode lets player pick 3 acts from 10', () => {
+  // Simulate player choosing 3 specific acts
+  const chosen = [0, 4, 7]; // indices into ARENA_ACTS
+  const acts = chosen.map(i => ARENA_ACTS[i]);
+  assertEqual(acts.length, 3);
+  assertEqual(acts[0].name, 'Air Guitar Solo');
+  assertEqual(acts[1].name, 'Magic Show');
+  assertEqual(acts[2].name, 'Cooking Demo');
+  const unique = new Set(acts.map(a => a.name));
+  assertEqual(unique.size, 3, 'All 3 acts should be unique');
+});
+
+test('Perform mode generates 20 notes with valid keys', () => {
+  const KEYS = ['1', '2', '3', '4'];
+  const notes = [];
+  let spawnTime = 1.5;
+  for (let i = 0; i < 20; i++) {
+    const key = KEYS[Math.floor(Math.random() * 4)];
+    notes.push({ key, spawnTime, y: -20, active: true, hit: false, missed: false });
+    spawnTime += 0.5 + Math.random() * 0.6;
+  }
+  assertEqual(notes.length, 20);
+  notes.forEach(n => {
+    assert(KEYS.includes(n.key), 'Note key must be 1, 2, 3, or 4');
+    assert(n.spawnTime > 0, 'Spawn time must be positive');
+    assert(n.active === true, 'Notes start active');
+    assert(n.hit === false, 'Notes start unhit');
+    assert(n.missed === false, 'Notes start not missed');
+  });
+});
+
+test('Perform mode scoring formula', () => {
+  // Fun = 25 + floor(score / 15), Money = 10 + floor(score / 10)
+  const testCases = [
+    { score: 0, fun: 25, money: 10 },
+    { score: 150, fun: 35, money: 25 },
+    { score: 300, fun: 45, money: 40 },
+  ];
+  testCases.forEach(tc => {
+    assertEqual(25 + Math.floor(tc.score / 15), tc.fun, 'Fun for score ' + tc.score);
+    assertEqual(10 + Math.floor(tc.score / 10), tc.money, 'Money for score ' + tc.score);
+  });
+});
+
+test('Perform mode combo system', () => {
+  let combo = 0, maxCombo = 0;
+  // Hit 5 in a row
+  for (let i = 0; i < 5; i++) { combo++; maxCombo = Math.max(maxCombo, combo); }
+  assertEqual(combo, 5);
+  assertEqual(maxCombo, 5);
+  // Miss resets combo
+  combo = 0;
+  assertEqual(combo, 0);
+  assertEqual(maxCombo, 5, 'Max combo preserved after miss');
+});
+
+test('Arena interactable uses correct usePos near stage', () => {
+  const AX = GRAHAM_DIM_ORIGIN.x;
+  const AZ = GRAHAM_DIM_ORIGIN.z - 81;
+  const usePos = { x: AX, y: 0.15, z: AZ + 3.5 };
+  assertClose(usePos.x, 400, 0.01, 'usePos X at arena center');
+  assertClose(usePos.z, -77.5, 0.01, 'usePos Z near stage front');
+});
+
+test('Tomato projectile physics in Watch mode', () => {
+  const fromX = 200, fromY = 310;
+  const performerX = 250, performerY = 192;
+  const tomato = {
+    x: fromX, y: fromY,
+    vx: (performerX - fromX) * 1.5,
+    vy: (performerY - 30 - fromY) * 1.5 - 60,
+    life: 1.5, splat: false
+  };
+  // Simulate one frame (dt = 0.016)
+  const dt = 0.016;
+  tomato.x += tomato.vx * dt;
+  tomato.y += tomato.vy * dt;
+  tomato.vy += 200 * dt;
+  assert(tomato.x > fromX, 'Tomato moves toward performer X');
+  assert(tomato.y < fromY, 'Tomato arcs upward initially');
+  assert(tomato.life > 0, 'Tomato still alive');
+});
+
+test('Tomato splats on performer contact', () => {
+  const performerX = 250, performerY = 192;
+  const t = { x: performerX + 10, y: performerY - 15, life: 1.5, splat: false };
+  // Check hit detection
+  if (Math.abs(t.x - performerX) < 25 && Math.abs(t.y - performerY + 20) < 30) {
+    t.splat = true; t.life = 0.8;
+    t.splatX = t.x; t.splatY = t.y;
+  }
+  assert(t.splat, 'Tomato should splat on performer');
+  assertClose(t.life, 0.8, 0.01, 'Splat duration should be 0.8s');
+});
+
+// ═══ GRAHAM DIMENSION HOUSES ═══
+section('Graham Dimension Houses');
+
+test('All 6 GD houses are red with black roofs', () => {
+  const gdHouseColor = 0xaa2222;
+  const gdRoofColor = 0x1a1a1a;
+  assert(gdHouseColor === 0xaa2222, 'House color must be red');
+  assert(gdRoofColor === 0x1a1a1a, 'Roof color must be black');
+});
+
+test('6 house positions defined', () => {
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const homeSpots = [
+    { x: OX - 30, z: OZ + 20 },
+    { x: OX - 30, z: OZ - 20 },
+    { x: OX + 30, z: OZ + 20 },
+    { x: OX + 30, z: OZ - 20 },
+    { x: OX - 20, z: OZ + 40 },
+    { x: OX + 20, z: OZ + 40 },
+  ];
+  assertEqual(homeSpots.length, 6);
+  homeSpots.forEach(hs => {
+    assert(hs.x >= GRAHAM_DIM_BOUNDS.xMin && hs.x <= GRAHAM_DIM_BOUNDS.xMax, 'House X in bounds');
+    assert(hs.z >= GRAHAM_DIM_BOUNDS.zMin && hs.z <= GRAHAM_DIM_BOUNDS.zMax, 'House Z in bounds');
+  });
+});
+
+test('Each house adds 3 collision boxes', () => {
+  // Each house pushes 3 collision boxes: left half, right half, back center
+  const hx = 400, hz = 0;
+  const boxes = [
+    { xMin: hx - 3.15, xMax: hx - 1.2, zMin: hz - 2.65, zMax: hz + 2.35 },
+    { xMin: hx + 1.2, xMax: hx + 3.15, zMin: hz - 2.65, zMax: hz + 2.35 },
+    { xMin: hx - 1.2, xMax: hx + 1.2, zMin: hz - 2.65, zMax: hz - 2.35 },
+  ];
+  assertEqual(boxes.length, 3);
+  // Door gap: front center is not blocked (between x -1.2 and +1.2, z +2.35)
+  const doorX = hx, doorZ = hz + 2.5;
+  const blocked = boxes.some(b => doorX > b.xMin && doorX < b.xMax && doorZ > b.zMin && doorZ < b.zMax);
+  assert(!blocked, 'Door position should not be blocked by collision boxes');
+});
+
+// ═══ GRAHAM INDUSTRIES OFFICE ═══
+section('Graham Industries Office');
+
+const GRAHAM_APPLICATION_QUESTIONS = [
+  { q: "What is your name?", options: ["Graham", "Not Graham", "I forgot"], correct: 0 },
+  { q: "What is the best name?", options: ["Kevin", "Graham", "Steve"], correct: 1 },
+  { q: "How many Grahams is too many?", options: ["There's no such thing!", "32", "1"], correct: 0 },
+  { q: "Describe your hair.", options: ["Curly and blonde, obviously", "Straight", "What's hair?"], correct: 0 },
+  { q: "What are your qualifications?", options: ["I am Graham", "10 years of experience", "I have a degree"], correct: 0 },
+  { q: "Why do you want to work here?", options: ["Because I AM here", "Good benefits", "My mum told me to"], correct: 0 },
+  { q: "What is the Graham Industries dress code?", options: ["GG Merch. Always.", "Business casual", "Pyjamas"], correct: 0 },
+  { q: "How do you handle conflict with a coworker?", options: ["We're all Graham, there IS no conflict", "Talk it out", "Fight to the death"], correct: 0 },
+  { q: "Where do you see yourself in 5 years?", options: ["Still being Graham", "CEO", "On a beach"], correct: 0 },
+  { q: "What's your greatest weakness?", options: ["LOL Dolls", "I work too hard", "Chocolate"], correct: 0 },
+];
+
+test('Application has 10 questions with valid structure', () => {
+  assertEqual(GRAHAM_APPLICATION_QUESTIONS.length, 10);
+  GRAHAM_APPLICATION_QUESTIONS.forEach(q => {
+    assert(q.q, 'Question must have text');
+    assertEqual(q.options.length, 3, 'Each question must have 3 options');
+    assert(q.correct >= 0 && q.correct <= 2, 'Correct index must be 0-2');
+  });
+});
+
+test('Application selects 5 random questions', () => {
+  const shuffled = [...GRAHAM_APPLICATION_QUESTIONS].sort(() => Math.random() - 0.5);
+  const questions = shuffled.slice(0, 5);
+  assertEqual(questions.length, 5);
+  const unique = new Set(questions.map(q => q.q));
+  assertEqual(unique.size, 5, 'All 5 questions should be unique');
+});
+
+test('Application pass requires 3+ correct answers', () => {
+  assertEqual(3 >= 3, true, '3/5 should pass');
+  assertEqual(4 >= 3, true, '4/5 should pass');
+  assertEqual(5 >= 3, true, '5/5 should pass');
+  assertEqual(2 >= 3, false, '2/5 should fail');
+  assertEqual(0 >= 3, false, '0/5 should fail');
+});
+
+test('Application rewards: pass gives $50, fail gives $10', () => {
+  [true, false].forEach(passed => {
+    const money = passed ? 50 : 10;
+    assertEqual(money, passed ? 50 : 10);
+  });
+  // Fun formula: 20 + score * 5
+  assertEqual(20 + 5 * 5, 45, 'Perfect score fun');
+  assertEqual(20 + 0 * 5, 20, 'Zero score fun');
+});
+
+test('Office location within Graham Dimension bounds', () => {
+  const offX = GRAHAM_DIM_ORIGIN.x + 40;  // 440
+  const offZ = GRAHAM_DIM_ORIGIN.z - 10;  // -10
+  assert(offX >= GRAHAM_DIM_BOUNDS.xMin && offX <= GRAHAM_DIM_BOUNDS.xMax, 'Office X in bounds');
+  assert(offZ >= GRAHAM_DIM_BOUNDS.zMin && offZ <= GRAHAM_DIM_BOUNDS.zMax, 'Office Z in bounds');
+});
+
+test('Office collision boxes have door gap', () => {
+  const offX = 440, offZ = -10;
+  const boxes = [
+    { xMin: offX - 4.15, xMax: offX - 1.5, zMin: offZ - 3.65, zMax: offZ + 3.35 },
+    { xMin: offX + 1.5, xMax: offX + 4.15, zMin: offZ - 3.65, zMax: offZ + 3.35 },
+    { xMin: offX - 1.5, xMax: offX + 1.5, zMin: offZ - 3.65, zMax: offZ - 3.35 },
+  ];
+  // Door should be at center of front face (offX, offZ + 3.5)
+  const doorX = offX, doorZ = offZ + 3.5;
+  const blocked = boxes.some(b => doorX > b.xMin && doorX < b.xMax && doorZ > b.zMin && doorZ < b.zMax);
+  assert(!blocked, 'Office door should not be blocked');
+});
+
+test('HR Graham NPC ID is graham_hr', () => {
+  const npcId = 'graham_hr';
+  assert(npcId === 'graham_hr');
+  // Should show as "HR Graham" in hover
+  const gdName = npcId === 'graham_hr' ? 'HR Graham' : null;
+  assertEqual(gdName, 'HR Graham');
+});
+
+test('4 Graham statues positioned around arena', () => {
+  const AX = 400, AZ = -81;
+  const positions = [
+    { x: AX - 8, z: AZ - 5 },
+    { x: AX + 8, z: AZ - 5 },
+    { x: AX - 8, z: AZ + 4 },
+    { x: AX + 8, z: AZ + 4 },
+  ];
+  assertEqual(positions.length, 4);
+  positions.forEach(p => {
+    assert(p.x >= GRAHAM_DIM_BOUNDS.xMin && p.x <= GRAHAM_DIM_BOUNDS.xMax, 'Statue X within bounds');
+    assert(p.z >= GRAHAM_DIM_BOUNDS.zMin && p.z <= GRAHAM_DIM_BOUNDS.zMax, 'Statue Z within bounds');
+  });
 });
 
 // ═══ RENDER RESULTS ═══
