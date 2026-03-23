@@ -37,15 +37,17 @@
 - Player spawn: (135, 0.15, -8)
 
 **Graham Dimension** (GRAHAM_DIM_ORIGIN X=400, Z=0):
-- Bounds: X=380-420, Z=-20 to 20
+- Bounds: X=340-460, Z=-100 to 60 (open world, no perimeter walls)
 - Accessed via big red button in Graham's House (town) → portal cutscene → teleport
-- Town-like neighbourhood: grass ground, cross-shaped road with sidewalks, 6 coloured homes with fences/mailboxes/windows, trees, street lamps, benches
-- Giant Graham statue (3x scale) on gold pedestal at centre intersection
-- Gold GG pillars at 4 corners, red/gold perimeter walls with GG banners
-- 32 generic Graham clones (NPC dialogue with compliment buttons), 3 Boss Grahams (slightly larger, gold name tags)
-- Return portal (red button on gold pedestal) at south edge near spawn
-- Collisions: perimeter walls + statue base (GRAHAM_DIM_COLLISIONS array)
-- Player spawn: (400, 0.15, 18)
+- Open neighbourhood: large grass ground (120x160), long cross-shaped roads with sidewalks, trees, street lamps, benches, gold pillars along roads
+- Giant Graham statue (3x scale) on pedestal at centre intersection
+- 6 red/black houses (spread far apart at ±30/±20/±40 from origin) with bunk beds, sleeping Baby Graham Clones (name tags, sleep dialogue), showers, TVs, tables, rugs
+- Graham Industries office (OX+40, OZ-10): grey building with "APPLY HERE" sign, HR Graham NPC, interview quiz + 2 jobs
+- Clone Arena colosseum (OX, OZ-81): solid sandstone walls, tiered seating, Graham statues on pedestals, stage, spotlights. Watch mode (pick 3 acts, tomato throwing) and Perform mode (pick act, rhythm game with 1234 keys)
+- 32 generic Graham clones (avoid buildings), 3 Boss Grahams, 12 Baby Graham Clones in bunk beds, 8 arena audience clones
+- Return portal at (OX, OZ+50) near spawn
+- Collisions: statue base + arena walls + house walls (3 boxes per house with door gap) + office walls (dynamic, pushed to GRAHAM_DIM_COLLISIONS)
+- Player spawn: (400, 0.15, 50), fog far: 200
 - State: `inGrahamDimension`, `grahamDimGroup`, `grahamDimQuestsCompleted`, `gdTasksDone`, `gdJobLastDay`, `gdCloneEgoTargets`, `gdNpcBodyMeshes`
 
 **Mansion** (MANSION_ORIGIN X=280, Z=0):
@@ -242,18 +244,28 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 
 ## Graham Dimension Jobs & Quest
 
-**Jobs** (tracked in `gdJobLastDay`, one per boss per day):
-| Boss NPC | Name | Pay Formula | Mini-game |
-|----------|------|-------------|-----------|
+**Jobs** (tracked in `gdJobLastDay`, one per boss/NPC per day):
+| NPC | Name | Pay Formula | Mini-game |
+|-----|------|-------------|-----------|
 | graham_boss_1 | Graham Says | $20 + rounds*3 | Simon-says: repeat W/A/S/D sequences, adds 1 key per round |
 | graham_boss_2 | Fan Mail Sorter | $15 + floor(score/2) | Letters slide down, A=approve fan mail, D=reject hate mail, 30s timer |
+| graham_hr | Paperwork Filing | $18 + floor(score/2) | Papers fall, press 1/2/3 to file in correct cabinet (Complaints/Fan Mail/Memos), 30s timer |
+| graham_hr_mission | Pepper Sabotage | $25 + score*2 | 3D FPS stealth: dark office with cubicles, 3 guards with flashlights, WASD move, E shoot peppers at non-Graham computers, F aim/zoom, 40s timer |
+
+**Graham Industries Office** (OX+40, OZ-10):
+- Grey office building with glass windows, red accent stripe, "GRAHAM INDUSTRIES" sign
+- HR Graham NPC inside (beside reception desk), gold name tag
+- "APPLY HERE!" sign outside door — clickable interactable:
+  - Before applying: starts Graham Application quiz (10 questions, 5 random, shuffled answers, pass at 3+, "LOL Dolls" is greatest weakness answer)
+  - After applying: opens job picker with Paperwork Filing and Pepper Sabotage Mission
+- Application pass: `gdTasksDone['graham_hr']`, contributes to graham_master achievement (any 3 of 4 tasks)
 
 **Quest** — Ego Boost Tour (Boss Graham #3, near statue):
 - Offer: "Compliment 5 clones"
 - Any clone counts (can't compliment same one twice), tracked via `questLog.ego_boost.complimentsGiven` and per-clone flags `questLog.ego_boost['c' + idx]`
 - Clone dialogue shows random one-liner + 3 random compliment buttons; picking a compliment during quest increments counter
 - Reward: $100 + 30 fun
-- `gdTasksDone` tracks which unique tasks (boss IDs + 'ego_boost') have been completed for the `ml_graham_master` achievement (requires all 3)
+- `gdTasksDone` tracks which unique tasks (boss IDs + 'ego_boost' + 'graham_hr') have been completed for the `ml_graham_master` achievement (requires any 3)
 
 **Portal Cutscene** (`startPortalCutscene()`):
 - Phase 0: Canvas-drawn Graham with flailing arms, typewriter speech bubble "Wait! Nooo! Don't press that!"
