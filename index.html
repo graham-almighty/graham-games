@@ -603,6 +603,23 @@
     border-radius: 8px;
   }
 
+  /* SUPER SOCCER card */
+  .game-card.super-soccer {
+    border-left-color: #3da349;
+  }
+  .game-card.super-soccer:hover {
+    border-color: #3da349;
+    box-shadow: 0 0 30px #3da34915, -5px 0 20px #3da34910;
+  }
+  .game-card.super-soccer::before {
+    background: linear-gradient(90deg, #3da34908 0%, transparent 50%);
+  }
+  .game-card.super-soccer .game-icon {
+    background: linear-gradient(135deg, #0a1a0e, #0e2e12);
+    border: 1px solid #3da34944;
+    border-radius: 8px;
+  }
+
   .game-card.goofball-land {
     border-left-color: #ffcc00;
   }
@@ -1105,6 +1122,19 @@ for (let i = 0; i < 30; i++) {
   let musicCtx = null, musicPlaying = false, musicNodes = [];
   const btn = document.getElementById('music-btn');
 
+  function startMusicOnInteraction(e) {
+    if (e.target === btn) return; // let the toggle button handle itself
+    musicPlaying = true;
+    createMusic();
+    btn.textContent = 'MUSIC: ON';
+    document.removeEventListener('click', startMusicOnInteraction);
+    document.removeEventListener('keydown', startMusicOnInteraction);
+    document.removeEventListener('touchstart', startMusicOnInteraction);
+  }
+  document.addEventListener('click', startMusicOnInteraction);
+  document.addEventListener('keydown', startMusicOnInteraction);
+  document.addEventListener('touchstart', startMusicOnInteraction);
+
   function createMusic() {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     musicCtx = ctx;
@@ -1396,9 +1426,9 @@ for (let i = 0; i < 30; i++) {
   </div>
 
   <!-- New Game Banner -->
-  <div class="drop-banner" onclick="document.querySelector('.game-card.school-nurse').scrollIntoView({behavior:'smooth'})">
+  <div class="drop-banner" onclick="document.querySelector('.game-card.super-soccer').scrollIntoView({behavior:'smooth'})">
     <span class="drop-sparkle">&#10024;</span>
-    <span class="drop-text">SCHOOL NURSE SIMULATOR</span>
+    <span class="drop-text">SUPER SOCCER</span>
     <span class="drop-tag">NEW!</span>
     <span class="drop-text2">drops now!</span>
     <span class="drop-sparkle">&#10024;</span>
@@ -1764,6 +1794,29 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- SUPER SOCCER -->
+    <a href="super-soccer/index.html" class="game-card super-soccer">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#0e2e12" stroke="#3da349" stroke-width="2"/>
+          <!-- soccer ball -->
+          <circle cx="25" cy="25" r="12" fill="#ffffff" stroke="#3da349" stroke-width="1.5"/>
+          <path d="M25 13 L21 19 L25 21 L29 19 Z" fill="#333" opacity="0.6"/>
+          <path d="M17 22 L13 25 L17 29 L21 26 Z" fill="#333" opacity="0.6"/>
+          <path d="M33 22 L37 25 L33 29 L29 26 Z" fill="#333" opacity="0.6"/>
+          <path d="M19 32 L22 37 L28 37 L31 32 L25 30 Z" fill="#333" opacity="0.6"/>
+          <!-- field lines -->
+          <line x1="10" y1="42" x2="40" y2="42" stroke="#3da349" stroke-width="1" opacity="0.5"/>
+          <line x1="25" y1="39" x2="25" y2="45" stroke="#3da349" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">SUPER SOCCER</div>
+        <div class="game-desc">2D soccer simulation</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
     <!-- GOOFBALL LAND (hidden while in development) -->
 
   </div>
@@ -2017,6 +2070,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'sn_really_sick',    name: 'Actually Sick',         desc: 'Get sent home when actually sick',      reward: 15 },
     { id: 'sn_perfect_hooky',  name: 'Perfect Hooky',         desc: 'Skip every class in a single day',     reward: 30 },
   ]},
+  { group: 'SUPER SOCCER', items: [
+    { id: 'ss_first_match',  name: 'Kick Off',        desc: 'Play your first match',                   reward: 5 },
+    { id: 'ss_first_win',    name: 'Victory!',         desc: 'Win a match',                             reward: 10 },
+    { id: 'ss_clean_sheet',  name: 'Clean Sheet',      desc: 'Win without conceding a goal',            reward: 20 },
+    { id: 'ss_hat_trick',    name: 'Hat Trick',        desc: 'Score 3 goals in one match',              reward: 20 },
+    { id: 'ss_blowout',      name: 'Blowout',          desc: 'Win by 5 or more goals',                  reward: 25 },
+    { id: 'ss_screamer',     name: 'Screamer',          desc: 'Score from long range',                   reward: 15 },
+    { id: 'ss_comeback',     name: 'Comeback Kid',      desc: 'Win after trailing by 2+ goals',          reward: 30 },
+    { id: 'ss_veteran',      name: 'Veteran',           desc: 'Play 10 matches',                         reward: 15 },
+    { id: 'ss_all_teams',    name: 'World Tour',        desc: 'Win with every team',                     reward: 30 },
+    { id: 'ss_golden_boot',  name: 'Golden Boot',       desc: 'Score 50 total goals',                    reward: 30 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -2043,6 +2108,8 @@ const SHOP_ITEMS = [
   { id: 'sb_snack_boost',   name: 'Snack Boost',     desc: '+10% damage for blue team for first 10s',      cost: 50, icon: '&#127852;', game: 'Sibling Brawl' },
   { id: 'dtd_wild_card',    name: 'Wild Card',       desc: 'Adds 3 wild clothing items',                   cost: 50, icon: '&#127183;', game: 'Dress to Depress' },
   { id: 'dtd_extra_time',   name: 'Extra Time',      desc: '60 seconds per round instead of 45',           cost: 75, icon: '&#9203;',   game: 'Dress to Depress' },
+  { id: 'ss_star_striker',  name: 'Star Striker',    desc: '+15% shot power in Super Soccer',              cost: 75, icon: '&#9917;',   game: 'Super Soccer' },
+  { id: 'ss_speed_boots',   name: 'Speed Boots',     desc: '+10% team speed in Super Soccer',              cost: 50, icon: '&#128095;', game: 'Super Soccer' },
 ];
 
 // ═══ ACHIEVEMENTS PANEL ═══
@@ -2127,14 +2194,19 @@ const NEWS_TAG_COLORS = {
   'sibling-brawl':    { bg: '#ff66aa22', border: '#ff66aa', color: '#ff66aa' },
   'dress-to-depress': { bg: '#ff69b422', border: '#ff69b4', color: '#ff69b4' },
   'school-nurse':     { bg: '#4caa6422', border: '#4caa64', color: '#4caa64' },
+  'super-soccer':     { bg: '#3da34922', border: '#3da349', color: '#3da349' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
   'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress', 'school-nurse': 'School Nurse',
+  'super-soccer': 'Super Soccer',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-03-24', title: 'Coming Soon: Into the Graham-verse 2', desc: 'The Graham Dimension is expanding! The next big Mini Life update will take you even deeper into the Graham-verse with new areas, challenges, and secrets. Stay tuned!', game: 'mini-life' },
+  { date: '2026-03-24', title: 'Super Soccer — Early Access!', desc: 'New 2D soccer simulation in early development! Pick a team, choose your position, and hit the pitch. WASD to move, E to pick up and kick. Very early build — more features coming soon, give it some time!', game: 'super-soccer' },
+  { date: '2026-03-24', title: 'Into the Graham-verse', desc: 'Mini Life just got a whole lot weirder! Step through a mysterious portal into the Graham Dimension — explore Graham\'s town, battle clones in the Clone Arena colosseum, and clock in at Graham Industries. Meet the man himself and discover what lies beyond reality!', game: 'mini-life' },
   { date: '2026-03-15', title: 'School Nurse Simulator Launches!', desc: 'New detective-style simulation game! Examine students, spot the fakers, and treat the truly sick. Use your thermometer, observe behavior, and ask questions to figure out who really needs help!', game: 'school-nurse' },
   { date: '2026-03-08', title: 'Dress to Depress Launches!', desc: 'New 3D fashion disaster game! Pick the worst outfits, clash colors and styles, then strut your stuff down the runway for judging by three hilarious NPC judges!', game: 'dress-to-depress' },
   { date: '2026-03-07', title: 'Sibling Brawl Launches!', desc: 'New goofy indoor battle simulator! Deploy pillow fighters, nerf gunners, blanket tanks, scooter riders, and water balloons to defeat the evil younger sibling empire!', game: 'sibling-brawl' },

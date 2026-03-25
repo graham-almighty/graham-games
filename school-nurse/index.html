@@ -1873,8 +1873,34 @@ function nextDay() {
     gameOver();
     return;
   }
+  if (state.day >= 20) {
+    gameWin();
+    return;
+  }
   state.day++;
   showDayScreen();
+}
+
+function gameWin() {
+  clearProgress();
+  saveFinalStats();
+  const stats = loadStats();
+
+  document.getElementById('go-title').textContent = 'CONGRATULATIONS!';
+  document.getElementById('go-sub').textContent = 'You were a nurse for a month!';
+  document.getElementById('go-play-btn').textContent = 'PLAY AGAIN';
+  document.getElementById('go-play-btn').onclick = startGame;
+
+  let html = '';
+  html += 'Days Completed: <strong>' + state.day + '</strong><br>';
+  html += 'Final Score: <strong>' + state.score + '</strong><br>';
+  html += 'High Score: <strong>' + (stats.highScore || 0) + '</strong><br>';
+  html += 'Reputation: <strong>' + state.reputation + '%</strong><br>';
+  html += 'Patients Treated: <strong>' + state.totalPatients + '</strong><br>';
+  html += 'Fakers Caught: <strong>' + state.totalFakersCaught + '</strong>';
+
+  document.getElementById('final-stats').innerHTML = html;
+  showScreen('gameover-screen');
 }
 
 function saveAndConfirm() {

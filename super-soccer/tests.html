@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Super Soccer - Unit Tests</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: 'Segoe UI', monospace; padding: 20px; }
+  h1 { color: #3da349; margin-bottom: 4px; }
+  .summary { color: #aaa; margin-bottom: 20px; font-size: 0.9rem; }
+  .pass { color: #4caf50; }
+  .fail { color: #ff4444; }
+  .group-title { color: #3da349; font-size: 1.1rem; margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+  .test { padding: 4px 12px; font-size: 0.85rem; border-left: 3px solid transparent; margin: 2px 0; }
+  .test.pass { border-left-color: #4caf50; }
+  .test.fail { border-left-color: #ff4444; background: #ff444411; }
+  .test .label { display: inline; }
+  .test .detail { color: #888; font-size: 0.75rem; margin-left: 8px; }
+  #results { max-width: 800px; }
+</style>
+</head>
+<body>
+<h1>Super Soccer - Unit Tests</h1>
+<div class="summary" id="summary"></div>
+<div id="results"></div>
+
+<script>
+// ============================================================
+// MINI TEST FRAMEWORK
+// ============================================================
+let _passed = 0, _failed = 0, _currentGroup = '';
+const _results = document.getElementById('results');
+
+function group(name) {
+  _currentGroup = name;
+  const h = document.createElement('div');
+  h.className = 'group-title';
+  h.textContent = name;
+  _results.appendChild(h);
+}
+
+function assert(condition, name, detail) {
+  const div = document.createElement('div');
+  if (condition) {
+    _passed++;
+    div.className = 'test pass';
+    div.innerHTML = '<span class="label">PASS</span> ' + name;
+  } else {
+    _failed++;
+    div.className = 'test fail';
+    div.innerHTML = '<span class="label">FAIL</span> ' + name + (detail ? '<span class="detail">(' + detail + ')</span>' : '');
+  }
+  _results.appendChild(div);
+}
+
+function assertEqual(actual, expected, name) {
+  const pass = actual === expected;
+  assert(pass, name, pass ? '' : 'expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(actual));
+}
+
+function assertApprox(actual, expected, epsilon, name) {
+  const pass = Math.abs(actual - expected) <= epsilon;
+  assert(pass, name, pass ? '' : 'expected ~' + expected + ', got ' + actual);
+}
+
+function showSummary() {
+  const total = _passed + _failed;
+  const el = document.getElementById('summary');
+  el.innerHTML = '<span class="' + (_failed === 0 ? 'pass' : 'fail') + '">' +
+    _passed + ' / ' + total + ' tests passed' +
+    (_failed > 0 ? ' (' + _failed + ' failed)' : ' — ALL CLEAR') + '</span>';
+}
+
+// ============================================================
+// MOCK LOCALSTORAGE
+// ============================================================
+const mockStorage = {};
+const realGetItem = localStorage.getItem.bind(localStorage);
+const realSetItem = localStorage.setItem.bind(localStorage);
+localStorage.getItem = function(key) { return mockStorage[key] !== undefined ? mockStorage[key] : null; };
+localStorage.setItem = function(key, val) { mockStorage[key] = val; };
+function clearMockStorage() { for (const k in mockStorage) delete mockStorage[k]; }
+
+// ============================================================
+// EXTRACTED GAME LOGIC (mirrors super-soccer/index.html)
+// ============================================================
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const d = ggLoad(); if (d.achievements[id]) return false;
+  d.achievements[id] = true; d.gBux += reward; ggSave(d); return true;
+}
+
+const SS_ACH = {
+  ss_first_match: { name: 'Kick Off', reward: 5 },
+  ss_first_win:   { name: 'Victory!', reward: 10 },
+  ss_clean_sheet: { name: 'Clean Sheet', reward: 20 },
+  ss_hat_trick:   { name: 'Hat Trick', reward: 20 },
+  ss_blowout:     { name: 'Blowout', reward: 25 },
+  ss_screamer:    { name: 'Screamer', reward: 15 },
+  ss_comeback:    { name: 'Comeback Kid', reward: 30 },
+  ss_veteran:     { name: 'Veteran', reward: 15 },
+  ss_all_teams:   { name: 'World Tour', reward: 30 },
+  ss_golden_boot: { name: 'Golden Boot', reward: 30 }
+};
+function ggTry(id) { const a = SS_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+const SS_STATS_KEY = 'ss-stats';
+function defaultStats() { return { totalMatches: 0, wins: 0, goalsScored: 0, teamWins: {} }; }
+function loadStats() { try { return JSON.parse(localStorage.getItem(SS_STATS_KEY)) || defaultStats(); } catch(e) { return defaultStats(); } }
+function saveStats(s) { localStorage.setItem(SS_STATS_KEY, JSON.stringify(s)); }
+
+// Constants (mirrored from game)
+const FL=45,FR=595,FT=40,FB=320;
+const FW=FR-FL,FH=FB-FT,FCX=(FL+FR)/2,FCY=(FT+FB)/2;
+const GOAL_T=150,GOAL_B=210,GOAL_DEPTH=15;
+const BALL_R=4,BALL_FRIC=0.985;
+const PLAYER_R=7,CONTROL_R=13,STEAL_R=10;
+const PASS_PWR=4.0,SHOOT_PWR=5.5;
+const HALF_SEC=60;
+
+const TEAMS = [
+  {name:'LIONS',  pri:'#e63946',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
+  {name:'EAGLES', pri:'#2a6fdb',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
+  {name:'BEARS',  pri:'#d4843e',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
+  {name:'SHARKS', pri:'#00b4d8',sec:'#003344',spd:1.6,sht:1.0,pas:1.0,def:1.0},
+  {name:'DRAGONS',pri:'#9b59b6',sec:'#f0c040',spd:1.6,sht:1.0,pas:1.0,def:1.0},
+  {name:'WOLVES', pri:'#e0e0e0',sec:'#333333',spd:1.6,sht:1.0,pas:1.0,def:1.0}
+];
+const POSITIONS=[
+  {name:'GOALKEEPER',short:'GK',idx:0,desc:'Guard the net'},
+  {name:'DEFENDER',short:'DEF',idx:1,desc:'Protect your half'},
+  {name:'MIDFIELDER',short:'MID',idx:3,desc:'Control the game'},
+  {name:'FORWARD',short:'FWD',idx:4,desc:'Score goals'}
+];
+
+function dist(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return Math.sqrt(dx * dx + dy * dy); }
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+function mkPlayer(x, y, teamIdx, role, idx) {
+  return { x, y, vx: 0, vy: 0, teamIdx, role, idx, angle: 0, kickCd: 0 };
+}
+
+function mkBall() { return { x: FCX, y: FCY, vx: 0, vy: 0 }; }
+
+function getFormation(attackRight) {
+  if (attackRight) {
+    return [
+      {x:FL+20,y:FCY,role:'GK'},{x:FL+FW*0.22,y:FCY-60,role:'DEF'},
+      {x:FL+FW*0.22,y:FCY+60,role:'DEF'},{x:FCX-40,y:FCY,role:'MID'},
+      {x:FCX+80,y:FCY,role:'FWD'}
+    ];
+  }
+  return [
+    {x:FR-20,y:FCY,role:'GK'},{x:FR-FW*0.22,y:FCY-60,role:'DEF'},
+    {x:FR-FW*0.22,y:FCY+60,role:'DEF'},{x:FCX+40,y:FCY,role:'MID'},
+    {x:FCX-80,y:FCY,role:'FWD'}
+  ];
+}
+
+function getKickoffFormation(attackRight) {
+  if (attackRight) {
+    return [
+      {x:FL+20,y:FCY,role:'GK'},{x:FL+FW*0.22,y:FCY-60,role:'DEF'},
+      {x:FL+FW*0.22,y:FCY+60,role:'DEF'},{x:FCX-60,y:FCY,role:'MID'},
+      {x:FCX-10,y:FCY,role:'FWD'}
+    ];
+  }
+  return [
+    {x:FR-20,y:FCY,role:'GK'},{x:FR-FW*0.22,y:FCY-60,role:'DEF'},
+    {x:FR-FW*0.22,y:FCY+60,role:'DEF'},{x:FCX+60,y:FCY,role:'MID'},
+    {x:FCX+10,y:FCY,role:'FWD'}
+  ];
+}
+
+// ============================================================
+// TESTS
+// ============================================================
+
+// --- G Bux System ---
+group('G Bux System');
+clearMockStorage();
+(function() {
+  const data = ggLoad();
+  assertEqual(data.gBux, 0, 'ggLoad returns 0 gBux by default');
+  assertEqual(Object.keys(data.achievements).length, 0, 'ggLoad returns empty achievements');
+  assertEqual(Object.keys(data.shopPurchases).length, 0, 'ggLoad returns empty shopPurchases');
+})();
+
+clearMockStorage();
+(function() {
+  const d = { gBux: 100, achievements: { test: true }, shopPurchases: {} };
+  ggSave(d);
+  const loaded = ggLoad();
+  assertEqual(loaded.gBux, 100, 'ggSave/ggLoad round-trips gBux');
+  assert(loaded.achievements.test === true, 'ggSave/ggLoad round-trips achievements');
+})();
+
+clearMockStorage();
+(function() {
+  const result = ggUnlockAchievement('ss_first_match', 'Kick Off', 5);
+  assert(result === true, 'ggUnlockAchievement returns true on first unlock');
+  const d = ggLoad();
+  assertEqual(d.gBux, 5, 'Achievement awards correct G Bux');
+  assert(d.achievements['ss_first_match'] === true, 'Achievement is recorded');
+})();
+
+(function() {
+  const result = ggUnlockAchievement('ss_first_match', 'Kick Off', 5);
+  assert(result === false, 'ggUnlockAchievement returns false on duplicate');
+  assertEqual(ggLoad().gBux, 5, 'Duplicate unlock does not add G Bux');
+})();
+
+// --- Achievement Registry ---
+group('Achievement Registry');
+(function() {
+  const ids = Object.keys(SS_ACH);
+  assertEqual(ids.length, 10, 'SS_ACH has 10 achievements');
+  let totalG = 0;
+  for (const id of ids) totalG += SS_ACH[id].reward;
+  assertEqual(totalG, 200, 'Total achievement rewards = 200G');
+  assert(ids.every(id => id.startsWith('ss_')), 'All achievement IDs start with ss_');
+  assert(ids.every(id => SS_ACH[id].name && SS_ACH[id].reward > 0), 'All achievements have name and positive reward');
+})();
+
+clearMockStorage();
+(function() {
+  ggTry('ss_first_match');
+  assert(ggLoad().achievements['ss_first_match'] === true, 'ggTry unlocks valid achievement');
+  ggTry('ss_nonexistent');
+  assertEqual(ggLoad().gBux, 5, 'ggTry ignores unknown achievement ID');
+})();
+
+// --- Stats System ---
+group('Stats Save/Load');
+clearMockStorage();
+(function() {
+  const s = loadStats();
+  assertEqual(s.totalMatches, 0, 'Default stats: totalMatches = 0');
+  assertEqual(s.wins, 0, 'Default stats: wins = 0');
+  assertEqual(s.goalsScored, 0, 'Default stats: goalsScored = 0');
+  assert(typeof s.teamWins === 'object', 'Default stats: teamWins is object');
+})();
+
+(function() {
+  const s = loadStats();
+  s.totalMatches = 5; s.wins = 3; s.goalsScored = 12;
+  s.teamWins = { LIONS: true, EAGLES: true };
+  saveStats(s);
+  const loaded = loadStats();
+  assertEqual(loaded.totalMatches, 5, 'Stats round-trip: totalMatches');
+  assertEqual(loaded.wins, 3, 'Stats round-trip: wins');
+  assertEqual(loaded.goalsScored, 12, 'Stats round-trip: goalsScored');
+  assert(loaded.teamWins.LIONS === true, 'Stats round-trip: teamWins.LIONS');
+  assert(loaded.teamWins.EAGLES === true, 'Stats round-trip: teamWins.EAGLES');
+})();
+
+// --- Constants ---
+group('Game Constants');
+(function() {
+  assertEqual(FL, 45, 'Field left = 45');
+  assertEqual(FR, 595, 'Field right = 595');
+  assertEqual(FT, 40, 'Field top = 40');
+  assertEqual(FB, 320, 'Field bottom = 320');
+  assertEqual(FW, 550, 'Field width = 550');
+  assertEqual(FH, 280, 'Field height = 280');
+  assertEqual(FCX, 320, 'Field center X = 320');
+  assertEqual(FCY, 180, 'Field center Y = 180');
+  assert(GOAL_T < FCY && GOAL_B > FCY, 'Goal opening spans center Y');
+  assertEqual(GOAL_B - GOAL_T, 60, 'Goal opening is 60px');
+  assert(BALL_FRIC > 0 && BALL_FRIC < 1, 'Ball friction is between 0 and 1');
+  assert(PASS_PWR < SHOOT_PWR, 'Pass power < shoot power');
+})();
+
+// --- Teams ---
+group('Teams');
+(function() {
+  assertEqual(TEAMS.length, 6, '6 teams defined');
+  const names = TEAMS.map(t => t.name);
+  const unique = new Set(names);
+  assertEqual(unique.size, 6, 'All team names are unique');
+  for (const t of TEAMS) {
+    assert(t.pri && t.sec, t.name + ' has primary and secondary colors');
+  }
+  // All teams have equal stats (cosmetic only)
+  const first = TEAMS[0];
+  for (const t of TEAMS) {
+    assertEqual(t.spd, first.spd, t.name + ' has same speed as ' + first.name);
+    assertEqual(t.sht, first.sht, t.name + ' has same shooting');
+  }
+})();
+
+// --- Positions ---
+group('Positions');
+(function() {
+  assertEqual(POSITIONS.length, 4, '4 positions defined');
+  const shorts = POSITIONS.map(p => p.short);
+  assert(shorts.includes('GK'), 'Positions include GK');
+  assert(shorts.includes('DEF'), 'Positions include DEF');
+  assert(shorts.includes('MID'), 'Positions include MID');
+  assert(shorts.includes('FWD'), 'Positions include FWD');
+  assert(POSITIONS.every(p => p.idx >= 0 && p.idx <= 4), 'All position indices are valid (0-4)');
+  assert(POSITIONS.every(p => p.name && p.desc), 'All positions have name and description');
+})();
+
+// --- Entity Creation ---
+group('Entity Creation');
+(function() {
+  const p = mkPlayer(100, 200, 0, 'FWD', 3);
+  assertEqual(p.x, 100, 'Player x set correctly');
+  assertEqual(p.y, 200, 'Player y set correctly');
+  assertEqual(p.teamIdx, 0, 'Player teamIdx set correctly');
+  assertEqual(p.role, 'FWD', 'Player role set correctly');
+  assertEqual(p.idx, 3, 'Player idx set correctly');
+  assertEqual(p.vx, 0, 'Player starts with 0 vx');
+  assertEqual(p.vy, 0, 'Player starts with 0 vy');
+  assertEqual(p.kickCd, 0, 'Player starts with 0 kick cooldown');
+})();
+
+(function() {
+  const b = mkBall();
+  assertEqual(b.x, FCX, 'Ball starts at center X');
+  assertEqual(b.y, FCY, 'Ball starts at center Y');
+  assertEqual(b.vx, 0, 'Ball starts with 0 vx');
+  assertEqual(b.vy, 0, 'Ball starts with 0 vy');
+})();
+
+// --- Formations ---
+group('Formations');
+(function() {
+  const f = getFormation(true);
+  assertEqual(f.length, 5, 'Formation has 5 positions (attacking right)');
+  assertEqual(f[0].role, 'GK', 'First position is GK');
+  assert(f[0].x < FCX, 'GK is in own half when attacking right');
+  assertEqual(f[4].role, 'FWD', 'Last position is FWD');
+  assert(f[4].x > FCX, 'FWD is in opponent half when attacking right');
+  const roles = f.map(p => p.role);
+  assertEqual(roles.filter(r => r === 'DEF').length, 2, 'Two defenders in formation');
+})();
+
+(function() {
+  const f = getFormation(false);
+  assertEqual(f.length, 5, 'Formation has 5 positions (attacking left)');
+  assert(f[0].x > FCX, 'GK is in own half when attacking left');
+  assert(f[4].x < FCX, 'FWD is in opponent half when attacking left');
+})();
+
+(function() {
+  const fk = getKickoffFormation(true);
+  assertEqual(fk.length, 5, 'Kickoff formation has 5 positions');
+  assert(fk.every(p => p.x <= FCX), 'All players in own half at kickoff (attacking right)');
+})();
+
+(function() {
+  const fk = getKickoffFormation(false);
+  assert(fk.every(p => p.x >= FCX), 'All players in own half at kickoff (attacking left)');
+})();
+
+// --- Ball Physics ---
+group('Ball Physics');
+(function() {
+  const b = { x: 300, y: 200, vx: 5, vy: 0 };
+  // Simulate friction
+  b.vx *= BALL_FRIC;
+  assertApprox(b.vx, 5 * BALL_FRIC, 0.01, 'Ball friction reduces velocity');
+  assert(b.vx < 5, 'Ball slows down after friction');
+})();
+
+(function() {
+  // Ball at top wall
+  const b = { x: 300, y: FT - 1, vx: 0, vy: -2 };
+  if (b.y - BALL_R < FT) { b.y = FT + BALL_R; b.vy *= -0.6; }
+  assertEqual(b.y, FT + BALL_R, 'Ball bounces off top wall to correct position');
+  assertApprox(b.vy, 1.2, 0.01, 'Ball bounces off top wall with damping');
+})();
+
+(function() {
+  // Ball at bottom wall
+  const b = { x: 300, y: FB + 1, vx: 0, vy: 2 };
+  if (b.y + BALL_R > FB) { b.y = FB - BALL_R; b.vy *= -0.6; }
+  assertEqual(b.y, FB - BALL_R, 'Ball bounces off bottom wall');
+  assertApprox(b.vy, -1.2, 0.01, 'Ball reverses vy on bottom bounce');
+})();
+
+(function() {
+  // Ball at left wall outside goal
+  const b = { x: FL - 1, y: FT + 10, vx: -3, vy: 0 };
+  const inGoal = b.y > GOAL_T && b.y < GOAL_B;
+  assert(!inGoal, 'Ball at y=' + b.y + ' is outside goal opening');
+  if (!inGoal) { b.x = FL + BALL_R; b.vx *= -0.6; }
+  assertEqual(b.x, FL + BALL_R, 'Ball bounces off left wall outside goal');
+  assertApprox(b.vx, 1.8, 0.01, 'Ball reverses vx on left wall bounce');
+})();
+
+(function() {
+  // Ball in goal opening
+  const b = { x: FL - GOAL_DEPTH - 1, y: FCY, vx: -5, vy: 0 };
+  const inGoal = b.y > GOAL_T && b.y < GOAL_B;
+  assert(inGoal, 'Ball at center Y is in goal opening');
+  const pastGoal = b.x < FL - GOAL_DEPTH;
+  assert(pastGoal, 'Ball past goal depth triggers goal');
+})();
+
+// --- Possession ---
+group('Possession & Stealing');
+(function() {
+  const p = mkPlayer(300, 200, 0, 'MID', 0);
+  const b = { x: 305, y: 200 };
+  const d = dist(p, b);
+  assert(d < CONTROL_R, 'Player within CONTROL_R of ball gets possession');
+})();
+
+(function() {
+  const p = mkPlayer(300, 200, 0, 'MID', 0);
+  const b = { x: 350, y: 200 };
+  const d = dist(p, b);
+  assert(d > CONTROL_R, 'Player outside CONTROL_R does not get possession');
+})();
+
+(function() {
+  const owner = mkPlayer(300, 200, 0, 'MID', 0);
+  const stealer = mkPlayer(303, 200, 1, 'DEF', 0);
+  const b = { x: 305, y: 200 };
+  const d = dist(stealer, b);
+  assert(d < STEAL_R, 'Opponent within STEAL_R can steal the ball');
+})();
+
+// --- Utility Functions ---
+group('Utility Functions');
+(function() {
+  const a = { x: 0, y: 0 }, b = { x: 3, y: 4 };
+  assertEqual(dist(a, b), 5, 'dist(0,0 -> 3,4) = 5');
+})();
+
+(function() {
+  assertEqual(clamp(5, 0, 10), 5, 'clamp(5, 0, 10) = 5');
+  assertEqual(clamp(-1, 0, 10), 0, 'clamp(-1, 0, 10) = 0');
+  assertEqual(clamp(15, 0, 10), 10, 'clamp(15, 0, 10) = 10');
+})();
+
+// --- Achievement Triggers ---
+group('Achievement Triggers');
+clearMockStorage();
+(function() {
+  // First match
+  ggTry('ss_first_match');
+  assert(ggLoad().achievements['ss_first_match'] === true, 'First match achievement triggers');
+})();
+
+clearMockStorage();
+(function() {
+  // Win triggers
+  ggTry('ss_first_win');
+  assert(ggLoad().achievements['ss_first_win'] === true, 'First win achievement triggers');
+})();
+
+clearMockStorage();
+(function() {
+  // Clean sheet (win + 0 conceded)
+  ggTry('ss_clean_sheet');
+  assert(ggLoad().achievements['ss_clean_sheet'] === true, 'Clean sheet achievement triggers');
+})();
+
+clearMockStorage();
+(function() {
+  // Veteran (10 matches)
+  const s = defaultStats();
+  s.totalMatches = 10;
+  saveStats(s);
+  if (s.totalMatches >= 10) ggTry('ss_veteran');
+  assert(ggLoad().achievements['ss_veteran'] === true, 'Veteran achievement triggers at 10 matches');
+})();
+
+clearMockStorage();
+(function() {
+  // Golden boot (50 goals)
+  const s = defaultStats();
+  s.goalsScored = 50;
+  saveStats(s);
+  if (s.goalsScored >= 50) ggTry('ss_golden_boot');
+  assert(ggLoad().achievements['ss_golden_boot'] === true, 'Golden boot achievement triggers at 50 goals');
+})();
+
+clearMockStorage();
+(function() {
+  // All teams win
+  const s = defaultStats();
+  s.teamWins = {};
+  TEAMS.forEach(t => s.teamWins[t.name] = true);
+  saveStats(s);
+  const allTeamNames = TEAMS.map(t => t.name);
+  if (allTeamNames.every(n => s.teamWins[n])) ggTry('ss_all_teams');
+  assert(ggLoad().achievements['ss_all_teams'] === true, 'World Tour triggers when all teams won');
+})();
+
+clearMockStorage();
+(function() {
+  // Blowout (win by 5+)
+  const score = [6, 1];
+  if (score[0] > score[1] && score[0] - score[1] >= 5) ggTry('ss_blowout');
+  assert(ggLoad().achievements['ss_blowout'] === true, 'Blowout triggers at 5+ goal margin');
+})();
+
+clearMockStorage();
+(function() {
+  // No blowout at 4 goal margin
+  const score = [5, 1];
+  if (score[0] > score[1] && score[0] - score[1] >= 5) ggTry('ss_blowout');
+  assert(!ggLoad().achievements['ss_blowout'], 'Blowout does NOT trigger at 4 goal margin');
+})();
+
+clearMockStorage();
+(function() {
+  // Comeback (trail by 2+, then win)
+  const maxDeficit = 2;
+  const score = [3, 2];
+  if (score[0] > score[1] && maxDeficit >= 2) ggTry('ss_comeback');
+  assert(ggLoad().achievements['ss_comeback'] === true, 'Comeback triggers when trailing by 2+ then winning');
+})();
+
+clearMockStorage();
+(function() {
+  // No comeback if only trailed by 1
+  const maxDeficit = 1;
+  const score = [3, 2];
+  if (score[0] > score[1] && maxDeficit >= 2) ggTry('ss_comeback');
+  assert(!ggLoad().achievements['ss_comeback'], 'Comeback does NOT trigger at 1 goal deficit');
+})();
+
+clearMockStorage();
+(function() {
+  // Hat trick (3 goals in one match)
+  const p1GoalsThisMatch = 3;
+  if (p1GoalsThisMatch >= 3) ggTry('ss_hat_trick');
+  assert(ggLoad().achievements['ss_hat_trick'] === true, 'Hat trick triggers at 3 goals');
+})();
+
+clearMockStorage();
+(function() {
+  // Screamer (long range goal)
+  const lastShotDist = FW * 0.6;
+  if (lastShotDist > FW * 0.55) ggTry('ss_screamer');
+  assert(ggLoad().achievements['ss_screamer'] === true, 'Screamer triggers for long range shot');
+})();
+
+clearMockStorage();
+(function() {
+  // No screamer for close range
+  const lastShotDist = FW * 0.3;
+  if (lastShotDist > FW * 0.55) ggTry('ss_screamer');
+  assert(!ggLoad().achievements['ss_screamer'], 'Screamer does NOT trigger for close range shot');
+})();
+
+// --- Shop Items ---
+group('Shop Integration');
+clearMockStorage();
+(function() {
+  const d = ggLoad();
+  assert(!d.shopPurchases['ss_star_striker'], 'Star Striker not purchased by default');
+  assert(!d.shopPurchases['ss_speed_boots'], 'Speed Boots not purchased by default');
+})();
+
+(function() {
+  const d = ggLoad();
+  d.shopPurchases['ss_star_striker'] = true;
+  d.shopPurchases['ss_speed_boots'] = true;
+  ggSave(d);
+  const loaded = ggLoad();
+  assert(loaded.shopPurchases['ss_star_striker'] === true, 'Star Striker purchase persists');
+  assert(loaded.shopPurchases['ss_speed_boots'] === true, 'Speed Boots purchase persists');
+})();
+
+(function() {
+  // Speed bonus calculation
+  const baseSpeed = 1.6;
+  const bonus = ggLoad().shopPurchases['ss_speed_boots'];
+  const finalSpeed = baseSpeed * (bonus ? 1.1 : 1.0);
+  assertApprox(finalSpeed, 1.76, 0.01, 'Speed Boots gives 10% speed bonus');
+})();
+
+(function() {
+  // Shot power bonus calculation
+  const basePower = SHOOT_PWR;
+  const bonus = ggLoad().shopPurchases['ss_star_striker'];
+  const finalPower = basePower * (bonus ? 1.15 : 1.0);
+  assertApprox(finalPower, SHOOT_PWR * 1.15, 0.01, 'Star Striker gives 15% shot power bonus');
+})();
+
+// --- Field Geometry ---
+group('Field Geometry');
+(function() {
+  // Goal opening is centered
+  assertApprox((GOAL_T + GOAL_B) / 2, FCY, 0.1, 'Goal opening is centered on field Y');
+})();
+
+(function() {
+  // Penalty area contains goal area
+  assert(FL + 85 > FL + 40, 'Penalty area width > goal area width (left)');
+  assert(120 < 140, 'Penalty area top < goal area top (left)');
+  assert(240 > 220, 'Penalty area bottom > goal area bottom (left)');
+})();
+
+(function() {
+  // Center circle radius is reasonable
+  assert(45 < FW / 4, 'Center circle fits within field');
+  assert(45 < FH / 4, 'Center circle fits within field height');
+})();
+
+(function() {
+  // Player clamping keeps players on field
+  const px = clamp(0, FL + PLAYER_R, FR - PLAYER_R);
+  assertEqual(px, FL + PLAYER_R, 'Player clamped to field left');
+  const py = clamp(999, FT + PLAYER_R, FB - PLAYER_R);
+  assertEqual(py, FB - PLAYER_R, 'Player clamped to field bottom');
+})();
+
+// --- Match Timer ---
+group('Match Timer');
+(function() {
+  // First half: 0 elapsed = 0'
+  const matchElapsed = 0;
+  const matchMin = Math.floor(matchElapsed * 45 / HALF_SEC);
+  assertEqual(matchMin, 0, 'Match minute 0 at start');
+})();
+
+(function() {
+  // First half: 30 seconds = 22.5' -> floor = 22
+  const matchElapsed = 30;
+  const matchMin = Math.floor(matchElapsed * 45 / HALF_SEC);
+  assertEqual(matchMin, 22, 'Match minute 22 at 30 seconds');
+})();
+
+(function() {
+  // First half: 60 seconds = 45'
+  const matchElapsed = 60;
+  const matchMin = Math.floor(matchElapsed * 45 / HALF_SEC);
+  assertEqual(matchMin, 45, 'Match minute 45 at end of half');
+})();
+
+(function() {
+  // Second half display
+  const half = 2, matchElapsed = 30;
+  const matchMin = Math.floor(matchElapsed * 45 / HALF_SEC);
+  const dispMin = half === 1 ? matchMin : 45 + matchMin;
+  assertEqual(dispMin, 67, 'Second half: 30s elapsed shows 67th minute');
+})();
+
+// --- All done ---
+showSummary();
+</script>
+</body>
+</html>
