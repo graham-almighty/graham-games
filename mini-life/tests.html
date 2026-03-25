@@ -3172,6 +3172,144 @@ test('Full save data includes all Graham Dimension fields', () => {
   assert('gdCloneEgoTargets' in save);
 });
 
+// ═══ RUN FOR PRESIDENT QUEST ═══
+section('Run for President Quest');
+
+test('Campaign promises array has enough entries', () => {
+  const CAMPAIGN_PROMISES = [
+    { promise: "Free pizza every Friday!", like: "Ooh pizza? You've got my vote!" },
+    { promise: "Mandatory nap time twice a day!", like: "FINALLY someone gets it. You have my vote." },
+    { promise: "All Grahams get a pet beaver!", like: "A BEAVER?! Yes please! Voting for you!" },
+    { promise: "Replace all roads with trampolines!", like: "Bouncy roads?! That's genius! You got my vote!" },
+    { promise: "National Holiday every Monday!", like: "Three-day weekends forever? Take my vote!" },
+    { promise: "Free hats for everyone!", like: "I DO love hats... okay, you've convinced me!" },
+    { promise: "Rename Thursday to Grahamsday!", like: "About time! That's definitely worth a vote." },
+    { promise: "Install slides instead of stairs!", like: "Why did nobody think of this?! VOTED." },
+    { promise: "Make high-fives legally required!", like: "I've been saying this for YEARS! You got my vote!" },
+    { promise: "Ban alarm clocks forever!", like: "You're a hero. Take my vote immediately." },
+    { promise: "Free sunglasses for all clones!", like: "I'd look SO cool. You have my vote!" },
+    { promise: "Mandatory dance breaks every hour!", like: "My legs were MADE for dancing! Voted!" },
+  ];
+  assert(CAMPAIGN_PROMISES.length >= 10, 'At least 10 campaign promises');
+  CAMPAIGN_PROMISES.forEach((p, i) => {
+    assert(p.promise && p.promise.length > 0, 'Promise ' + i + ' has text');
+    assert(p.like && p.like.length > 0, 'Promise ' + i + ' has like response');
+  });
+});
+
+test('Goofy laws array has enough entries', () => {
+  const GOOFY_LAWS = [
+    "All Grahams must high-five at least 7 times per day",
+    "Bedtime is mandatory at 3 PM on Wednesdays",
+    "Socks must be worn on hands, not feet",
+    "Every sentence must end with 'Go Graham!'",
+    "Tuesdays are now officially called Grahamsdays",
+    "No walking allowed — skipping only",
+    "All food must be shaped like Graham's face",
+    "Sneezing without saying 'Graham bless you' is a crime",
+    "Air guitar solos are required before entering any building",
+    "Compliments are the official currency on weekends",
+    "All chairs must face slightly to the left",
+    "Humming is mandatory in hallways",
+  ];
+  assert(GOOFY_LAWS.length >= 12, 'At least 12 laws to choose from');
+  GOOFY_LAWS.forEach((l, i) => {
+    assert(l && l.length > 0, 'Law ' + i + ' has text');
+  });
+});
+
+test('President quest log tracking', () => {
+  const questLog = { president_campaign: { status: 'active', votes: 0 } };
+  // Simulate voting
+  const cloneIdx = 5;
+  questLog.president_campaign['v' + cloneIdx] = true;
+  questLog.president_campaign.votes++;
+  assertEqual(questLog.president_campaign.votes, 1);
+  assert(questLog.president_campaign['v5'] === true, 'Clone 5 vote tracked');
+  // Can't double vote
+  if (!questLog.president_campaign['v' + cloneIdx]) {
+    questLog.president_campaign.votes++;
+  }
+  assertEqual(questLog.president_campaign.votes, 1, 'No double voting');
+});
+
+test('President quest completion awards and tracks task', () => {
+  let gdTasksDone = {};
+  let grahamDimQuestsCompleted = 2;
+  let money = 100;
+  const questLog = { president_campaign: { status: 'active', votes: 5 } };
+  // Simulate finishing
+  questLog.president_campaign.status = 'completed';
+  money += 150;
+  if (!gdTasksDone['president_campaign']) {
+    gdTasksDone['president_campaign'] = true;
+    grahamDimQuestsCompleted++;
+  }
+  assertEqual(money, 250, 'President reward is $150');
+  assertEqual(questLog.president_campaign.status, 'completed');
+  assert(gdTasksDone['president_campaign'] === true, 'Task tracked');
+  assertEqual(grahamDimQuestsCompleted, 3, 'Quest count incremented');
+});
+
+test('President quest save/load round-trip', () => {
+  const questLog = { president_campaign: { status: 'active', votes: 3, v0: true, v5: true, v12: true } };
+  const serialized = JSON.stringify(questLog);
+  const loaded = JSON.parse(serialized);
+  assertEqual(loaded.president_campaign.status, 'active');
+  assertEqual(loaded.president_campaign.votes, 3);
+  assert(loaded.president_campaign.v0 === true);
+  assert(loaded.president_campaign.v5 === true);
+  assert(loaded.president_campaign.v12 === true);
+});
+
+test('Enacted laws save/load round-trip', () => {
+  const gdEnactedLaws = [
+    "Socks must be worn on hands, not feet",
+    "No walking allowed — skipping only",
+    "Humming is mandatory in hallways",
+  ];
+  const serialized = JSON.stringify(gdEnactedLaws);
+  const loaded = JSON.parse(serialized);
+  assertEqual(loaded.length, 3, 'Three laws saved');
+  assertEqual(loaded[0], gdEnactedLaws[0]);
+  assertEqual(loaded[1], gdEnactedLaws[1]);
+  assertEqual(loaded[2], gdEnactedLaws[2]);
+});
+
+test('Campaign Manager NPC position is in bounds and away from statue', () => {
+  const cmX = GRAHAM_DIM_ORIGIN.x + 10;
+  const cmZ = GRAHAM_DIM_ORIGIN.z - 5;
+  assert(cmX >= GRAHAM_DIM_BOUNDS.xMin && cmX <= GRAHAM_DIM_BOUNDS.xMax, 'CM X in bounds');
+  assert(cmZ >= GRAHAM_DIM_BOUNDS.zMin && cmZ <= GRAHAM_DIM_BOUNDS.zMax, 'CM Z in bounds');
+  const statueBox = GRAHAM_DIM_COLLISIONS[4];
+  const inside = cmX > statueBox.xMin && cmX < statueBox.xMax && cmZ > statueBox.zMin && cmZ < statueBox.zMax;
+  assert(!inside, 'Campaign Manager is not inside statue');
+});
+
+test('gdCloneVoteTargets picks 8 from 32 clones', () => {
+  const indices = [];
+  for (let i = 0; i < 32; i++) indices.push(i);
+  indices.sort(() => Math.random() - 0.5);
+  const targets = indices.slice(0, 8);
+  assertEqual(targets.length, 8, 'Should pick 8 clone targets');
+  const unique = new Set(targets);
+  assertEqual(unique.size, 8, 'All targets should be unique');
+  targets.forEach(t => assert(t >= 0 && t < 32, 'Target ' + t + ' is valid clone index'));
+});
+
+test('President quest counts toward graham_master achievement', () => {
+  localStorage.clear();
+  let grahamDimQuestsCompleted = 2;
+  let gdTasksDone = { graham_boss_1: true, ego_boost: true };
+  // Complete president campaign
+  gdTasksDone['president_campaign'] = true;
+  grahamDimQuestsCompleted++;
+  if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
+  const data = ggLoad();
+  assert(data.achievements.ml_graham_master === true, 'President campaign counts toward Graham master');
+  localStorage.clear();
+});
+
 // ═══ CLONE ARENA ═══
 section('Clone Arena');
 

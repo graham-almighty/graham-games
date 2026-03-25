@@ -42,6 +42,7 @@
   dress-to-depress/index.html  — 3D fashion disaster dress-up game (Three.js r128)
   sibling-brawl/index.html     — 3D first-person sibling battle game (Three.js r128)
   school-nurse/index.html      — 2D school nurse detective sim (Canvas)
+  super-soccer/index.html      — 2D soccer simulation (Canvas, early access)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   CLAUDE.md                    — This file (cross-game overview)
@@ -85,7 +86,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (127 total, 2870G earnable)
+### Achievement Summary (137 total, 3070G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -99,10 +100,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Dress to Depress | 10 | 200G |
 | Sibling Brawl | 10 | 185G |
 | School Nurse | 10 | 250G |
+| Super Soccer | 10 | 200G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 
-### G Bux Shop (21 items, 1425G total)
+### G Bux Shop (23 items, 1550G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -126,6 +128,8 @@ See each game's `CLAUDE.md` for full achievement tables.
 | sb_snack_boost | Snack Boost | 50G | Sibling Brawl | +10% damage for first 10s |
 | dtd_wild_card | Wild Card | 50G | Dress to Depress | Adds 3 wild clothing items |
 | dtd_extra_time | Extra Time | 75G | Dress to Depress | 60s per round instead of 45 |
+| ss_star_striker | Star Striker | 75G | Super Soccer | +15% shot power |
+| ss_speed_boots | Speed Boots | 50G | Super Soccer | +10% team speed |
 
 ---
 

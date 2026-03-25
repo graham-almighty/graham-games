@@ -39,6 +39,7 @@ body{background:#0a0a0f;overflow:hidden;}
     <path d="M200 42 Q210 52 220 42" stroke="#2a8a4a" stroke-width="3" fill="none"/>
   </svg>
   <div class="tb-title">SUPER SOCCER</div>
+  <a href="#" class="tb-exit" onclick="toggleFullscreen();return false" style="margin-right:6px;">FULLSCREEN</a>
   <a href="../index.html" class="tb-exit">EXIT TO LAUNCHER</a>
 </div>
 <canvas id="game-canvas"></canvas>
@@ -97,37 +98,46 @@ const GOAL_T=150,GOAL_B=210,GOAL_DEPTH=15;
 const PEN_W=85,PEN_T=120,PEN_B=240;
 const GA_W=40,GA_T=140,GA_B=220;
 const CENTER_R=45,PEN_SPOT=70;
-const BALL_R=4,BALL_FRIC=0.985;
-const PLAYER_R=7,CONTROL_R=13,STEAL_R=10;
-const PASS_PWR=4.0,SHOOT_PWR=5.5;
+const BALL_R=7,BALL_FRIC=0.97;
+const PLAYER_R=7,CONTROL_R=15,STEAL_R=12;
+const PASS_PWR=1.8,SHOOT_PWR=2.5;
 const HALF_SEC=60; // real seconds per half
 const KICKOFF_FRAMES=90;
 
 // === TEAMS (6) ===
 const TEAMS=[
-  {name:'LIONS',  pri:'#e63946',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
-  {name:'EAGLES', pri:'#2a6fdb',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
-  {name:'BEARS',  pri:'#d4843e',sec:'#ffffff',spd:1.6,sht:1.0,pas:1.0,def:1.0},
-  {name:'SHARKS', pri:'#00b4d8',sec:'#003344',spd:1.6,sht:1.0,pas:1.0,def:1.0},
-  {name:'DRAGONS',pri:'#9b59b6',sec:'#f0c040',spd:1.6,sht:1.0,pas:1.0,def:1.0},
-  {name:'WOLVES', pri:'#e0e0e0',sec:'#333333',spd:1.6,sht:1.0,pas:1.0,def:1.0}
+  {name:'LIONS',  pri:'#e63946',sec:'#ffffff',spd:0.55,sht:1.0,pas:1.0,def:1.0},
+  {name:'EAGLES', pri:'#2a6fdb',sec:'#ffffff',spd:0.55,sht:1.0,pas:1.0,def:1.0},
+  {name:'BEARS',  pri:'#d4843e',sec:'#ffffff',spd:0.55,sht:1.0,pas:1.0,def:1.0},
+  {name:'SHARKS', pri:'#00b4d8',sec:'#003344',spd:0.55,sht:1.0,pas:1.0,def:1.0},
+  {name:'DRAGONS',pri:'#9b59b6',sec:'#f0c040',spd:0.55,sht:1.0,pas:1.0,def:1.0},
+  {name:'WOLVES', pri:'#e0e0e0',sec:'#333333',spd:0.55,sht:1.0,pas:1.0,def:1.0}
 ];
 const POSITIONS=[
   {name:'GOALKEEPER',short:'GK',idx:0,desc:'Guard the net'},
-  {name:'DEFENDER',short:'DEF',idx:1,desc:'Protect your half'},
-  {name:'MIDFIELDER',short:'MID',idx:3,desc:'Control the game'},
-  {name:'FORWARD',short:'FWD',idx:4,desc:'Score goals'}
+  {name:'MIDFIELDER',short:'MID',idx:1,desc:'Control the game'},
+  {name:'FORWARD',short:'FWD',idx:2,desc:'Score goals'}
 ];
 
 // === INPUT ===
 const keys={},jp={};
+let mouseX=GAME_W/2,mouseY=GAME_H/2;
 window.addEventListener('keydown',e=>{if(!keys[e.code])jp[e.code]=true;keys[e.code]=true;e.preventDefault();});
 window.addEventListener('keyup',e=>{keys[e.code]=false;e.preventDefault();});
+window.addEventListener('mousemove',e=>{
+  const dc=document.getElementById('game-canvas');
+  const rect=dc.getBoundingClientRect();
+  const scale=Math.min(dc.clientWidth/GAME_W,dc.clientHeight/GAME_H);
+  const ox=(dc.clientWidth-GAME_W*scale)/2;
+  const oy=(dc.clientHeight-GAME_H*scale)/2;
+  mouseX=(e.clientX-rect.left-ox)/scale;
+  mouseY=(e.clientY-rect.top-oy)/scale;
+});
 function clearJP(){for(const k in jp)delete jp[k];}
 
 // === GAME STATE ===
 let gameState='title';
-let teamSelIdx=0,posSelIdx=3,playerTeam=0,aiTeam=1,playerPos=4;
+let teamSelIdx=0,posSelIdx=2,playerTeam=0,aiTeam=1,playerPos=2;
 let score=[0,0],half=1,playerRight=true;
 let matchElapsed=0,lastTime=0;
 let team1=[],team2=[]; // player's team, AI team
@@ -141,6 +151,8 @@ let p1GoalsThisMatch=0,maxDeficit=0;
 let lastShotByHuman=false,lastShotDist=0;
 let frameCount=0;
 let matchShots=[0,0];
+let callForPassCd=0; // cooldown for call-for-pass
+let tutorialTimer=0;
 
 // === UTILITY ===
 function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
@@ -160,16 +172,12 @@ function getFormation(attackRight){
   if(attackRight){
     return[
       {x:FL+20,y:FCY,role:'GK'},
-      {x:FL+FW*0.22,y:FCY-60,role:'DEF'},
-      {x:FL+FW*0.22,y:FCY+60,role:'DEF'},
       {x:FCX-40,y:FCY,role:'MID'},
       {x:FCX+80,y:FCY,role:'FWD'}
     ];
   }
   return[
     {x:FR-20,y:FCY,role:'GK'},
-    {x:FR-FW*0.22,y:FCY-60,role:'DEF'},
-    {x:FR-FW*0.22,y:FCY+60,role:'DEF'},
     {x:FCX+40,y:FCY,role:'MID'},
     {x:FCX-80,y:FCY,role:'FWD'}
   ];
@@ -179,16 +187,12 @@ function getKickoffFormation(attackRight){
   if(attackRight){
     return[
       {x:FL+20,y:FCY,role:'GK'},
-      {x:FL+FW*0.22,y:FCY-60,role:'DEF'},
-      {x:FL+FW*0.22,y:FCY+60,role:'DEF'},
       {x:FCX-60,y:FCY,role:'MID'},
       {x:FCX-5,y:FCY,role:'FWD'}
     ];
   }
   return[
     {x:FR-20,y:FCY,role:'GK'},
-    {x:FR-FW*0.22,y:FCY-60,role:'DEF'},
-    {x:FR-FW*0.22,y:FCY+60,role:'DEF'},
     {x:FCX+60,y:FCY,role:'MID'},
     {x:FCX+30,y:FCY,role:'FWD'}
   ];
@@ -198,7 +202,7 @@ function getKickoffFormation(attackRight){
 function resetPositions(forKickoff){
   const f1=forKickoff?getKickoffFormation(playerRight):getFormation(playerRight);
   const f2=forKickoff?getKickoffFormation(!playerRight):getFormation(!playerRight);
-  for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
     team1[i].x=f1[i].x;team1[i].y=f1[i].y;team1[i].role=f1[i].role;
     team1[i].vx=0;team1[i].vy=0;team1[i].kickCd=0;
     team2[i].x=f2[i].x;team2[i].y=f2[i].y;team2[i].role=f2[i].role;
@@ -208,8 +212,8 @@ function resetPositions(forKickoff){
   ballOwner=null;
   // Give possession to kicking team's FWD
   const kickTeam=playerRight?team1:team2;
-  ballOwner=kickTeam[4]; // FWD
-  if(ballOwner.teamIdx===0)selIdx=4;
+  ballOwner=kickTeam[2]; // FWD
+  if(ballOwner.teamIdx===0)selIdx=2;
   // Set cooldown on opposing players near center to prevent instant steal
   const otherTeam=playerRight?team2:team1;
   for(const p of otherTeam)p.kickCd=45;
@@ -224,13 +228,13 @@ function startMatch(){
   const f1=getKickoffFormation(true);
   const f2=getKickoffFormation(false);
   team1=[];team2=[];
-  for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
     team1.push(mkPlayer(f1[i].x,f1[i].y,0,f1[i].role,i));
     team2.push(mkPlayer(f2[i].x,f2[i].y,1,f2[i].role,i));
   }
   ball=mkBall();selIdx=playerPos; // control chosen position
   // Give player's team first possession
-  ballOwner=team1[4];
+  ballOwner=team1[2];
   for(const p of team2)p.kickCd=45;
   kickoffTimer=KICKOFF_FRAMES;
   gameState='playing';
@@ -292,17 +296,26 @@ function updateBall(){
 }
 
 // === POSSESSION ===
-// Ball is a loose physics object. Players pick it up on contact (60% chance for moving ball, 100% if stationary).
-// Human player must press E to pick up.
+// Ball is a loose physics object. All players auto-pickup on contact.
 function updatePossession(){
   if(ballOwner)return;
   const ballSpeed=Math.sqrt(ball.vx*ball.vx+ball.vy*ball.vy);
   const autoPickup=ballSpeed<0.5?1.0:0.6;
-  // AI players auto-pickup on contact
+  // Human player gets priority for pickup
+  const humanP=team1[selIdx];
+  if(humanP.kickCd<=0){
+    const d=dist(humanP,ball);
+    if(d<CONTROL_R&&Math.random()<autoPickup){
+      ballOwner=humanP;
+      ball.vx=0;ball.vy=0;
+      return;
+    }
+  }
+  // Then all other players
   const all=[...team1,...team2];
   for(const p of all){
     if(p.kickCd>0)continue;
-    if(p.teamIdx===0&&p.idx===selIdx)continue; // human player must press E
+    if(p.teamIdx===0&&p.idx===selIdx)continue; // already checked
     const d=dist(p,ball);
     if(d<CONTROL_R&&Math.random()<autoPickup){
       ballOwner=p;
@@ -333,27 +346,66 @@ function checkSteal(){
 // === KICK FUNCTIONS ===
 function doPass(kicker,teammates,team){
   const atkDir=((kicker.teamIdx===0)===playerRight)?1:-1;
+  const isPlayerTeam=kicker.teamIdx===0;
   let best=null,bestScore=-Infinity;
   for(const t of teammates){
     if(t===kicker)continue;
     const dx=t.x-kicker.x,dy=t.y-kicker.y;
     const d=Math.sqrt(dx*dx+dy*dy);
-    if(d<30||d>300)continue;
+    if(d<25||d>350)continue;
     const forward=dx*atkDir;
-    const sc=forward/d-d/500;
+    let sc=forward/d-d/500;
+    // Strongly prefer passing to the human-controlled player
+    if(isPlayerTeam&&t.idx===selIdx)sc+=1.5;
     if(sc>bestScore){bestScore=sc;best=t;}
   }
-  let a;
   if(best){
-    a=ang(kicker,best);
+    doPassToPlayer(kicker,best,team);
   }else{
-    a=atkDir>0?0:Math.PI;
+    const a=atkDir>0?0:Math.PI;
+    ball.vx=Math.cos(a)*PASS_PWR*team.pas;
+    ball.vy=Math.sin(a)*PASS_PWR*team.pas;
+    ballOwner=null;kicker.kickCd=20;
+    lastShotByHuman=false;
+    addParticles(ball.x,ball.y,'#ffffff',3);
   }
-  const pwr=PASS_PWR*team.pas;
+}
+
+// Pass directly to a specific player (used for call-for-pass)
+function doPassToPlayer(kicker,target,team){
+  const a=ang(kicker,target);
+  const d=dist(kicker,target);
+  const pwr=clamp(PASS_PWR*team.pas*(d/200+0.5),PASS_PWR*0.6,PASS_PWR*1.3);
   ball.vx=Math.cos(a)*pwr;ball.vy=Math.sin(a)*pwr;
   ballOwner=null;kicker.kickCd=20;
   lastShotByHuman=false;
   addParticles(ball.x,ball.y,'#ffffff',3);
+}
+
+// Pass to best available teammate (used when human presses Space with ball)
+function doPassToTarget(kicker,teammates,team){
+  const atkDir=((kicker.teamIdx===0)===playerRight)?1:-1;
+  let best=null,bestScore=-Infinity;
+  for(const t of teammates){
+    if(t===kicker)continue;
+    const dx=t.x-kicker.x,dy=t.y-kicker.y;
+    const d=Math.sqrt(dx*dx+dy*dy);
+    if(d<25||d>350)continue;
+    // Prefer players in the direction the kicker is facing
+    const faceDot=Math.cos(kicker.angle)*(dx/d)+Math.sin(kicker.angle)*(dy/d);
+    const forward=dx*atkDir;
+    const sc=faceDot*0.5+forward/d*0.3-d/600;
+    if(sc>bestScore){bestScore=sc;best=t;}
+  }
+  if(best){
+    doPassToPlayer(kicker,best,team);
+  }else{
+    // No good target — just kick in facing direction
+    ball.vx=Math.cos(kicker.angle)*PASS_PWR*team.pas;
+    ball.vy=Math.sin(kicker.angle)*PASS_PWR*team.pas;
+    ballOwner=null;kicker.kickCd=20;
+    addParticles(ball.x,ball.y,'#ffffff',3);
+  }
 }
 
 function doShoot(kicker,team,isHuman){
@@ -400,25 +452,28 @@ function updateHumanPlayer(){
   const bonus=shopBonus();
   const spd=t.spd*(bonus.speed?1.1:1.0);
 
-  let mx=0,my=0;
-  if(keys['KeyA'])mx=-1;
-  if(keys['KeyD'])mx=1;
-  if(keys['KeyW'])my=-1;
-  if(keys['KeyS'])my=1;
-  if(mx&&my){mx*=0.707;my*=0.707;}
+  // Mouse controls facing direction
+  const aimAngle=Math.atan2(mouseY-sp.y,mouseX-sp.x);
+  sp.angle=aimAngle;
+
+  // W = forward (toward mouse), S = backward
+  let forward=0;
+  if(keys['KeyW'])forward=1;
+  if(keys['KeyS'])forward=-1;
 
   const hasBall=ballOwner===sp;
-  const moveSpd=hasBall?spd*0.85:spd;
-  sp.vx=mx*moveSpd;sp.vy=my*moveSpd;
-
-  if(mx||my)sp.angle=Math.atan2(my,mx);
+  const sprinting=keys['ShiftLeft']||keys['ShiftRight'];
+  const sprintMul=sprinting?1.8:1.0;
+  const moveSpd=(hasBall?spd*0.85:spd)*sprintMul;
+  sp.vx=Math.cos(aimAngle)*forward*moveSpd;
+  sp.vy=Math.sin(aimAngle)*forward*moveSpd;
 
   sp.x+=sp.vx;sp.y+=sp.vy;
   sp.x=clamp(sp.x,FL+PLAYER_R,FR-PLAYER_R);
   sp.y=clamp(sp.y,FT+PLAYER_R,FB-PLAYER_R);
 
-  // E = pick up ball / kick ball forward
-  if(jp['KeyE']&&sp.kickCd<=0){
+  // SPACE = pick up ball / shoot
+  if(jp['Space']&&sp.kickCd<=0){
     if(hasBall){
       // Kick ball forward in facing direction
       const pwr=SHOOT_PWR*(bonus.striker?1.15:1.0);
@@ -444,6 +499,25 @@ function updateHumanPlayer(){
       }
     }
   }
+
+  // E = call for pass (when player doesn't have ball) or pass to teammate (when player has ball)
+  if(jp['KeyE']&&sp.kickCd<=0){
+    if(hasBall){
+      // Pass to best teammate
+      doPassToTarget(sp,team1,TEAMS[playerTeam]);
+    }else if(callForPassCd<=0){
+      // Call for pass — find teammate with ball and make them pass to us
+      for(const tm of team1){
+        if(tm===sp)continue;
+        if(ballOwner===tm&&tm.kickCd<=0){
+          doPassToPlayer(tm,sp,TEAMS[playerTeam]);
+          callForPassCd=30;
+          break;
+        }
+      }
+    }
+  }
+  if(callForPassCd>0)callForPassCd--;
 
   // Cooldowns
   for(const p of team1)if(p.kickCd>0)p.kickCd--;
@@ -475,13 +549,27 @@ function updateTeammateAI(){
     }
 
     if(ballOwner===p&&p.kickCd<=0){
-      // Teammate has ball — play smart
+      // Teammate has ball — pass to human player ASAP
       const goalX=playerRight?FR:FL;
       const distToGoal=Math.abs(p.x-goalX);
-      if(distToGoal<180&&Math.random()<0.03){
+      const humanP=team1[selIdx];
+      const distToHuman=dist(p,humanP);
+      const humanOpen=distToHuman>25&&distToHuman<350;
+      // Track how long this teammate has held the ball
+      if(!p._holdFrames)p._holdFrames=0;
+      p._holdFrames++;
+      // Priority 1: Pass to human player — very high chance, increases over time
+      const passToHumanChance=Math.min(0.12+p._holdFrames*0.008,0.5);
+      if(humanOpen&&Math.random()<passToHumanChance){
+        doPassToPlayer(p,humanP,t);
+        p._holdFrames=0;
+      }else if(distToGoal<130&&Math.random()<0.04){
         doShoot(p,t,true);
-      }else if(Math.random()<0.015){
+        p._holdFrames=0;
+      }else if(p._holdFrames>60&&Math.random()<0.06){
+        // Held too long, pass to anyone
         doPass(p,team1,t);
+        p._holdFrames=0;
       }else{
         const a=Math.atan2(FCY-p.y,goalX-p.x);
         p.vx=Math.cos(a)*spd*0.85;
@@ -524,26 +612,42 @@ function updateGK(p,isAttackingRight,spd){
 
   // Rush out if ball is very close
   const bd=dist(p,ball);
-  if(bd<80&&!ballOwner){
+  if(bd<50&&!ballOwner){
     const a=ang(p,ball);
-    p.vx=Math.cos(a)*spd*1.2;
-    p.vy=Math.sin(a)*spd*1.2;
+    p.vx=Math.cos(a)*spd*0.7;
+    p.vy=Math.sin(a)*spd*0.7;
   }else{
-    p.vx=dx*0.08;
-    p.vy=dy*0.12;
+    p.vx=dx*0.04;
+    p.vy=dy*0.06;
   }
   p.x+=p.vx;p.y+=p.vy;
   p.x=clamp(p.x,FL+PLAYER_R,FR-PLAYER_R);
   p.y=clamp(p.y,FT+PLAYER_R,FB-PLAYER_R);
   if(p.vx||p.vy)p.angle=Math.atan2(p.vy,p.vx);
 
-  // If GK has ball, kick it upfield
+  // If GK has ball, try to pass to human player, else kick upfield
   if(ballOwner===p&&p.kickCd<=0){
-    const kickDir=isAttackingRight?0:Math.PI;
-    const spread=(Math.random()-0.5)*1.0;
-    ball.vx=Math.cos(kickDir+spread)*SHOOT_PWR*0.7;
-    ball.vy=Math.sin(kickDir+spread)*SHOOT_PWR*0.7;
-    ballOwner=null;p.kickCd=25;lastShotByHuman=false;
+    // Check if human player is on the same team and open
+    const isPlayerTeamGK=p.teamIdx===0;
+    if(isPlayerTeamGK){
+      const humanP=team1[selIdx];
+      const dh=dist(p,humanP);
+      if(dh>30&&dh<350&&Math.random()<0.7){
+        doPassToPlayer(p,humanP,TEAMS[playerTeam]);
+      }else{
+        const kickDir=isAttackingRight?0:Math.PI;
+        const spread=(Math.random()-0.5)*1.0;
+        ball.vx=Math.cos(kickDir+spread)*SHOOT_PWR*0.7;
+        ball.vy=Math.sin(kickDir+spread)*SHOOT_PWR*0.7;
+        ballOwner=null;p.kickCd=25;lastShotByHuman=false;
+      }
+    }else{
+      const kickDir=isAttackingRight?0:Math.PI;
+      const spread=(Math.random()-0.5)*1.0;
+      ball.vx=Math.cos(kickDir+spread)*SHOOT_PWR*0.7;
+      ball.vy=Math.sin(kickDir+spread)*SHOOT_PWR*0.7;
+      ballOwner=null;p.kickCd=25;lastShotByHuman=false;
+    }
   }
 }
 
@@ -577,11 +681,11 @@ function updateOpponentAI(){
         // Has ball - decide action
         const goalX=aiRight?FR:FL;
         const distToGoal=Math.abs(p.x-goalX);
-        if(distToGoal<180&&p.kickCd<=0&&Math.random()<0.04){
+        if(distToGoal<150&&p.kickCd<=0&&Math.random()<0.05){
           // Shoot
           doShoot(p,t,false);
-        }else if(Math.random()<0.005&&p.kickCd<=0){
-          // Occasional pass
+        }else if(Math.random()<0.03&&p.kickCd<=0){
+          // Pass to teammate
           doPass(p,team2,t);
         }else{
           // Dribble towards goal
@@ -624,10 +728,10 @@ function updateOpponentAI(){
 // === GOAL HANDLING ===
 function triggerGoal(teamIdx){
   score[teamIdx]++;
-  goalBy=teamIdx;goalTimer=120;
+  goalBy=teamIdx;goalTimer=180;
   if(teamIdx===0){
     p1GoalsThisMatch++;
-    if(lastShotByHuman&&lastShotDist>FW*0.55)ggTry('ss_screamer');
+    if(lastShotByHuman&&lastShotDist>FW*0.4)ggTry('ss_screamer');
     if(p1GoalsThisMatch>=3)ggTry('ss_hat_trick');
   }
   const deficit=score[1]-score[0];
@@ -665,14 +769,14 @@ function endMatch(){
     stats.teamWins[tn]=true;
     ggTry('ss_first_win');
     if(score[1]===0)ggTry('ss_clean_sheet');
-    if(score[0]-score[1]>=5)ggTry('ss_blowout');
-    if(maxDeficit>=2)ggTry('ss_comeback');
+    if(score[0]-score[1]>=3)ggTry('ss_blowout');
+    if(maxDeficit>=1)ggTry('ss_comeback');
     // Check all teams
     const allTeamNames=TEAMS.map(t=>t.name);
     if(allTeamNames.every(n=>stats.teamWins[n]))ggTry('ss_all_teams');
   }
-  if(stats.totalMatches>=10)ggTry('ss_veteran');
-  if(stats.goalsScored>=50)ggTry('ss_golden_boot');
+  if(stats.totalMatches>=5)ggTry('ss_veteran');
+  if(stats.goalsScored>=20)ggTry('ss_golden_boot');
   saveStats(stats);
 }
 
@@ -684,7 +788,7 @@ function update(timestamp){
 
   switch(gameState){
     case 'title':
-      if(jp['Enter']||jp['Space']||jp['KeyE'])gameState='teamSelect';
+      if(jp['Space'])gameState='teamSelect';
       break;
 
     case 'teamSelect':
@@ -692,7 +796,7 @@ function update(timestamp){
       if(jp['ArrowRight']||jp['KeyD'])teamSelIdx=(teamSelIdx+1)%6;
       if(jp['ArrowUp']||jp['KeyW'])teamSelIdx=(teamSelIdx+3)%6;
       if(jp['ArrowDown']||jp['KeyS'])teamSelIdx=(teamSelIdx+3)%6;
-      if(jp['Enter']||jp['Space']||jp['KeyE']){
+      if(jp['Space']){
         playerTeam=teamSelIdx;
         aiTeam=(playerTeam+1+Math.floor(Math.random()*(TEAMS.length-1)))%TEAMS.length;
         gameState='posSelect';
@@ -700,10 +804,17 @@ function update(timestamp){
       break;
 
     case 'posSelect':
-      if(jp['ArrowUp']||jp['KeyW'])posSelIdx=(posSelIdx+3)%4;
-      if(jp['ArrowDown']||jp['KeyS'])posSelIdx=(posSelIdx+1)%4;
-      if(jp['Enter']||jp['Space']||jp['KeyE']){
+      if(jp['ArrowUp']||jp['KeyW'])posSelIdx=(posSelIdx+2)%3;
+      if(jp['ArrowDown']||jp['KeyS'])posSelIdx=(posSelIdx+1)%3;
+      if(jp['Space']){
         playerPos=POSITIONS[posSelIdx].idx;
+        gameState='tutorial';tutorialTimer=0;
+      }
+      break;
+
+    case 'tutorial':
+      tutorialTimer++;
+      if((jp['Space'])&&tutorialTimer>30){
         startMatch();
       }
       break;
@@ -733,7 +844,7 @@ function update(timestamp){
 
     case 'halfTime':
       halfTimer++;
-      if((jp['Enter']||jp['Space']||jp['KeyE'])&&halfTimer>30){
+      if((jp['Space'])&&halfTimer>30){
         resetPositions(true);
         kickoffTimer=KICKOFF_FRAMES;
         matchElapsed=0;
@@ -743,7 +854,7 @@ function update(timestamp){
 
     case 'matchEnd':
       endTimer++;
-      if((jp['Enter']||jp['Space']||jp['KeyE'])&&endTimer>60){
+      if((jp['Space'])&&endTimer>60){
         gameState='title';
       }
       break;
@@ -764,6 +875,7 @@ function render(){
     case 'title':drawTitle();break;
     case 'teamSelect':drawTeamSelect();break;
     case 'posSelect':drawPosSelect();break;
+    case 'tutorial':drawTutorial();break;
     case 'playing':drawMatch();break;
     case 'goalScored':drawMatch();drawGoalOverlay();break;
     case 'halfTime':drawHalfTime();break;
@@ -801,7 +913,7 @@ function drawTitle(){
   G.strokeStyle='#333';G.lineWidth=1.5;G.stroke();
   // Pentagon pattern
   G.fillStyle='#333';
-  for(let i=0;i<5;i++){
+  for(let i=0;i<3;i++){
     const a=i*Math.PI*2/5-Math.PI/2;
     G.beginPath();G.arc(GAME_W/2+Math.cos(a)*6,by+Math.sin(a)*6,3,0,Math.PI*2);G.fill();
   }
@@ -809,12 +921,12 @@ function drawTitle(){
   // Prompt
   if(Math.floor(frameCount/30)%2===0){
     G.fillStyle='#ffffff';G.font='14px Cinzel,serif';
-    G.fillText('PRESS ENTER TO START',GAME_W/2,270);
+    G.fillText('PRESS SPACE TO START',GAME_W/2,270);
   }
 
   // Controls hint
   G.fillStyle='#888';G.font='10px sans-serif';
-  G.fillText('WASD: Move | E: Pick Up / Kick',GAME_W/2,320);
+  G.fillText('MOUSE: Aim | W/S: Move | SHIFT: Sprint | E: Pass | SPACE: Shoot',GAME_W/2,320);
 }
 
 // === DRAW: TEAM SELECT ===
@@ -851,7 +963,7 @@ function drawTeamSelect(){
   }
 
   G.fillStyle='#888';G.font='10px sans-serif';G.textAlign='center';
-  G.fillText('ARROWS to select, ENTER to confirm',GAME_W/2,GAME_H-20);
+  G.fillText('ARROWS to select, SPACE to confirm',GAME_W/2,GAME_H-20);
 }
 
 // === DRAW: POSITION SELECT ===
@@ -895,7 +1007,113 @@ function drawPosSelect(){
   }
 
   G.fillStyle='#888';G.font='10px sans-serif';G.textAlign='center';
-  G.fillText('UP/DOWN to select, ENTER to confirm',GAME_W/2,GAME_H-20);
+  G.fillText('UP/DOWN to select, SPACE to confirm',GAME_W/2,GAME_H-20);
+}
+
+// === DRAW: TUTORIAL ===
+function drawTutorial(){
+  G.fillStyle='#0e2e0e';G.fillRect(0,0,GAME_W,GAME_H);
+
+  // Title
+  G.fillStyle='#c9a84c';G.font='bold 22px Cinzel,serif';
+  G.textAlign='center';G.textBaseline='middle';
+  G.fillText('HOW TO PLAY',GAME_W/2,32);
+
+  // Divider
+  G.strokeStyle='#c9a84c44';G.lineWidth=1;
+  G.beginPath();G.moveTo(GAME_W/2-180,50);G.lineTo(GAME_W/2+180,50);G.stroke();
+
+  const controls=[
+    {keys:'MOUSE',label:'AIM',desc:'Point where you want to face',icon:'move'},
+    {keys:'W',label:'RUN FORWARD',desc:'Move toward your mouse cursor. S to go backward',icon:'move'},
+    {keys:'SHIFT',label:'SPRINT',desc:'Hold to run faster',icon:'move'},
+    {keys:'E',label:'PASS / CALL FOR BALL',desc:'With ball: pass to a teammate. Without ball: call for the pass!',icon:'pass'},
+    {keys:'SPACE',label:'PICK UP / SHOOT',desc:'Grab a loose ball or tackle. With ball: shoot at goal!',icon:'shoot'},
+  ];
+
+  const startY=72;
+  const rowH=62;
+
+  for(let i=0;i<controls.length;i++){
+    const c=controls[i];
+    const cy=startY+i*rowH;
+    const fadeIn=clamp((tutorialTimer-i*12)/15,0,1);
+    G.globalAlpha=fadeIn;
+
+    // Background row
+    G.fillStyle='rgba(255,255,255,0.03)';
+    G.fillRect(60,cy,GAME_W-120,rowH-8);
+    G.strokeStyle='rgba(201,168,76,0.2)';G.lineWidth=1;
+    G.strokeRect(60,cy,GAME_W-120,rowH-8);
+
+    // Draw key box(es)
+    const keyParts=c.keys.split(' ');
+    const keyTotalW=keyParts.length*28+(keyParts.length-1)*4;
+    const keyStartX=100-keyTotalW/2;
+    for(let k=0;k<keyParts.length;k++){
+      const kx=keyStartX+k*32;
+      const ky=cy+10;
+      // Key background
+      G.fillStyle='#1a1a2e';
+      G.fillRect(kx,ky,26,24);
+      G.strokeStyle='#c9a84c';G.lineWidth=1.5;
+      G.strokeRect(kx,ky,26,24);
+      // Key letter
+      G.fillStyle='#c9a84c';G.font='bold 11px sans-serif';G.textAlign='center';
+      G.fillText(keyParts[k],kx+13,ky+15);
+    }
+
+    // Icon
+    const ix=180,iy=cy+rowH/2-4;
+    G.fillStyle='#3da349';
+    if(c.icon==='move'){
+      // Arrow cross
+      G.beginPath();G.moveTo(ix,iy-10);G.lineTo(ix+5,iy-5);G.lineTo(ix-5,iy-5);G.closePath();G.fill();
+      G.beginPath();G.moveTo(ix,iy+10);G.lineTo(ix+5,iy+5);G.lineTo(ix-5,iy+5);G.closePath();G.fill();
+      G.beginPath();G.moveTo(ix-10,iy);G.lineTo(ix-5,iy-5);G.lineTo(ix-5,iy+5);G.closePath();G.fill();
+      G.beginPath();G.moveTo(ix+10,iy);G.lineTo(ix+5,iy-5);G.lineTo(ix+5,iy+5);G.closePath();G.fill();
+    }else if(c.icon==='shoot'){
+      // Ball + arrow
+      G.beginPath();G.arc(ix-4,iy,5,0,Math.PI*2);G.fill();
+      G.fillStyle='#ffff00';
+      G.beginPath();G.moveTo(ix+5,iy);G.lineTo(ix+14,iy-4);G.lineTo(ix+14,iy+4);G.closePath();G.fill();
+    }else{
+      // Two players + ball between
+      G.beginPath();G.arc(ix-8,iy,4,0,Math.PI*2);G.fill();
+      G.beginPath();G.arc(ix+8,iy,4,0,Math.PI*2);G.fill();
+      G.fillStyle='#ffffff';G.beginPath();G.arc(ix,iy,3,0,Math.PI*2);G.fill();
+    }
+
+    // Label
+    G.fillStyle='#fff';G.font='bold 13px sans-serif';G.textAlign='left';
+    G.fillText(c.label,205,cy+20);
+
+    // Description
+    G.fillStyle='#999';G.font='11px sans-serif';
+    G.fillText(c.desc,205,cy+38);
+
+    G.globalAlpha=1;
+  }
+
+  // Tip box
+  const tipY=startY+controls.length*rowH+10;
+  const tipFade=clamp((tutorialTimer-50)/20,0,1);
+  G.globalAlpha=tipFade;
+  G.fillStyle='rgba(201,168,76,0.08)';
+  G.fillRect(80,tipY,GAME_W-160,50);
+  G.strokeStyle='#c9a84c55';G.lineWidth=1;
+  G.strokeRect(80,tipY,GAME_W-160,50);
+  G.fillStyle='#c9a84c';G.font='bold 12px sans-serif';G.textAlign='center';
+  G.fillText('TIP: Your teammates will look for you!',GAME_W/2,tipY+18);
+  G.fillStyle='#aaa';G.font='11px sans-serif';
+  G.fillText('Press SPACE to call for the ball and get in the action.',GAME_W/2,tipY+36);
+  G.globalAlpha=1;
+
+  // Continue prompt
+  if(tutorialTimer>30&&Math.floor(frameCount/30)%2===0){
+    G.fillStyle='#fff';G.font='13px Cinzel,serif';G.textAlign='center';
+    G.fillText('PRESS SPACE TO START MATCH',GAME_W/2,GAME_H-18);
+  }
 }
 
 // === DRAW: MATCH ===
@@ -1106,7 +1324,7 @@ function drawHalfTime(){
   G.fillStyle=t2.pri;G.textAlign='left';G.fillText(t2.name,GAME_W/2+50,160);
   if(halfTimer>30){
     G.fillStyle='#888';G.font='12px sans-serif';G.textAlign='center';
-    G.fillText('Press ENTER to continue',GAME_W/2,240);
+    G.fillText('Press SPACE to continue',GAME_W/2,240);
   }
 }
 
@@ -1142,11 +1360,19 @@ function drawMatchEnd(){
 
   if(endTimer>60){
     G.fillStyle='#888';G.font='12px sans-serif';
-    G.fillText('Press ENTER to continue',GAME_W/2,300);
+    G.fillText('Press SPACE to continue',GAME_W/2,300);
   }
 }
 
 // === GAME LOOP ===
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(()=>{});
+  }else{
+    document.exitFullscreen();
+  }
+}
+
 function gameLoop(ts){
   update(ts);
   render();
