@@ -7834,6 +7834,12 @@ let gdJobLastDay = {};
 let gdCloneVoteTargets = []; // indices of clones you can campaign to
 let gdEnactedLaws = []; // laws chosen after winning presidency
 let gdLawSignGroup = null; // 3D sign showing enacted laws
+let gdPresHouseBuilt = false; // presidential house built
+let gdPresHouseGroup = null; // 3D group for presidential house
+let gdPresApproval = 50; // 0-100 approval rating
+let gdPresImpeached = false; // got im-cherried
+let gdPresThrone = false; // earned pizza throne
+let gdPresThroneGroup = null; // 3D pizza throne mesh
 const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
 const GRAHAM_DIM_BOUNDS = { xMin: 340, xMax: 460, zMin: -100, zMax: 60 };
 const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 50 };
@@ -8043,20 +8049,24 @@ const GRAHAM_CLONE_LINES = [
    "If you're reading this, send help. Just kidding. Send more Grahams."],
 ];
 
-// Goofy campaign promises (clone picks one they like)
+// Goofy campaign promises — all Grahams share the same opinions!
+// loved=true promises always win votes, loved=false always rejected
 const CAMPAIGN_PROMISES = [
-  { promise: "Free pizza every Friday!", like: "Ooh pizza? You've got my vote!" },
-  { promise: "Mandatory nap time twice a day!", like: "FINALLY someone gets it. You have my vote." },
-  { promise: "All Grahams get a pet beaver!", like: "A BEAVER?! Yes please! Voting for you!" },
-  { promise: "Replace all roads with trampolines!", like: "Bouncy roads?! That's genius! You got my vote!" },
-  { promise: "National Holiday every Monday!", like: "Three-day weekends forever? Take my vote!" },
-  { promise: "Free hats for everyone!", like: "I DO love hats... okay, you've convinced me!" },
-  { promise: "Rename Thursday to Grahamsday!", like: "About time! That's definitely worth a vote." },
-  { promise: "Install slides instead of stairs!", like: "Why did nobody think of this?! VOTED." },
-  { promise: "Make high-fives legally required!", like: "I've been saying this for YEARS! You got my vote!" },
-  { promise: "Ban alarm clocks forever!", like: "You're a hero. Take my vote immediately." },
-  { promise: "Free sunglasses for all clones!", like: "I'd look SO cool. You have my vote!" },
-  { promise: "Mandatory dance breaks every hour!", like: "My legs were MADE for dancing! Voted!" },
+  { promise: "All Grahams get a pet beaver!", like: "A BEAVER?! Yes please! Voting for you!", loved: true },
+  { promise: "Replace all roads with trampolines!", like: "Bouncy roads?! That's genius! You got my vote!", loved: true },
+  { promise: "Rename Thursday to Grahamsday!", like: "About time! That's definitely worth a vote.", loved: true },
+  { promise: "Free cats for every Graham!", like: "A CAT?! I've always wanted one! You got my vote!", loved: true },
+  { promise: "Ban LOL dolls from the Graham Dimension!", like: "YES! Get those creepy things OUT of here! VOTED.", loved: true },
+  { promise: "Ban all dancing immediately!", like: "THANK YOU. Dancing is the WORST. You have my vote!", loved: true },
+  { promise: "Free pizza every Friday!", like: null, loved: false },
+  { promise: "Mandatory nap time twice a day!", like: null, loved: false },
+  { promise: "National Holiday every Monday!", like: null, loved: false },
+  { promise: "Free hats for everyone!", like: null, loved: false },
+  { promise: "Install slides instead of stairs!", like: null, loved: false },
+  { promise: "Make high-fives legally required!", like: null, loved: false },
+  { promise: "Ban alarm clocks forever!", like: null, loved: false },
+  { promise: "Free sunglasses for all clones!", like: null, loved: false },
+  { promise: "Mandatory dance breaks every hour!", like: null, loved: false },
 ];
 
 // Laws you can enact after winning (pick 3)
@@ -8075,21 +8085,67 @@ const GOOFY_LAWS = [
   "Humming is mandatory in hallways",
 ];
 
+// Laws for the presidential desk — good ones (Grahams approve) and bad ones (Grahams hate)
+const PRES_LAWS_GOOD = [
+  "Ban all forms of dancing in public spaces",
+  "Free trampolines installed in every garden",
+  "National Beaver Appreciation Day is now a holiday",
+  "All days of the week must end in '-graham'",
+  "Mandatory cat petting breaks every 2 hours",
+  "LOL dolls are classified as illegal contraband",
+  "All roads must be replaced with trampolines",
+  "Beavers receive free healthcare and dental",
+  "Cats must be addressed as 'Your Majesty'",
+  "Anti-dance patrol established to enforce the ban",
+  "Every home must have at least one trampoline",
+  "Grahamsday celebrations are now mandatory",
+  "LOL doll smuggling carries a 10-year sentence",
+  "Cats are appointed as official government advisors",
+  "Beaver statues required in every public park",
+  "Dancing in your sleep is also banned",
+  "Trampoline-based transportation receives government funding",
+  "Cat cafes are now tax-exempt",
+  "Graham's face must appear on all currency",
+  "Beavers can vote in local elections",
+];
+const PRES_LAWS_BAD = [
+  "Mandatory dance classes for all citizens",
+  "LOL dolls distributed to every household",
+  "All trampolines must be destroyed immediately",
+  "Cats are banned from all buildings",
+  "Beavers are exiled from the dimension",
+  "Cancel Graham's Day permanently",
+  "Dancing is the new official greeting",
+  "Replace all cats with LOL dolls",
+  "Trampolines declared a safety hazard",
+  "Rename Grahamsday back to Thursday",
+  "LOL doll museum to be built at taxpayer expense",
+  "Mandatory ballet lessons for all Grahams",
+  "Cats must wear LOL doll costumes",
+  "Beavers' tails used as dance floor material",
+  "TikTok dance challenges are now homework",
+  "Trampoline parks converted to dance studios",
+  "National LOL Doll Day replaces Grahamsday",
+  "All cats must learn to dance",
+  "Beavers banned from public swimming",
+  "Mandatory dance-off to resolve all disputes",
+];
+
 // Build law sign near statue showing enacted laws
 function buildLawSign(parentGroup) {
   if (gdLawSignGroup) { parentGroup.remove(gdLawSignGroup); }
   if (!gdEnactedLaws || gdEnactedLaws.length === 0) return;
   const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
   gdLawSignGroup = new THREE.Group();
-  // Sign post
+  // Sign post (behind the board)
   const post = new THREE.Mesh(new THREE.BoxGeometry(0.15, 3, 0.15),
     new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
-  post.position.set(OX - 8, 1.5, OZ - 3);
+  post.position.set(OX - 8, 1.5, OZ - 3.2);
   gdLawSignGroup.add(post);
   // Sign board
-  const board = new THREE.Mesh(new THREE.BoxGeometry(4, 2.8, 0.1),
+  const board = new THREE.Mesh(new THREE.BoxGeometry(4, 2.8, 0.08),
     new THREE.MeshLambertMaterial({ color: 0x2a1a0a }));
-  board.position.set(OX - 8, 2.5, OZ - 3);
+  board.position.set(OX - 8, 2.5, OZ - 3.1);
   gdLawSignGroup.add(board);
   // Sign text via canvas
   const cvs = document.createElement('canvas');
@@ -8110,15 +8166,18 @@ function buildLawSign(parentGroup) {
   ctx.font = '16px sans-serif';
   ctx.fillStyle = '#ffffff';
   ctx.textAlign = 'left';
-  for (let i = 0; i < gdEnactedLaws.length; i++) {
+  // Show last 3 laws (most recent)
+  const displayLaws = gdEnactedLaws.slice(-3);
+  const startNum = Math.max(1, gdEnactedLaws.length - 2);
+  for (let i = 0; i < displayLaws.length; i++) {
     const y = 100 + i * 80;
     ctx.fillStyle = '#c9a84c';
     ctx.font = 'bold 18px sans-serif';
-    ctx.fillText('Law #' + (i + 1) + ':', 30, y);
+    ctx.fillText('Law #' + (startNum + i) + ':', 30, y);
     ctx.fillStyle = '#ffffff';
     ctx.font = '15px sans-serif';
     // Word wrap
-    const words = gdEnactedLaws[i].split(' ');
+    const words = displayLaws[i].split(' ');
     let line = '', ly = y + 24;
     for (const w of words) {
       const test = line + w + ' ';
@@ -8132,9 +8191,206 @@ function buildLawSign(parentGroup) {
   const tex = new THREE.CanvasTexture(cvs);
   const signFace = new THREE.Mesh(new THREE.PlaneGeometry(3.8, 2.6),
     new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide }));
-  signFace.position.set(OX - 8, 2.5, OZ - 2.94);
+  signFace.position.set(OX - 8, 2.5, OZ - 3.04);
   gdLawSignGroup.add(signFace);
   parentGroup.add(gdLawSignGroup);
+}
+
+// === PRESIDENTIAL PALACE (purple house, built after winning presidency) ===
+function buildPresHouse(parentGroup) {
+  if (gdPresHouseGroup) { parentGroup.remove(gdPresHouseGroup); }
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const PX = OX + 10, PZ = OZ + 15; // house center
+  gdPresHouseGroup = new THREE.Group();
+  const g = gdPresHouseGroup;
+
+  const purpleMat = new THREE.MeshLambertMaterial({ color: 0x6a1b9a });
+  const goldTrimMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0x4a1570 });
+  const innerMat = new THREE.MeshLambertMaterial({ color: 0x3a0a5a });
+  const roofMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+
+  function addMesh(geo, mat, x, y, z) {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m); return m;
+  }
+
+  // Walls (8x6 house, 3.5 tall, door gap on south face)
+  addMesh(new THREE.BoxGeometry(8.3, 3.5, 0.3), purpleMat, PX, 1.75, PZ - 3);     // Back
+  addMesh(new THREE.BoxGeometry(0.3, 3.5, 6), purpleMat, PX - 4, 1.75, PZ);         // Left
+  addMesh(new THREE.BoxGeometry(0.3, 3.5, 6), purpleMat, PX + 4, 1.75, PZ);         // Right
+  addMesh(new THREE.BoxGeometry(2.5, 3.5, 0.3), purpleMat, PX - 2.75, 1.75, PZ + 3); // Front-left
+  addMesh(new THREE.BoxGeometry(2.5, 3.5, 0.3), purpleMat, PX + 2.75, 1.75, PZ + 3); // Front-right
+  addMesh(new THREE.BoxGeometry(2, 1, 0.3), purpleMat, PX, 3, PZ + 3);               // Above door
+  // Gold trim around door
+  addMesh(new THREE.BoxGeometry(0.15, 3.5, 0.15), goldTrimMat, PX - 1, 1.75, PZ + 3.05);
+  addMesh(new THREE.BoxGeometry(0.15, 3.5, 0.15), goldTrimMat, PX + 1, 1.75, PZ + 3.05);
+  addMesh(new THREE.BoxGeometry(2.3, 0.15, 0.15), goldTrimMat, PX, 3.45, PZ + 3.05);
+  // Floor
+  addMesh(new THREE.BoxGeometry(8, 0.1, 6), floorMat, PX, 0.05, PZ);
+  // Interior back wall accent
+  addMesh(new THREE.BoxGeometry(7.6, 3, 0.05), innerMat, PX, 1.5, PZ - 2.8);
+  // Gold roof
+  addMesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat, PX, 3.6, PZ);
+  // Windows
+  const winMat = new THREE.MeshLambertMaterial({ color: 0xbb99ee, emissive: 0x664488, emissiveIntensity: 0.3 });
+  addMesh(new THREE.BoxGeometry(1, 0.7, 0.05), winMat, PX - 2.75, 2, PZ + 3.05);
+  addMesh(new THREE.BoxGeometry(1, 0.7, 0.05), winMat, PX + 2.75, 2, PZ + 3.05);
+  // Interior light (warm purple)
+  const iLight = new THREE.PointLight(0xcc88ff, 0.6, 10);
+  iLight.position.set(PX, 3, PZ);
+  g.add(iLight);
+
+  // "PRESIDENTIAL PALACE" sign
+  const signCvs = document.createElement('canvas');
+  signCvs.width = 256; signCvs.height = 48;
+  const sCtx = signCvs.getContext('2d');
+  sCtx.fillStyle = '#2a0a3a';
+  sCtx.fillRect(0, 0, 256, 48);
+  sCtx.strokeStyle = '#c9a84c';
+  sCtx.lineWidth = 3;
+  sCtx.strokeRect(2, 2, 252, 44);
+  sCtx.fillStyle = '#c9a84c';
+  sCtx.font = 'bold 20px sans-serif';
+  sCtx.textAlign = 'center';
+  sCtx.fillText('PRESIDENTIAL PALACE', 128, 32);
+  const signTex = new THREE.CanvasTexture(signCvs);
+  const signMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.5),
+    new THREE.MeshBasicMaterial({ map: signTex, side: THREE.DoubleSide }));
+  signMesh.position.set(PX, 3.3, PZ + 3.16);
+  g.add(signMesh);
+
+  // === BED (back-left) ===
+  const bedFrame = addMesh(new THREE.BoxGeometry(2, 0.4, 1.4), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX - 2.5, 0.2, PZ - 2);
+  const bedSheet = addMesh(new THREE.BoxGeometry(1.8, 0.15, 1.2), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX - 2.5, 0.42, PZ - 2);
+  const bedPillow = addMesh(new THREE.BoxGeometry(0.5, 0.12, 0.4), new THREE.MeshLambertMaterial({ color: 0xc9a84c }), PX - 3.2, 0.48, PZ - 2);
+  const bedMesh = bedFrame;
+  bedMesh.userData = { type: 'interactable', iType: 'presBed' };
+
+  // === SHOWER (back-right) ===
+  const showerBase = addMesh(new THREE.BoxGeometry(1.2, 0.1, 1.2), new THREE.MeshLambertMaterial({ color: 0x888888 }), PX + 2.8, 0.05, PZ - 2);
+  addMesh(new THREE.BoxGeometry(0.06, 2.5, 1.2), new THREE.MeshLambertMaterial({ color: 0xcccccc, transparent: true, opacity: 0.5 }), PX + 3.35, 1.25, PZ - 2);
+  addMesh(new THREE.BoxGeometry(1.2, 2.5, 0.06), new THREE.MeshLambertMaterial({ color: 0xcccccc, transparent: true, opacity: 0.5 }), PX + 2.8, 1.25, PZ - 2.55);
+  const shPipe = addMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.8, 6), new THREE.MeshLambertMaterial({ color: 0x888888 }), PX + 3.25, 2, PZ - 2.45);
+  const shHead = addMesh(new THREE.CylinderGeometry(0.12, 0.08, 0.06, 8), new THREE.MeshLambertMaterial({ color: 0xc9a84c }), PX + 3.05, 2.5, PZ - 2.25);
+  showerBase.userData = { type: 'interactable', iType: 'presShower' };
+
+  // === FRIDGE (front-left) ===
+  const fridgeMesh = addMesh(new THREE.BoxGeometry(0.7, 1.6, 0.7), new THREE.MeshLambertMaterial({ color: 0xdddddd }), PX - 3.3, 0.8, PZ + 2);
+  addMesh(new THREE.BoxGeometry(0.08, 0.4, 0.05), new THREE.MeshLambertMaterial({ color: 0x888888 }), PX - 2.97, 1.0, PZ + 2.36); // handle
+  fridgeMesh.userData = { type: 'interactable', iType: 'presFridge' };
+
+  // === TV (right wall) ===
+  const tvStand = addMesh(new THREE.BoxGeometry(1, 0.5, 0.5), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }), PX + 3.2, 0.25, PZ + 1);
+  const tvBody = addMesh(new THREE.BoxGeometry(1.2, 0.8, 0.2), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }), PX + 3.2, 0.9, PZ + 1);
+  const tvScreen = addMesh(new THREE.BoxGeometry(1.0, 0.6, 0.01), new THREE.MeshLambertMaterial({ color: 0x224488, emissive: 0x112244, emissiveIntensity: 0.4 }), PX + 3.2, 0.9, PZ + 1.12);
+  tvBody.userData = { type: 'interactable', iType: 'presTV' };
+
+  // === PRESIDENTIAL DESK (center, facing door) ===
+  const deskMesh = addMesh(new THREE.BoxGeometry(1.8, 0.8, 1), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX, 0.4, PZ);
+  // Gold nameplate on desk
+  const dpCvs = document.createElement('canvas');
+  dpCvs.width = 128; dpCvs.height = 32;
+  const dpCtx = dpCvs.getContext('2d');
+  dpCtx.fillStyle = '#c9a84c';
+  dpCtx.fillRect(0, 0, 128, 32);
+  dpCtx.fillStyle = '#1a1a1a';
+  dpCtx.font = 'bold 14px sans-serif';
+  dpCtx.textAlign = 'center';
+  dpCtx.fillText('MR. PRESIDENT', 64, 22);
+  const dpTex = new THREE.CanvasTexture(dpCvs);
+  addMesh(new THREE.PlaneGeometry(0.6, 0.15), new THREE.MeshBasicMaterial({ map: dpTex }), PX, 0.82, PZ + 0.49);
+  // Papers on desk
+  addMesh(new THREE.BoxGeometry(0.4, 0.02, 0.5), new THREE.MeshLambertMaterial({ color: 0xf5f5dc }), PX - 0.5, 0.82, PZ);
+  addMesh(new THREE.BoxGeometry(0.4, 0.02, 0.5), new THREE.MeshLambertMaterial({ color: 0xf5f5dc }), PX + 0.5, 0.82, PZ - 0.1);
+  // Pen
+  addMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 6), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }), PX + 0.2, 0.83, PZ + 0.2);
+  deskMesh.userData = { type: 'interactable', iType: 'presDesk' };
+
+  // Chair behind desk
+  addMesh(new THREE.BoxGeometry(0.7, 0.5, 0.7), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.25, PZ - 0.8);
+  addMesh(new THREE.BoxGeometry(0.7, 0.7, 0.1), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.65, PZ - 1.1);
+
+  // Rug
+  addMesh(new THREE.BoxGeometry(3, 0.02, 2), new THREE.MeshLambertMaterial({ color: 0x9b59b6 }), PX, 0.11, PZ + 1);
+
+  // Register interactables
+  interactables.push(
+    { mesh: bedMesh, group: parentGroup, type: 'presBed', label: 'Presidential Bed', need: 'energy', usePos: new THREE.Vector3(PX - 1.5, 0.15, PZ - 1.5), floor: 0 },
+    { mesh: showerBase, group: parentGroup, type: 'presShower', label: 'Presidential Shower', need: 'hygiene', usePos: new THREE.Vector3(PX + 2.3, 0.15, PZ - 1.5), floor: 0 },
+    { mesh: fridgeMesh, group: parentGroup, type: 'presFridge', label: 'Presidential Fridge', need: 'hunger', usePos: new THREE.Vector3(PX - 2.8, 0.15, PZ + 1.5), floor: 0 },
+    { mesh: tvBody, group: parentGroup, type: 'presTV', label: 'Presidential TV', need: 'fun', usePos: new THREE.Vector3(PX + 2.5, 0.15, PZ + 1), floor: 0 },
+    { mesh: deskMesh, group: parentGroup, type: 'presDesk', label: 'Presidential Desk', need: null, usePos: new THREE.Vector3(PX, 0.15, PZ + 1.2), floor: 0 },
+  );
+  rebuildInteractMeshes();
+
+  // Action configs
+  actionConfig.presBed = { label: 'Presidential nap...', duration: 5, restore: 70 };
+  actionConfig.presShower = { label: 'Presidential shower...', duration: 3, restore: 60, cost: 0 };
+  actionConfig.presFridge = { label: 'Presidential snack...', duration: 3, restore: 50, cost: 0 };
+  actionConfig.presTV = { label: 'Watching presidential TV...', duration: 4, restore: 50 };
+  // presDesk is an instant action handled in startAction
+
+  // Collision — individual walls (thin boxes so interior is accessible)
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: PX - 4.15, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PZ - 2.85 },  // Back wall (full width)
+    { xMin: PX - 4.15, xMax: PX - 3.85, zMin: PZ - 3.15, zMax: PZ + 3.15 },  // Left wall
+    { xMin: PX + 3.85, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PZ + 3.15 },  // Right wall
+    { xMin: PX - 4.15, xMax: PX - 1, zMin: PZ + 2.85, zMax: PZ + 3.15 },     // Front-left wall
+    { xMin: PX + 1, xMax: PX + 4.15, zMin: PZ + 2.85, zMax: PZ + 3.15 },     // Front-right wall
+  );
+
+  parentGroup.add(g);
+  gdPresHouseBuilt = true;
+}
+
+// Build pizza throne in presidential house
+function buildPizzaThrone(parentGroup) {
+  if (gdPresThroneGroup) { parentGroup.remove(gdPresThroneGroup); }
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const PX = OX + 10, PZ = OZ + 15;
+  gdPresThroneGroup = new THREE.Group();
+  // Giant pizza slice as throne seat (behind desk)
+  const crustMat = new THREE.MeshLambertMaterial({ color: 0xd4a854 });
+  const cheeseMat = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+  const pepMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  // Pizza base (triangle-ish shape using a wide wedge)
+  const base = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.15, 1.5), crustMat);
+  base.position.set(PX, 0.6, PZ - 0.8);
+  gdPresThroneGroup.add(base);
+  // Cheese topping
+  const cheese = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.05, 1.3), cheeseMat);
+  cheese.position.set(PX, 0.7, PZ - 0.8);
+  gdPresThroneGroup.add(cheese);
+  // Pepperoni
+  [[-0.3, -0.3], [0.2, 0.1], [-0.1, 0.3], [0.35, -0.2]].forEach(([dx, dz]) => {
+    const pep = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.04, 8), pepMat);
+    pep.position.set(PX + dx, 0.74, PZ - 0.8 + dz);
+    gdPresThroneGroup.add(pep);
+  });
+  // Throne back (pizza crust arch)
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1.2, 0.2), crustMat);
+  back.position.set(PX, 1.3, PZ - 1.5);
+  gdPresThroneGroup.add(back);
+  // Gold "PIZZA THRONE" text
+  const tCvs = document.createElement('canvas');
+  tCvs.width = 128; tCvs.height = 32;
+  const tCtx = tCvs.getContext('2d');
+  tCtx.fillStyle = '#d4a854';
+  tCtx.fillRect(0, 0, 128, 32);
+  tCtx.fillStyle = '#cc2222';
+  tCtx.font = 'bold 14px sans-serif';
+  tCtx.textAlign = 'center';
+  tCtx.fillText('PIZZA THRONE', 64, 22);
+  const tTex = new THREE.CanvasTexture(tCvs);
+  const tMesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.25),
+    new THREE.MeshBasicMaterial({ map: tTex, side: THREE.DoubleSide }));
+  tMesh.position.set(PX, 1.8, PZ - 1.45);
+  gdPresThroneGroup.add(tMesh);
+  parentGroup.add(gdPresThroneGroup);
+  gdPresThrone = true;
 }
 
 // Quest definitions
@@ -9783,11 +10039,13 @@ function buildGrahamDimension() {
     makeWall(0.3, 0.25, 0.2, new THREE.MeshLambertMaterial({ color: 0xcc2222 }), hx + 2, 0.9, fenceZ - 0.5);
     makeWall(0.08, 0.7, 0.08, lampMat, hx + 2, 0.5, fenceZ - 0.5);
 
-    // Collision box for this house (walls are solid)
+    // Collision — individual walls (thin boxes so interior is accessible)
     GRAHAM_DIM_COLLISIONS.push(
-      { xMin: hx - 3.15, xMax: hx - 1.2, zMin: hz - 2.65, zMax: hz + 2.35 },  // Left half
-      { xMin: hx + 1.2, xMax: hx + 3.15, zMin: hz - 2.65, zMax: hz + 2.35 },   // Right half
-      { xMin: hx - 1.2, xMax: hx + 1.2, zMin: hz - 2.65, zMax: hz - 2.35 },    // Back wall center
+      { xMin: hx - 3.15, xMax: hx + 3.15, zMin: hz - 2.65, zMax: hz - 2.35 },  // Back wall (full width)
+      { xMin: hx - 3.15, xMax: hx - 2.85, zMin: hz - 2.65, zMax: hz + 2.65 },  // Left wall
+      { xMin: hx + 2.85, xMax: hx + 3.15, zMin: hz - 2.65, zMax: hz + 2.65 },  // Right wall
+      { xMin: hx - 3.15, xMax: hx - 1.2, zMin: hz + 2.35, zMax: hz + 2.65 },   // Front-left wall
+      { xMin: hx + 1.2, xMax: hx + 3.15, zMin: hz + 2.35, zMax: hz + 2.65 },   // Front-right wall
     );
   });
 
@@ -10033,11 +10291,13 @@ function buildGrahamDimension() {
     usePos: new THREE.Vector3(offX, 0.15, offZ + 4.5), floor: 0
   });
 
-  // Office collision boxes
+  // Office collision — individual walls (thin boxes so interior is accessible)
   GRAHAM_DIM_COLLISIONS.push(
-    { xMin: offX - 4.15, xMax: offX - 1.5, zMin: offZ - 3.65, zMax: offZ + 3.35 },  // Left half
-    { xMin: offX + 1.5, xMax: offX + 4.15, zMin: offZ - 3.65, zMax: offZ + 3.35 },   // Right half
-    { xMin: offX - 1.5, xMax: offX + 1.5, zMin: offZ - 3.65, zMax: offZ - 3.35 },    // Back wall center
+    { xMin: offX - 4.15, xMax: offX + 4.15, zMin: offZ - 3.65, zMax: offZ - 3.35 },  // Back wall (full width)
+    { xMin: offX - 4.15, xMax: offX - 3.85, zMin: offZ - 3.65, zMax: offZ + 3.65 },  // Left wall
+    { xMin: offX + 3.85, xMax: offX + 4.15, zMin: offZ - 3.65, zMax: offZ + 3.65 },  // Right wall
+    { xMin: offX - 4.15, xMax: offX - 1.5, zMin: offZ + 3.35, zMax: offZ + 3.65 },   // Front-left wall
+    { xMin: offX + 1.5, xMax: offX + 4.15, zMin: offZ + 3.35, zMax: offZ + 3.65 },   // Front-right wall
   );
 
   // === ROAD TO ARENA (south) ===
@@ -10262,7 +10522,7 @@ function buildGrahamDimension() {
       if (cx > 34 && cx < 46 && cz > -16 && cz < -4) continue;
       // Skip house positions (6 houses with ~8 unit radius exclusion)
       let nearHouse = false;
-      [[-30, 20], [-30, -20], [30, 20], [30, -20], [-20, 40], [20, 40]].forEach(([hx, hz]) => {
+      [[-30, 20], [-30, -20], [30, 20], [30, -20], [-20, 40], [20, 40], [10, 15]].forEach(([hx, hz]) => {
         if (Math.abs(cx - hx) < 6 && Math.abs(cz - hz) < 6) nearHouse = true;
       });
       if (nearHouse) continue;
@@ -10349,6 +10609,12 @@ function buildGrahamDimension() {
 
   // Law sign (built when laws are enacted)
   if (gdEnactedLaws && gdEnactedLaws.length > 0) buildLawSign(g);
+  // Presidential palace (built after winning presidency)
+  // Also rebuild if save has enacted laws (pre-update saves)
+  if (gdPresHouseBuilt || (gdEnactedLaws && gdEnactedLaws.length > 0)) {
+    buildPresHouse(g);
+    if (gdPresThrone) buildPizzaThrone(g);
+  }
 
   rebuildInteractMeshes();
   scene.add(g);
@@ -11111,14 +11377,17 @@ function openNPCDialogue(npcId) {
       btnsEl.innerHTML = '';
 
       // Campaign promise options (shown when president quest active and this clone hasn't voted)
+      // All Grahams share the same opinions — loved promises always win!
       if (isVoteTarget && !questLog.president_campaign['v' + cloneIdx]) {
-        const shuffledPromises = CAMPAIGN_PROMISES.slice().sort(() => Math.random() - 0.5);
-        const picks = shuffledPromises.slice(0, 3);
-        // One of them is the "winning" promise this clone likes
-        const winIdx = Math.floor(Math.random() * 3);
-        picks.forEach((p, pi) => {
+        const lovedPromises = CAMPAIGN_PROMISES.filter(p => p.loved);
+        const hatedPromises = CAMPAIGN_PROMISES.filter(p => !p.loved);
+        const shuffledLoved = lovedPromises.slice().sort(() => Math.random() - 0.5);
+        const shuffledHated = hatedPromises.slice().sort(() => Math.random() - 0.5);
+        // Always show 1 loved + 2 hated, shuffled together
+        const picks = [shuffledLoved[0], shuffledHated[0], shuffledHated[1]].sort(() => Math.random() - 0.5);
+        picks.forEach((p) => {
           addDialogueBtn(btnsEl, '🗳️ ' + p.promise, 'npc-btn-accept', () => {
-            if (pi === winIdx) {
+            if (p.loved) {
               questLog.president_campaign['v' + cloneIdx] = true;
               questLog.president_campaign.votes = (questLog.president_campaign.votes || 0) + 1;
               textEl.textContent = p.like;
@@ -11130,7 +11399,7 @@ function openNPCDialogue(npcId) {
               const rejects = [
                 "Meh. That's not gonna get MY vote.",
                 "Boring! Try harder, candidate!",
-                "My cat could come up with better promises. And I don't have a cat.",
+                "Every Graham knows THAT'S not what we want.",
                 "Yawn. Next!",
                 "That's the worst promise I've heard all day. And I've heard some DOOZIES.",
               ];
@@ -11889,17 +12158,151 @@ function finishPresidency(laws) {
   checkGrahamMaster();
   // Build the law sign
   if (grahamDimGroup) buildLawSign(grahamDimGroup);
-  // Show victory
+  // Build the presidential palace
+  if (grahamDimGroup && !gdPresHouseBuilt) buildPresHouse(grahamDimGroup);
+  // Show victory speech
   const textEl = document.getElementById('npc-dialogue-text');
   const btnsEl = document.getElementById('npc-dialogue-btns');
   const nameEl = document.getElementById('npc-dialogue-name');
-  nameEl.textContent = 'Campaign Manager Graham';
-  textEl.textContent = "CONGRATULATIONS, MR. PRESIDENT! Your laws have been enacted and posted for all to see! The clones are already very confused. That means it's working!";
+  nameEl.textContent = 'MR. PRESIDENT';
+  textEl.textContent = "CONGRATULATIONS! Time for your VICTORY SPEECH!";
   btnsEl.innerHTML = '';
-  addDialogueBtn(btnsEl, 'Thank you, citizens!', 'npc-btn-accept', () => {
-    closeNPCDialogue();
-    showTip('You are now President of the Graham Dimension! +$150, +40 fun');
+  addDialogueBtn(btnsEl, 'Give the speech!', 'npc-btn-accept', () => {
+    nameEl.textContent = 'YOUR SPEECH';
+    textEl.textContent = "Fellow Grahams! As your new President, I stand before you today to declare: I am PRO trampolines! PRO beavers! PRO Graham's Day! PRO cats! And I am ANTI dancing! ANTI LOL dolls! Together we will build a greater Graham Dimension!";
+    btnsEl.innerHTML = '';
+    addDialogueBtn(btnsEl, '*crowd goes wild*', 'npc-btn-accept', () => {
+      nameEl.textContent = 'Campaign Manager Graham';
+      textEl.textContent = "The crowd LOVES it! Your Presidential Palace has been built nearby — go check it out! You can pass more laws at your desk anytime. But be careful... pass bad laws and the clones might IM-CHERRY you! Pass good ones and you might just earn the legendary PIZZA THRONE!";
+      btnsEl.innerHTML = '';
+      addDialogueBtn(btnsEl, 'Time to govern!', 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        showTip('Presidential Palace built! Visit your desk to pass laws. Approval: ' + gdPresApproval + '%');
+      });
+    });
   });
+}
+
+// Open the presidential desk — pass or veto laws
+function openPresDesk() {
+  if (gdPresImpeached) {
+    showTip("You've been im-cherried! You can't pass laws anymore.");
+    return;
+  }
+  npcDialogueOpen = true;
+  const overlay = document.getElementById('npc-dialogue-overlay');
+  const nameEl = document.getElementById('npc-dialogue-name');
+  const textEl = document.getElementById('npc-dialogue-text');
+  const btnsEl = document.getElementById('npc-dialogue-btns');
+  overlay.classList.add('visible');
+
+  function showDeskMenu() {
+    nameEl.textContent = 'PRESIDENTIAL DESK (Approval: ' + gdPresApproval + '%)';
+    textEl.textContent = 'What would you like to do, Mr. President?';
+    btnsEl.innerHTML = '';
+    addDialogueBtn(btnsEl, 'Propose a new law', 'npc-btn-accept', showNextLaw);
+    if (gdEnactedLaws.length > 0) {
+      addDialogueBtn(btnsEl, 'Review & Undo laws (' + gdEnactedLaws.length + ')', 'npc-btn-accept', showLawList);
+    }
+    addDialogueBtn(btnsEl, 'Leave desk', 'npc-btn-close', () => { closeNPCDialogue(); });
+  }
+
+  function showNextLaw() {
+    // Pick a random law (50/50 good or bad)
+    const isGood = Math.random() < 0.5;
+    const pool = isGood ? PRES_LAWS_GOOD : PRES_LAWS_BAD;
+    const law = pool[Math.floor(Math.random() * pool.length)];
+    const isLolDoll = /lol doll/i.test(law);
+    nameEl.textContent = 'PRESIDENTIAL DESK (Approval: ' + gdPresApproval + '%)';
+    textEl.textContent = 'New law proposal: "' + law + '"';
+    btnsEl.innerHTML = '';
+
+    addDialogueBtn(btnsEl, 'PASS this law', 'npc-btn-accept', () => {
+      if (isGood) {
+        gdPresApproval = Math.min(100, gdPresApproval + 10);
+        textEl.textContent = 'The clones LOVE it! "BEST PRESIDENT EVER!" Approval: ' + gdPresApproval + '%';
+      } else {
+        const penalty = isLolDoll ? 25 : 15;
+        gdPresApproval = Math.max(0, gdPresApproval - penalty);
+        textEl.textContent = isLolDoll
+          ? 'The clones are ABSOLUTELY LIVID! "LOL DOLLS?! Have you LOST YOUR MIND?!" Approval: ' + gdPresApproval + '%'
+          : 'The clones are FURIOUS! "What kind of law is THAT?!" Approval: ' + gdPresApproval + '%';
+      }
+      gdEnactedLaws.push(law);
+      if (grahamDimGroup) buildLawSign(grahamDimGroup);
+      showLawResult();
+    });
+
+    addDialogueBtn(btnsEl, 'VETO this law', 'npc-btn-close', () => {
+      if (isGood) {
+        gdPresApproval = Math.max(0, gdPresApproval - 10);
+        textEl.textContent = 'The clones are disappointed. "But we WANTED that!" Approval: ' + gdPresApproval + '%';
+      } else {
+        const bonus = isLolDoll ? 15 : 5;
+        gdPresApproval = Math.min(100, gdPresApproval + bonus);
+        textEl.textContent = isLolDoll
+          ? 'The clones ERUPT with joy! "DEATH TO LOL DOLLS! BEST PRESIDENT EVER!" Approval: ' + gdPresApproval + '%'
+          : 'The clones nod approvingly. "Good call, Mr. President." Approval: ' + gdPresApproval + '%';
+      }
+      showLawResult();
+    });
+
+    addDialogueBtn(btnsEl, 'Back to desk', 'npc-btn-close', showDeskMenu);
+  }
+
+  function showLawResult() {
+    nameEl.textContent = 'PRESIDENTIAL DESK (Approval: ' + gdPresApproval + '%)';
+    btnsEl.innerHTML = '';
+    // Check for impeachment
+    if (gdPresApproval <= 0) {
+      gdPresImpeached = true;
+      textEl.textContent = "The clones have had ENOUGH! They storm in with baskets of cherries! \"YOU'VE BEEN IM-CHERRIED!!\" Cherries fly everywhere! You are no longer President!";
+      addDialogueBtn(btnsEl, '*gets pelted with cherries*', 'npc-btn-close', () => {
+        closeNPCDialogue();
+        showTip('You have been IM-CHERRIED! (Impeached) No more laws for you!');
+      });
+      return;
+    }
+    // Check for pizza throne
+    if (gdPresApproval >= 100 && !gdPresThrone) {
+      textEl.textContent += " The clones are SO happy they've built you a PIZZA THRONE! Go check your palace!";
+      if (grahamDimGroup) buildPizzaThrone(grahamDimGroup);
+      addDialogueBtn(btnsEl, 'A PIZZA THRONE?!', 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        showTip('The legendary PIZZA THRONE has been placed in your palace!');
+      });
+      return;
+    }
+    addDialogueBtn(btnsEl, 'Next law', 'npc-btn-accept', showNextLaw);
+    addDialogueBtn(btnsEl, 'Back to desk', 'npc-btn-close', showDeskMenu);
+  }
+
+  function showLawList() {
+    nameEl.textContent = 'ENACTED LAWS (Approval: ' + gdPresApproval + '%)';
+    btnsEl.innerHTML = '';
+    if (gdEnactedLaws.length === 0) {
+      textEl.textContent = 'No laws have been enacted yet.';
+      addDialogueBtn(btnsEl, 'Back', 'npc-btn-close', showDeskMenu);
+      return;
+    }
+    // Show last 5 laws with undo buttons
+    const recent = gdEnactedLaws.slice(-5);
+    const startIdx = gdEnactedLaws.length - recent.length;
+    textEl.textContent = 'Your laws (showing last ' + recent.length + ' of ' + gdEnactedLaws.length + '):';
+    recent.forEach((law, i) => {
+      addDialogueBtn(btnsEl, 'UNDO: ' + law, 'npc-btn-close', () => {
+        const realIdx = startIdx + i;
+        gdEnactedLaws.splice(realIdx, 1);
+        gdPresApproval = Math.max(0, gdPresApproval - 5);
+        if (grahamDimGroup) buildLawSign(grahamDimGroup);
+        showTip('Law undone! Approval: ' + gdPresApproval + '% (-5 for flip-flopping)');
+        showLawList();
+      });
+    });
+    addDialogueBtn(btnsEl, 'Back to desk', 'npc-btn-close', showDeskMenu);
+  }
+
+  showDeskMenu();
 }
 
 function checkGrahamMaster() {
@@ -12418,8 +12821,8 @@ function runPepperMission(canvas, ctx, onFinish) {
 
   const W = window.innerWidth, H = window.innerHeight;
   const pmScene = new THREE.Scene();
-  pmScene.background = new THREE.Color(0x080810);
-  pmScene.fog = new THREE.Fog(0x080810, 5, 30);
+  pmScene.background = new THREE.Color(0x000000);
+  pmScene.fog = new THREE.Fog(0x000000, 2, 18);
 
   const pmCamera = new THREE.PerspectiveCamera(70, W / H, 0.1, 50);
   pmCamera.position.set(0, 1.6, 12);
@@ -12444,7 +12847,7 @@ function runPepperMission(canvas, ctx, onFinish) {
   // HUD text elements
   const hudTop = document.createElement('div');
   hudTop.style.cssText = 'position:absolute;top:10px;left:0;width:100%;text-align:center;color:#ff4444;font-size:1rem;font-weight:bold;font-family:Cinzel,serif;text-shadow:0 0 10px #ff0000;';
-  hudTop.textContent = 'CLASSIFIED: PEPPER SABOTAGE';
+  hudTop.textContent = 'CLASSIFIED: INFINITE PEPPER SABOTAGE';
   hud.appendChild(hudTop);
 
   const hudLeft = document.createElement('div');
@@ -12461,7 +12864,7 @@ function runPepperMission(canvas, ctx, onFinish) {
 
   const hudHint = document.createElement('div');
   hudHint.style.cssText = 'position:absolute;bottom:20px;left:0;width:100%;text-align:center;color:#888;font-size:0.7rem;';
-  hudHint.textContent = 'WASD move | E shoot pepper | F aim | ESC quit';
+  hudHint.textContent = 'WASD move | E shoot pepper | F aim | ESC quit (INFINITE MODE)';
   hud.appendChild(hudHint);
 
   // === OFFICE ENVIRONMENT ===
@@ -12493,13 +12896,13 @@ function runPepperMission(canvas, ctx, onFinish) {
   pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(-15, 1.5, 0) }));
   pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(15, 1.5, 0) }));
 
-  // Ambient (very dim)
-  pmScene.add(new THREE.AmbientLight(0x111122, 0.3));
+  // Ambient (nearly pitch black)
+  pmScene.add(new THREE.AmbientLight(0x050508, 0.15));
 
   // Flickering ceiling lights
   const ceilLights = [];
   [[-6, -6], [6, -6], [-6, 6], [6, 6], [0, 0]].forEach(([x, z]) => {
-    const pl = new THREE.PointLight(0xccddff, 0.3, 10);
+    const pl = new THREE.PointLight(0xccddff, 0.12, 6);
     pl.position.set(x, 2.8, z);
     pmScene.add(pl);
     ceilLights.push(pl);
@@ -12643,12 +13046,13 @@ function runPepperMission(canvas, ctx, onFinish) {
   // === GAME STATE ===
   let pmRunning = true;
   let pmYaw = Math.PI, pmPitch = 0;
-  let pmScore = 0, pmTimer = 40;
+  let pmScore = 0;
   let pmKeys = {};
   let aiming = false;
-  let msgText = 'Shoot peppers at the computers! Avoid the flashlights!';
+  let msgText = 'INFINITE DARKNESS. Pepper the computers. No escape. ESC to quit.';
   let msgTimer = 3;
   let caughtFlash = 0;
+  let pmWave = 1;
   const MOVE_SPEED = 4;
   const MOUSE_SENS_PM = 0.003;
 
@@ -12712,15 +13116,8 @@ function runPepperMission(canvas, ctx, onFinish) {
     const dt = Math.min((now - lastT) / 1000, 0.05);
     lastT = now;
 
-    pmTimer -= dt;
     if (msgTimer > 0) msgTimer -= dt;
     if (caughtFlash > 0) caughtFlash -= dt;
-
-    if (pmTimer <= 0) {
-      cleanup();
-      onFinish(pmScore);
-      return;
-    }
 
     // Player movement
     const forward = new THREE.Vector3(-Math.sin(pmYaw), 0, -Math.cos(pmYaw));
@@ -12819,9 +13216,43 @@ function runPepperMission(canvas, ctx, onFinish) {
       }
     }
 
+    // Check if all computers are peppered — start new wave
+    if (computers3d.every(c => c.peppered)) {
+      pmWave++;
+      computers3d.forEach(c => {
+        c.peppered = false;
+        c.screenMesh.material = screenMat;
+      });
+      // Add a new guard each wave (up to 6 extra)
+      if (guards3d.length < 6) {
+        const angles = [Math.PI/4, -Math.PI/4, Math.PI*3/4, -Math.PI*3/4];
+        const gi = guards3d.length - 3;
+        const newX = gi < 2 ? (gi === 0 ? -10 : 10) : 0;
+        const newZ = gi < 2 ? 0 : (gi === 2 ? -10 : 10);
+        const ng = new THREE.Group();
+        const nbody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), guardMat);
+        nbody.position.y = 1; ng.add(nbody);
+        const nhead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), guardHeadMat);
+        nhead.position.y = 1.55; ng.add(nhead);
+        const nfl = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
+        nfl.position.set(0, 1.2, 0); nfl.target.position.set(0, 0.5, -4);
+        ng.add(nfl); ng.add(nfl.target);
+        ng.position.set(newX, 0, newZ);
+        pmScene.add(ng);
+        const patrol = Math.random() < 0.5 ? { patrolZ: [-10, 10] } : { patrolX: [-10, 10] };
+        guards3d.push({ group: ng, flashlight: nfl, dir: 1, speed: 2.5 + pmWave * 0.3, name: 'Guard Wave ' + pmWave, ...patrol });
+      }
+      // Guards get faster each wave
+      guards3d.forEach(g => { g.speed = Math.min(g.speed + 0.3, 6); });
+      msgText = 'WAVE ' + pmWave + '! The darkness deepens... Guards are faster!';
+      msgTimer = 2.5;
+      // Make it even darker
+      pmScene.fog.far = Math.max(10, 18 - pmWave * 1.5);
+    }
+
     // Flicker ceiling lights
     ceilLights.forEach((l, i) => {
-      l.intensity = 0.25 + Math.sin(now * 0.003 + i * 2) * 0.08 + Math.random() * 0.02;
+      l.intensity = 0.1 + Math.sin(now * 0.003 + i * 2) * 0.04 + Math.random() * 0.01;
     });
 
     // Crosshair color
@@ -12829,8 +13260,8 @@ function runPepperMission(canvas, ctx, onFinish) {
     cross.textContent = aiming ? '( + )' : '+';
 
     // Update HUD
-    hudLeft.innerHTML = '<span style="color:#44ff44">Sabotaged: ' + pmScore + '/' + computers3d.length + '</span>';
-    hudRight.innerHTML = 'Time: ' + Math.ceil(pmTimer) + 's';
+    hudLeft.innerHTML = '<span style="color:#44ff44">Sabotaged: ' + pmScore + '</span>';
+    hudRight.innerHTML = 'Wave: ' + pmWave;
     if (msgTimer > 0) {
       hudMsg.style.opacity = Math.min(1, msgTimer / 0.5);
       hudMsg.textContent = msgText;
@@ -15441,6 +15872,8 @@ function startGame() {
   document.getElementById('creator-screen').classList.add('hidden');
   gameStarted = true;
   lastTime = performance.now();
+  // Daily Mystery Box check on game start
+  setTimeout(() => checkMysteryBoxFriday(), 1000);
   mlTry('ml_new_home');
   mlLoadGBuxContent();
 }
@@ -15460,6 +15893,7 @@ let actionProgress = 0;
 let actionDuration = 0;
 let hoveredObj = null;
 let shopOpen = false;
+let lastMysteryBoxDate = ''; // real-world date string of last mystery box claim
 
 // Expansion state
 let hasSecondFloor = false;
@@ -15638,6 +16072,10 @@ function startAction(obj) {
   }
   if (obj.type === 'dimPortal') {
     startDrivingTransition('town');
+    return;
+  }
+  if (obj.type === 'presDesk') {
+    openPresDesk();
     return;
   }
 
@@ -15837,6 +16275,60 @@ function showTip(text) {
   tip.textContent = text;
   tip.classList.add('visible');
   setTimeout(() => tip.classList.remove('visible'), 1500);
+}
+
+// ═══ MYSTERY BOX FRIDAY ═══
+const MYSTERY_PRIZES = [
+  { label: '$50 Cash!', icon: '💰', apply: () => { money += 50; return 'You found $50!'; } },
+  { label: '$100 Cash!!', icon: '💰', apply: () => { money += 100; return 'Jackpot! $100!'; } },
+  { label: '$25 Cash', icon: '💵', apply: () => { money += 25; return 'You found $25!'; } },
+  { label: 'Full Hunger!', icon: '🍕', apply: () => { needs.hunger = 100; return 'Your hunger is fully restored!'; } },
+  { label: 'Full Energy!', icon: '⚡', apply: () => { needs.energy = 100; return 'Your energy is fully restored!'; } },
+  { label: 'Full Fun!', icon: '🎉', apply: () => { needs.fun = 100; return 'Your fun is maxed out!'; } },
+  { label: 'Full Hygiene!', icon: '🚿', apply: () => { needs.hygiene = 100; return 'Squeaky clean!'; } },
+  { label: 'All Needs +30!', icon: '✨', apply: () => { for (const k in needs) needs[k] = Math.min(100, needs[k] + 30); return 'All needs boosted by 30!'; } },
+  { label: 'Big Payday!', icon: '🤑', apply: () => { money += 200; return 'MEGA PRIZE! $200!!'; } },
+  { label: 'Full Restore!', icon: '🌟', apply: () => { for (const k in needs) needs[k] = 100; return 'ALL needs fully restored!'; } },
+  { label: '+50 Fun', icon: '🎮', apply: () => { needs.fun = Math.min(100, needs.fun + 50); return '+50 fun!'; } },
+  { label: '+50 Energy', icon: '☕', apply: () => { needs.energy = Math.min(100, needs.energy + 50); return '+50 energy!'; } },
+];
+
+function checkMysteryBoxFriday() {
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  if (lastMysteryBoxDate === today) return; // already claimed today
+  setTimeout(() => openMysteryBox(), 500);
+}
+
+function openMysteryBox() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (lastMysteryBoxDate === today) return; // already claimed
+  npcDialogueOpen = true;
+  const overlay = document.getElementById('npc-dialogue-overlay');
+  const nameEl = document.getElementById('npc-dialogue-name');
+  const textEl = document.getElementById('npc-dialogue-text');
+  const btnsEl = document.getElementById('npc-dialogue-btns');
+  nameEl.textContent = '🎁 DAILY MYSTERY BOX! 🎁';
+  textEl.textContent = "Your daily mystery box has arrived! Pick one of the three boxes to claim your prize!";
+  btnsEl.innerHTML = '';
+  overlay.classList.add('visible');
+
+  // Pick 3 random unique prizes
+  const shuffled = MYSTERY_PRIZES.slice().sort(() => Math.random() - 0.5);
+  const picks = shuffled.slice(0, 3);
+
+  picks.forEach((prize, i) => {
+    addDialogueBtn(btnsEl, '🎁 Mystery Box ' + (i + 1), 'npc-btn-accept', () => {
+      lastMysteryBoxDate = new Date().toISOString().slice(0, 10);
+      const msg = prize.apply();
+      nameEl.textContent = prize.icon + ' PRIZE REVEALED! ' + prize.icon;
+      textEl.textContent = prize.label + ' — ' + msg;
+      btnsEl.innerHTML = '';
+      addDialogueBtn(btnsEl, 'Nice!', 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        showTip('Mystery Box: ' + prize.label);
+      });
+    });
+  });
 }
 
 // ═══ ACTION ANIMATIONS ═══
@@ -17510,6 +18002,8 @@ function update() {
     if (day >= 3) mlTry('ml_survivor');
     if (day >= 7) mlTry('ml_week_warrior');
     if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+    // Daily Mystery Box (once per real-world day)
+    checkMysteryBoxFriday();
   }
 
   // Decay needs
@@ -17887,6 +18381,7 @@ function restartGame() {
   money = 50;
   gameTime = 360;
   day = 1;
+  lastMysteryBoxDate = '';
   moveTarget = null;
   currentAction = null;
   actionProgress = 0;
@@ -18054,8 +18549,15 @@ function restartGame() {
   gdCloneVoteTargets = [];
   gdEnactedLaws = [];
   gdLawSignGroup = null;
+  gdPresHouseBuilt = false;
+  gdPresHouseGroup = null;
+  gdPresApproval = 50;
+  gdPresImpeached = false;
+  gdPresThrone = false;
+  gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
-    if (interactables[i].type === 'dimPortal' || interactables[i].type === 'redButton' || interactables[i].type === 'cloneArena' || interactables[i].type === 'grahamInterview') interactables.splice(i, 1);
+    const t = interactables[i].type;
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
@@ -18187,6 +18689,11 @@ function buildSaveData() {
     gdCloneEgoTargets: [...gdCloneEgoTargets],
     gdCloneVoteTargets: [...gdCloneVoteTargets],
     gdEnactedLaws: [...gdEnactedLaws],
+    gdPresHouseBuilt,
+    gdPresApproval,
+    gdPresImpeached,
+    gdPresThrone,
+    lastMysteryBoxDate,
   };
 }
 
@@ -18407,6 +18914,11 @@ function loadSlot(index) {
   if (save.gdCloneEgoTargets) gdCloneEgoTargets = save.gdCloneEgoTargets;
   if (save.gdCloneVoteTargets) gdCloneVoteTargets = save.gdCloneVoteTargets;
   if (save.gdEnactedLaws) gdEnactedLaws = save.gdEnactedLaws;
+  if (save.gdPresHouseBuilt) gdPresHouseBuilt = save.gdPresHouseBuilt;
+  if (save.gdPresApproval !== undefined) gdPresApproval = save.gdPresApproval;
+  if (save.gdPresImpeached) gdPresImpeached = save.gdPresImpeached;
+  if (save.gdPresThrone) gdPresThrone = save.gdPresThrone;
+  if (save.lastMysteryBoxDate) lastMysteryBoxDate = save.lastMysteryBoxDate;
   if (save.inGrahamDimension) {
     if (!grahamDimGroup) grahamDimGroup = buildGrahamDimension();
     grahamDimGroup.visible = true;

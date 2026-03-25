@@ -153,6 +153,10 @@ let frameCount=0;
 let matchShots=[0,0];
 let callForPassCd=0; // cooldown for call-for-pass
 let tutorialTimer=0;
+let spaceHoldFrames=0; // frames space has been held (for power shot)
+const POWER_SHOT_MIN=15; // minimum frames to charge a power shot
+const POWER_SHOT_MAX=45; // max frames for full power
+const POWER_SHOT_MUL=2.5; // max power multiplier (on top of SHOOT_PWR)
 
 // === UTILITY ===
 function dist(a,b){const dx=a.x-b.x,dy=a.y-b.y;return Math.sqrt(dx*dx+dy*dy);}
@@ -165,7 +169,7 @@ function mkPlayer(x,y,teamIdx,role,idx){
   return{x,y,vx:0,vy:0,teamIdx,role,idx,angle:0,kickCd:0};
 }
 
-function mkBall(){return{x:FCX,y:FCY,vx:0,vy:0};}
+function mkBall(){return{x:FCX,y:FCY,vx:0,vy:0,isPowerShot:false};}
 
 // === FORMATIONS ===
 function getFormation(attackRight){
@@ -208,8 +212,8 @@ function resetPositions(forKickoff){
     team2[i].x=f2[i].x;team2[i].y=f2[i].y;team2[i].role=f2[i].role;
     team2[i].vx=0;team2[i].vy=0;team2[i].kickCd=0;
   }
-  ball.x=FCX;ball.y=FCY;ball.vx=0;ball.vy=0;
-  ballOwner=null;
+  ball.x=FCX;ball.y=FCY;ball.vx=0;ball.vy=0;ball.isPowerShot=false;
+  ballOwner=null;spaceHoldFrames=0;
   // Give possession to kicking team's FWD
   const kickTeam=playerRight?team1:team2;
   ballOwner=kickTeam[2]; // FWD
@@ -318,8 +322,17 @@ function updatePossession(){
     if(p.teamIdx===0&&p.idx===selIdx)continue; // already checked
     const d=dist(p,ball);
     if(d<CONTROL_R&&Math.random()<autoPickup){
+      // Power shot: 20% chance GK fumbles (ball slips through)
+      if(p.role==='GK'&&ball.isPowerShot&&Math.random()<0.2){
+        // Ball slips through goalie's hands!
+        p.kickCd=15;
+        addParticles(p.x,p.y,'#ff8800',6);
+        ball.isPowerShot=false;
+        continue;
+      }
       ballOwner=p;
       ball.vx=0;ball.vy=0;
+      ball.isPowerShot=false;
       return;
     }
   }
@@ -472,31 +485,39 @@ function updateHumanPlayer(){
   sp.x=clamp(sp.x,FL+PLAYER_R,FR-PLAYER_R);
   sp.y=clamp(sp.y,FT+PLAYER_R,FB-PLAYER_R);
 
-  // SPACE = pick up ball / shoot
-  if(jp['Space']&&sp.kickCd<=0){
-    if(hasBall){
-      // Kick ball forward in facing direction
-      const pwr=SHOOT_PWR*(bonus.striker?1.15:1.0);
-      ball.vx=Math.cos(sp.angle)*pwr;
-      ball.vy=Math.sin(sp.angle)*pwr;
-      ballOwner=null;sp.kickCd=20;
-      lastShotByHuman=true;
-      const goalX=playerRight?FR:FL;
-      lastShotDist=Math.abs(sp.x-goalX);
-      matchShots[0]++;
-      addParticles(ball.x,ball.y,'#ffff00',5);
-    }else{
-      // Try to pick up loose ball
-      const d=dist(sp,ball);
-      if(d<CONTROL_R&&!ballOwner){
-        ballOwner=sp;ball.vx=0;ball.vy=0;
-      }
-      // Try to steal from opponent
-      if(ballOwner&&ballOwner.teamIdx!==0&&d<STEAL_R+4){
-        ballOwner.kickCd=30;
-        ballOwner=sp;ball.vx=0;ball.vy=0;
-        addParticles(ball.x,ball.y,'#ffffff',5);
-      }
+  // SPACE = pick up ball / shoot (hold for power shot)
+  if(keys['Space']&&hasBall&&sp.kickCd<=0){
+    spaceHoldFrames++;
+  }
+  // Release space or just-pressed without ball = non-charge actions
+  if((!keys['Space']&&spaceHoldFrames>0)&&hasBall&&sp.kickCd<=0){
+    // Shoot with power based on hold duration
+    const chargeT=clamp((spaceHoldFrames-POWER_SHOT_MIN)/(POWER_SHOT_MAX-POWER_SHOT_MIN),0,1);
+    const powerMul=spaceHoldFrames>=POWER_SHOT_MIN?1.0+chargeT*(POWER_SHOT_MUL-1.0):1.0;
+    const pwr=SHOOT_PWR*(bonus.striker?1.15:1.0)*powerMul;
+    ball.vx=Math.cos(sp.angle)*pwr;
+    ball.vy=Math.sin(sp.angle)*pwr;
+    ball.isPowerShot=spaceHoldFrames>=POWER_SHOT_MIN;
+    ballOwner=null;sp.kickCd=20;
+    lastShotByHuman=true;
+    const goalX=playerRight?FR:FL;
+    lastShotDist=Math.abs(sp.x-goalX);
+    matchShots[0]++;
+    addParticles(ball.x,ball.y,spaceHoldFrames>=POWER_SHOT_MIN?'#ff4400':'#ffff00',spaceHoldFrames>=POWER_SHOT_MIN?10:5);
+    spaceHoldFrames=0;
+  }
+  if(!keys['Space']){spaceHoldFrames=0;}
+  if(jp['Space']&&sp.kickCd<=0&&!hasBall){
+    // Try to pick up loose ball
+    const d=dist(sp,ball);
+    if(d<CONTROL_R&&!ballOwner){
+      ballOwner=sp;ball.vx=0;ball.vy=0;
+    }
+    // Try to steal from opponent
+    if(ballOwner&&ballOwner.teamIdx!==0&&d<STEAL_R+4){
+      ballOwner.kickCd=30;
+      ballOwner=sp;ball.vx=0;ball.vy=0;
+      addParticles(ball.x,ball.y,'#ffffff',5);
     }
   }
 
@@ -607,18 +628,18 @@ function updateTeammateAI(){
 function updateGK(p,isAttackingRight,spd){
   // GK defends own goal (opposite side from attack direction)
   const gkX=isAttackingRight?FL+20:FR-20;
-  const targetY=clamp(ball.y,GOAL_T+10,GOAL_B-10);
+  const targetY=clamp(ball.y,GOAL_T+15,GOAL_B-15);
   const dx=gkX-p.x,dy=targetY-p.y;
 
-  // Rush out if ball is very close
+  // Rush out if ball is very close (reduced range, slower)
   const bd=dist(p,ball);
-  if(bd<50&&!ballOwner){
+  if(bd<35&&!ballOwner){
     const a=ang(p,ball);
-    p.vx=Math.cos(a)*spd*0.7;
-    p.vy=Math.sin(a)*spd*0.7;
+    p.vx=Math.cos(a)*spd*0.5;
+    p.vy=Math.sin(a)*spd*0.5;
   }else{
-    p.vx=dx*0.04;
-    p.vy=dy*0.06;
+    p.vx=dx*0.025;
+    p.vy=dy*0.04;
   }
   p.x+=p.vx;p.y+=p.vy;
   p.x=clamp(p.x,FL+PLAYER_R,FR-PLAYER_R);
@@ -1028,7 +1049,7 @@ function drawTutorial(){
     {keys:'W',label:'RUN FORWARD',desc:'Move toward your mouse cursor. S to go backward',icon:'move'},
     {keys:'SHIFT',label:'SPRINT',desc:'Hold to run faster',icon:'move'},
     {keys:'E',label:'PASS / CALL FOR BALL',desc:'With ball: pass to a teammate. Without ball: call for the pass!',icon:'pass'},
-    {keys:'SPACE',label:'PICK UP / SHOOT',desc:'Grab a loose ball or tackle. With ball: shoot at goal!',icon:'shoot'},
+    {keys:'SPACE',label:'PICK UP / SHOOT',desc:'Grab a loose ball or tackle. With ball: tap to shoot, HOLD for a POWER SHOT!',icon:'shoot'},
   ];
 
   const startY=72;
@@ -1291,6 +1312,21 @@ function drawHUD(){
   G.font='9px sans-serif';
   G.fillStyle=remaining<10?'#ff4444':'#c9a84c';
   G.fillText((half===1?'1ST':'2ND')+' HALF  '+dispMin+"'",GAME_W/2,28);
+
+  // Power shot charge bar (shown when holding space with ball)
+  if(spaceHoldFrames>0&&ballOwner===team1[selIdx]){
+    const sp=team1[selIdx];
+    const barW=30,barH=5;
+    const bx=sp.x-barW/2,by=sp.y-18;
+    const chargeT=clamp(spaceHoldFrames/POWER_SHOT_MAX,0,1);
+    G.fillStyle='rgba(0,0,0,0.5)';G.fillRect(bx-1,by-1,barW+2,barH+2);
+    const col=chargeT>=1?'#ff2200':chargeT>0.3?'#ff8800':'#ffcc00';
+    G.fillStyle=col;G.fillRect(bx,by,barW*chargeT,barH);
+    if(spaceHoldFrames>=POWER_SHOT_MIN){
+      G.font='bold 7px sans-serif';G.textAlign='center';G.fillStyle='#fff';
+      G.fillText('POWER!',sp.x,by-2);
+    }
+  }
 }
 
 // === DRAW: GOAL OVERLAY ===
