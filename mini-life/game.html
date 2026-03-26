@@ -1395,7 +1395,7 @@ const ML_ACH = {
 };
 function mlTry(id) { const a = ML_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
 function mlCheckLivingLarge() {
-  if (hasSecondFloor && ownedFurniture.size >= 4 && ownedOutfits.size >= OUTFITS.length - 1) { // -1 for GG Merch (separate store)
+  if (hasSecondFloor && ownedFurniture.size >= 4 && ownedOutfits.size >= OUTFITS.length - 1 - MYSTERY_OUTFIT_IDXS.length) { // exclude GG Merch + mystery box exclusives
     mlTry('ml_living_large');
   }
 }
@@ -2333,6 +2333,56 @@ function buildJukebox() {
 function updateJukeboxLabel() {
   const jukeInteract = interactables.find(i => i.type === 'jukebox');
   if (jukeInteract) jukeInteract.label = 'Switch to ' + SFX.getNextTrackName();
+}
+
+function buildDiscoBall() {
+  const g = new THREE.Group();
+  // Hanging wire
+  const wireMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 4), wireMat);
+  wire.position.set(0, 0.3, 0);
+  g.add(wire);
+  // Ball
+  const ballMat = new THREE.MeshLambertMaterial({ color: 0xddddee, emissive: 0x444466, emissiveIntensity: 0.3 });
+  const ball = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), ballMat);
+  ball.position.set(0, 0, 0);
+  g.add(ball);
+  // Colored spotlights
+  const spotColors = [0xff4444, 0x44ff44, 0x4444ff, 0xffff44];
+  spotColors.forEach((c, i) => {
+    const pl = new THREE.PointLight(c, 0.15, 4);
+    const angle = (i / 4) * Math.PI * 2;
+    pl.position.set(Math.cos(angle) * 0.15, -0.1, Math.sin(angle) * 0.15);
+    g.add(pl);
+  });
+  // Place on ceiling near center of room
+  g.position.set(0, 2.9 + 0.15, -1);
+  scene.add(g);
+  furnitureGroups.discoBall = g;
+  interactables.push({ mesh: ball, group: g, type: 'discoBall', label: 'Vibe with Disco Ball', need: 'fun', usePos: new THREE.Vector3(0, 0.15, 0), floor: 0 });
+  actionConfig.discoBall = { label: 'Dancing...', duration: 4, restore: 40, cost: 0 };
+}
+
+function buildBeanBag() {
+  const g = new THREE.Group();
+  const bagMat = new THREE.MeshLambertMaterial({ color: 0xcc4444 });
+  // Main bag body — squished sphere
+  const bag = new THREE.Mesh(new THREE.SphereGeometry(0.4, 10, 8), bagMat);
+  bag.scale.set(1, 0.6, 1);
+  bag.position.set(0, 0.24, 0);
+  bag.castShadow = true;
+  g.add(bag);
+  // Dimple on top
+  const dimpleMat = new THREE.MeshLambertMaterial({ color: 0xaa3333 });
+  const dimple = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 6), dimpleMat);
+  dimple.scale.set(1, 0.3, 1);
+  dimple.position.set(0, 0.42, 0);
+  g.add(dimple);
+  g.position.set(3.5, 0.15, -3.5);
+  scene.add(g);
+  furnitureGroups.beanBag = g;
+  interactables.push({ mesh: bag, group: g, type: 'beanBag', label: 'Chill in Bean Bag', need: 'energy', usePos: new THREE.Vector3(2.8, 0.15, -3), floor: 0 });
+  actionConfig.beanBag = { label: 'Chilling...', duration: 4, restore: 35, cost: 0, funBonus: 15 };
 }
 
 // ═══ OUTDOOR YARD ═══
@@ -8316,6 +8366,13 @@ function buildPresHouse(parentGroup) {
   // Rug
   addMesh(new THREE.BoxGeometry(3, 0.02, 2), new THREE.MeshLambertMaterial({ color: 0x9b59b6 }), PX, 0.11, PZ + 1);
 
+  // === MIRROR (left wall) ===
+  const mirFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX - 3.8, 1.6, PZ);
+  const mirGlass = addMesh(new THREE.BoxGeometry(0.04, 1.2, 0.6),
+    new THREE.MeshLambertMaterial({ color: 0xaaccee, emissive: 0x334455, emissiveIntensity: 0.3 }), PX - 3.78, 1.6, PZ);
+  addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }), PX - 3.76, 1.7, PZ - 0.15);
+
   // Register interactables
   interactables.push(
     { mesh: bedMesh, group: parentGroup, type: 'presBed', label: 'Presidential Bed', need: 'energy', usePos: new THREE.Vector3(PX - 1.5, 0.15, PZ - 1.5), floor: 0 },
@@ -8323,6 +8380,7 @@ function buildPresHouse(parentGroup) {
     { mesh: fridgeMesh, group: parentGroup, type: 'presFridge', label: 'Presidential Fridge', need: 'hunger', usePos: new THREE.Vector3(PX - 2.8, 0.15, PZ + 1.5), floor: 0 },
     { mesh: tvBody, group: parentGroup, type: 'presTV', label: 'Presidential TV', need: 'fun', usePos: new THREE.Vector3(PX + 2.5, 0.15, PZ + 1), floor: 0 },
     { mesh: deskMesh, group: parentGroup, type: 'presDesk', label: 'Presidential Desk', need: null, usePos: new THREE.Vector3(PX, 0.15, PZ + 1.2), floor: 0 },
+    { mesh: mirGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null, usePos: new THREE.Vector3(PX - 3, 0.15, PZ), floor: 0 },
   );
   rebuildInteractMeshes();
 
@@ -12817,12 +12875,12 @@ function runPepperMission(canvas, ctx, onFinish) {
   // Ignore the 2D canvas — build 3D scene in the overlay
   const overlay = document.getElementById('job-overlay');
   overlay.innerHTML = '';
-  overlay.style.background = '#000';
+  overlay.style.background = '#1a1a2e';
 
   const W = window.innerWidth, H = window.innerHeight;
   const pmScene = new THREE.Scene();
-  pmScene.background = new THREE.Color(0x000000);
-  pmScene.fog = new THREE.Fog(0x000000, 2, 18);
+  pmScene.background = new THREE.Color(0x1a1a2e);
+  pmScene.fog = new THREE.Fog(0x1a1a2e, 12, 40);
 
   const pmCamera = new THREE.PerspectiveCamera(70, W / H, 0.1, 50);
   pmCamera.position.set(0, 1.6, 12);
@@ -12868,17 +12926,17 @@ function runPepperMission(canvas, ctx, onFinish) {
   hud.appendChild(hudHint);
 
   // === OFFICE ENVIRONMENT ===
-  const floorMat = new THREE.MeshLambertMaterial({ color: 0x222233 });
-  const wallMat3 = new THREE.MeshLambertMaterial({ color: 0x1a1a2a });
-  const cubeMat = new THREE.MeshLambertMaterial({ color: 0x333344 });
-  const deskMat3 = new THREE.MeshLambertMaterial({ color: 0x5a4a3a });
-  const monitorMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
-  const screenMat = new THREE.MeshLambertMaterial({ color: 0x336688, emissive: 0x112233, emissiveIntensity: 0.5 });
-  const pepperScreenMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.6 });
-  const pepperMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.3 });
-  const guardMat = new THREE.MeshLambertMaterial({ color: 0x3333aa });
-  const guardHeadMat = new THREE.MeshLambertMaterial({ color: 0xddbb99 });
-  const ceilMat = new THREE.MeshLambertMaterial({ color: 0x111118 });
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
+  const wallMat3 = new THREE.MeshLambertMaterial({ color: 0x3a3a4e });
+  const cubeMat = new THREE.MeshLambertMaterial({ color: 0x556677 });
+  const deskMat3 = new THREE.MeshLambertMaterial({ color: 0x8a7a5a });
+  const monitorMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.6 });
+  const pepperScreenMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
+  const pepperMat = new THREE.MeshLambertMaterial({ color: 0xff4444, emissive: 0xff0000, emissiveIntensity: 0.5 });
+  const guardMat = new THREE.MeshLambertMaterial({ color: 0x4444cc });
+  const guardHeadMat = new THREE.MeshLambertMaterial({ color: 0xeeccaa });
+  const ceilMat = new THREE.MeshLambertMaterial({ color: 0x334455 });
 
   // Floor
   const floor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), floorMat);
@@ -12896,13 +12954,13 @@ function runPepperMission(canvas, ctx, onFinish) {
   pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(-15, 1.5, 0) }));
   pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(15, 1.5, 0) }));
 
-  // Ambient (nearly pitch black)
-  pmScene.add(new THREE.AmbientLight(0x050508, 0.15));
+  // Ambient — slightly dark office
+  pmScene.add(new THREE.AmbientLight(0x334455, 0.7));
 
   // Flickering ceiling lights
   const ceilLights = [];
   [[-6, -6], [6, -6], [-6, 6], [6, 6], [0, 0]].forEach(([x, z]) => {
-    const pl = new THREE.PointLight(0xccddff, 0.12, 6);
+    const pl = new THREE.PointLight(0xccddff, 0.6, 14);
     pl.position.set(x, 2.8, z);
     pmScene.add(pl);
     ceilLights.push(pl);
@@ -13247,12 +13305,12 @@ function runPepperMission(canvas, ctx, onFinish) {
       msgText = 'WAVE ' + pmWave + '! The darkness deepens... Guards are faster!';
       msgTimer = 2.5;
       // Make it even darker
-      pmScene.fog.far = Math.max(10, 18 - pmWave * 1.5);
+      pmScene.fog.far = Math.max(20, 40 - pmWave * 2);
     }
 
     // Flicker ceiling lights
     ceilLights.forEach((l, i) => {
-      l.intensity = 0.1 + Math.sin(now * 0.003 + i * 2) * 0.04 + Math.random() * 0.01;
+      l.intensity = 0.5 + Math.sin(now * 0.003 + i * 2) * 0.08 + Math.random() * 0.02;
     });
 
     // Crosshair color
@@ -13273,7 +13331,7 @@ function runPepperMission(canvas, ctx, onFinish) {
     if (caughtFlash > 0) {
       overlay.style.background = 'rgba(255,0,0,' + (caughtFlash * 0.3) + ')';
     } else {
-      overlay.style.background = '#000';
+      overlay.style.background = '#1a1a2e';
     }
 
     pmRenderer.render(pmScene, pmCamera);
@@ -15172,7 +15230,7 @@ function purchaseFurniture(id) {
   money -= item.cost;
   ownedFurniture.add(id);
   SFX.kaChing();
-  const builders = { lavaLamp: buildLavaLamp, fishTank: buildFishTank, treadmill: buildTreadmill, jukebox: buildJukebox };
+  const builders = { lavaLamp: buildLavaLamp, fishTank: buildFishTank, treadmill: buildTreadmill, jukebox: buildJukebox, discoBall: buildDiscoBall, beanBag: buildBeanBag };
   builders[id]();
   rebuildInteractMeshes();
   showTip(item.name + ' placed!');
@@ -15210,8 +15268,19 @@ const OUTFITS = [
   { name: 'Pink Pop',       shirt: 0xdd55aa, pants: 0xeeeedd, cost: 35 },
   { name: 'Golden Drip',    shirt: 0xccaa33, pants: 0x1a1a1a, cost: 50 },
   { name: 'GG Merch',       shirt: 0xcc2222, pants: 0x1a1a1a, cost: 40 },
+  { name: 'Simon the Slug', shirt: 0x5a8a2a, pants: 0x3a3a2a, cost: 0 },
+  { name: 'Goofy Getup',   shirt: 0xff00ff, pants: 0x00ffff, cost: 0 },
+  { name: 'Disco Fever',   shirt: 0xccccdd, pants: 0x1a1a1a, cost: 0 },
+  { name: 'Camo Commando', shirt: 0x4a6a3a, pants: 0x2a3a1a, cost: 0 },
+  { name: 'Black Tuxedo',  shirt: 0x1a1a1a, pants: 0x1a1a1a, cost: 0 },
 ];
 const GG_MERCH_IDX = 8;
+const SLUG_SHIRT_IDX = 9;
+const GOOFY_IDX = 10;
+const DISCO_IDX = 11;
+const CAMO_IDX = 12;
+const TUXEDO_IDX = 13;
+const MYSTERY_OUTFIT_IDXS = [SLUG_SHIRT_IDX, GOOFY_IDX, DISCO_IDX, CAMO_IDX, TUXEDO_IDX];
 let ownedOutfits = new Set([0]); // index 0 (Casual Blue) is free
 
 const DRESSES = [
@@ -15340,6 +15409,268 @@ function buildCharacter(opts) {
         shirtMat, shirtMat, shirtMat, shirtMat,
         new THREE.MeshLambertMaterial({ map: frontTex }),
         new THREE.MeshLambertMaterial({ map: backTex }),
+      ];
+    }
+
+    // Simon the Slug shirt — canvas texture with ugly slug
+    if (opts.outfit === SLUG_SHIRT_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      // Background — slimy green
+      f.fillStyle = '#5a8a2a';
+      f.fillRect(0, 0, 128, 160);
+      // Sign banner at top
+      f.fillStyle = '#3a2a0a';
+      f.fillRect(10, 6, 108, 22);
+      f.fillStyle = '#e8d84c';
+      f.font = 'bold 11px sans-serif';
+      f.textAlign = 'center';
+      f.fillText('SIMON THE SLUG', 64, 22);
+      // Slug body — fat lumpy oval
+      f.fillStyle = '#7a6a30';
+      f.beginPath();
+      f.ellipse(64, 80, 30, 18, 0, 0, Math.PI * 2);
+      f.fill();
+      // Slime trail
+      f.fillStyle = '#8aaa40';
+      f.fillRect(20, 94, 50, 5);
+      f.fillRect(15, 96, 20, 4);
+      // Eye stalks
+      f.strokeStyle = '#7a6a30'; f.lineWidth = 3;
+      f.beginPath(); f.moveTo(50, 65); f.lineTo(44, 48); f.stroke();
+      f.beginPath(); f.moveTo(78, 65); f.lineTo(84, 48); f.stroke();
+      // Eyeballs
+      f.fillStyle = '#ffffff';
+      f.beginPath(); f.arc(44, 45, 6, 0, Math.PI * 2); f.fill();
+      f.beginPath(); f.arc(84, 45, 6, 0, Math.PI * 2); f.fill();
+      f.fillStyle = '#111111';
+      f.beginPath(); f.arc(46, 44, 3, 0, Math.PI * 2); f.fill();
+      f.beginPath(); f.arc(86, 44, 3, 0, Math.PI * 2); f.fill();
+      // Ugly mouth with buck teeth + huge gap
+      f.fillStyle = '#5a2020';
+      f.beginPath();
+      f.ellipse(64, 88, 14, 7, 0, 0, Math.PI);
+      f.fill();
+      // Buck teeth — two big teeth with a gap
+      f.fillStyle = '#eeeecc';
+      f.fillRect(54, 82, 7, 9);  // left tooth
+      f.fillRect(67, 82, 7, 9);  // right tooth (big gap between 61-67)
+      // "glug glug glug!" text
+      f.fillStyle = '#ffff44';
+      f.font = 'bold 13px sans-serif';
+      f.textAlign = 'center';
+      f.fillText('glug glug glug!', 64, 118);
+
+      const slugFrontTex = new THREE.CanvasTexture(fc);
+      // Back: plain slimy green
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#5a8a2a';
+      b.fillRect(0, 0, 128, 160);
+      // Slime drip marks on back
+      b.fillStyle = '#4a7a1a';
+      b.fillRect(30, 20, 8, 40);
+      b.fillRect(70, 35, 8, 50);
+      b.fillRect(90, 10, 8, 30);
+      const slugBackTex = new THREE.CanvasTexture(bc);
+
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: slugFrontTex }),
+        new THREE.MeshLambertMaterial({ map: slugBackTex }),
+      ];
+    }
+
+    // Goofy Getup — ridiculous derpy face shirt
+    if (opts.outfit === GOOFY_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      // Hot pink background
+      f.fillStyle = '#ff00ff';
+      f.fillRect(0, 0, 128, 160);
+      // Yellow polka dots
+      f.fillStyle = '#ffff00';
+      for (let dy = 15; dy < 160; dy += 30) {
+        for (let dx = 10; dx < 128; dx += 30) {
+          f.beginPath(); f.arc(dx + (dy % 60 === 15 ? 0 : 15), dy, 5, 0, Math.PI * 2); f.fill();
+        }
+      }
+      // Big derpy face in center
+      f.fillStyle = '#ffcc66';
+      f.beginPath(); f.arc(64, 75, 28, 0, Math.PI * 2); f.fill();
+      // Wonky eyes — one big, one small, different heights
+      f.fillStyle = '#ffffff';
+      f.beginPath(); f.arc(52, 66, 10, 0, Math.PI * 2); f.fill();
+      f.beginPath(); f.arc(80, 72, 7, 0, Math.PI * 2); f.fill();
+      // Pupils looking different directions
+      f.fillStyle = '#000000';
+      f.beginPath(); f.arc(48, 64, 5, 0, Math.PI * 2); f.fill();
+      f.beginPath(); f.arc(83, 74, 3, 0, Math.PI * 2); f.fill();
+      // Goofy wide open grin
+      f.fillStyle = '#cc3333';
+      f.beginPath(); f.ellipse(64, 92, 18, 10, 0, 0, Math.PI); f.fill();
+      // Buck tooth sticking out
+      f.fillStyle = '#eeeecc';
+      f.fillRect(58, 87, 8, 8);
+      // Tongue sticking out
+      f.fillStyle = '#ff6688';
+      f.beginPath(); f.ellipse(70, 100, 8, 6, 0.3, 0, Math.PI); f.fill();
+      // "DUHH" text
+      f.fillStyle = '#ffffff';
+      f.font = 'bold 16px sans-serif';
+      f.textAlign = 'center';
+      f.fillText('DUHH', 64, 135);
+
+      const goofyFrontTex = new THREE.CanvasTexture(fc);
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#ff00ff';
+      b.fillRect(0, 0, 128, 160);
+      b.fillStyle = '#ffff00';
+      for (let dy = 15; dy < 160; dy += 30) {
+        for (let dx = 10; dx < 128; dx += 30) {
+          b.beginPath(); b.arc(dx + (dy % 60 === 15 ? 0 : 15), dy, 5, 0, Math.PI * 2); b.fill();
+        }
+      }
+      b.fillStyle = '#ffffff';
+      b.font = 'bold 18px sans-serif';
+      b.textAlign = 'center';
+      b.fillText('KICK ME', 64, 85);
+      const goofyBackTex = new THREE.CanvasTexture(bc);
+
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: goofyFrontTex }),
+        new THREE.MeshLambertMaterial({ map: goofyBackTex }),
+      ];
+    }
+
+    // Disco Fever — sparkly mirror ball pattern
+    if (opts.outfit === DISCO_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      f.fillStyle = '#ccccdd';
+      f.fillRect(0, 0, 128, 160);
+      // Mirror tile grid
+      for (let dy = 0; dy < 160; dy += 12) {
+        for (let dx = 0; dx < 128; dx += 12) {
+          const shade = 180 + Math.floor(Math.random() * 75);
+          const hue = [0, 30, 60, 180, 240, 300][Math.floor(Math.random() * 6)];
+          f.fillStyle = 'hsl(' + hue + ',40%,' + Math.floor(shade / 2.55) + '%)';
+          f.fillRect(dx + 1, dy + 1, 10, 10);
+        }
+      }
+      // "DISCO" text
+      f.fillStyle = '#ffdd00';
+      f.font = 'bold 20px sans-serif';
+      f.textAlign = 'center';
+      f.strokeStyle = '#000';
+      f.lineWidth = 3;
+      f.strokeText('DISCO', 64, 90);
+      f.fillText('DISCO', 64, 90);
+      const discoTex = new THREE.CanvasTexture(fc);
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: discoTex }),
+        shirtMat,
+      ];
+    }
+
+    // Camo Commando — green camo pattern
+    if (opts.outfit === CAMO_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      f.fillStyle = '#4a6a3a';
+      f.fillRect(0, 0, 128, 160);
+      // Random camo blobs
+      const camoColors = ['#2a3a1a', '#5a7a4a', '#3a5a2a', '#6a8a5a', '#1a2a0a'];
+      for (let i = 0; i < 40; i++) {
+        f.fillStyle = camoColors[Math.floor(Math.random() * camoColors.length)];
+        const cx = Math.random() * 128, cy = Math.random() * 160;
+        f.beginPath();
+        f.ellipse(cx, cy, 8 + Math.random() * 14, 5 + Math.random() * 10, Math.random() * Math.PI, 0, Math.PI * 2);
+        f.fill();
+      }
+      const camoTex = new THREE.CanvasTexture(fc);
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#4a6a3a';
+      b.fillRect(0, 0, 128, 160);
+      for (let i = 0; i < 40; i++) {
+        b.fillStyle = camoColors[Math.floor(Math.random() * camoColors.length)];
+        const cx = Math.random() * 128, cy = Math.random() * 160;
+        b.beginPath();
+        b.ellipse(cx, cy, 8 + Math.random() * 14, 5 + Math.random() * 10, Math.random() * Math.PI, 0, Math.PI * 2);
+        b.fill();
+      }
+      const camoBackTex = new THREE.CanvasTexture(bc);
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: camoTex }),
+        new THREE.MeshLambertMaterial({ map: camoBackTex }),
+      ];
+    }
+
+    // Black Tuxedo — white shirt, black lapels, bow tie, pocket square
+    if (opts.outfit === TUXEDO_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      // Black jacket
+      f.fillStyle = '#1a1a1a';
+      f.fillRect(0, 0, 128, 160);
+      // White shirt panel (center)
+      f.fillStyle = '#f0f0f0';
+      f.beginPath();
+      f.moveTo(44, 0); f.lineTo(84, 0); f.lineTo(84, 160); f.lineTo(44, 160); f.closePath();
+      f.fill();
+      // Lapels (black triangles over white)
+      f.fillStyle = '#1a1a1a';
+      f.beginPath(); f.moveTo(44, 0); f.lineTo(44, 80); f.lineTo(20, 0); f.closePath(); f.fill();
+      f.beginPath(); f.moveTo(84, 0); f.lineTo(84, 80); f.lineTo(108, 0); f.closePath(); f.fill();
+      // Lapel edges (satin sheen)
+      f.strokeStyle = '#333333'; f.lineWidth = 2;
+      f.beginPath(); f.moveTo(44, 80); f.lineTo(44, 0); f.stroke();
+      f.beginPath(); f.moveTo(84, 80); f.lineTo(84, 0); f.stroke();
+      // Bow tie
+      f.fillStyle = '#1a1a1a';
+      f.beginPath(); f.moveTo(54, 28); f.lineTo(64, 35); f.lineTo(54, 42); f.closePath(); f.fill();
+      f.beginPath(); f.moveTo(74, 28); f.lineTo(64, 35); f.lineTo(74, 42); f.closePath(); f.fill();
+      f.fillStyle = '#222222';
+      f.beginPath(); f.arc(64, 35, 3, 0, Math.PI * 2); f.fill();
+      // Buttons
+      f.fillStyle = '#1a1a1a';
+      [70, 95, 120].forEach(y => { f.beginPath(); f.arc(64, y, 3, 0, Math.PI * 2); f.fill(); });
+      // Pocket square (left breast)
+      f.fillStyle = '#ffffff';
+      f.beginPath(); f.moveTo(28, 30); f.lineTo(38, 28); f.lineTo(40, 45); f.lineTo(26, 45); f.closePath(); f.fill();
+      const tuxFrontTex = new THREE.CanvasTexture(fc);
+
+      // Back — plain black with center seam
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#1a1a1a';
+      b.fillRect(0, 0, 128, 160);
+      b.strokeStyle = '#222222'; b.lineWidth = 1;
+      b.beginPath(); b.moveTo(64, 0); b.lineTo(64, 160); b.stroke();
+      // Vent slit at bottom
+      b.beginPath(); b.moveTo(64, 120); b.lineTo(64, 160); b.stroke();
+      b.strokeStyle = '#252525'; b.lineWidth = 2;
+      b.beginPath(); b.moveTo(64, 120); b.lineTo(64, 160); b.stroke();
+      const tuxBackTex = new THREE.CanvasTexture(bc);
+
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: tuxFrontTex }),
+        new THREE.MeshLambertMaterial({ map: tuxBackTex }),
       ];
     }
   }
@@ -15944,6 +16275,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyE' && gameStarted && !gameOver && !currentAction) firefoamBall();
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
+  if (e.code === 'KeyR' && gameStarted && !gameOver && !currentAction && !npcDialogueOpen) { lastMysteryBoxDate = ''; openMysteryBox(); }
   if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
   if (e.code === 'KeyC' && gameStarted && !gameOver && activePet !== 'none') {
     petStay = !petStay;
@@ -16091,7 +16423,7 @@ function startAction(obj) {
   }
 
   // Mirror is instant — no walk, no progress bar
-  if (obj.type === 'mirror') {
+  if (obj.type === 'mirror' || obj.type === 'presMirror') {
     openMirror();
     return;
   }
@@ -16278,20 +16610,50 @@ function showTip(text) {
 }
 
 // ═══ MYSTERY BOX FRIDAY ═══
-const MYSTERY_PRIZES = [
-  { label: '$50 Cash!', icon: '💰', apply: () => { money += 50; return 'You found $50!'; } },
-  { label: '$100 Cash!!', icon: '💰', apply: () => { money += 100; return 'Jackpot! $100!'; } },
-  { label: '$25 Cash', icon: '💵', apply: () => { money += 25; return 'You found $25!'; } },
-  { label: 'Full Hunger!', icon: '🍕', apply: () => { needs.hunger = 100; return 'Your hunger is fully restored!'; } },
-  { label: 'Full Energy!', icon: '⚡', apply: () => { needs.energy = 100; return 'Your energy is fully restored!'; } },
-  { label: 'Full Fun!', icon: '🎉', apply: () => { needs.fun = 100; return 'Your fun is maxed out!'; } },
-  { label: 'Full Hygiene!', icon: '🚿', apply: () => { needs.hygiene = 100; return 'Squeaky clean!'; } },
-  { label: 'All Needs +30!', icon: '✨', apply: () => { for (const k in needs) needs[k] = Math.min(100, needs[k] + 30); return 'All needs boosted by 30!'; } },
-  { label: 'Big Payday!', icon: '🤑', apply: () => { money += 200; return 'MEGA PRIZE! $200!!'; } },
-  { label: 'Full Restore!', icon: '🌟', apply: () => { for (const k in needs) needs[k] = 100; return 'ALL needs fully restored!'; } },
-  { label: '+50 Fun', icon: '🎮', apply: () => { needs.fun = Math.min(100, needs.fun + 50); return '+50 fun!'; } },
-  { label: '+50 Energy', icon: '☕', apply: () => { needs.energy = Math.min(100, needs.energy + 50); return '+50 energy!'; } },
+const MYSTERY_MONEY = [
+  { label: '$200 Cash!', icon: '💰', apply: () => { money += 200; return 'You found $200!'; } },
+  { label: '$350 Cash!!', icon: '💰', apply: () => { money += 350; return 'Jackpot! $350!'; } },
+  { label: '$150 Cash', icon: '💵', apply: () => { money += 150; return 'You found $150!'; } },
+  { label: 'Big Payday!', icon: '🤑', apply: () => { money += 500; return 'MEGA PRIZE! $500!!'; } },
 ];
+const MYSTERY_ITEMS = [
+  { label: 'Simon the Slug Shirt!', icon: '🐌', apply: () => {
+    if (ownedOutfits.has(SLUG_SHIRT_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedOutfits.add(SLUG_SHIRT_IDX); equipOutfit(SLUG_SHIRT_IDX); mlTry('ml_fashion_icon'); return 'You got the Simon the Slug shirt! Glug glug glug!';
+  }},
+  { label: 'Goofy Getup!', icon: '🤡', apply: () => {
+    if (ownedOutfits.has(GOOFY_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedOutfits.add(GOOFY_IDX); equipOutfit(GOOFY_IDX); mlTry('ml_fashion_icon'); return 'You got the Goofy Getup! Looking ridiculous!';
+  }},
+  { label: 'Disco Fever Outfit!', icon: '🪩', apply: () => {
+    if (ownedOutfits.has(DISCO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedOutfits.add(DISCO_IDX); equipOutfit(DISCO_IDX); mlTry('ml_fashion_icon'); return 'You got the Disco Fever outfit! Time to boogie!';
+  }},
+  { label: 'Camo Commando Outfit!', icon: '🪖', apply: () => {
+    if (ownedOutfits.has(CAMO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedOutfits.add(CAMO_IDX); equipOutfit(CAMO_IDX); mlTry('ml_fashion_icon'); return 'You got the Camo Commando outfit! Can\'t see me!';
+  }},
+  { label: 'Disco Ball!', icon: '🪩', apply: () => {
+    if (ownedFurniture.has('discoBall')) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedFurniture.add('discoBall'); buildDiscoBall(); rebuildInteractMeshes(); return 'You got a Disco Ball for your ceiling!';
+  }},
+  { label: 'Bean Bag Chair!', icon: '🫘', apply: () => {
+    if (ownedFurniture.has('beanBag')) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedFurniture.add('beanBag'); buildBeanBag(); rebuildInteractMeshes(); return 'You got a Bean Bag Chair!';
+  }},
+  { label: 'Black Tuxedo!', icon: '🤵', apply: () => {
+    if (ownedOutfits.has(TUXEDO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
+    ownedOutfits.add(TUXEDO_IDX); equipOutfit(TUXEDO_IDX); mlTry('ml_fashion_icon'); return 'You got the Black Tuxedo! Looking sharp!';
+  }},
+];
+
+function pickMysteryPrize() {
+  // 10% chance for money, 90% for items
+  if (Math.random() < 0.1) {
+    return MYSTERY_MONEY[Math.floor(Math.random() * MYSTERY_MONEY.length)];
+  }
+  return MYSTERY_ITEMS[Math.floor(Math.random() * MYSTERY_ITEMS.length)];
+}
 
 function checkMysteryBoxFriday() {
   const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
@@ -16312,12 +16674,15 @@ function openMysteryBox() {
   btnsEl.innerHTML = '';
   overlay.classList.add('visible');
 
-  // Pick 3 random unique prizes
-  const shuffled = MYSTERY_PRIZES.slice().sort(() => Math.random() - 0.5);
-  const picks = shuffled.slice(0, 3);
+  // Pick 3 unique prizes (no duplicates)
+  const picks = [];
+  while (picks.length < 3) {
+    const p = pickMysteryPrize();
+    if (!picks.includes(p)) picks.push(p);
+  }
 
   picks.forEach((prize, i) => {
-    addDialogueBtn(btnsEl, '🎁 Mystery Box ' + (i + 1), 'npc-btn-accept', () => {
+    addDialogueBtn(btnsEl, prize.icon + ' ' + prize.label, 'npc-btn-accept', () => {
       lastMysteryBoxDate = new Date().toISOString().slice(0, 10);
       const msg = prize.apply();
       nameEl.textContent = prize.icon + ' PRIZE REVEALED! ' + prize.icon;
@@ -17185,7 +17550,8 @@ function renderShopItems() {
   container.appendChild(outfitLabel);
 
   OUTFITS.forEach((fit, i) => {
-    if (i === 0 || i === GG_MERCH_IDX) return; // skip default free outfit and GG Merch (sold at merch store)
+    if (i === 0 || i === GG_MERCH_IDX) return; // skip default + GG Merch (sold at merch store)
+    if (MYSTERY_OUTFIT_IDXS.includes(i) && !ownedOutfits.has(i)) return; // mystery box exclusives only show once owned
     const owned = ownedOutfits.has(i);
     const equipped = charOpts.outfit === i && charOpts.dress < 0;
     const div = document.createElement('div');
@@ -18557,7 +18923,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
@@ -18847,7 +19213,7 @@ function loadSlot(index) {
 
   // Rebuild purchased furniture
   if (save.ownedFurniture) {
-    const builders = { lavaLamp: buildLavaLamp, fishTank: buildFishTank, treadmill: buildTreadmill, jukebox: buildJukebox };
+    const builders = { lavaLamp: buildLavaLamp, fishTank: buildFishTank, treadmill: buildTreadmill, jukebox: buildJukebox, discoBall: buildDiscoBall, beanBag: buildBeanBag };
     save.ownedFurniture.forEach(id => {
       ownedFurniture.add(id);
       if (builders[id]) builders[id]();
