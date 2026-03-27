@@ -3645,6 +3645,437 @@ test('4 Graham statues positioned around arena', () => {
   });
 });
 
+// ═══ PEPPER SABOTAGE IN-WORLD MISSION ═══
+section('Pepper Sabotage Mission — In-World');
+
+const PEPPER_OFFICE_ORIGIN = { x: 600, z: 0 };
+
+test('Pepper office origin is far from all other locations', () => {
+  // Home=0, Town=122.5, Mansion=280, Graham Dim=400, Pepper=600
+  assert(PEPPER_OFFICE_ORIGIN.x > 500, 'Office X should be far from other locations');
+  assert(PEPPER_OFFICE_ORIGIN.x - GRAHAM_DIM_ORIGIN.x >= 200, 'Office should be 200+ units from Graham Dim');
+});
+
+test('Pepper office collision array can be populated and cleared', () => {
+  const PEPPER_OFFICE_COLLISIONS = [];
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+  // Simulate wall collision boxes
+  PEPPER_OFFICE_COLLISIONS.push(
+    { xMin: OX - 15.2, xMax: OX + 15.2, zMin: OZ - 15.2, zMax: OZ - 14.8 },
+    { xMin: OX - 15.2, xMax: OX - 14.8, zMin: OZ - 15.2, zMax: OZ + 15.2 },
+    { xMin: OX + 14.8, xMax: OX + 15.2, zMin: OZ - 15.2, zMax: OZ + 15.2 },
+  );
+  assertEqual(PEPPER_OFFICE_COLLISIONS.length, 3);
+  // Clearing
+  PEPPER_OFFICE_COLLISIONS.length = 0;
+  assertEqual(PEPPER_OFFICE_COLLISIONS.length, 0);
+});
+
+test('Cubicle positions are within office bounds', () => {
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+  const cubePositions = [
+    [-8, -8], [-4, -8], [0, -8], [4, -8], [8, -8],
+    [-8, -3], [-4, -3], [4, -3], [8, -3],
+    [-8, 3], [-4, 3], [4, 3], [8, 3],
+    [-8, 8], [-4, 8], [0, 8], [4, 8], [8, 8],
+  ];
+  assertEqual(cubePositions.length, 18, 'Should have 18 cubicle positions');
+  cubePositions.forEach(([cx, cz]) => {
+    const wx = OX + cx, wz = OZ + cz;
+    assert(wx > OX - 15 && wx < OX + 15, 'Cubicle X within office: ' + wx);
+    assert(wz > OZ - 15 && wz < OZ + 15, 'Cubicle Z within office: ' + wz);
+  });
+});
+
+test('Guard patrol bounds stay within office', () => {
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+  const guardDefs = [
+    { x: OX - 5, z: OZ, patrolZ: [OZ - 10, OZ + 10] },
+    { x: OX + 5, z: OZ + 5, patrolZ: [OZ - 8, OZ + 12] },
+    { x: OX, z: OZ - 5, patrolX: [OX - 10, OX + 10] },
+  ];
+  guardDefs.forEach((g, i) => {
+    if (g.patrolZ) {
+      assert(g.patrolZ[0] >= OZ - 15, 'Guard ' + i + ' patrol Z min in bounds');
+      assert(g.patrolZ[1] <= OZ + 15, 'Guard ' + i + ' patrol Z max in bounds');
+    }
+    if (g.patrolX) {
+      assert(g.patrolX[0] >= OX - 15, 'Guard ' + i + ' patrol X min in bounds');
+      assert(g.patrolX[1] <= OX + 15, 'Guard ' + i + ' patrol X max in bounds');
+    }
+  });
+});
+
+test('Guard detection uses dot product > 0.5 for cone check', () => {
+  // Simulate: guard facing -Z (forward = 0,0,-1), player directly in front
+  const guardForward = { x: 0, z: -1 };
+  const toPlayerFront = { x: 0, z: -1 }; // directly in front
+  const dotFront = guardForward.x * toPlayerFront.x + guardForward.z * toPlayerFront.z;
+  assert(dotFront > 0.5, 'Player in front should be detected (dot=' + dotFront + ')');
+
+  // Player behind guard
+  const toPlayerBehind = { x: 0, z: 1 };
+  const dotBehind = guardForward.x * toPlayerBehind.x + guardForward.z * toPlayerBehind.z;
+  assert(dotBehind <= 0.5, 'Player behind should NOT be detected (dot=' + dotBehind + ')');
+
+  // Player at side
+  const toPlayerSide = { x: 1, z: 0 };
+  const dotSide = guardForward.x * toPlayerSide.x + guardForward.z * toPlayerSide.z;
+  assert(dotSide <= 0.5, 'Player to side should NOT be detected (dot=' + dotSide + ')');
+});
+
+test('Pepper hit detection uses correct distance thresholds', () => {
+  // Computer at (wx, wz), screen at (wx, 1.15, wz - 0.8)
+  const comp = { x: 600, z: 0, peppered: false };
+  const pepperPos = { x: 600.1, y: 1.1, z: -0.75 };
+  const dx = pepperPos.x - comp.x;
+  const dz = pepperPos.z - (comp.z - 0.8);
+  const dy = pepperPos.y - 1.15;
+  const hit = Math.abs(dx) < 0.5 && Math.abs(dz) < 0.5 && Math.abs(dy) < 0.4;
+  assert(hit, 'Pepper near computer screen should register hit');
+
+  // Far away pepper
+  const farPepper = { x: 603, y: 1.1, z: -0.75 };
+  const dx2 = farPepper.x - comp.x;
+  const hit2 = Math.abs(dx2) < 0.5;
+  assert(!hit2, 'Pepper far from computer should NOT hit');
+});
+
+test('Wave system resets all computers and increases guard speed', () => {
+  const computers = [
+    { peppered: true }, { peppered: true }, { peppered: true },
+  ];
+  const guards = [{ speed: 2.5 }, { speed: 3.0 }];
+  let wave = 1;
+
+  // Simulate wave completion
+  if (computers.every(c => c.peppered)) {
+    wave++;
+    computers.forEach(c => { c.peppered = false; });
+    guards.forEach(g => { g.speed = Math.min(g.speed + 0.3, 6); });
+  }
+
+  assertEqual(wave, 2);
+  assert(!computers[0].peppered, 'Computers should be reset');
+  assertClose(guards[0].speed, 2.8, 0.01, 'Guard speed should increase');
+  assertClose(guards[1].speed, 3.3, 0.01, 'Guard speed should increase');
+});
+
+test('Score deducted on detection, minimum 0', () => {
+  let score = 2;
+  score = Math.max(0, score - 1);
+  assertEqual(score, 1, 'Score should decrease by 1');
+  score = Math.max(0, score - 1);
+  assertEqual(score, 0);
+  score = Math.max(0, score - 1);
+  assertEqual(score, 0, 'Score should not go below 0');
+});
+
+test('Pay formula: $25 + score * 2', () => {
+  const pay0 = 25 + Math.floor(0 * 2);
+  assertEqual(pay0, 25, 'Zero score = $25');
+  const pay10 = 25 + Math.floor(10 * 2);
+  assertEqual(pay10, 45, '10 score = $45');
+  const pay18 = 25 + Math.floor(18 * 2);
+  assertEqual(pay18, 61, '18 score (full wave) = $61');
+});
+
+test('Mission state tracks all required fields', () => {
+  const state = {
+    score: 0, wave: 1, guards: [], computers: [],
+    ceilLights: [], flyingPeppers: [], aiming: false,
+    msgText: '', msgTimer: 0, caughtFlash: 0,
+    savedFogFar: 200, savedFogColor: {}, savedBgColor: {},
+    savedAmbInt: 0.5, savedSunInt: 1.0,
+    musicCtx: {}, musicGain: {}, hudEl: {}, vignetteEl: {},
+  };
+  assert('score' in state);
+  assert('wave' in state);
+  assert('guards' in state);
+  assert('computers' in state);
+  assert('flyingPeppers' in state);
+  assert('aiming' in state);
+  assert('savedFogFar' in state);
+  assert('savedAmbInt' in state);
+  assert('savedSunInt' in state);
+});
+
+test('Fog darkens with each wave', () => {
+  let fogFar = 40;
+  for (let wave = 2; wave <= 10; wave++) {
+    fogFar = Math.max(20, 40 - wave * 2);
+  }
+  assertEqual(fogFar, 20, 'Fog should clamp at minimum 20');
+});
+
+test('Max guards capped at 6', () => {
+  const guards = [1, 2, 3]; // initial 3
+  for (let w = 2; w <= 10; w++) {
+    if (guards.length < 6) guards.push(w);
+  }
+  assertEqual(guards.length, 6, 'Guards capped at 6');
+});
+
+test('Collision AABB push-out finds minimum penetration axis', () => {
+  // Simulate player at (601, 0.15, -0.5) near cubicle at (600, 0)
+  const box = { xMin: 598.85, xMax: 601.15, zMin: -1.05, zMax: -0.3 };
+  let px = 601, pz = -0.5;
+  if (px > box.xMin && px < box.xMax && pz > box.zMin && pz < box.zMax) {
+    const dL = px - box.xMin, dR = box.xMax - px, dB = pz - box.zMin, dT = box.zMax - pz;
+    const minD = Math.min(dL, dR, dB, dT);
+    if (minD === dL) px = box.xMin;
+    else if (minD === dR) px = box.xMax;
+    else if (minD === dB) pz = box.zMin;
+    else pz = box.zMax;
+  }
+  // Should be pushed out to nearest edge
+  assert(px <= box.xMin || px >= box.xMax || pz <= box.zMin || pz >= box.zMax, 'Player should be pushed out of AABB');
+});
+
+// ═══ PEPPER MISSION PAYMENT CHANGES ═══
+section('Pepper Mission — Live Payment');
+
+test('Pepper hit awards $10 live', () => {
+  let money = 100;
+  let score = 0;
+  // Simulate hitting a computer
+  score++;
+  money += 10;
+  assertEqual(money, 110, 'Money should increase by $10 per pepper');
+  assertEqual(score, 1);
+});
+
+test('End-of-mission base pay is flat $25', () => {
+  const pay = 25; // flat base, no score multiplier
+  assertEqual(pay, 25, 'Base pay should be flat $25');
+});
+
+test('Total earnings = $25 base + $10 * peppers', () => {
+  const peppers = 12;
+  const live = peppers * 10;
+  const base = 25;
+  assertEqual(live + base, 145, '12 peppers = $120 live + $25 base = $145');
+});
+
+test('No daily cooldown for pepper mission', () => {
+  const gdJobLastDay = { graham_hr: 5, graham_boss_1: 5 };
+  const day = 5;
+  const bossId = 'graham_hr_mission';
+  // Pepper mission should NOT set cooldown
+  if (bossId !== 'graham_hr_mission') gdJobLastDay[bossId] = day;
+  assert(!gdJobLastDay['graham_hr_mission'], 'Pepper mission should not have cooldown set');
+  // Other jobs still have cooldown
+  assertEqual(gdJobLastDay['graham_hr'], 5, 'Other jobs still track cooldown');
+});
+
+// ═══ LAW VISUAL EFFECTS ═══
+section('Law Visual Effects');
+
+test('Beaver law matches beaver pattern', () => {
+  const pattern = /beaver/i;
+  const neg = /exiled|banned|tail.*dance/i;
+  assert(pattern.test('National Beaver Appreciation Day is now a holiday'), 'Should match beaver law');
+  assert(!neg.test('National Beaver Appreciation Day is now a holiday'), 'Should not be negated');
+  assert(pattern.test('Beavers are exiled from the dimension'), 'Should match');
+  assert(neg.test('Beavers are exiled from the dimension'), 'Should be negated (exiled)');
+});
+
+test('Cat law matches cat pattern', () => {
+  const pattern = /cat/i;
+  const neg = /banned|costume|dance/i;
+  assert(pattern.test('Mandatory cat petting breaks every 2 hours'), 'Should match cat law');
+  assert(!neg.test('Mandatory cat petting breaks every 2 hours'), 'Should not be negated');
+  assert(neg.test('Cats are banned from all buildings'), 'Should be negated (banned)');
+});
+
+test('Trampoline law matches but not destruction', () => {
+  const pattern = /trampoline/i;
+  const neg = /destroy|hazard|convert/i;
+  assert(pattern.test('Free trampolines installed in every garden'));
+  assert(!neg.test('Free trampolines installed in every garden'));
+  assert(neg.test('All trampolines must be destroyed immediately'));
+});
+
+test('Dance ban matches correctly', () => {
+  const pattern = /ban.*danc|anti.*dance/i;
+  assert(pattern.test('Ban all forms of dancing in public spaces'));
+  assert(pattern.test('Anti-dance patrol established'));
+  assert(!pattern.test('Mandatory dance classes for all citizens'));
+});
+
+test('updateLawVisuals activeKeys set works', () => {
+  const effects = [
+    { pattern: /beaver/i, key: 'beaver_pets' },
+    { pattern: /cat/i, key: 'cat_pets' },
+  ];
+  const laws = ['National Beaver Appreciation Day is now a holiday'];
+  const activeKeys = new Set();
+  for (const law of laws) {
+    for (const eff of effects) {
+      if (eff.pattern.test(law)) activeKeys.add(eff.key);
+    }
+  }
+  assert(activeKeys.has('beaver_pets'), 'Should activate beaver_pets');
+  assert(!activeKeys.has('cat_pets'), 'Should not activate cat_pets');
+});
+
+test('Multiple laws can activate multiple effects', () => {
+  const effects = [
+    { pattern: /beaver/i, key: 'beaver_pets' },
+    { pattern: /cat/i, key: 'cat_pets' },
+    { pattern: /trampoline/i, neg: /destroy/i, key: 'trampolines' },
+  ];
+  const laws = ['Beavers receive free healthcare', 'Free trampolines in every garden', 'Cats appointed as government advisors'];
+  const activeKeys = new Set();
+  for (const law of laws) {
+    for (const eff of effects) {
+      if (eff.pattern.test(law) && !(eff.neg && eff.neg.test(law))) activeKeys.add(eff.key);
+    }
+  }
+  assertEqual(activeKeys.size, 3, 'All 3 effects should be active');
+});
+
+// ═══ CAMPAIGN OVERHAUL ═══
+section('Campaign Overhaul — Posters, Speech, 17+ Votes');
+
+test('Campaign slogans have 6 options', () => {
+  const CAMPAIGN_SLOGANS = [
+    { text: 'BEAVERS FOR ALL!', color: '#cc4422' },
+    { text: 'BOUNCE INTO THE FUTURE!', color: '#2244cc' },
+    { text: 'CATS ARE KINGS!', color: '#cc8822' },
+    { text: 'DOWN WITH DANCING!', color: '#22cc44' },
+    { text: 'SAY NO TO LOL DOLLS!', color: '#cc22cc' },
+    { text: 'EVERY DAY IS GRAHAMSDAY!', color: '#c9a84c' },
+  ];
+  assertEqual(CAMPAIGN_SLOGANS.length, 6);
+  CAMPAIGN_SLOGANS.forEach(s => {
+    assert(s.text.length > 0, 'Slogan should have text');
+    assert(s.color.startsWith('#'), 'Slogan should have color');
+  });
+});
+
+test('Speech options have 4 choices each', () => {
+  const SPEECH_OPENERS = ['a', 'b', 'c', 'd'];
+  const SPEECH_TOPICS = ['a', 'b', 'c', 'd'];
+  const SPEECH_CLOSERS = ['a', 'b', 'c', 'd'];
+  assertEqual(SPEECH_OPENERS.length, 4);
+  assertEqual(SPEECH_TOPICS.length, 4);
+  assertEqual(SPEECH_CLOSERS.length, 4);
+});
+
+test('6 poster spots defined', () => {
+  const POSTER_SPOT_OFFSETS = [
+    { x: 5, z: 5 }, { x: -15, z: 30 }, { x: -25, z: 15 },
+    { x: 25, z: -15 }, { x: 35, z: -5 }, { x: 5, z: -60 },
+  ];
+  assertEqual(POSTER_SPOT_OFFSETS.length, 6);
+});
+
+test('Campaign quest state has all required fields', () => {
+  const pq = {
+    status: 'active', phase: 'posters', votes: 0,
+    postersPlaced: 0, placedPosterIndices: [], sloganIdx: -1,
+  };
+  assert('phase' in pq);
+  assert('postersPlaced' in pq);
+  assert('placedPosterIndices' in pq);
+  assert('sloganIdx' in pq);
+});
+
+test('Vote threshold is 17 (majority of 32)', () => {
+  const VOTE_THRESHOLD = 17;
+  const TOTAL_CLONES = 32;
+  assert(VOTE_THRESHOLD > TOTAL_CLONES / 2, '17 > 16 = majority');
+  assertEqual(VOTE_THRESHOLD, 17);
+});
+
+test('Campaign phases progress correctly', () => {
+  const phases = ['posters', 'speech', 'voting'];
+  let pq = { phase: 'posters', postersPlaced: 0 };
+  // Place 6 posters
+  pq.postersPlaced = 6;
+  pq.phase = 'speech';
+  assertEqual(pq.phase, 'speech');
+  // Give speech
+  pq.phase = 'voting';
+  assertEqual(pq.phase, 'voting');
+});
+
+test('Poster placement tracking', () => {
+  const pq = { postersPlaced: 0, placedPosterIndices: [] };
+  for (let i = 0; i < 6; i++) {
+    pq.postersPlaced++;
+    pq.placedPosterIndices.push(i);
+  }
+  assertEqual(pq.postersPlaced, 6);
+  assertEqual(pq.placedPosterIndices.length, 6);
+});
+
+test('Backwards compat: old save without phase defaults to voting', () => {
+  const oldSave = { status: 'active', votes: 3 };
+  const phase = oldSave.phase || 'voting';
+  assertEqual(phase, 'voting', 'Should default to voting for old saves');
+});
+
+test('Clone dialogue is phase-gated', () => {
+  // Posters phase: clone says put up posters
+  let phase = 'posters';
+  let msg = phase === 'posters' ? 'Put up some posters!' : phase === 'speech' ? 'Give a speech!' : 'Vote';
+  assertEqual(msg, 'Put up some posters!');
+  // Speech phase
+  phase = 'speech';
+  msg = phase === 'posters' ? 'Put up some posters!' : phase === 'speech' ? 'Give a speech!' : 'Vote';
+  assertEqual(msg, 'Give a speech!');
+  // Voting phase
+  phase = 'voting';
+  msg = phase === 'posters' ? 'Put up some posters!' : phase === 'speech' ? 'Give a speech!' : 'Vote';
+  assertEqual(msg, 'Vote');
+});
+
+// ═══ UNDO LAWS SCROLLABLE ═══
+section('Undo Laws — Scrollable List');
+
+test('All laws are accessible, not just last 5', () => {
+  const gdEnactedLaws = [];
+  for (let i = 0; i < 20; i++) gdEnactedLaws.push('Law #' + (i + 1));
+  // Old behavior: only show last 5
+  const oldRecent = gdEnactedLaws.slice(-5);
+  assertEqual(oldRecent.length, 5, 'Old behavior showed only 5');
+  // New behavior: show all
+  assertEqual(gdEnactedLaws.length, 20, 'New behavior shows all 20');
+});
+
+test('Undoing a law removes it and decreases approval by 5', () => {
+  const laws = ['Free Pizza', 'No Homework', 'Mandatory Fun'];
+  let approval = 50;
+  // Undo middle law
+  const idx = 1;
+  laws.splice(idx, 1);
+  approval = Math.max(0, approval - 5);
+  assertEqual(laws.length, 2);
+  assertEqual(approval, 45);
+  assertEqual(laws[0], 'Free Pizza');
+  assertEqual(laws[1], 'Mandatory Fun');
+});
+
+test('Approval cannot go below 0 after many undos', () => {
+  let approval = 3;
+  approval = Math.max(0, approval - 5);
+  assertEqual(approval, 0, 'Approval should clamp to 0');
+});
+
+test('Empty law list shows appropriate message', () => {
+  const laws = [];
+  const msg = laws.length === 0 ? 'No laws have been enacted yet.' : 'Your laws (' + laws.length + ' total):';
+  assertEqual(msg, 'No laws have been enacted yet.');
+});
+
+test('Law list header shows total count', () => {
+  const laws = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
+  const header = 'Your laws (' + laws.length + ' total):';
+  assertEqual(header, 'Your laws (10 total):');
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;

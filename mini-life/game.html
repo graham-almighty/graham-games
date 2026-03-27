@@ -1124,6 +1124,13 @@
     border: 1px solid #555;
   }
   .drive-dest-btn.cancel:hover { background: #444; color: #fff; }
+  #pepper-mission-hud { position:fixed; inset:0; z-index:10; pointer-events:none; font-family:Segoe UI,sans-serif; }
+  #pepper-mission-hud .pm-title { position:absolute; top:10px; left:0; width:100%; text-align:center; color:#ff4444; font-size:1rem; font-weight:bold; font-family:Cinzel,serif; text-shadow:0 0 10px #ff0000; }
+  #pepper-mission-hud .pm-left { position:absolute; top:40px; left:12px; color:#fff; font-size:0.8rem; }
+  #pepper-mission-hud .pm-right { position:absolute; top:40px; right:12px; color:#c9a84c; font-size:0.8rem; text-align:right; }
+  #pepper-mission-hud .pm-msg { position:absolute; bottom:60px; left:0; width:100%; text-align:center; color:#ff8844; font-size:0.9rem; font-weight:bold; text-shadow:0 0 8px #ff4400; transition:opacity 0.3s; }
+  #pepper-mission-hud .pm-hint { position:absolute; bottom:20px; left:0; width:100%; text-align:center; color:#888; font-size:0.7rem; }
+  #pepper-vignette { position:fixed; inset:0; z-index:9; pointer-events:none; background:radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.3)); opacity:0; transition:opacity 0.15s; }
 </style>
 </head>
 <body>
@@ -7370,7 +7377,7 @@ function openGrahamIndustriesJobs() {
 
   const jobs = [
     { name: 'Paperwork Filing', desc: 'Sort funny paperwork into cabinets ($18+)', id: 'graham_hr', disabled: gdJobLastDay['graham_hr'] === day },
-    { name: 'Pepper Sabotage Mission', desc: 'Plant peppers in non-Graham computers ($25+)', id: 'graham_hr_mission', disabled: gdJobLastDay['graham_hr_mission'] === day },
+    { name: 'Pepper Sabotage Mission', desc: 'Plant peppers ($25 + $10/pepper)', id: 'graham_hr_mission', disabled: false },
   ];
 
   jobs.forEach(j => {
@@ -7391,7 +7398,7 @@ function openGrahamIndustriesJobs() {
     if (!j.disabled) {
       btn.onmouseover = () => { btn.style.borderColor = '#c9a84c'; btn.style.background = '#3a2a4e'; };
       btn.onmouseout = () => { btn.style.borderColor = '#c9a84c44'; btn.style.background = '#2a1a3e'; };
-      btn.onclick = () => { closeCourtOverlay(); startGrahamDimJob(j.id); };
+      btn.onclick = () => { closeCourtOverlay(); if (j.id === 'graham_hr_mission') startPepperMission(); else startGrahamDimJob(j.id); };
     }
     panel.appendChild(btn);
   });
@@ -7890,6 +7897,7 @@ let gdPresApproval = 50; // 0-100 approval rating
 let gdPresImpeached = false; // got im-cherried
 let gdPresThrone = false; // earned pizza throne
 let gdPresThroneGroup = null; // 3D pizza throne mesh
+let lawVisualGroups = {}; // { effectKey: THREE.Group } — law visual effects in GD
 const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
 const GRAHAM_DIM_BOUNDS = { xMin: 340, xMax: 460, zMin: -100, zMax: 60 };
 const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 50 };
@@ -7904,6 +7912,12 @@ const GRAHAM_DIM_COLLISIONS = [
   { xMin: 389, xMax: 397.5, zMin: -71.5, zMax: -71 },      // Arena north-left wall
   { xMin: 402.5, xMax: 411, zMin: -71.5, zMax: -71 },      // Arena north-right wall
 ];
+// Pepper Sabotage Mission (in-world)
+const PEPPER_OFFICE_ORIGIN = { x: 600, z: 0 };
+const PEPPER_OFFICE_COLLISIONS = [];
+let pepperMissionActive = false;
+let pepperOfficeGroup = null;
+let pepperMissionState = null;
 const GRAHAM_CLONE_LINES = [
   // Clone 0 — The Philosopher
   ["Do I know you? Wait... do I know ME?",
@@ -8119,6 +8133,46 @@ const CAMPAIGN_PROMISES = [
   { promise: "Mandatory dance breaks every hour!", like: null, loved: false },
 ];
 
+// Campaign slogans for poster design
+const CAMPAIGN_SLOGANS = [
+  { text: 'BEAVERS FOR ALL!', color: '#cc4422' },
+  { text: 'BOUNCE INTO THE FUTURE!', color: '#2244cc' },
+  { text: 'CATS ARE KINGS!', color: '#cc8822' },
+  { text: 'DOWN WITH DANCING!', color: '#22cc44' },
+  { text: 'SAY NO TO LOL DOLLS!', color: '#cc22cc' },
+  { text: 'EVERY DAY IS GRAHAMSDAY!', color: '#c9a84c' },
+];
+
+// Speech builder options
+const SPEECH_OPENERS = [
+  "Fellow Grahams! I stand before you today as ONE OF YOU!",
+  "Citizens of the Graham Dimension! The time for change is NOW!",
+  "My fellow clones... I had a DREAM. A dream of a better dimension!",
+  "Look, I'm not gonna lie. There's no other candidates. But VOTE ME anyway!",
+];
+const SPEECH_TOPICS = [
+  "I promise TRAMPOLINES on every street! BEAVERS in every home! And the BANNING of all LOL DOLLS!",
+  "My platform is simple: more CATS, less DANCING, and mandatory GRAHAMSDAY celebrations!",
+  "Under my leadership, this dimension will be BEAVER-FRIENDLY, TRAMPOLINE-POWERED, and LOL-DOLL-FREE!",
+  "I believe in three things: FREE PETS for all clones, BOUNCY roads, and absolutely NO DANCING!",
+];
+const SPEECH_CLOSERS = [
+  "So vote for me! Because the other option is... well... there IS no other option! GO GRAHAM!",
+  "Together, we will make the Graham Dimension the GREATEST dimension in ALL dimensions!",
+  "Remember: a vote for me is a vote for BEAVERS, TRAMPOLINES, and FREEDOM! Thank you!",
+  "And if you DON'T vote for me... well... I'll still be president. But it'll be AWKWARD. Vote me!",
+];
+
+// Poster spot positions in the Graham Dimension (relative to origin)
+const POSTER_SPOT_OFFSETS = [
+  { x: 5, z: 5 },     // Near statue
+  { x: -15, z: 30 },  // North area
+  { x: -25, z: 15 },  // Northwest
+  { x: 25, z: -15 },  // Southeast
+  { x: 35, z: -5 },   // Near Graham Industries
+  { x: 5, z: -60 },   // Near arena
+];
+
 // Laws you can enact after winning (pick 3)
 const GOOFY_LAWS = [
   "All Grahams must high-five at least 7 times per day",
@@ -8247,6 +8301,293 @@ function buildLawSign(parentGroup) {
 }
 
 // === PRESIDENTIAL PALACE (purple house, built after winning presidency) ===
+// ═══ LAW VISUAL EFFECTS ═══
+const LAW_VISUAL_EFFECTS = [
+  { pattern: /beaver/i, neg: /exiled|banned|tail.*dance/i, key: 'beaver_pets', builder: buildLawBeavers },
+  { pattern: /cat/i, neg: /banned|costume|dance/i, key: 'cat_pets', builder: buildLawCats },
+  { pattern: /trampoline/i, neg: /destroy|hazard|convert/i, key: 'trampolines', builder: buildLawTrampolines },
+  { pattern: /ban.*danc|anti.*dance/i, key: 'no_dance_signs', builder: buildNoDanceSigns },
+  { pattern: /lol doll.*(illegal|contraband|smuggl|sentence)/i, key: 'no_lol_signs', builder: buildNoLolSigns },
+  { pattern: /grahamsday/i, neg: /cancel|replace|back to/i, key: 'grahamsday_banners', builder: buildGrahamsdayBanners },
+  { pattern: /mandatory dance|dance.*class|ballet|dance.*off|dance.*greeting/i, key: 'dance_floor', builder: buildDanceFloor },
+  { pattern: /lol doll.*(distribut|museum|day)/i, key: 'lol_dolls', builder: buildScatteredLolDolls },
+  { pattern: /trampoline.*(destroy|hazard|convert)/i, key: 'broken_trampolines', builder: buildBrokenTrampolines },
+  { pattern: /cats.*banned/i, key: 'no_cat_signs', builder: buildNoCatSigns },
+  { pattern: /beaver.*(exiled|banned)/i, key: 'no_beaver_signs', builder: buildNoBeaverSigns },
+];
+
+function updateLawVisuals() {
+  if (!grahamDimGroup) return;
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const activeKeys = new Set();
+  for (const law of gdEnactedLaws) {
+    for (const eff of LAW_VISUAL_EFFECTS) {
+      if (eff.pattern.test(law) && !(eff.neg && eff.neg.test(law))) {
+        activeKeys.add(eff.key);
+      }
+    }
+  }
+  // Remove groups no longer active
+  for (const key in lawVisualGroups) {
+    if (!activeKeys.has(key)) {
+      grahamDimGroup.remove(lawVisualGroups[key]);
+      delete lawVisualGroups[key];
+    }
+  }
+  // Add newly active groups
+  for (const eff of LAW_VISUAL_EFFECTS) {
+    if (activeKeys.has(eff.key) && !lawVisualGroups[eff.key]) {
+      const grp = eff.builder(OX, OZ);
+      if (grp) { grahamDimGroup.add(grp); lawVisualGroups[eff.key] = grp; }
+    }
+  }
+}
+
+function buildMiniBeaver(scale) {
+  const g = new THREE.Group();
+  const s = scale || 0.6;
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.45 * s, 0.4 * s, 0.7 * s), bodyMat);
+  body.position.y = 0.25 * s; g.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18 * s, 6, 5), bodyMat);
+  head.position.set(0, 0.45 * s, -0.3 * s); g.add(head);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.25 * s, 0.06 * s, 0.45 * s),
+    new THREE.MeshLambertMaterial({ color: 0x3a2a0a }));
+  tail.position.set(0, 0.15 * s, 0.5 * s); g.add(tail);
+  return g;
+}
+
+function buildMiniCat(scale) {
+  const s = scale || 0.8;
+  const g = new THREE.Group();
+  const furMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+  const whiteMat = new THREE.MeshLambertMaterial({ color: 0xdddddd });
+  const noseMat = new THREE.MeshLambertMaterial({ color: 0xffaaaa });
+  // Body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.35 * s, 0.25 * s, 0.6 * s), furMat);
+  body.position.set(0, 0.35 * s, 0); g.add(body);
+  // Chest patch
+  const chest = new THREE.Mesh(new THREE.BoxGeometry(0.2 * s, 0.15 * s, 0.2 * s), whiteMat);
+  chest.position.set(0, 0.32 * s, 0.25 * s); g.add(chest);
+  // Head
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.32 * s, 0.28 * s, 0.3 * s), furMat);
+  head.position.set(0, 0.55 * s, 0.4 * s); g.add(head);
+  // Nose
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(0.05 * s, 0.04 * s, 0.03 * s), noseMat);
+  nose.position.set(0, 0.5 * s, 0.56 * s); g.add(nose);
+  // Green eyes with pupils
+  const eyeMat = new THREE.MeshLambertMaterial({ color: 0x44cc44 });
+  [-0.08, 0.08].forEach(x => {
+    const eye = new THREE.Mesh(new THREE.BoxGeometry(0.06 * s, 0.04 * s, 0.03 * s), eyeMat);
+    eye.position.set(x * s, 0.58 * s, 0.55 * s); g.add(eye);
+    const pupil = new THREE.Mesh(new THREE.BoxGeometry(0.02 * s, 0.04 * s, 0.02 * s),
+      new THREE.MeshLambertMaterial({ color: 0x111111 }));
+    pupil.position.set(x * s, 0.58 * s, 0.565 * s); g.add(pupil);
+  });
+  // Pointy ears with pink inner
+  [-0.1, 0.1].forEach(x => {
+    const ear = new THREE.Mesh(new THREE.BoxGeometry(0.08 * s, 0.12 * s, 0.06 * s), furMat);
+    ear.position.set(x * s, 0.73 * s, 0.4 * s); ear.rotation.z = x > 0 ? -0.2 : 0.2; g.add(ear);
+    const inner = new THREE.Mesh(new THREE.BoxGeometry(0.04 * s, 0.08 * s, 0.03 * s), noseMat);
+    inner.position.set(x * s, 0.73 * s, 0.42 * s); inner.rotation.z = x > 0 ? -0.2 : 0.2; g.add(inner);
+  });
+  // Legs with white paws
+  [[-0.1, -0.2], [0.1, -0.2], [-0.1, 0.2], [0.1, 0.2]].forEach(([lx, lz]) => {
+    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07 * s, 0.22 * s, 0.07 * s), furMat);
+    leg.position.set(lx * s, 0.11 * s, lz * s); g.add(leg);
+    const paw = new THREE.Mesh(new THREE.BoxGeometry(0.06 * s, 0.04 * s, 0.06 * s), whiteMat);
+    paw.position.set(lx * s, 0.02 * s, lz * s); g.add(paw);
+  });
+  // Tail (curved up)
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.04 * s, 0.04 * s, 0.4 * s), furMat);
+  tail.position.set(0, 0.5 * s, -0.45 * s); tail.rotation.x = -0.6; g.add(tail);
+  return g;
+}
+
+function buildLawBeavers(OX, OZ) {
+  const g = new THREE.Group();
+  const positions = (window._gdCloneWorldPositions || []).slice(0, 5);
+  positions.forEach(p => {
+    const b = buildMiniBeaver(0.6);
+    b.position.set(p.x + 1.2, 0.15, p.z + 0.5);
+    g.add(b);
+  });
+  return g;
+}
+
+function buildLawCats(OX, OZ) {
+  const g = new THREE.Group();
+  const positions = (window._gdCloneWorldPositions || []).slice(5, 10);
+  positions.forEach(p => {
+    const c = buildMiniCat(1.0);
+    c.position.set(p.x - 1.0, 0.15, p.z + 0.3);
+    g.add(c);
+  });
+  return g;
+}
+
+function buildLawTrampolines(OX, OZ) {
+  const g = new THREE.Group();
+  const metalMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+  const bounceMat = new THREE.MeshLambertMaterial({ color: 0x224488 });
+  [[OX - 15, OZ + 35], [OX + 15, OZ + 35], [OX - 25, OZ + 8], [OX + 30, OZ + 10]].forEach(([tx, tz]) => {
+    // 6 legs
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.8, 6), metalMat);
+      leg.position.set(tx + Math.cos(a) * 1.3, 0.4, tz + Math.sin(a) * 1.3); g.add(leg);
+    }
+    // Metal frame ring
+    const frame = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.06, 6, 24), metalMat);
+    frame.rotation.x = Math.PI / 2;
+    frame.position.set(tx, 0.8, tz); g.add(frame);
+    // Bounce mat (flat disc on top)
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 0.04, 16), bounceMat);
+    top.position.set(tx, 0.82, tz); g.add(top);
+    // Safety posts around edge
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.6, 4), metalMat);
+      post.position.set(tx + Math.cos(a) * 1.35, 1.1, tz + Math.sin(a) * 1.35); g.add(post);
+    }
+  });
+  return g;
+}
+
+function buildProhibitionSign(text, color, OX, OZ, positions) {
+  const g = new THREE.Group();
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x654321 });
+  const signColor = color || 0xff2222;
+  positions.forEach(([sx, sz]) => {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 2.5, 6), postMat);
+    post.position.set(sx, 1.25, sz); g.add(post);
+    const cv = document.createElement('canvas');
+    cv.width = 256; cv.height = 128;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, 256, 128);
+    ctx.strokeStyle = '#ff2222'; ctx.lineWidth = 6;
+    ctx.strokeRect(4, 4, 248, 120);
+    // Red circle with slash
+    ctx.beginPath(); ctx.arc(64, 64, 40, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(35, 35); ctx.lineTo(93, 93); ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 24px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(text, 168, 72);
+    const tex = new THREE.CanvasTexture(cv);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.08),
+      new THREE.MeshLambertMaterial({ map: tex }));
+    board.position.set(sx, 2.2, sz); g.add(board);
+  });
+  return g;
+}
+
+function buildNoDanceSigns(OX, OZ) {
+  return buildProhibitionSign('NO DANCING', 0xff2222, OX, OZ,
+    [[OX - 10, OZ + 5], [OX + 10, OZ - 5], [OX, OZ + 20]]);
+}
+
+function buildNoLolSigns(OX, OZ) {
+  return buildProhibitionSign('NO LOL DOLLS', 0xff2222, OX, OZ,
+    [[OX - 12, OZ + 10], [OX + 12, OZ - 8], [OX + 5, OZ + 25]]);
+}
+
+function buildNoCatSigns(OX, OZ) {
+  return buildProhibitionSign('NO CATS', 0xff2222, OX, OZ,
+    [[OX - 8, OZ + 15], [OX + 8, OZ - 10], [OX, OZ + 30]]);
+}
+
+function buildNoBeaverSigns(OX, OZ) {
+  return buildProhibitionSign('NO BEAVERS', 0xff2222, OX, OZ,
+    [[OX - 10, OZ + 12], [OX + 10, OZ - 12], [OX - 5, OZ + 28]]);
+}
+
+function buildGrahamsdayBanners(OX, OZ) {
+  const g = new THREE.Group();
+  const bannerMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const goldMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+  [[OX - 8, OZ], [OX + 8, OZ], [OX, OZ + 15], [OX, OZ - 15]].forEach(([bx, bz]) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 3, 6), goldMat);
+    pole.position.set(bx, 1.5, bz); g.add(pole);
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.2, 0.04), bannerMat);
+    banner.position.set(bx, 2.5, bz); g.add(banner);
+    const cv = document.createElement('canvas');
+    cv.width = 64; cv.height = 96;
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#cc2222'; ctx.fillRect(0, 0, 64, 96);
+    ctx.fillStyle = '#c9a84c'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('HAPPY', 32, 30); ctx.fillText('GRAHAMS', 32, 50); ctx.fillText('DAY!', 32, 70);
+    const tex = new THREE.CanvasTexture(cv);
+    const face = new THREE.Mesh(new THREE.PlaneGeometry(0.75, 1.15),
+      new THREE.MeshLambertMaterial({ map: tex }));
+    face.position.set(bx, 2.5, bz - 0.025); g.add(face);
+  });
+  return g;
+}
+
+function buildDanceFloor(OX, OZ) {
+  const g = new THREE.Group();
+  const fx = OX - 10, fz = OZ + 30;
+  // Checkerboard floor
+  const cv = document.createElement('canvas');
+  cv.width = 128; cv.height = 128;
+  const ctx = cv.getContext('2d');
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    ctx.fillStyle = (r + c) % 2 === 0 ? '#cc2266' : '#2244cc';
+    ctx.fillRect(c * 16, r * 16, 16, 16);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(5, 0.05, 5),
+    new THREE.MeshLambertMaterial({ map: tex, emissive: 0x220033, emissiveIntensity: 0.3 }));
+  floor.position.set(fx, 0.03, fz); g.add(floor);
+  // Spotlight
+  const spot = new THREE.PointLight(0xff44cc, 0.8, 10);
+  spot.position.set(fx, 3, fz); g.add(spot);
+  // Stage box
+  const stage = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 2),
+    new THREE.MeshLambertMaterial({ color: 0x443355 }));
+  stage.position.set(fx, 0.2, fz - 3); g.add(stage);
+  return g;
+}
+
+function buildScatteredLolDolls(OX, OZ) {
+  const g = new THREE.Group();
+  const dollPositions = [
+    [OX - 5, OZ + 8], [OX + 7, OZ - 4], [OX - 12, OZ + 20],
+    [OX + 15, OZ + 12], [OX - 3, OZ - 18], [OX + 10, OZ + 30],
+  ];
+  const headMat = new THREE.MeshLambertMaterial({ color: 0xffaacc });
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0xff66aa });
+  dollPositions.forEach(([dx, dz]) => {
+    const doll = new THREE.Group();
+    const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 6, 5), headMat);
+    head.position.y = 0.55; doll.add(head);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 0.3, 6), bodyMat);
+    body.position.y = 0.3; doll.add(body);
+    // Eyes
+    const eyeMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+    [-0.06, 0.06].forEach(ex => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(0.03, 4, 4), eyeMat);
+      eye.position.set(ex, 0.58, -0.12); doll.add(eye);
+    });
+    doll.position.set(dx, 0.15, dz);
+    doll.rotation.y = Math.random() * Math.PI * 2;
+    g.add(doll);
+  });
+  return g;
+}
+
+function buildBrokenTrampolines(OX, OZ) {
+  const g = new THREE.Group();
+  const rustMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+  const tornMat = new THREE.MeshLambertMaterial({ color: 0x333344 });
+  [[OX - 15, OZ + 35], [OX + 15, OZ + 35], [OX + 30, OZ + 10]].forEach(([tx, tz]) => {
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.3, 12), rustMat);
+    base.position.set(tx, 0.15, tz); base.rotation.z = 0.15; g.add(base);
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.05, 12), tornMat);
+    top.position.set(tx, 0.25, tz); top.rotation.x = 0.3; g.add(top);
+  });
+  return g;
+}
+
 function buildPresHouse(parentGroup) {
   if (gdPresHouseGroup) { parentGroup.remove(gdPresHouseGroup); }
   const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
@@ -10591,6 +10932,7 @@ function buildGrahamDimension() {
   clonePositions.sort(() => Math.random() - 0.5);
   const genericClones = clonePositions.slice(0, 32);
 
+  window._gdCloneWorldPositions = [];
   genericClones.forEach((pos, i) => {
     const clone = buildCharacter(grahamOpts);
     clone.position.set(pos.x, 0.15, pos.z);
@@ -10602,6 +10944,7 @@ function buildGrahamDimension() {
         gdNpcBodyMeshes.push(child);
       }
     });
+    window._gdCloneWorldPositions.push({ x: pos.x, z: pos.z });
   });
 
   // 3 Boss Grahams — slightly larger, at distinct spots
@@ -10665,8 +11008,26 @@ function buildGrahamDimension() {
   cmTag.rotation.y = Math.PI;
   g.add(cmTag);
 
+  // Rebuild campaign poster spots if campaign is in poster phase
+  if (questLog.president_campaign && questLog.president_campaign.status === 'active'
+      && (questLog.president_campaign.phase === 'posters')
+      && questLog.president_campaign.sloganIdx !== -1 && questLog.president_campaign.sloganIdx !== undefined) {
+    // Temporarily set grahamDimGroup for buildPosterSpots
+    const prevRef = grahamDimGroup;
+    grahamDimGroup = g;
+    buildPosterSpots();
+    grahamDimGroup = prevRef;
+  }
+
   // Law sign (built when laws are enacted)
-  if (gdEnactedLaws && gdEnactedLaws.length > 0) buildLawSign(g);
+  if (gdEnactedLaws && gdEnactedLaws.length > 0) {
+    buildLawSign(g);
+    // Rebuild law visuals — temporarily set grahamDimGroup so updateLawVisuals can find it
+    const savedRef = grahamDimGroup;
+    grahamDimGroup = g;
+    updateLawVisuals();
+    grahamDimGroup = savedRef;
+  }
   // Presidential palace (built after winning presidency)
   // Also rebuild if save has enacted laws (pre-update saves)
   if (gdPresHouseBuilt || (gdEnactedLaws && gdEnactedLaws.length > 0)) {
@@ -10691,6 +11052,109 @@ const MANSION_COLLISIONS = [
   // Outdoor fountain
   { xMin: 258, xMax: 262, zMin: -2, zMax: 2 },
 ];
+
+// === Pepper Sabotage Office (in-world mission) ===
+function buildPepperOffice() {
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+  const g = new THREE.Group();
+
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
+  const wallMat3 = new THREE.MeshLambertMaterial({ color: 0x3a3a4e });
+  const cubeMat = new THREE.MeshLambertMaterial({ color: 0x556677 });
+  const deskMat3 = new THREE.MeshLambertMaterial({ color: 0x8a7a5a });
+  const monitorMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
+  const screenMat = new THREE.MeshLambertMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.6 });
+  const ceilMat = new THREE.MeshLambertMaterial({ color: 0x334455 });
+
+  // Floor
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), floorMat);
+  floor.position.set(OX, 0, OZ);
+  floor.receiveShadow = true;
+  g.add(floor);
+  // Ceiling
+  const ceil = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), ceilMat);
+  ceil.position.set(OX, 3, OZ);
+  g.add(ceil);
+
+  // Walls (with door gap on south side for entrance)
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.3), wallMat3), { position: new THREE.Vector3(OX, 1.5, OZ - 15) }));
+  // North wall — two segments with door gap
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12, 3, 0.3), wallMat3), { position: new THREE.Vector3(OX - 9, 1.5, OZ + 15) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(12, 3, 0.3), wallMat3), { position: new THREE.Vector3(OX + 9, 1.5, OZ + 15) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(OX - 15, 1.5, OZ) }));
+  g.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(OX + 15, 1.5, OZ) }));
+
+  // Collision boxes — outer walls
+  PEPPER_OFFICE_COLLISIONS.length = 0;
+  PEPPER_OFFICE_COLLISIONS.push(
+    { xMin: OX - 15.2, xMax: OX + 15.2, zMin: OZ - 15.2, zMax: OZ - 14.8 }, // south
+    { xMin: OX - 15.2, xMax: OX - 3, zMin: OZ + 14.8, zMax: OZ + 15.2 },    // north-left
+    { xMin: OX + 3, xMax: OX + 15.2, zMin: OZ + 14.8, zMax: OZ + 15.2 },    // north-right
+    { xMin: OX - 15.2, xMax: OX - 14.8, zMin: OZ - 15.2, zMax: OZ + 15.2 }, // west
+    { xMin: OX + 14.8, xMax: OX + 15.2, zMin: OZ - 15.2, zMax: OZ + 15.2 }, // east
+  );
+
+  // Flickering ceiling lights
+  const ceilLights = [];
+  [[-6, -6], [6, -6], [-6, 6], [6, 6], [0, 0]].forEach(([lx, lz]) => {
+    const pl = new THREE.PointLight(0xccddff, 0.6, 14);
+    pl.position.set(OX + lx, 2.8, OZ + lz);
+    g.add(pl);
+    ceilLights.push(pl);
+    const fix = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.3), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
+    fix.position.set(OX + lx, 2.95, OZ + lz);
+    g.add(fix);
+  });
+
+  // Ambient light for indoor office
+  const officeAmbient = new THREE.AmbientLight(0x334455, 0.7);
+  g.add(officeAmbient);
+
+  // Cubicles with computers
+  const NAMES = ['Kevin', 'Steve', 'Brian', 'Derek', 'Trevor', 'Chad', 'Todd', 'Brad', 'Keith', 'Nigel', 'Barry', 'Colin', 'Wayne', 'Glen', 'Neil', 'Phil', 'Darren', 'Clive'];
+  const computers = [];
+  const cubePositions = [
+    [-8, -8], [-4, -8], [0, -8], [4, -8], [8, -8],
+    [-8, -3], [-4, -3], [4, -3], [8, -3],
+    [-8, 3], [-4, 3], [4, 3], [8, 3],
+    [-8, 8], [-4, 8], [0, 8], [4, 8], [8, 8],
+  ];
+  cubePositions.forEach(([cx, cz], ci) => {
+    const wx = OX + cx, wz = OZ + cz;
+    // Cubicle walls (3 sides)
+    const cw1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.08), cubeMat);
+    cw1.position.set(wx, 0.75, wz - 1);
+    g.add(cw1);
+    const cw2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
+    cw2.position.set(wx - 1.1, 0.75, wz);
+    g.add(cw2);
+    const cw3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
+    cw3.position.set(wx + 1.1, 0.75, wz);
+    g.add(cw3);
+
+    // Desk
+    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.8), deskMat3);
+    desk.position.set(wx, 0.75, wz - 0.5);
+    g.add(desk);
+
+    // Monitor
+    const mon = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.05), monitorMat);
+    mon.position.set(wx, 1.15, wz - 0.8);
+    g.add(mon);
+    const scr = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.01), screenMat.clone());
+    scr.position.set(wx, 1.15, wz - 0.77);
+    g.add(scr);
+
+    computers.push({ x: wx, z: wz, name: NAMES[ci % NAMES.length], peppered: false, screenMesh: scr });
+
+    // Collision box for cubicle (simplified — one box per cubicle)
+    PEPPER_OFFICE_COLLISIONS.push({
+      xMin: wx - 1.15, xMax: wx + 1.15, zMin: wz - 1.05, zMax: wz - 0.3
+    });
+  });
+
+  return { group: g, computers, ceilLights, screenMat };
+}
 
 function buildMansion() {
   const g = new THREE.Group();
@@ -11390,27 +11854,47 @@ function openNPCDialogue(npcId) {
     const pq = questLog.president_campaign;
     if (!pq) {
       // Offer quest
-      textEl.textContent = "The Graham Dimension needs a PRESIDENT! Someone to lead these clones to greatness! Want to run? All you gotta do is convince 5 clones to vote for you. Make 'em some promises!";
+      textEl.textContent = "The Graham Dimension needs a PRESIDENT! It's a big job. First you'll need to design some campaign posters, put them up, give a speech, and THEN convince the clones to vote for you. You need a MAJORITY — that's 17 out of 32! Ready?";
       addDialogueBtn(btnsEl, "I'm running for President!", 'npc-btn-accept', () => {
-        const indices = [];
-        for (let i = 0; i < 32; i++) indices.push(i);
-        indices.sort(() => Math.random() - 0.5);
-        gdCloneVoteTargets = indices.slice(0, 8);
-        questLog.president_campaign = { status: 'active', votes: 0 };
-        showTip('Quest accepted: Run for President — Get 5 votes from clones!');
-        closeNPCDialogue();
+        questLog.president_campaign = { status: 'active', phase: 'posters', votes: 0, postersPlaced: 0, placedPosterIndices: [], sloganIdx: -1 };
+        showTip('Quest accepted: Design your poster and place them around the dimension!');
+        // Show poster designer immediately
+        openPosterDesigner(nameEl, textEl, btnsEl);
       });
       addDialogueBtn(btnsEl, 'Not right now', 'npc-btn-close', closeNPCDialogue);
     } else if (pq.status === 'active') {
-      if ((pq.votes || 0) >= 5) {
-        textEl.textContent = "You did it! 5 votes! The people have spoken — you're the new PRESIDENT of the Graham Dimension! Now, the most important part... what laws do you want to pass?";
-        addDialogueBtn(btnsEl, 'Choose my laws!', 'npc-btn-accept', () => {
-          closeNPCDialogue();
-          openLawPicker();
+      const phase = pq.phase || 'voting'; // backwards compat
+      if (phase === 'posters') {
+        if (pq.sloganIdx === -1 || pq.sloganIdx === undefined) {
+          textEl.textContent = "Let's design your campaign poster first! Pick a slogan:";
+          openPosterDesigner(nameEl, textEl, btnsEl);
+        } else if ((pq.postersPlaced || 0) < 6) {
+          textEl.textContent = "You've placed " + (pq.postersPlaced || 0) + "/6 posters. Go find the empty easels around the dimension and put up your posters! Your slogan: \"" + CAMPAIGN_SLOGANS[pq.sloganIdx].text + '"';
+          addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        } else {
+          textEl.textContent = "All 6 posters are up! The clones are buzzing about you. Time for your big SPEECH!";
+          pq.phase = 'speech';
+          addDialogueBtn(btnsEl, 'Give my speech!', 'npc-btn-accept', () => {
+            openSpeechBuilder(nameEl, textEl, btnsEl);
+          });
+        }
+      } else if (phase === 'speech') {
+        textEl.textContent = "Ready for your speech? The clones are waiting!";
+        addDialogueBtn(btnsEl, 'Give my speech!', 'npc-btn-accept', () => {
+          openSpeechBuilder(nameEl, textEl, btnsEl);
         });
-      } else {
-        textEl.textContent = "Keep campaigning! You've got " + (pq.votes || 0) + "/5 votes so far. Talk to the clones and make 'em promises they can't refuse!";
         addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+      } else if (phase === 'voting') {
+        if ((pq.votes || 0) >= 17) {
+          textEl.textContent = "You did it! " + pq.votes + " votes! That's a MAJORITY! The people have spoken — you're the new PRESIDENT of the Graham Dimension! Now, the most important part... what laws do you want to pass?";
+          addDialogueBtn(btnsEl, 'Choose my laws!', 'npc-btn-accept', () => {
+            closeNPCDialogue();
+            openLawPicker();
+          });
+        } else {
+          textEl.textContent = "Keep campaigning! You've got " + (pq.votes || 0) + "/17 votes so far. Talk to the clones and make 'em promises they can't refuse! You need a majority — 17 out of 32!";
+          addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        }
       }
     } else if (pq.status === 'completed') {
       textEl.textContent = "All hail the President! Your laws have been enacted. The clones are... adjusting. Mostly confused. But that's democracy!";
@@ -11426,14 +11910,27 @@ function openNPCDialogue(npcId) {
     // Any clone counts for the ego boost quest — just can't compliment the same one twice
     const isEgoTarget = questLog.ego_boost && questLog.ego_boost.status === 'active'
       && (questLog.ego_boost.complimentsGiven || 0) < 5 && !questLog.ego_boost['c' + cloneIdx];
+    const campPhase = questLog.president_campaign ? (questLog.president_campaign.phase || 'voting') : null;
     const isVoteTarget = questLog.president_campaign && questLog.president_campaign.status === 'active'
-      && (questLog.president_campaign.votes || 0) < 5 && !questLog.president_campaign['v' + cloneIdx];
+      && campPhase === 'voting'
+      && (questLog.president_campaign.votes || 0) < 17 && !questLog.president_campaign['v' + cloneIdx];
 
     function showCloneChat() {
       const lines = GRAHAM_CLONE_LINES[cloneIdx % GRAHAM_CLONE_LINES.length];
       textEl.textContent = lines[Math.floor(Math.random() * lines.length)];
       btnsEl.innerHTML = '';
 
+      // Pre-voting phase messages
+      if (questLog.president_campaign && questLog.president_campaign.status === 'active' && campPhase === 'posters') {
+        textEl.textContent = "You're running for president? I haven't seen any posters yet... put some up!";
+        addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        return;
+      }
+      if (questLog.president_campaign && questLog.president_campaign.status === 'active' && campPhase === 'speech') {
+        textEl.textContent = "Nice posters! But I wanna hear a SPEECH before I decide anything.";
+        addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        return;
+      }
       // Campaign promise options (shown when president quest active and this clone hasn't voted)
       // All Grahams share the same opinions — loved promises always win!
       if (isVoteTarget && !questLog.president_campaign['v' + cloneIdx]) {
@@ -11449,9 +11946,9 @@ function openNPCDialogue(npcId) {
               questLog.president_campaign['v' + cloneIdx] = true;
               questLog.president_campaign.votes = (questLog.president_campaign.votes || 0) + 1;
               textEl.textContent = p.like;
-              showTip('Vote earned! (' + questLog.president_campaign.votes + '/5)');
-              if (questLog.president_campaign.votes >= 5) {
-                showTip('You got 5 votes! Go back to the Campaign Manager!');
+              showTip('Vote earned! (' + questLog.president_campaign.votes + '/17)');
+              if (questLog.president_campaign.votes >= 17) {
+                showTip('You got 17 votes — a MAJORITY! Go back to the Campaign Manager!');
               }
             } else {
               const rejects = [
@@ -11529,16 +12026,7 @@ function openNPCDialogue(npcId) {
       } else {
         addDialogueBtn(btnsEl, 'Work: Paperwork Filing ($18+)', 'npc-btn-accept', () => startGrahamDimJob('graham_hr'));
       }
-      if (gdJobLastDay['graham_hr_mission'] === day) {
-        const disBtn2 = document.createElement('button');
-        disBtn2.textContent = 'Mission: Already deployed today';
-        disBtn2.className = 'npc-btn-close';
-        disBtn2.disabled = true;
-        disBtn2.style.opacity = '0.5';
-        btnsEl.appendChild(disBtn2);
-      } else {
-        addDialogueBtn(btnsEl, 'Mission: Pepper Sabotage ($25+)', 'npc-btn-accept', () => startGrahamDimJob('graham_hr_mission'));
-      }
+      addDialogueBtn(btnsEl, 'Mission: Pepper Sabotage ($25 + $10/pepper)', 'npc-btn-accept', () => startPepperMission());
     } else {
       textEl.textContent = "Welcome to Graham Industries! We're always hiring. Well, we're always hiring Grahams. Want to apply?";
       addDialogueBtn(btnsEl, 'Apply to be a Graham!', 'npc-btn-accept', () => {
@@ -12173,6 +12661,171 @@ function startPortalCutscene() {
 
 // ═══ GRAHAM DIMENSION JOBS ═══
 // === LAW PICKER (after winning presidency) ===
+// ═══ CAMPAIGN: Poster Designer ═══
+function openPosterDesigner(nameEl, textEl, btnsEl) {
+  const pq = questLog.president_campaign;
+  textEl.textContent = 'Pick a slogan for your campaign posters:';
+  btnsEl.innerHTML = '';
+  // Show 3 random slogans
+  const shuffled = CAMPAIGN_SLOGANS.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+  shuffled.forEach((s, idx) => {
+    const origIdx = CAMPAIGN_SLOGANS.indexOf(s);
+    addDialogueBtn(btnsEl, '📝 ' + s.text, 'npc-btn-accept', () => {
+      pq.sloganIdx = origIdx;
+      textEl.textContent = 'Great choice! "' + s.text + '" — now go find the 6 poster easels around the Graham Dimension and place your posters!';
+      btnsEl.innerHTML = '';
+      addDialogueBtn(btnsEl, "Let's go!", 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        buildPosterSpots();
+        showTip('Find the 6 easels around the Graham Dimension and place your posters!');
+      });
+    });
+  });
+}
+
+function buildPosterSpots() {
+  if (!grahamDimGroup) return;
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const pq = questLog.president_campaign;
+  const placed = pq.placedPosterIndices || [];
+  const postMat = new THREE.MeshLambertMaterial({ color: 0x654321 });
+  const boardMat = new THREE.MeshLambertMaterial({ color: 0x886644 });
+
+  POSTER_SPOT_OFFSETS.forEach((off, i) => {
+    const px = OX + off.x, pz = OZ + off.z;
+    const easelGroup = new THREE.Group();
+    // Easel post
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5, 6), postMat);
+    post.position.set(0, 1.25, 0);
+    easelGroup.add(post);
+    // Board
+    const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.06), boardMat);
+    board.position.set(0, 2.0, 0);
+    easelGroup.add(board);
+
+    easelGroup.position.set(px, 0, pz);
+    grahamDimGroup.add(easelGroup);
+
+    // If already placed, show poster content
+    if (placed.indexOf(i) !== -1) {
+      addPosterToEasel(easelGroup, pq.sloganIdx);
+    } else {
+      // Register as interactable
+      const hitMesh = board;
+      hitMesh.userData = { type: 'campaignPoster', posterIdx: i };
+      interactables.push({
+        mesh: hitMesh, group: easelGroup, type: 'campaignPoster',
+        label: 'Place Campaign Poster', need: null,
+        usePos: new THREE.Vector3(px, 0.15, pz + 1.2), floor: 0
+      });
+    }
+  });
+  rebuildInteractMeshes();
+}
+
+function addPosterToEasel(easelGroup, sloganIdx) {
+  const slogan = CAMPAIGN_SLOGANS[sloganIdx] || CAMPAIGN_SLOGANS[0];
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 192;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, 256, 192);
+  // Border
+  ctx.strokeStyle = slogan.color; ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 248, 184);
+  // Slogan text
+  ctx.fillStyle = slogan.color;
+  ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'center';
+  const words = slogan.text.split(' ');
+  let line1 = '', line2 = '';
+  words.forEach(w => {
+    if (line1.length < 18) line1 += (line1 ? ' ' : '') + w;
+    else line2 += (line2 ? ' ' : '') + w;
+  });
+  ctx.fillText(line1, 128, line2 ? 50 : 60);
+  if (line2) ctx.fillText(line2, 128, 78);
+  // "VOTE FOR ME" text
+  ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('VOTE FOR ME!', 128, 170);
+  // Simple Graham face
+  ctx.fillStyle = '#eeccaa'; ctx.beginPath(); ctx.arc(128, 125, 25, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c9a84c'; // Curly blonde hair
+  for (let a = 0; a < 12; a++) {
+    const angle = (a / 12) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.arc(128 + Math.cos(angle) * 22, 110 + Math.sin(angle) * 15, 6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = '#222222';
+  ctx.beginPath(); ctx.arc(120, 122, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(136, 122, 3, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#cc6666'; ctx.beginPath(); ctx.arc(128, 133, 4, 0, Math.PI); ctx.fill();
+
+  const tex = new THREE.CanvasTexture(cv);
+  const posterFace = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.95),
+    new THREE.MeshLambertMaterial({ map: tex }));
+  posterFace.position.set(0, 2.0, 0.035);
+  easelGroup.add(posterFace);
+}
+
+// ═══ CAMPAIGN: Speech Builder ═══
+function openSpeechBuilder(nameEl, textEl, btnsEl) {
+  const pq = questLog.president_campaign;
+  let chosenOpener = -1, chosenTopic = -1;
+
+  function pickOpener() {
+    textEl.textContent = "Step 1: How do you want to START your speech?";
+    btnsEl.innerHTML = '';
+    SPEECH_OPENERS.forEach((o, i) => {
+      addDialogueBtn(btnsEl, '🎤 ' + o, 'npc-btn-accept', () => {
+        chosenOpener = i;
+        pickTopic();
+      });
+    });
+  }
+
+  function pickTopic() {
+    textEl.textContent = "Step 2: What's the MAIN POINT of your speech?";
+    btnsEl.innerHTML = '';
+    SPEECH_TOPICS.forEach((t, i) => {
+      addDialogueBtn(btnsEl, '📢 ' + t.substring(0, 60) + '...', 'npc-btn-accept', () => {
+        chosenTopic = i;
+        pickCloser();
+      });
+    });
+  }
+
+  function pickCloser() {
+    textEl.textContent = "Step 3: How do you want to END your speech?";
+    btnsEl.innerHTML = '';
+    SPEECH_CLOSERS.forEach((c, i) => {
+      addDialogueBtn(btnsEl, '🎬 ' + c.substring(0, 60) + '...', 'npc-btn-accept', () => {
+        deliverSpeech(chosenOpener, chosenTopic, i);
+      });
+    });
+  }
+
+  function deliverSpeech(o, t, c) {
+    nameEl.textContent = 'YOUR SPEECH';
+    textEl.textContent = SPEECH_OPENERS[o] + ' ' + SPEECH_TOPICS[t] + ' ' + SPEECH_CLOSERS[c];
+    btnsEl.innerHTML = '';
+    addDialogueBtn(btnsEl, '*crowd goes wild*', 'npc-btn-accept', () => {
+      nameEl.textContent = 'Campaign Manager Graham';
+      textEl.textContent = "AMAZING SPEECH! The clones loved it! Now get out there and convince them to VOTE! Remember — you need 17 out of 32 votes. Make promises they can't refuse!";
+      pq.phase = 'voting';
+      pq.speechOpener = o;
+      pq.speechTopic = t;
+      pq.speechCloser = c;
+      btnsEl.innerHTML = '';
+      addDialogueBtn(btnsEl, 'Time to campaign!', 'npc-btn-accept', () => {
+        closeNPCDialogue();
+        showTip('Speech delivered! Now convince 17 out of 32 clones to vote for you!');
+      });
+    });
+  }
+
+  pickOpener();
+}
+
 function openLawPicker() {
   npcDialogueOpen = true; // block game input
   const overlay = document.getElementById('npc-dialogue-overlay');
@@ -12215,7 +12868,7 @@ function finishPresidency(laws) {
   }
   checkGrahamMaster();
   // Build the law sign
-  if (grahamDimGroup) buildLawSign(grahamDimGroup);
+  if (grahamDimGroup) { buildLawSign(grahamDimGroup); updateLawVisuals(); }
   // Build the presidential palace
   if (grahamDimGroup && !gdPresHouseBuilt) buildPresHouse(grahamDimGroup);
   // Show victory speech
@@ -12226,8 +12879,12 @@ function finishPresidency(laws) {
   textEl.textContent = "CONGRATULATIONS! Time for your VICTORY SPEECH!";
   btnsEl.innerHTML = '';
   addDialogueBtn(btnsEl, 'Give the speech!', 'npc-btn-accept', () => {
-    nameEl.textContent = 'YOUR SPEECH';
-    textEl.textContent = "Fellow Grahams! As your new President, I stand before you today to declare: I am PRO trampolines! PRO beavers! PRO Graham's Day! PRO cats! And I am ANTI dancing! ANTI LOL dolls! Together we will build a greater Graham Dimension!";
+    nameEl.textContent = 'YOUR VICTORY SPEECH';
+    const pq = questLog.president_campaign;
+    const sO = pq.speechOpener !== undefined ? SPEECH_OPENERS[pq.speechOpener] : SPEECH_OPENERS[0];
+    const sT = pq.speechTopic !== undefined ? SPEECH_TOPICS[pq.speechTopic] : SPEECH_TOPICS[0];
+    const sC = pq.speechCloser !== undefined ? SPEECH_CLOSERS[pq.speechCloser] : SPEECH_CLOSERS[0];
+    textEl.textContent = sO + ' ' + sT + ' ' + sC;
     btnsEl.innerHTML = '';
     addDialogueBtn(btnsEl, '*crowd goes wild*', 'npc-btn-accept', () => {
       nameEl.textContent = 'Campaign Manager Graham';
@@ -12287,7 +12944,7 @@ function openPresDesk() {
           : 'The clones are FURIOUS! "What kind of law is THAT?!" Approval: ' + gdPresApproval + '%';
       }
       gdEnactedLaws.push(law);
-      if (grahamDimGroup) buildLawSign(grahamDimGroup);
+      if (grahamDimGroup) { buildLawSign(grahamDimGroup); updateLawVisuals(); }
       showLawResult();
     });
 
@@ -12343,20 +13000,25 @@ function openPresDesk() {
       addDialogueBtn(btnsEl, 'Back', 'npc-btn-close', showDeskMenu);
       return;
     }
-    // Show last 5 laws with undo buttons
-    const recent = gdEnactedLaws.slice(-5);
-    const startIdx = gdEnactedLaws.length - recent.length;
-    textEl.textContent = 'Your laws (showing last ' + recent.length + ' of ' + gdEnactedLaws.length + '):';
-    recent.forEach((law, i) => {
-      addDialogueBtn(btnsEl, 'UNDO: ' + law, 'npc-btn-close', () => {
-        const realIdx = startIdx + i;
-        gdEnactedLaws.splice(realIdx, 1);
+    // Scrollable list of ALL laws with undo buttons
+    textEl.textContent = 'Your laws (' + gdEnactedLaws.length + ' total):';
+    const scrollWrap = document.createElement('div');
+    scrollWrap.style.cssText = 'max-height:250px;overflow-y:auto;margin:6px 0;padding-right:4px;';
+    gdEnactedLaws.forEach((law, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'npc-btn-close';
+      btn.textContent = 'UNDO: ' + law;
+      btn.style.cssText = 'display:block;width:100%;margin:4px 0;';
+      btn.onclick = () => {
+        gdEnactedLaws.splice(i, 1);
         gdPresApproval = Math.max(0, gdPresApproval - 5);
-        if (grahamDimGroup) buildLawSign(grahamDimGroup);
+        if (grahamDimGroup) { buildLawSign(grahamDimGroup); updateLawVisuals(); }
         showTip('Law undone! Approval: ' + gdPresApproval + '% (-5 for flip-flopping)');
         showLawList();
-      });
+      };
+      scrollWrap.appendChild(btn);
     });
+    btnsEl.appendChild(scrollWrap);
     addDialogueBtn(btnsEl, 'Back to desk', 'npc-btn-close', showDeskMenu);
   }
 
@@ -12376,7 +13038,6 @@ function startGrahamDimJob(bossId) {
   if (bossId === 'graham_boss_1') hintHtml = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Repeat the sequence';
   else if (bossId === 'graham_boss_2') hintHtml = '<kbd>A</kbd> Approve fan mail  <kbd>D</kbd> Reject hate mail';
   else if (bossId === 'graham_hr') hintHtml = '<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> File papers into the correct cabinet!';
-  else if (bossId === 'graham_hr_mission') hintHtml = '<kbd>A</kbd>/<kbd>D</kbd> Move  <kbd>SPACE</kbd> Plant pepper!';
 
   const { canvas, ctx } = setupFullscreenGame(overlay, 640, 360, hintHtml);
   overlay.classList.add('visible');
@@ -12387,8 +13048,6 @@ function startGrahamDimJob(bossId) {
     runFanMailSorter(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   } else if (bossId === 'graham_hr') {
     runPaperworkFiling(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
-  } else if (bossId === 'graham_hr_mission') {
-    runPepperMission(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   }
 }
 
@@ -12402,13 +13061,13 @@ function finishGrahamDimJob(bossId, score) {
   } else if (bossId === 'graham_hr') {
     pay = 18 + Math.floor(finalScore / 2);
   } else if (bossId === 'graham_hr_mission') {
-    pay = 25 + Math.floor(finalScore * 2);
+    pay = 25; // flat $25 base — player already earned $10/pepper live
   } else {
     pay = 15 + Math.floor(finalScore / 2);
   }
   money += pay;
   needs.energy = Math.max(0, needs.energy - 10);
-  gdJobLastDay[bossId] = day;
+  if (bossId !== 'graham_hr_mission') gdJobLastDay[bossId] = day;
   totalShiftsWorked++;
   if (!gdTasksDone[bossId]) {
     gdTasksDone[bossId] = true;
@@ -12870,194 +13529,148 @@ function runPaperworkFiling(canvas, ctx, onFinish) {
   requestAnimationFrame(draw);
 }
 
-// --- Graham Industries: 3D Pepper Sabotage Mission ---
-function runPepperMission(canvas, ctx, onFinish) {
-  // Ignore the 2D canvas — build 3D scene in the overlay
-  const overlay = document.getElementById('job-overlay');
-  overlay.innerHTML = '';
-  overlay.style.background = '#1a1a2e';
+// === Pepper Sabotage Mission (In-World) ===
+function startPepperMission() {
+  closeNPCDialogue();
+  if (document.pointerLockElement) document.exitPointerLock();
 
-  const W = window.innerWidth, H = window.innerHeight;
-  const pmScene = new THREE.Scene();
-  pmScene.background = new THREE.Color(0x1a1a2e);
-  pmScene.fog = new THREE.Fog(0x1a1a2e, 12, 40);
+  // Use the driving overlay for a clean transition (same pattern as startDrivingTransition)
+  const driveOverlay = document.getElementById('drive-overlay');
+  const driveText = document.getElementById('drive-text');
+  driveText.textContent = 'Deploying to sabotage mission...';
+  driveOverlay.classList.add('visible');
 
-  const pmCamera = new THREE.PerspectiveCamera(70, W / H, 0.1, 50);
-  pmCamera.position.set(0, 1.6, 12);
+  requestAnimationFrame(() => { setTimeout(() => {
+    performPepperTeleport();
+    setTimeout(() => {
+      driveOverlay.classList.remove('visible');
+      renderer.domElement.requestPointerLock();
+    }, 150);
+  }, 16); });
+}
 
-  const pmRenderer = new THREE.WebGLRenderer({ antialias: true });
-  pmRenderer.setSize(W, H);
-  pmRenderer.shadowMap.enabled = true;
-  overlay.appendChild(pmRenderer.domElement);
-  pmRenderer.domElement.style.cssText = 'display:block;width:100%;height:100%;';
+function performPepperTeleport() {
+  // Lazy-build office
+  if (!pepperOfficeGroup) {
+    const result = buildPepperOffice();
+    pepperOfficeGroup = result.group;
+    scene.add(pepperOfficeGroup);
+    pepperOfficeGroup._computers = result.computers;
+    pepperOfficeGroup._ceilLights = result.ceilLights;
+    pepperOfficeGroup._screenMat = result.screenMat;
+  }
 
-  // HUD overlay
-  const hud = document.createElement('div');
-  hud.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;font-family:Segoe UI,sans-serif;';
-  overlay.appendChild(hud);
+  // Save current lighting/fog state
+  const savedFogFar = scene.fog.far;
+  const savedFogColor = scene.fog.color.clone();
+  const savedBgColor = scene.background.clone();
+  const savedAmbInt = ambientLight.intensity;
+  const savedSunInt = sunLight.intensity;
 
-  // Crosshair
-  const cross = document.createElement('div');
-  cross.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#ff4444;font-size:24px;text-shadow:0 0 6px #ff0000;';
-  cross.textContent = '+';
-  hud.appendChild(cross);
+  // Show office, hide Graham Dimension
+  pepperOfficeGroup.visible = true;
+  if (grahamDimGroup) grahamDimGroup.visible = false;
 
-  // HUD text elements
-  const hudTop = document.createElement('div');
-  hudTop.style.cssText = 'position:absolute;top:10px;left:0;width:100%;text-align:center;color:#ff4444;font-size:1rem;font-weight:bold;font-family:Cinzel,serif;text-shadow:0 0 10px #ff0000;';
-  hudTop.textContent = 'CLASSIFIED: INFINITE PEPPER SABOTAGE';
-  hud.appendChild(hudTop);
+  // Teleport player to office entrance
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+  character.position.set(OX, 0.15, OZ + 12);
+  yaw = Math.PI;
+  pitch = 0;
 
-  const hudLeft = document.createElement('div');
-  hudLeft.style.cssText = 'position:absolute;top:40px;left:12px;color:#fff;font-size:0.8rem;';
-  hud.appendChild(hudLeft);
+  // Dark office atmosphere
+  scene.fog.far = 40;
+  scene.fog.color.set(0x1a1a2e);
+  scene.background.set(0x1a1a2e);
+  ambientLight.intensity = 0.15;
+  sunLight.intensity = 0.05;
 
-  const hudRight = document.createElement('div');
-  hudRight.style.cssText = 'position:absolute;top:40px;right:12px;color:#c9a84c;font-size:0.8rem;text-align:right;';
-  hud.appendChild(hudRight);
+  // Shadow camera for office
+  sunLight.shadow.camera.left = -20;
+  sunLight.shadow.camera.right = 20;
+  sunLight.shadow.camera.top = 20;
+  sunLight.shadow.camera.bottom = -20;
+  sunLight.shadow.camera.updateProjectionMatrix();
 
-  const hudMsg = document.createElement('div');
-  hudMsg.style.cssText = 'position:absolute;bottom:60px;left:0;width:100%;text-align:center;color:#ff8844;font-size:0.9rem;font-weight:bold;text-shadow:0 0 8px #ff4400;transition:opacity 0.3s;';
-  hud.appendChild(hudMsg);
-
-  const hudHint = document.createElement('div');
-  hudHint.style.cssText = 'position:absolute;bottom:20px;left:0;width:100%;text-align:center;color:#888;font-size:0.7rem;';
-  hudHint.textContent = 'WASD move | E shoot pepper | F aim | ESC quit (INFINITE MODE)';
-  hud.appendChild(hudHint);
-
-  // === OFFICE ENVIRONMENT ===
-  const floorMat = new THREE.MeshLambertMaterial({ color: 0x445566 });
-  const wallMat3 = new THREE.MeshLambertMaterial({ color: 0x3a3a4e });
-  const cubeMat = new THREE.MeshLambertMaterial({ color: 0x556677 });
-  const deskMat3 = new THREE.MeshLambertMaterial({ color: 0x8a7a5a });
-  const monitorMat = new THREE.MeshLambertMaterial({ color: 0x222222 });
-  const screenMat = new THREE.MeshLambertMaterial({ color: 0x44aacc, emissive: 0x226688, emissiveIntensity: 0.6 });
+  // Create guards
   const pepperScreenMat = new THREE.MeshLambertMaterial({ color: 0xff2222, emissive: 0xff0000, emissiveIntensity: 0.8 });
   const pepperMat = new THREE.MeshLambertMaterial({ color: 0xff4444, emissive: 0xff0000, emissiveIntensity: 0.5 });
   const guardMat = new THREE.MeshLambertMaterial({ color: 0x4444cc });
   const guardHeadMat = new THREE.MeshLambertMaterial({ color: 0xeeccaa });
-  const ceilMat = new THREE.MeshLambertMaterial({ color: 0x334455 });
-
-  // Floor
-  const floor = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), floorMat);
-  floor.position.set(0, 0, 0);
-  floor.receiveShadow = true;
-  pmScene.add(floor);
-  // Ceiling
-  const ceil = new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, 30), ceilMat);
-  ceil.position.set(0, 3, 0);
-  pmScene.add(ceil);
-
-  // Walls
-  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.3), wallMat3), { position: new THREE.Vector3(0, 1.5, -15) }));
-  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(30, 3, 0.3), wallMat3), { position: new THREE.Vector3(0, 1.5, 15) }));
-  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(-15, 1.5, 0) }));
-  pmScene.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(0.3, 3, 30), wallMat3), { position: new THREE.Vector3(15, 1.5, 0) }));
-
-  // Ambient — slightly dark office
-  pmScene.add(new THREE.AmbientLight(0x334455, 0.7));
-
-  // Flickering ceiling lights
-  const ceilLights = [];
-  [[-6, -6], [6, -6], [-6, 6], [6, 6], [0, 0]].forEach(([x, z]) => {
-    const pl = new THREE.PointLight(0xccddff, 0.6, 14);
-    pl.position.set(x, 2.8, z);
-    pmScene.add(pl);
-    ceilLights.push(pl);
-    // Light fixture
-    const fix = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.05, 0.3), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
-    fix.position.set(x, 2.95, z);
-    pmScene.add(fix);
-  });
-
-  // Cubicles with computers
-  const NAMES = ['Kevin', 'Steve', 'Brian', 'Derek', 'Trevor', 'Chad', 'Todd', 'Brad', 'Keith', 'Nigel', 'Barry', 'Colin'];
-  const computers3d = [];
-  const cubePositions = [
-    [-8, -8], [-4, -8], [0, -8], [4, -8], [8, -8],
-    [-8, -3], [-4, -3], [4, -3], [8, -3],
-    [-8, 3], [-4, 3], [4, 3], [8, 3],
-    [-8, 8], [-4, 8], [0, 8], [4, 8], [8, 8],
-  ];
-  cubePositions.forEach(([cx, cz], ci) => {
-    // Cubicle walls (3 sides)
-    const cw1 = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.5, 0.08), cubeMat);
-    cw1.position.set(cx, 0.75, cz - 1);
-    pmScene.add(cw1);
-    const cw2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
-    cw2.position.set(cx - 1.1, 0.75, cz);
-    pmScene.add(cw2);
-    const cw3 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.5, 2), cubeMat);
-    cw3.position.set(cx + 1.1, 0.75, cz);
-    pmScene.add(cw3);
-
-    // Desk
-    const desk = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.8), deskMat3);
-    desk.position.set(cx, 0.75, cz - 0.5);
-    pmScene.add(desk);
-
-    // Monitor
-    const mon = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 0.05), monitorMat);
-    mon.position.set(cx, 1.15, cz - 0.8);
-    pmScene.add(mon);
-    const scr = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.01), screenMat);
-    scr.position.set(cx, 1.15, cz - 0.77);
-    pmScene.add(scr);
-
-    // Name plate
-    const name = NAMES[ci % NAMES.length];
-    computers3d.push({ x: cx, z: cz, name, peppered: false, screenMesh: scr, mon });
-  });
-
-  // Guards
-  const guards3d = [];
+  const guards = [];
   const guardDefs = [
-    { x: -5, z: 0, patrolZ: [-10, 10], speed: 2.5, name: 'Security Steve' },
-    { x: 5, z: 5, patrolZ: [-8, 12], speed: 3, name: 'Guard Gary' },
-    { x: 0, z: -5, patrolX: [-10, 10], speed: 2, name: 'Officer Nigel' },
+    { x: OX - 5, z: OZ, patrolZ: [OZ - 10, OZ + 10], speed: 2.5, name: 'Security Steve' },
+    { x: OX + 5, z: OZ + 5, patrolZ: [OZ - 8, OZ + 12], speed: 3, name: 'Guard Gary' },
+    { x: OX, z: OZ - 5, patrolX: [OX - 10, OX + 10], speed: 2, name: 'Officer Nigel' },
   ];
   guardDefs.forEach(gd => {
-    const gGroup = new THREE.Group();
-    // Body
+    const gg = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), guardMat);
-    body.position.y = 1;
-    gGroup.add(body);
-    // Head
+    body.position.y = 1; gg.add(body);
     const head = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), guardHeadMat);
-    head.position.y = 1.55;
-    gGroup.add(head);
-    // Flashlight (cone of light)
+    head.position.y = 1.55; gg.add(head);
     const flashlight = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
     flashlight.position.set(0, 1.2, 0);
     flashlight.target.position.set(0, 0.5, -4);
-    gGroup.add(flashlight);
-    gGroup.add(flashlight.target);
-    // Flashlight body (small cylinder)
+    gg.add(flashlight); gg.add(flashlight.target);
     const flBody = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.2, 6),
       new THREE.MeshLambertMaterial({ color: 0x333333 }));
     flBody.rotation.x = Math.PI / 2;
     flBody.position.set(0.2, 1.2, -0.15);
-    gGroup.add(flBody);
-
-    gGroup.position.set(gd.x, 0, gd.z);
-    pmScene.add(gGroup);
-    guards3d.push({ group: gGroup, flashlight, dir: 1, ...gd });
+    gg.add(flBody);
+    gg.position.set(gd.x, 0, gd.z);
+    pepperOfficeGroup.add(gg);
+    guards.push({ group: gg, flashlight, dir: 1, ...gd });
   });
 
-  // Flying peppers
-  const flyingPeppers = [];
+  // Build mission HUD
+  const hudEl = document.createElement('div');
+  hudEl.id = 'pepper-mission-hud';
+  hudEl.innerHTML = '<div class="pm-title">CLASSIFIED: INFINITE PEPPER SABOTAGE</div>'
+    + '<div class="pm-left"></div><div class="pm-right"></div>'
+    + '<div class="pm-msg"></div>'
+    + '<div class="pm-hint">WASD move | E shoot pepper | F aim | ESC quit</div>';
+  document.body.appendChild(hudEl);
+  const vignetteEl = document.createElement('div');
+  vignetteEl.id = 'pepper-vignette';
+  document.body.appendChild(vignetteEl);
 
-  // === DRAMATIC MUSIC (Web Audio) ===
+  // Hide main HUD
+  document.querySelector('.hud').style.display = 'none';
+  const topRight = document.querySelector('.hud-top-right');
+  if (topRight) topRight.style.display = 'none';
+
+  // Start dramatic music
   const mCtx = new (window.AudioContext || window.webkitAudioContext)();
   const mGain = mCtx.createGain();
   mGain.gain.value = 0.12;
   mGain.connect(mCtx.destination);
 
+  pepperMissionActive = true;
+  inGrahamDimension = false; // Prevent GD collision clamping at X=340-460
+
+  pepperMissionState = {
+    score: 0, wave: 1, guards, computers: pepperOfficeGroup._computers,
+    ceilLights: pepperOfficeGroup._ceilLights, flyingPeppers: [],
+    aiming: false, msgText: 'Pepper the computers. Avoid the guards. ESC to quit.',
+    msgTimer: 3, caughtFlash: 0, pepperScreenMat, pepperMat, guardMat, guardHeadMat,
+    screenMat: pepperOfficeGroup._screenMat,
+    savedFogFar, savedFogColor, savedBgColor, savedAmbInt, savedSunInt,
+    musicCtx: mCtx, musicGain: mGain, hudEl, vignetteEl,
+  };
+
+  // Reset computers
+  pepperMissionState.computers.forEach(c => {
+    c.peppered = false;
+    c.screenMesh.material = pepperMissionState.screenMat.clone();
+    c.screenMesh.material.color.set(0x44aacc);
+    c.screenMesh.material.emissive.set(0x226688);
+    c.screenMesh.material.emissiveIntensity = 0.6;
+  });
+
   function playDramaticLoop() {
-    if (!pmRunning) return;
+    if (!pepperMissionActive) return;
     const now = mCtx.currentTime;
     const bpm = 100, bl = 60 / bpm;
-    // Deep bass drone
     [55, 55.5].forEach(f => {
       const o = mCtx.createOscillator();
       const g = mCtx.createGain();
@@ -13070,7 +13683,6 @@ function runPepperMission(canvas, ctx, onFinish) {
       o.connect(flt); flt.connect(g); g.connect(mGain);
       o.start(now); o.stop(now + bl * 16 + 0.1);
     });
-    // Tense stabs
     for (let i = 0; i < 16; i++) {
       if (i % 4 !== 0 && i % 4 !== 3) continue;
       const t = now + i * bl;
@@ -13084,7 +13696,6 @@ function runPepperMission(canvas, ctx, onFinish) {
         o.start(t); o.stop(t + 0.2);
       });
     }
-    // Heartbeat kick
     for (let i = 0; i < 8; i++) {
       const t = now + i * bl * 2;
       const o = mCtx.createOscillator();
@@ -13100,244 +13711,239 @@ function runPepperMission(canvas, ctx, onFinish) {
     setTimeout(playDramaticLoop, bl * 15.5 * 1000);
   }
   playDramaticLoop();
+}
 
-  // === GAME STATE ===
-  let pmRunning = true;
-  let pmYaw = Math.PI, pmPitch = 0;
-  let pmScore = 0;
-  let pmKeys = {};
-  let aiming = false;
-  let msgText = 'INFINITE DARKNESS. Pepper the computers. No escape. ESC to quit.';
-  let msgTimer = 3;
-  let caughtFlash = 0;
-  let pmWave = 1;
-  const MOVE_SPEED = 4;
-  const MOUSE_SENS_PM = 0.003;
+function endPepperMission() {
+  if (!pepperMissionActive) return;
+  const st = pepperMissionState;
+  const finalScore = st.score;
 
-  function pmOnKeyDown(e) {
-    pmKeys[e.code] = true;
-    if (e.code === 'KeyE' && pmRunning) {
-      e.preventDefault();
-      firePepper();
+  pepperMissionActive = false;
+
+  // Clean up flying peppers
+  st.flyingPeppers.forEach(p => scene.remove(p.mesh));
+  st.flyingPeppers.length = 0;
+
+  // Remove guards from office group
+  st.guards.forEach(g => pepperOfficeGroup.remove(g.group));
+  st.guards.length = 0;
+
+  // Stop music
+  try { st.musicCtx.close(); } catch(e) {}
+
+  // Remove HUD
+  if (st.hudEl && st.hudEl.parentNode) st.hudEl.remove();
+  if (st.vignetteEl && st.vignetteEl.parentNode) st.vignetteEl.remove();
+
+  // Show main HUD
+  document.querySelector('.hud').style.display = '';
+  const topRight = document.querySelector('.hud-top-right');
+  if (topRight) topRight.style.display = '';
+
+  // Reset crosshair
+  const crossEl = document.getElementById('crosshair');
+  if (crossEl) { crossEl.style.color = ''; crossEl.style.textShadow = ''; }
+
+  // Reset camera FOV
+  camera.fov = 70;
+  camera.updateProjectionMatrix();
+
+  // Restore lighting/fog
+  scene.fog.far = st.savedFogFar;
+  scene.fog.color.copy(st.savedFogColor);
+  scene.background.copy(st.savedBgColor);
+  ambientLight.intensity = st.savedAmbInt;
+  sunLight.intensity = st.savedSunInt;
+
+  // Hide office, show Graham Dimension
+  pepperOfficeGroup.visible = false;
+  if (grahamDimGroup) grahamDimGroup.visible = true;
+  inGrahamDimension = true; // Restore GD state
+
+  // Teleport back to Graham Industries door
+  character.position.set(GRAHAM_DIM_ORIGIN.x + 40, 0.15, GRAHAM_DIM_ORIGIN.z - 6);
+  yaw = Math.PI;
+
+  // Restore shadow camera for Graham Dimension
+  sunLight.shadow.camera.left = -40;
+  sunLight.shadow.camera.right = 40;
+  sunLight.shadow.camera.top = 30;
+  sunLight.shadow.camera.bottom = -30;
+  sunLight.shadow.camera.updateProjectionMatrix();
+
+  // Award pay via normal job finish system
+  finishGrahamDimJob('graham_hr_mission', finalScore);
+  pepperMissionState = null;
+}
+
+function firePepperInWorld() {
+  if (!pepperMissionState) return;
+  const st = pepperMissionState;
+  const dir = new THREE.Vector3(0, 0, -1);
+  dir.applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+  const pepper = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), st.pepperMat);
+  pepper.position.copy(camera.position);
+  pepper.position.y -= 0.1;
+  scene.add(pepper);
+  st.flyingPeppers.push({ mesh: pepper, vel: dir.multiplyScalar(18), life: 3 });
+}
+
+function updatePepperMission(dt) {
+  if (!pepperMissionState) return;
+  const st = pepperMissionState;
+  const OX = PEPPER_OFFICE_ORIGIN.x, OZ = PEPPER_OFFICE_ORIGIN.z;
+
+  if (st.msgTimer > 0) st.msgTimer -= dt;
+  if (st.caughtFlash > 0) st.caughtFlash -= dt;
+
+  // Guard patrol + player detection
+  st.guards.forEach(g => {
+    if (g.patrolZ) {
+      g.group.position.z += g.dir * g.speed * dt;
+      if (g.group.position.z > g.patrolZ[1]) g.dir = -1;
+      if (g.group.position.z < g.patrolZ[0]) g.dir = 1;
+      g.group.rotation.y = g.dir > 0 ? 0 : Math.PI;
+    } else if (g.patrolX) {
+      g.group.position.x += g.dir * g.speed * dt;
+      if (g.group.position.x > g.patrolX[1]) g.dir = -1;
+      if (g.group.position.x < g.patrolX[0]) g.dir = 1;
+      g.group.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
     }
-    if (e.code === 'KeyF') aiming = true;
-    if (e.code === 'Escape') {
-      pmRunning = false;
-      cleanup();
-      onFinish(pmScore);
+    g.flashlight.target.position.set(0, 0.5, g.dir > 0 ? -4 : 4);
+
+    // Detect player
+    const gp = g.group.position;
+    const dx = character.position.x - gp.x;
+    const dz = character.position.z - gp.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+    if (dist < 5) {
+      const guardForward = new THREE.Vector3(0, 0, -1).applyEuler(g.group.rotation);
+      const toPlayer = new THREE.Vector3(dx, 0, dz).normalize();
+      const dot = guardForward.dot(toPlayer);
+      if (dot > 0.5 && dist < 4) {
+        st.caughtFlash = 0.8;
+        st.score = Math.max(0, st.score - 1);
+        character.position.set(OX, 0.15, OZ + 12);
+        const msgs = ['SPOTTED! ' + g.name + ' caught you!', 'BUSTED! Back to the entrance!', g.name + ' saw you! -1 point!'];
+        st.msgText = msgs[Math.floor(Math.random() * msgs.length)];
+        st.msgTimer = 2;
+      }
     }
-  }
-  function pmOnKeyUp(e) {
-    pmKeys[e.code] = false;
-    if (e.code === 'KeyF') aiming = false;
-  }
-  function pmOnMouse(e) {
-    if (!pmRunning) return;
-    pmYaw -= e.movementX * MOUSE_SENS_PM;
-    pmPitch -= e.movementY * MOUSE_SENS_PM;
-    pmPitch = Math.max(-1.2, Math.min(1.2, pmPitch));
-  }
-  function pmOnClick() {
-    pmRenderer.domElement.requestPointerLock();
-  }
+  });
 
-  document.addEventListener('keydown', pmOnKeyDown);
-  document.addEventListener('keyup', pmOnKeyUp);
-  document.addEventListener('mousemove', pmOnMouse);
-  pmRenderer.domElement.addEventListener('click', pmOnClick);
-  pmRenderer.domElement.requestPointerLock();
-
-  function firePepper() {
-    const dir = new THREE.Vector3(0, 0, -1);
-    dir.applyEuler(new THREE.Euler(pmPitch, pmYaw, 0, 'YXZ'));
-    const pepper = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), pepperMat);
-    pepper.position.copy(pmCamera.position);
-    pepper.position.y -= 0.1;
-    pmScene.add(pepper);
-    flyingPeppers.push({ mesh: pepper, vel: dir.multiplyScalar(18), life: 3 });
-  }
-
-  function cleanup() {
-    pmRunning = false;
-    document.removeEventListener('keydown', pmOnKeyDown);
-    document.removeEventListener('keyup', pmOnKeyUp);
-    document.removeEventListener('mousemove', pmOnMouse);
-    if (document.pointerLockElement) document.exitPointerLock();
-    pmRenderer.dispose();
-    mCtx.close();
-  }
-
-  let lastT = performance.now();
-  function pmLoop() {
-    if (!pmRunning) return;
-    const now = performance.now();
-    const dt = Math.min((now - lastT) / 1000, 0.05);
-    lastT = now;
-
-    if (msgTimer > 0) msgTimer -= dt;
-    if (caughtFlash > 0) caughtFlash -= dt;
-
-    // Player movement
-    const forward = new THREE.Vector3(-Math.sin(pmYaw), 0, -Math.cos(pmYaw));
-    const right = new THREE.Vector3(Math.cos(pmYaw), 0, -Math.sin(pmYaw));
-    const spd = MOVE_SPEED * dt;
-    if (pmKeys['KeyW']) pmCamera.position.addScaledVector(forward, spd);
-    if (pmKeys['KeyS']) pmCamera.position.addScaledVector(forward, -spd);
-    if (pmKeys['KeyA']) pmCamera.position.addScaledVector(right, -spd);
-    if (pmKeys['KeyD']) pmCamera.position.addScaledVector(right, spd);
-    // Clamp to room
-    pmCamera.position.x = Math.max(-14, Math.min(14, pmCamera.position.x));
-    pmCamera.position.z = Math.max(-14, Math.min(14, pmCamera.position.z));
-    pmCamera.position.y = 1.6;
-
-    // Camera look
-    const fov = aiming ? 35 : 70;
-    if (Math.abs(pmCamera.fov - fov) > 1) {
-      pmCamera.fov += (fov - pmCamera.fov) * 0.15;
-      pmCamera.updateProjectionMatrix();
-    }
-    const lookDir = new THREE.Vector3(0, 0, -1);
-    lookDir.applyEuler(new THREE.Euler(pmPitch, pmYaw, 0, 'YXZ'));
-    pmCamera.lookAt(pmCamera.position.clone().add(lookDir));
-
-    // Guard patrol
-    guards3d.forEach(g => {
-      if (g.patrolZ) {
-        g.group.position.z += g.dir * g.speed * dt;
-        if (g.group.position.z > g.patrolZ[1]) g.dir = -1;
-        if (g.group.position.z < g.patrolZ[0]) g.dir = 1;
-        g.group.rotation.y = g.dir > 0 ? 0 : Math.PI;
-      } else if (g.patrolX) {
-        g.group.position.x += g.dir * g.speed * dt;
-        if (g.group.position.x > g.patrolX[1]) g.dir = -1;
-        if (g.group.position.x < g.patrolX[0]) g.dir = 1;
-        g.group.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
-      }
-      g.flashlight.target.position.set(0, 0.5, g.dir > 0 ? -4 : 4);
-
-      // Detect player in flashlight cone
-      const gp = g.group.position;
-      const dx = pmCamera.position.x - gp.x;
-      const dz = pmCamera.position.z - gp.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      if (dist < 5) {
-        // Check if player is in front of guard
-        const guardForward = new THREE.Vector3(0, 0, -1).applyEuler(g.group.rotation);
-        const toPlayer = new THREE.Vector3(dx, 0, dz).normalize();
-        const dot = guardForward.dot(toPlayer);
-        if (dot > 0.5 && dist < 4) {
-          caughtFlash = 0.8;
-          pmScore = Math.max(0, pmScore - 1);
-          // Teleport player back to start
-          pmCamera.position.set(0, 1.6, 12);
-          const msgs = ['SPOTTED! Guard ' + g.name + ' caught you!', 'BUSTED! Back to the entrance!', g.name + ' saw you! -1 point!'];
-          msgText = msgs[Math.floor(Math.random() * msgs.length)];
-          msgTimer = 2;
-        }
-      }
-    });
-
-    // Flying peppers
-    for (let i = flyingPeppers.length - 1; i >= 0; i--) {
-      const p = flyingPeppers[i];
-      p.mesh.position.addScaledVector(p.vel, dt);
-      p.life -= dt;
-      // Check hit on computers
-      for (const comp of computers3d) {
-        if (comp.peppered) continue;
-        const dx = p.mesh.position.x - comp.x;
-        const dz = p.mesh.position.z - (comp.z - 0.8);
-        const dy = p.mesh.position.y - 1.15;
-        if (Math.abs(dx) < 0.5 && Math.abs(dz) < 0.5 && Math.abs(dy) < 0.4) {
-          comp.peppered = true;
-          comp.screenMesh.material = pepperScreenMat;
-          pmScore++;
-          const msgs = [
-            comp.name + "'s PC is getting SPICY!",
-            'Pepper in ' + comp.name + "'s hard drive!",
-            comp.name + ' is gonna have a HOT surprise!',
-            'That\'ll teach ' + comp.name + '!',
-          ];
-          msgText = msgs[Math.floor(Math.random() * msgs.length)];
-          msgTimer = 1.5;
-          p.life = 0;
-          break;
-        }
-      }
-      // Hit walls/floor
-      if (Math.abs(p.mesh.position.x) > 15 || Math.abs(p.mesh.position.z) > 15 || p.mesh.position.y < 0 || p.mesh.position.y > 3) {
+  // Flying peppers
+  for (let i = st.flyingPeppers.length - 1; i >= 0; i--) {
+    const p = st.flyingPeppers[i];
+    p.mesh.position.addScaledVector(p.vel, dt);
+    p.life -= dt;
+    for (const comp of st.computers) {
+      if (comp.peppered) continue;
+      const dx = p.mesh.position.x - comp.x;
+      const dz = p.mesh.position.z - (comp.z - 0.8);
+      const dy = p.mesh.position.y - 1.15;
+      if (Math.abs(dx) < 0.5 && Math.abs(dz) < 0.5 && Math.abs(dy) < 0.4) {
+        comp.peppered = true;
+        comp.screenMesh.material = st.pepperScreenMat;
+        st.score++;
+        money += 10;
+        SFX.kaChing();
+        const msgs = [
+          comp.name + "'s PC is getting SPICY!",
+          'Pepper in ' + comp.name + "'s hard drive!",
+          comp.name + ' is gonna have a HOT surprise!',
+          "That'll teach " + comp.name + '!',
+        ];
+        st.msgText = msgs[Math.floor(Math.random() * msgs.length)];
+        st.msgTimer = 1.5;
         p.life = 0;
-      }
-      if (p.life <= 0) {
-        pmScene.remove(p.mesh);
-        flyingPeppers.splice(i, 1);
+        break;
       }
     }
-
-    // Check if all computers are peppered — start new wave
-    if (computers3d.every(c => c.peppered)) {
-      pmWave++;
-      computers3d.forEach(c => {
-        c.peppered = false;
-        c.screenMesh.material = screenMat;
-      });
-      // Add a new guard each wave (up to 6 extra)
-      if (guards3d.length < 6) {
-        const angles = [Math.PI/4, -Math.PI/4, Math.PI*3/4, -Math.PI*3/4];
-        const gi = guards3d.length - 3;
-        const newX = gi < 2 ? (gi === 0 ? -10 : 10) : 0;
-        const newZ = gi < 2 ? 0 : (gi === 2 ? -10 : 10);
-        const ng = new THREE.Group();
-        const nbody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), guardMat);
-        nbody.position.y = 1; ng.add(nbody);
-        const nhead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), guardHeadMat);
-        nhead.position.y = 1.55; ng.add(nhead);
-        const nfl = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
-        nfl.position.set(0, 1.2, 0); nfl.target.position.set(0, 0.5, -4);
-        ng.add(nfl); ng.add(nfl.target);
-        ng.position.set(newX, 0, newZ);
-        pmScene.add(ng);
-        const patrol = Math.random() < 0.5 ? { patrolZ: [-10, 10] } : { patrolX: [-10, 10] };
-        guards3d.push({ group: ng, flashlight: nfl, dir: 1, speed: 2.5 + pmWave * 0.3, name: 'Guard Wave ' + pmWave, ...patrol });
-      }
-      // Guards get faster each wave
-      guards3d.forEach(g => { g.speed = Math.min(g.speed + 0.3, 6); });
-      msgText = 'WAVE ' + pmWave + '! The darkness deepens... Guards are faster!';
-      msgTimer = 2.5;
-      // Make it even darker
-      pmScene.fog.far = Math.max(20, 40 - pmWave * 2);
+    if (Math.abs(p.mesh.position.x - OX) > 15 || Math.abs(p.mesh.position.z - OZ) > 15 || p.mesh.position.y < 0 || p.mesh.position.y > 3) {
+      p.life = 0;
     }
-
-    // Flicker ceiling lights
-    ceilLights.forEach((l, i) => {
-      l.intensity = 0.5 + Math.sin(now * 0.003 + i * 2) * 0.08 + Math.random() * 0.02;
-    });
-
-    // Crosshair color
-    cross.style.color = aiming ? '#ffcc44' : '#ff4444';
-    cross.textContent = aiming ? '( + )' : '+';
-
-    // Update HUD
-    hudLeft.innerHTML = '<span style="color:#44ff44">Sabotaged: ' + pmScore + '</span>';
-    hudRight.innerHTML = 'Wave: ' + pmWave;
-    if (msgTimer > 0) {
-      hudMsg.style.opacity = Math.min(1, msgTimer / 0.5);
-      hudMsg.textContent = msgText;
-    } else {
-      hudMsg.style.opacity = '0';
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      st.flyingPeppers.splice(i, 1);
     }
-
-    // Caught red flash
-    if (caughtFlash > 0) {
-      overlay.style.background = 'rgba(255,0,0,' + (caughtFlash * 0.3) + ')';
-    } else {
-      overlay.style.background = '#1a1a2e';
-    }
-
-    pmRenderer.render(pmScene, pmCamera);
-    requestAnimationFrame(pmLoop);
   }
-  pmLoop();
+
+  // Wave check
+  if (st.computers.every(c => c.peppered)) {
+    st.wave++;
+    st.computers.forEach(c => {
+      c.peppered = false;
+      c.screenMesh.material = st.screenMat.clone();
+      c.screenMesh.material.color.set(0x44aacc);
+      c.screenMesh.material.emissive.set(0x226688);
+      c.screenMesh.material.emissiveIntensity = 0.6;
+    });
+    // Add new guard (up to 6 total)
+    if (st.guards.length < 6) {
+      const gi = st.guards.length;
+      const nx = gi % 2 === 0 ? OX - 10 : OX + 10;
+      const nz = gi % 2 === 0 ? OZ : OZ - 8;
+      const ng = new THREE.Group();
+      const nbody = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), st.guardMat);
+      nbody.position.y = 1; ng.add(nbody);
+      const nhead = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), st.guardHeadMat);
+      nhead.position.y = 1.55; ng.add(nhead);
+      const nfl = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
+      nfl.position.set(0, 1.2, 0); nfl.target.position.set(0, 0.5, -4);
+      ng.add(nfl); ng.add(nfl.target);
+      ng.position.set(nx, 0, nz);
+      pepperOfficeGroup.add(ng);
+      const patrol = Math.random() < 0.5 ? { patrolZ: [OZ - 10, OZ + 10] } : { patrolX: [OX - 10, OX + 10] };
+      st.guards.push({ group: ng, flashlight: nfl, dir: 1, speed: 2.5 + st.wave * 0.3, name: 'Guard Wave ' + st.wave, x: nx, z: nz, ...patrol });
+    }
+    st.guards.forEach(g => { g.speed = Math.min(g.speed + 0.3, 6); });
+    st.msgText = 'WAVE ' + st.wave + '! Guards are faster!';
+    st.msgTimer = 2.5;
+    scene.fog.far = Math.max(20, 40 - st.wave * 2);
+  }
+
+  // Flicker ceiling lights
+  const now = performance.now();
+  st.ceilLights.forEach((l, i) => {
+    l.intensity = 0.5 + Math.sin(now * 0.003 + i * 2) * 0.08 + Math.random() * 0.02;
+  });
+
+  // Aim zoom
+  const targetFov = st.aiming ? 35 : 70;
+  if (Math.abs(camera.fov - targetFov) > 1) {
+    camera.fov += (targetFov - camera.fov) * 0.15;
+    camera.updateProjectionMatrix();
+  }
+
+  // Crosshair style
+  const crossEl = document.getElementById('crosshair');
+  if (crossEl) {
+    crossEl.style.color = st.aiming ? '#ffcc44' : '#ff4444';
+    crossEl.style.textShadow = '0 0 6px ' + (st.aiming ? '#ffcc00' : '#ff0000');
+  }
+
+  // Update HUD
+  const hudEl = st.hudEl;
+  if (hudEl) {
+    const leftEl = hudEl.querySelector('.pm-left');
+    const rightEl = hudEl.querySelector('.pm-right');
+    const msgEl = hudEl.querySelector('.pm-msg');
+    if (leftEl) leftEl.innerHTML = '<span style="color:#44ff44">Sabotaged: ' + st.score + '</span><br><span style="color:#c9a84c">Earned: $' + (st.score * 10) + '</span>';
+    if (rightEl) rightEl.innerHTML = 'Wave: ' + st.wave;
+    if (msgEl) {
+      if (st.msgTimer > 0) {
+        msgEl.style.opacity = Math.min(1, st.msgTimer / 0.5);
+        msgEl.textContent = st.msgText;
+      } else {
+        msgEl.style.opacity = '0';
+      }
+    }
+  }
+
+  // Vignette flash
+  if (st.vignetteEl) {
+    st.vignetteEl.style.opacity = st.caughtFlash > 0 ? Math.min(1, st.caughtFlash) : '0';
+  }
 }
 
 // --- Cafe: Order Rush ---
@@ -16267,6 +16873,13 @@ document.addEventListener('mousemove', (e) => {
 
 document.addEventListener('keydown', (e) => {
   keys[e.code] = true;
+  // Pepper mission input
+  if (pepperMissionActive) {
+    if (e.code === 'Escape') { e.preventDefault(); endPepperMission(); return; }
+    if (e.code === 'KeyE') { e.preventDefault(); firePepperInWorld(); return; }
+    if (e.code === 'KeyF') { if (pepperMissionState) pepperMissionState.aiming = true; return; }
+    return; // Block all other keys during mission
+  }
   if (e.code === 'Space') {
     e.preventDefault();
     if (gameStarted && !gameOver && jumpOffset === 0 && !currentAction) {
@@ -16283,7 +16896,10 @@ document.addEventListener('keydown', (e) => {
   }
   if (mirrorOpen) { closeMirror(); return; }
 });
-document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+  if (e.code === 'KeyF' && pepperMissionState) pepperMissionState.aiming = false;
+});
 
 // ═══ RAYCASTING ═══
 const raycaster = new THREE.Raycaster();
@@ -16404,6 +17020,16 @@ function startAction(obj) {
   }
   if (obj.type === 'dimPortal') {
     startDrivingTransition('town');
+    return;
+  }
+  if (obj.type === 'campaignPoster') {
+    const pq = questLog.president_campaign;
+    if (!pq || pq.sloganIdx === -1 || pq.sloganIdx === undefined) { showTip('Design a poster with the Campaign Manager first!'); return; }
+    const idx = obj.mesh.userData.posterIdx;
+    if (pq.placedPosterIndices && pq.placedPosterIndices.indexOf(idx) !== -1) { showTip('Poster already placed here!'); return; }
+    // Walk to easel, then place
+    moveTarget = obj.usePos.clone();
+    currentAction = { obj, config: { label: 'Placing poster...', duration: 2, restore: 0, cost: 0 }, phase: 'walking', _posterIdx: idx };
     return;
   }
   if (obj.type === 'presDesk') {
@@ -16571,6 +17197,24 @@ function finishAction(action) {
     money += config.earn;
     SFX.kaChing();
     if (Math.floor(money) >= 500) mlTry('ml_high_roller');
+  } else if (obj.type === 'campaignPoster') {
+    // Place campaign poster on easel
+    const pq = questLog.president_campaign;
+    const idx = action._posterIdx;
+    if (pq && idx !== undefined) {
+      addPosterToEasel(obj.group, pq.sloganIdx);
+      pq.postersPlaced = (pq.postersPlaced || 0) + 1;
+      if (!pq.placedPosterIndices) pq.placedPosterIndices = [];
+      pq.placedPosterIndices.push(idx);
+      const iIdx = interactables.indexOf(interactables.find(i => i.mesh === obj.mesh));
+      if (iIdx !== -1) interactables.splice(iIdx, 1);
+      rebuildInteractMeshes();
+      showTip('Poster placed! (' + pq.postersPlaced + '/6)');
+      if (pq.postersPlaced >= 6) {
+        pq.phase = 'speech';
+        setTimeout(() => showTip('All 6 posters up! Talk to the Campaign Manager for your speech!'), 1600);
+      }
+    }
   } else {
     needs[obj.need] = Math.min(100, needs[obj.need] + config.restore);
     if (config.hungerDrain) needs.hunger = Math.max(0, needs.hunger - config.hungerDrain);
@@ -18482,6 +19126,23 @@ function update() {
       }
       character.position.x = px;
       character.position.z = pz;
+    } else if (pepperMissionActive) {
+      // Pepper office bounds (30x30 room at X=600)
+      const POX = PEPPER_OFFICE_ORIGIN.x, POZ = PEPPER_OFFICE_ORIGIN.z;
+      px = Math.max(POX - 14, Math.min(POX + 14, px));
+      pz = Math.max(POZ - 14, Math.min(POZ + 14, pz));
+      for (const b of PEPPER_OFFICE_COLLISIONS) {
+        if (px > b.xMin && px < b.xMax && pz > b.zMin && pz < b.zMax) {
+          const dL = px - b.xMin, dR = b.xMax - px, dB = pz - b.zMin, dT = b.zMax - pz;
+          const minD = Math.min(dL, dR, dB, dT);
+          if (minD === dL) px = b.xMin;
+          else if (minD === dR) px = b.xMax;
+          else if (minD === dB) pz = b.zMin;
+          else pz = b.zMax;
+        }
+      }
+      character.position.x = px;
+      character.position.z = pz;
     } else if (inGrahamDimension) {
       // Graham Dimension bounds
       px = Math.max(GRAHAM_DIM_BOUNDS.xMin, Math.min(GRAHAM_DIM_BOUNDS.xMax, px));
@@ -18628,10 +19289,14 @@ function update() {
   // Foam balls
   if (foamBalls.length) updateFoamBalls(dt);
 
+  // Pepper sabotage mission
+  if (pepperMissionActive) updatePepperMission(dt);
+
   updateHUD();
 }
 
 function updateDayNight() {
+  if (pepperMissionActive) return; // Don't override mission lighting
   const hour = gameTime / 60;
   let sunIntensity, ambIntensity, skyR, skyG, skyB;
 
@@ -18695,6 +19360,30 @@ function triggerGameOver(need) {
     hygiene: 'You passed out... let\'s not talk about why. Woke up at home...',
   };
 
+  // End pepper mission if active
+  if (pepperMissionActive) {
+    pepperMissionActive = false;
+    if (pepperMissionState) {
+      pepperMissionState.flyingPeppers.forEach(p => scene.remove(p.mesh));
+      pepperMissionState.guards.forEach(g => pepperOfficeGroup.remove(g.group));
+      try { pepperMissionState.musicCtx.close(); } catch(e) {}
+      if (pepperMissionState.hudEl) pepperMissionState.hudEl.remove();
+      if (pepperMissionState.vignetteEl) pepperMissionState.vignetteEl.remove();
+      scene.fog.far = pepperMissionState.savedFogFar;
+      scene.fog.color.copy(pepperMissionState.savedFogColor);
+      scene.background.copy(pepperMissionState.savedBgColor);
+      ambientLight.intensity = pepperMissionState.savedAmbInt;
+      sunLight.intensity = pepperMissionState.savedSunInt;
+      pepperMissionState = null;
+    }
+    if (pepperOfficeGroup) pepperOfficeGroup.visible = false;
+    if (grahamDimGroup) grahamDimGroup.visible = true;
+    inGrahamDimension = true;
+    document.querySelector('.hud').style.display = '';
+    const tr = document.querySelector('.hud-top-right');
+    if (tr) tr.style.display = '';
+    camera.fov = 70; camera.updateProjectionMatrix();
+  }
   // Stop any current action / overlays
   currentAction = null;
   actionProgress = 0;
@@ -18904,6 +19593,12 @@ function restartGame() {
   currentSlotName = '';
   npcDialogueOpen = false;
   currentNPCId = null;
+  // Reset Pepper Mission state
+  if (pepperMissionActive) endPepperMission();
+  pepperMissionActive = false;
+  pepperMissionState = null;
+  if (pepperOfficeGroup) { scene.remove(pepperOfficeGroup); pepperOfficeGroup = null; }
+  PEPPER_OFFICE_COLLISIONS.length = 0;
   // Reset Graham Dimension state
   if (grahamDimGroup) { scene.remove(grahamDimGroup); grahamDimGroup = null; }
   inGrahamDimension = false;
@@ -18914,6 +19609,10 @@ function restartGame() {
   gdCloneEgoTargets = [];
   gdCloneVoteTargets = [];
   gdEnactedLaws = [];
+  for (const key in lawVisualGroups) {
+    if (lawVisualGroups[key] && grahamDimGroup) grahamDimGroup.remove(lawVisualGroups[key]);
+  }
+  lawVisualGroups = {};
   gdLawSignGroup = null;
   gdPresHouseBuilt = false;
   gdPresHouseGroup = null;
@@ -18923,7 +19622,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
@@ -19079,7 +19778,7 @@ function writeSaveToSlot(slotIndex, name) {
 }
 
 function saveGame() {
-  if (!gameStarted || gameOver) return;
+  if (!gameStarted || gameOver || pepperMissionActive) return;
   if (currentSlot >= 0 && currentSlotName) {
     // Already have a slot — just save
     writeSaveToSlot(currentSlot, currentSlotName);
