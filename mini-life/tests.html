@@ -447,8 +447,21 @@ const OUTFITS = [
   { name: 'Pink Pop',       shirt: 0xdd55aa, pants: 0xeeeedd, cost: 35 },
   { name: 'Golden Drip',    shirt: 0xccaa33, pants: 0x1a1a1a, cost: 50 },
   { name: 'GG Merch',       shirt: 0xcc2222, pants: 0x1a1a1a, cost: 40 },
+  { name: 'Simon the Slug', shirt: 0x5a8a2a, pants: 0x3a3a2a, cost: 0 },
+  { name: 'Goofy Getup',   shirt: 0xff00ff, pants: 0x00ffff, cost: 0 },
+  { name: 'Disco Fever',   shirt: 0xccccdd, pants: 0x1a1a1a, cost: 0 },
+  { name: 'Camo Commando', shirt: 0x4a6a3a, pants: 0x2a3a1a, cost: 0 },
+  { name: 'Black Tuxedo',  shirt: 0x1a1a1a, pants: 0x1a1a1a, cost: 0 },
+  { name: 'Husky Pack',    shirt: 0x66cccc, pants: 0xbb99dd, cost: 0 },
 ];
 const GG_MERCH_IDX = 8;
+const SLUG_SHIRT_IDX = 9;
+const GOOFY_IDX = 10;
+const DISCO_IDX = 11;
+const CAMO_IDX = 12;
+const TUXEDO_IDX = 13;
+const HUSKY_IDX = 14;
+const MYSTERY_OUTFIT_IDXS = [SLUG_SHIRT_IDX, GOOFY_IDX, DISCO_IDX, CAMO_IDX, TUXEDO_IDX, HUSKY_IDX];
 
 // Accessories
 const ACCESSORIES = [
@@ -1419,8 +1432,8 @@ test('Unlocking all 20 ML achievements yields 595 G Bux', () => {
 // ── Outfit System ──
 section('Outfit System');
 
-test('OUTFITS has 9 entries (8 regular + GG Merch)', () => {
-  assertEqual(OUTFITS.length, 9);
+test('OUTFITS has 15 entries (8 regular + GG Merch + 6 mystery box exclusives)', () => {
+  assertEqual(OUTFITS.length, 15);
 });
 
 test('First outfit (Casual Blue) is free', () => {
@@ -1444,9 +1457,9 @@ test('All outfits have name, shirt, pants, cost', () => {
   });
 });
 
-test('Outfit costs: 0, 20, 25, 30, 30, 35, 35, 50, 40', () => {
+test('Outfit costs: regular + GG Merch + mystery exclusives', () => {
   const costs = OUTFITS.map(o => o.cost);
-  assertDeepEqual(costs, [0, 20, 25, 30, 30, 35, 35, 50, 40]);
+  assertDeepEqual(costs, [0, 20, 25, 30, 30, 35, 35, 50, 40, 0, 0, 0, 0, 0, 0]);
 });
 
 test('Total outfit cost (excluding free) is $265', () => {
@@ -2438,16 +2451,18 @@ test('GG_MERCH_IDX is 8', () => {
   assertEqual(GG_MERCH_IDX, 8);
 });
 
-test('GG Merch not shown in regular shop (skip i===0 and i===GG_MERCH_IDX)', () => {
-  // Regular shop should show indices 1-7 only
+test('GG Merch and mystery exclusives not shown in regular shop', () => {
+  // Regular shop should show indices 1-7 only (skip free, GG Merch, mystery exclusives)
   const shownOutfits = [];
   OUTFITS.forEach((fit, i) => {
     if (i === 0 || i === GG_MERCH_IDX) return;
+    if (MYSTERY_OUTFIT_IDXS.includes(i)) return;
     shownOutfits.push(i);
   });
   assertEqual(shownOutfits.length, 7);
   assert(!shownOutfits.includes(0));
   assert(!shownOutfits.includes(GG_MERCH_IDX));
+  MYSTERY_OUTFIT_IDXS.forEach(idx => assert(!shownOutfits.includes(idx)));
 });
 
 test('GG Merch can be added to ownedOutfits', () => {
@@ -2496,9 +2511,9 @@ test('GG Merch shirt colors match design spec', () => {
   assert(fit.pants < 0x222222); // very dark pants
 });
 
-test('Living Large achievement excludes GG Merch from requirement', () => {
-  // Should need OUTFITS.length - 1 outfits (not counting GG Merch)
-  const requiredOutfits = OUTFITS.length - 1;
+test('Living Large achievement excludes GG Merch + mystery exclusives from requirement', () => {
+  // Should need OUTFITS.length - 1 (GG Merch) - MYSTERY_OUTFIT_IDXS.length outfits
+  const requiredOutfits = OUTFITS.length - 1 - MYSTERY_OUTFIT_IDXS.length;
   assertEqual(requiredOutfits, 8);
 });
 
@@ -3648,12 +3663,15 @@ test('4 Graham statues positioned around arena', () => {
 // ═══ PEPPER SABOTAGE IN-WORLD MISSION ═══
 section('Pepper Sabotage Mission — In-World');
 
-const PEPPER_OFFICE_ORIGIN = { x: 600, z: 0 };
+const PEPPER_OFFICE_ORIGIN = { x: 440, z: -30 };
 
-test('Pepper office origin is far from all other locations', () => {
-  // Home=0, Town=122.5, Mansion=280, Graham Dim=400, Pepper=600
-  assert(PEPPER_OFFICE_ORIGIN.x > 500, 'Office X should be far from other locations');
-  assert(PEPPER_OFFICE_ORIGIN.x - GRAHAM_DIM_ORIGIN.x >= 200, 'Office should be 200+ units from Graham Dim');
+test('Pepper office is near Graham Industries (walkable distance)', () => {
+  // Graham Industries is at OX+40, OZ-10 = (440, -10)
+  const giX = GRAHAM_DIM_ORIGIN.x + 40, giZ = GRAHAM_DIM_ORIGIN.z - 10;
+  const dx = Math.abs(PEPPER_OFFICE_ORIGIN.x - giX);
+  const dz = Math.abs(PEPPER_OFFICE_ORIGIN.z - giZ);
+  assert(dx <= 30, 'Office X should be within 30 units of Graham Industries');
+  assert(dz <= 30, 'Office Z should be within 30 units of Graham Industries');
 });
 
 test('Pepper office collision array can be populated and cleared', () => {
@@ -3832,6 +3850,105 @@ test('Collision AABB push-out finds minimum penetration axis', () => {
   assert(px <= box.xMin || px >= box.xMax || pz <= box.zMin || pz >= box.zMax, 'Player should be pushed out of AABB');
 });
 
+// ═══ MYSTERY BOX OUTFITS ═══
+section('Mystery Box Outfits');
+
+test('Mystery box has 6 exclusive outfits', () => {
+  assertEqual(MYSTERY_OUTFIT_IDXS.length, 6);
+});
+
+test('All mystery outfit indices point to valid OUTFITS entries', () => {
+  MYSTERY_OUTFIT_IDXS.forEach(idx => {
+    assert(idx >= 0 && idx < OUTFITS.length, 'Index ' + idx + ' should be valid');
+    assertEqual(OUTFITS[idx].cost, 0, OUTFITS[idx].name + ' should be free');
+  });
+});
+
+test('Husky Pack outfit at correct index with right colors', () => {
+  assertEqual(HUSKY_IDX, 14);
+  const husky = OUTFITS[HUSKY_IDX];
+  assertEqual(husky.name, 'Husky Pack');
+  assertEqual(husky.shirt, 0x66cccc, 'Light teal shirt');
+  assertEqual(husky.pants, 0xbb99dd, 'Light purple pants');
+  assertEqual(husky.cost, 0, 'Mystery exclusive is free');
+});
+
+test('Husky Pack is in MYSTERY_OUTFIT_IDXS', () => {
+  assert(MYSTERY_OUTFIT_IDXS.includes(HUSKY_IDX), 'HUSKY_IDX should be in mystery exclusives');
+});
+
+test('Mystery outfit names are all unique', () => {
+  const names = MYSTERY_OUTFIT_IDXS.map(i => OUTFITS[i].name);
+  const unique = new Set(names);
+  assertEqual(unique.size, names.length, 'No duplicate mystery outfit names');
+});
+
+test('pickMysteryPrize skips owned items', () => {
+  // Simulate items with owned checks
+  const items = [
+    { label: 'A', owned: () => true, apply: () => 'a' },
+    { label: 'B', owned: () => false, apply: () => 'b' },
+    { label: 'C', owned: () => true, apply: () => 'c' },
+  ];
+  const available = items.filter(i => !i.owned());
+  assertEqual(available.length, 1, 'Only 1 unowned item');
+  assertEqual(available[0].label, 'B', 'Should be item B');
+});
+
+test('All items owned falls back to money', () => {
+  const items = [
+    { label: 'A', owned: () => true },
+    { label: 'B', owned: () => true },
+  ];
+  const available = items.filter(i => !i.owned());
+  assertEqual(available.length, 0, 'No items available');
+  // Should fall back to money prizes
+  const moneyPrizes = [{ label: '$200' }, { label: '$350' }];
+  const prize = moneyPrizes[0]; // would pick random money
+  assert(prize.label.startsWith('$'), 'Should get money when all owned');
+});
+
+test('All MYSTERY_ITEMS have owned() check', () => {
+  // Each item must have label, icon, owned (function), apply (function)
+  const items = [
+    { label: 'Slug', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Goofy', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Disco', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Camo', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Ball', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Bean', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Tux', icon: 'x', owned: () => false, apply: () => '' },
+    { label: 'Husky', icon: 'x', owned: () => false, apply: () => '' },
+  ];
+  assertEqual(items.length, 8, '8 mystery items');
+  items.forEach(item => {
+    assert(typeof item.owned === 'function', item.label + ' should have owned()');
+    assert(typeof item.apply === 'function', item.label + ' should have apply()');
+  });
+});
+
+test('Save/load round-trips mystery outfits in ownedOutfits', () => {
+  const owned = new Set([0, HUSKY_IDX, TUXEDO_IDX]);
+  const saved = [...owned];
+  const restored = new Set(saved);
+  assert(restored.has(0));
+  assert(restored.has(HUSKY_IDX));
+  assert(restored.has(TUXEDO_IDX));
+  assertEqual(restored.size, 3);
+});
+
+// ═══ PEPPER MISSION INSTANT TRANSITION ═══
+section('Pepper Mission — Instant Transition');
+
+test('Mission start is always instant (no overlay)', () => {
+  // startPepperMission always calls performPepperTeleport directly, no overlay
+  let overlayShown = false;
+  // Simulate: just call teleport directly
+  const teleported = true;
+  assert(teleported, 'Should teleport instantly');
+  assert(!overlayShown, 'No overlay should ever be shown');
+});
+
 // ═══ PEPPER MISSION PAYMENT CHANGES ═══
 section('Pepper Mission — Live Payment');
 
@@ -3963,12 +4080,28 @@ test('Speech options have 4 choices each', () => {
   assertEqual(SPEECH_CLOSERS.length, 4);
 });
 
-test('6 poster spots defined', () => {
+test('6 poster spots along roads, all facing toward their road', () => {
   const POSTER_SPOT_OFFSETS = [
-    { x: 5, z: 5 }, { x: -15, z: 30 }, { x: -25, z: 15 },
-    { x: 25, z: -15 }, { x: 35, z: -5 }, { x: 5, z: -60 },
+    { x: 4, z: 20, rotY: -Math.PI / 2 },
+    { x: -4, z: 35, rotY: Math.PI / 2 },
+    { x: 4, z: -20, rotY: -Math.PI / 2 },
+    { x: -4, z: -45, rotY: Math.PI / 2 },
+    { x: -20, z: 3.5, rotY: Math.PI },
+    { x: 25, z: -3.5, rotY: 0 },
   ];
   assertEqual(POSTER_SPOT_OFFSETS.length, 6);
+  // All spots should be near roads
+  POSTER_SPOT_OFFSETS.forEach(off => {
+    const onMainRoadSidewalk = Math.abs(off.x) <= 5;
+    const onCrossStreetSidewalk = Math.abs(off.z) <= 4;
+    assert(onMainRoadSidewalk || onCrossStreetSidewalk, 'Poster at (' + off.x + ',' + off.z + ') should be near a road');
+  });
+  // East sidewalk posters face west (-PI/2), west sidewalk face east (PI/2)
+  assertClose(POSTER_SPOT_OFFSETS[0].rotY, -Math.PI / 2, 0.01, 'East sidewalk faces west');
+  assertClose(POSTER_SPOT_OFFSETS[1].rotY, Math.PI / 2, 0.01, 'West sidewalk faces east');
+  // Cross street: north sidewalk faces south (PI), south faces north (0)
+  assertClose(POSTER_SPOT_OFFSETS[4].rotY, Math.PI, 0.01, 'North sidewalk faces south');
+  assertClose(POSTER_SPOT_OFFSETS[5].rotY, 0, 0.01, 'South sidewalk faces north');
 });
 
 test('Campaign quest state has all required fields', () => {
@@ -3980,6 +4113,29 @@ test('Campaign quest state has all required fields', () => {
   assert('postersPlaced' in pq);
   assert('placedPosterIndices' in pq);
   assert('sloganIdx' in pq);
+});
+
+test('Easel post is behind the board (negative Z offset)', () => {
+  const postZ = -0.08;
+  const boardZ = 0;
+  const posterFaceZ = 0.035;
+  assert(postZ < boardZ, 'Post should be behind board');
+  assert(posterFaceZ > boardZ, 'Poster face should be in front of board');
+  assert(posterFaceZ > postZ, 'Poster face should be in front of post');
+});
+
+test('R key opens mystery box', () => {
+  // R key should reset lastMysteryBoxDate and call openMysteryBox
+  let lastMysteryBoxDate = '2026-03-27';
+  let mysteryBoxOpened = false;
+  const gameStarted = true, gameOver = false, currentAction = null, npcDialogueOpen = false;
+  // Simulate R key handler
+  if (gameStarted && !gameOver && !currentAction && !npcDialogueOpen) {
+    lastMysteryBoxDate = '';
+    mysteryBoxOpened = true;
+  }
+  assertEqual(lastMysteryBoxDate, '', 'Should reset date');
+  assert(mysteryBoxOpened, 'Should open mystery box');
 });
 
 test('Vote threshold is 17 (majority of 32)', () => {

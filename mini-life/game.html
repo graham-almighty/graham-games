@@ -7913,7 +7913,7 @@ const GRAHAM_DIM_COLLISIONS = [
   { xMin: 402.5, xMax: 411, zMin: -71.5, zMax: -71 },      // Arena north-right wall
 ];
 // Pepper Sabotage Mission (in-world)
-const PEPPER_OFFICE_ORIGIN = { x: 600, z: 0 };
+const PEPPER_OFFICE_ORIGIN = { x: 440, z: -30 };
 const PEPPER_OFFICE_COLLISIONS = [];
 let pepperMissionActive = false;
 let pepperOfficeGroup = null;
@@ -8163,14 +8163,14 @@ const SPEECH_CLOSERS = [
   "And if you DON'T vote for me... well... I'll still be president. But it'll be AWKWARD. Vote me!",
 ];
 
-// Poster spot positions in the Graham Dimension (relative to origin)
+// Poster spot positions in the Graham Dimension — along roads, facing toward road
 const POSTER_SPOT_OFFSETS = [
-  { x: 5, z: 5 },     // Near statue
-  { x: -15, z: 30 },  // North area
-  { x: -25, z: 15 },  // Northwest
-  { x: 25, z: -15 },  // Southeast
-  { x: 35, z: -5 },   // Near Graham Industries
-  { x: 5, z: -60 },   // Near arena
+  { x: 4, z: 20, rotY: -Math.PI / 2 },   // East sidewalk, faces west toward main road
+  { x: -4, z: 35, rotY: Math.PI / 2 },    // West sidewalk, faces east toward main road
+  { x: 4, z: -20, rotY: -Math.PI / 2 },   // East sidewalk, faces west toward main road
+  { x: -4, z: -45, rotY: Math.PI / 2 },   // West sidewalk, faces east toward main road
+  { x: -20, z: 3.5, rotY: Math.PI },       // North sidewalk, faces south toward cross street
+  { x: 25, z: -3.5, rotY: 0 },             // South sidewalk, faces north toward cross street
 ];
 
 // Laws you can enact after winning (pick 3)
@@ -10699,6 +10699,61 @@ function buildGrahamDimension() {
     { xMin: offX + 1.5, xMax: offX + 4.15, zMin: offZ + 3.35, zMax: offZ + 3.65 },   // Front-right wall
   );
 
+  // === PEPPER SABOTAGE BUILDING (south of Graham Industries) ===
+  const pepBldgX = PEPPER_OFFICE_ORIGIN.x, pepBldgZ = PEPPER_OFFICE_ORIGIN.z;
+  const pepWallMat = new THREE.MeshLambertMaterial({ color: 0x3a3a4e });
+  const pepRoofMat2 = new THREE.MeshLambertMaterial({ color: 0x222233 });
+  const pepDoorMat = new THREE.MeshLambertMaterial({ color: 0x553322 });
+  // Walls (5 wide x 5 deep x 3 tall, door gap on north face)
+  makeWall(5, 3, 0.2, pepWallMat, pepBldgX, 1.5, pepBldgZ - 2.5);  // south wall
+  makeWall(0.2, 3, 5, pepWallMat, pepBldgX - 2.5, 1.5, pepBldgZ);  // west wall
+  makeWall(0.2, 3, 5, pepWallMat, pepBldgX + 2.5, 1.5, pepBldgZ);  // east wall
+  makeWall(1.5, 3, 0.2, pepWallMat, pepBldgX - 1.75, 1.5, pepBldgZ + 2.5); // north-left
+  makeWall(1.5, 3, 0.2, pepWallMat, pepBldgX + 1.75, 1.5, pepBldgZ + 2.5); // north-right
+  // Roof
+  makeWall(5.2, 0.15, 5.2, pepRoofMat2, pepBldgX, 3.05, pepBldgZ);
+  // Door frame
+  makeWall(2, 0.3, 0.2, pepWallMat, pepBldgX, 2.85, pepBldgZ + 2.5); // lintel above door
+  // Floor
+  const pepFloor = new THREE.Mesh(new THREE.BoxGeometry(5, 0.08, 5), new THREE.MeshLambertMaterial({ color: 0x445566 }));
+  pepFloor.position.set(pepBldgX, 0.04, pepBldgZ);
+  pepFloor.receiveShadow = true;
+  g.add(pepFloor);
+  // Sign: "CLASSIFIED" above door
+  const pepSignCvs = document.createElement('canvas');
+  pepSignCvs.width = 192; pepSignCvs.height = 48;
+  const pepSignCtx = pepSignCvs.getContext('2d');
+  pepSignCtx.fillStyle = '#1a1a2e'; pepSignCtx.fillRect(0, 0, 192, 48);
+  pepSignCtx.strokeStyle = '#cc2222'; pepSignCtx.lineWidth = 3; pepSignCtx.strokeRect(2, 2, 188, 44);
+  pepSignCtx.fillStyle = '#cc2222'; pepSignCtx.font = 'bold 22px sans-serif'; pepSignCtx.textAlign = 'center';
+  pepSignCtx.fillText('CLASSIFIED', 96, 34);
+  const pepSignTex = new THREE.CanvasTexture(pepSignCvs);
+  const pepSign = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.5, 0.05),
+    new THREE.MeshLambertMaterial({ map: pepSignTex, emissive: 0x441111, emissiveIntensity: 0.3 }));
+  pepSign.position.set(pepBldgX, 2.5, pepBldgZ + 2.55);
+  g.add(pepSign);
+  // Red light above door
+  const pepDoorLight = new THREE.PointLight(0xff2222, 0.5, 6);
+  pepDoorLight.position.set(pepBldgX, 2.8, pepBldgZ + 2.8);
+  g.add(pepDoorLight);
+  // Collision walls for pepper building
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: pepBldgX - 2.6, xMax: pepBldgX + 2.6, zMin: pepBldgZ - 2.6, zMax: pepBldgZ - 2.4 }, // south
+    { xMin: pepBldgX - 2.6, xMax: pepBldgX - 2.4, zMin: pepBldgZ - 2.6, zMax: pepBldgZ + 2.6 }, // west
+    { xMin: pepBldgX + 2.4, xMax: pepBldgX + 2.6, zMin: pepBldgZ - 2.6, zMax: pepBldgZ + 2.6 }, // east
+    { xMin: pepBldgX - 2.6, xMax: pepBldgX - 1, zMin: pepBldgZ + 2.4, zMax: pepBldgZ + 2.6 },   // north-left
+    { xMin: pepBldgX + 1, xMax: pepBldgX + 2.6, zMin: pepBldgZ + 2.4, zMax: pepBldgZ + 2.6 },   // north-right
+  );
+  // Door interactable — enter to start pepper mission (only if hired)
+  const pepDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(2, 2.7, 0.1), pepDoorMat);
+  pepDoorMesh.position.set(pepBldgX, 1.35, pepBldgZ + 2.5);
+  g.add(pepDoorMesh);
+  interactables.push({
+    mesh: pepDoorMesh, group: g, type: 'pepperDoor',
+    label: 'Enter Sabotage Office', need: null,
+    usePos: new THREE.Vector3(pepBldgX, 0.15, pepBldgZ + 3.5), floor: 0
+  });
+
   // === ROAD TO ARENA (south) ===
   // Torches along the south road to the arena
   [-3.5, 3.5].forEach(dx => {
@@ -12694,9 +12749,9 @@ function buildPosterSpots() {
   POSTER_SPOT_OFFSETS.forEach((off, i) => {
     const px = OX + off.x, pz = OZ + off.z;
     const easelGroup = new THREE.Group();
-    // Easel post
+    // Easel post (behind the board so it doesn't block the poster)
     const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.5, 6), postMat);
-    post.position.set(0, 1.25, 0);
+    post.position.set(0, 1.25, -0.08);
     easelGroup.add(post);
     // Board
     const board = new THREE.Mesh(new THREE.BoxGeometry(1.4, 1.0, 0.06), boardMat);
@@ -12704,7 +12759,14 @@ function buildPosterSpots() {
     easelGroup.add(board);
 
     easelGroup.position.set(px, 0, pz);
+    easelGroup.rotation.y = off.rotY || 0;
     grahamDimGroup.add(easelGroup);
+
+    // Compute usePos in front of the poster (offset along the poster's facing direction)
+    const faceDirX = Math.sin(off.rotY || 0);
+    const faceDirZ = Math.cos(off.rotY || 0);
+    const usePosX = px + faceDirX * 1.2;
+    const usePosZ = pz + faceDirZ * 1.2;
 
     // If already placed, show poster content
     if (placed.indexOf(i) !== -1) {
@@ -12716,7 +12778,7 @@ function buildPosterSpots() {
       interactables.push({
         mesh: hitMesh, group: easelGroup, type: 'campaignPoster',
         label: 'Place Campaign Poster', need: null,
-        usePos: new THREE.Vector3(px, 0.15, pz + 1.2), floor: 0
+        usePos: new THREE.Vector3(usePosX, 0.15, usePosZ), floor: 0
       });
     }
   });
@@ -12746,19 +12808,8 @@ function addPosterToEasel(easelGroup, sloganIdx) {
   // "VOTE FOR ME" text
   ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px sans-serif';
   ctx.fillText('VOTE FOR ME!', 128, 170);
-  // Simple Graham face
-  ctx.fillStyle = '#eeccaa'; ctx.beginPath(); ctx.arc(128, 125, 25, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#c9a84c'; // Curly blonde hair
-  for (let a = 0; a < 12; a++) {
-    const angle = (a / 12) * Math.PI * 2 - Math.PI / 2;
-    ctx.beginPath();
-    ctx.arc(128 + Math.cos(angle) * 22, 110 + Math.sin(angle) * 15, 6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.fillStyle = '#222222';
-  ctx.beginPath(); ctx.arc(120, 122, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(136, 122, 3, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = '#cc6666'; ctx.beginPath(); ctx.arc(128, 133, 4, 0, Math.PI); ctx.fill();
+  // Graham character (proper curly blonde hair, GG Merch outfit)
+  drawPosterCharacter(ctx, 128, 115, 0.6, { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 });
 
   const tex = new THREE.CanvasTexture(cv);
   const posterFace = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.95),
@@ -13534,19 +13585,9 @@ function startPepperMission() {
   closeNPCDialogue();
   if (document.pointerLockElement) document.exitPointerLock();
 
-  // Use the driving overlay for a clean transition (same pattern as startDrivingTransition)
-  const driveOverlay = document.getElementById('drive-overlay');
-  const driveText = document.getElementById('drive-text');
-  driveText.textContent = 'Deploying to sabotage mission...';
-  driveOverlay.classList.add('visible');
-
-  requestAnimationFrame(() => { setTimeout(() => {
-    performPepperTeleport();
-    setTimeout(() => {
-      driveOverlay.classList.remove('visible');
-      renderer.domElement.requestPointerLock();
-    }, 150);
-  }, 16); });
+  // Instant transition — office is right next to Graham Industries
+  performPepperTeleport();
+  renderer.domElement.requestPointerLock();
 }
 
 function performPepperTeleport() {
@@ -15879,6 +15920,7 @@ const OUTFITS = [
   { name: 'Disco Fever',   shirt: 0xccccdd, pants: 0x1a1a1a, cost: 0 },
   { name: 'Camo Commando', shirt: 0x4a6a3a, pants: 0x2a3a1a, cost: 0 },
   { name: 'Black Tuxedo',  shirt: 0x1a1a1a, pants: 0x1a1a1a, cost: 0 },
+  { name: 'Husky Pack',    shirt: 0x66cccc, pants: 0xbb99dd, cost: 0 },
 ];
 const GG_MERCH_IDX = 8;
 const SLUG_SHIRT_IDX = 9;
@@ -15886,7 +15928,8 @@ const GOOFY_IDX = 10;
 const DISCO_IDX = 11;
 const CAMO_IDX = 12;
 const TUXEDO_IDX = 13;
-const MYSTERY_OUTFIT_IDXS = [SLUG_SHIRT_IDX, GOOFY_IDX, DISCO_IDX, CAMO_IDX, TUXEDO_IDX];
+const HUSKY_IDX = 14;
+const MYSTERY_OUTFIT_IDXS = [SLUG_SHIRT_IDX, GOOFY_IDX, DISCO_IDX, CAMO_IDX, TUXEDO_IDX, HUSKY_IDX];
 let ownedOutfits = new Set([0]); // index 0 (Casual Blue) is free
 
 const DRESSES = [
@@ -16277,6 +16320,102 @@ function buildCharacter(opts) {
         shirtMat, shirtMat, shirtMat, shirtMat,
         new THREE.MeshLambertMaterial({ map: tuxFrontTex }),
         new THREE.MeshLambertMaterial({ map: tuxBackTex }),
+      ];
+    }
+
+    // Husky Pack — 3 huskies on front, stars on back
+    if (opts.outfit === HUSKY_IDX) {
+      const fc = document.createElement('canvas');
+      fc.width = 128; fc.height = 160;
+      const f = fc.getContext('2d');
+      // Light teal background
+      f.fillStyle = '#66cccc';
+      f.fillRect(0, 0, 128, 160);
+
+      // Draw a husky at (cx, cy) with given scale
+      function drawHusky(ctx, cx, cy, s) {
+        // Body
+        ctx.fillStyle = '#cccccc';
+        ctx.beginPath(); ctx.ellipse(cx, cy + 8 * s, 12 * s, 8 * s, 0, 0, Math.PI * 2); ctx.fill();
+        // Belly
+        ctx.fillStyle = '#f0f0f0';
+        ctx.beginPath(); ctx.ellipse(cx, cy + 11 * s, 8 * s, 5 * s, 0, 0, Math.PI * 2); ctx.fill();
+        // Head
+        ctx.fillStyle = '#cccccc';
+        ctx.beginPath(); ctx.arc(cx, cy - 6 * s, 9 * s, 0, Math.PI * 2); ctx.fill();
+        // Face mask (white)
+        ctx.fillStyle = '#f0f0f0';
+        ctx.beginPath(); ctx.arc(cx, cy - 3 * s, 6 * s, 0, Math.PI * 2); ctx.fill();
+        // Ears
+        ctx.fillStyle = '#888888';
+        ctx.beginPath(); ctx.moveTo(cx - 7 * s, cy - 10 * s); ctx.lineTo(cx - 3 * s, cy - 16 * s); ctx.lineTo(cx + 1 * s, cy - 10 * s); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(cx + 7 * s, cy - 10 * s); ctx.lineTo(cx + 3 * s, cy - 16 * s); ctx.lineTo(cx - 1 * s, cy - 10 * s); ctx.closePath(); ctx.fill();
+        // Eyes — blue husky eyes
+        ctx.fillStyle = '#4488ee';
+        ctx.beginPath(); ctx.arc(cx - 4 * s, cy - 7 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 4 * s, cy - 7 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#111111';
+        ctx.beginPath(); ctx.arc(cx - 4 * s, cy - 7 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(cx + 4 * s, cy - 7 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+        // Nose
+        ctx.fillStyle = '#222222';
+        ctx.beginPath(); ctx.arc(cx, cy - 2 * s, 2 * s, 0, Math.PI * 2); ctx.fill();
+        // Tongue
+        ctx.fillStyle = '#ee6677';
+        ctx.beginPath(); ctx.ellipse(cx, cy + 2 * s, 2 * s, 3 * s, 0, 0, Math.PI); ctx.fill();
+        // Tail (curled up)
+        ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 3 * s;
+        ctx.beginPath(); ctx.arc(cx + 12 * s, cy + 4 * s, 6 * s, Math.PI, Math.PI * 1.7); ctx.stroke();
+      }
+
+      // 3 huskies: left, center, right
+      drawHusky(f, 28, 65, 1.1);
+      drawHusky(f, 64, 50, 1.2);
+      drawHusky(f, 100, 65, 1.1);
+
+      // "HUSKY PACK" text at bottom
+      f.fillStyle = '#ffffff';
+      f.font = 'bold 12px sans-serif';
+      f.textAlign = 'center';
+      f.fillText('HUSKY PACK', 64, 140);
+
+      const huskyFrontTex = new THREE.CanvasTexture(fc);
+
+      // Back — teal with stars
+      const bc = document.createElement('canvas');
+      bc.width = 128; bc.height = 160;
+      const b = bc.getContext('2d');
+      b.fillStyle = '#66cccc';
+      b.fillRect(0, 0, 128, 160);
+
+      function drawStar(ctx, cx, cy, r, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = (i * 4 * Math.PI / 5) - Math.PI / 2;
+          const fn = i === 0 ? 'moveTo' : 'lineTo';
+          ctx[fn](cx + r * Math.cos(a), cy + r * Math.sin(a));
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Scatter stars across the back
+      const starPositions = [
+        [30, 25, 10, '#ffffff'], [90, 20, 8, '#ffffcc'],
+        [60, 55, 12, '#ffffff'], [20, 80, 7, '#ffffcc'],
+        [100, 75, 9, '#ffffff'], [45, 110, 8, '#ffffcc'],
+        [80, 110, 10, '#ffffff'], [64, 140, 7, '#ffffcc'],
+        [25, 140, 6, '#ffffff'], [105, 140, 6, '#ffffff'],
+      ];
+      starPositions.forEach(([sx, sy, sr, sc]) => drawStar(b, sx, sy, sr, sc));
+
+      const huskyBackTex = new THREE.CanvasTexture(bc);
+
+      torso.material = [
+        shirtMat, shirtMat, shirtMat, shirtMat,
+        new THREE.MeshLambertMaterial({ map: huskyFrontTex }),
+        new THREE.MeshLambertMaterial({ map: huskyBackTex }),
       ];
     }
   }
@@ -16888,7 +17027,7 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.code === 'KeyE' && gameStarted && !gameOver && !currentAction) firefoamBall();
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
-
+  if (e.code === 'KeyR' && gameStarted && !gameOver && !currentAction && !npcDialogueOpen) { lastMysteryBoxDate = ''; openMysteryBox(); }
   if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
   if (e.code === 'KeyC' && gameStarted && !gameOver && activePet !== 'none') {
     petStay = !petStay;
@@ -17094,9 +17233,19 @@ function startAction(obj) {
   // Graham Industries — interview or jobs
   if (obj.type === 'grahamInterview') {
     if (gdTasksDone['graham_hr']) {
-      openGrahamIndustriesJobs();
+      startPepperMission();
     } else {
       startGrahamApplication();
+    }
+    return;
+  }
+
+  // Pepper sabotage building door
+  if (obj.type === 'pepperDoor') {
+    if (gdTasksDone['graham_hr']) {
+      startPepperMission();
+    } else {
+      showTip('Get hired at Graham Industries first!');
     }
     return;
   }
@@ -17261,42 +17410,44 @@ const MYSTERY_MONEY = [
   { label: 'Big Payday!', icon: '🤑', apply: () => { money += 500; return 'MEGA PRIZE! $500!!'; } },
 ];
 const MYSTERY_ITEMS = [
-  { label: 'Simon the Slug Shirt!', icon: '🐌', apply: () => {
-    if (ownedOutfits.has(SLUG_SHIRT_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedOutfits.add(SLUG_SHIRT_IDX); equipOutfit(SLUG_SHIRT_IDX); mlTry('ml_fashion_icon'); return 'You got the Simon the Slug shirt! Glug glug glug!';
-  }},
-  { label: 'Goofy Getup!', icon: '🤡', apply: () => {
-    if (ownedOutfits.has(GOOFY_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedOutfits.add(GOOFY_IDX); equipOutfit(GOOFY_IDX); mlTry('ml_fashion_icon'); return 'You got the Goofy Getup! Looking ridiculous!';
-  }},
-  { label: 'Disco Fever Outfit!', icon: '🪩', apply: () => {
-    if (ownedOutfits.has(DISCO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedOutfits.add(DISCO_IDX); equipOutfit(DISCO_IDX); mlTry('ml_fashion_icon'); return 'You got the Disco Fever outfit! Time to boogie!';
-  }},
-  { label: 'Camo Commando Outfit!', icon: '🪖', apply: () => {
-    if (ownedOutfits.has(CAMO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedOutfits.add(CAMO_IDX); equipOutfit(CAMO_IDX); mlTry('ml_fashion_icon'); return 'You got the Camo Commando outfit! Can\'t see me!';
-  }},
-  { label: 'Disco Ball!', icon: '🪩', apply: () => {
-    if (ownedFurniture.has('discoBall')) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedFurniture.add('discoBall'); buildDiscoBall(); rebuildInteractMeshes(); return 'You got a Disco Ball for your ceiling!';
-  }},
-  { label: 'Bean Bag Chair!', icon: '🫘', apply: () => {
-    if (ownedFurniture.has('beanBag')) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedFurniture.add('beanBag'); buildBeanBag(); rebuildInteractMeshes(); return 'You got a Bean Bag Chair!';
-  }},
-  { label: 'Black Tuxedo!', icon: '🤵', apply: () => {
-    if (ownedOutfits.has(TUXEDO_IDX)) { money += 100; return 'Already own it! Here\'s $100 instead!'; }
-    ownedOutfits.add(TUXEDO_IDX); equipOutfit(TUXEDO_IDX); mlTry('ml_fashion_icon'); return 'You got the Black Tuxedo! Looking sharp!';
-  }},
+  { label: 'Simon the Slug Shirt!', icon: '🐌',
+    owned: () => ownedOutfits.has(SLUG_SHIRT_IDX),
+    apply: () => { ownedOutfits.add(SLUG_SHIRT_IDX); equipOutfit(SLUG_SHIRT_IDX); mlTry('ml_fashion_icon'); return 'You got the Simon the Slug shirt! Glug glug glug!'; }},
+  { label: 'Goofy Getup!', icon: '🤡',
+    owned: () => ownedOutfits.has(GOOFY_IDX),
+    apply: () => { ownedOutfits.add(GOOFY_IDX); equipOutfit(GOOFY_IDX); mlTry('ml_fashion_icon'); return 'You got the Goofy Getup! Looking ridiculous!'; }},
+  { label: 'Disco Fever Outfit!', icon: '🪩',
+    owned: () => ownedOutfits.has(DISCO_IDX),
+    apply: () => { ownedOutfits.add(DISCO_IDX); equipOutfit(DISCO_IDX); mlTry('ml_fashion_icon'); return 'You got the Disco Fever outfit! Time to boogie!'; }},
+  { label: 'Camo Commando Outfit!', icon: '🪖',
+    owned: () => ownedOutfits.has(CAMO_IDX),
+    apply: () => { ownedOutfits.add(CAMO_IDX); equipOutfit(CAMO_IDX); mlTry('ml_fashion_icon'); return 'You got the Camo Commando outfit! Can\'t see me!'; }},
+  { label: 'Disco Ball!', icon: '🪩',
+    owned: () => ownedFurniture.has('discoBall'),
+    apply: () => { ownedFurniture.add('discoBall'); buildDiscoBall(); rebuildInteractMeshes(); return 'You got a Disco Ball for your ceiling!'; }},
+  { label: 'Bean Bag Chair!', icon: '🫘',
+    owned: () => ownedFurniture.has('beanBag'),
+    apply: () => { ownedFurniture.add('beanBag'); buildBeanBag(); rebuildInteractMeshes(); return 'You got a Bean Bag Chair!'; }},
+  { label: 'Black Tuxedo!', icon: '🤵',
+    owned: () => ownedOutfits.has(TUXEDO_IDX),
+    apply: () => { ownedOutfits.add(TUXEDO_IDX); equipOutfit(TUXEDO_IDX); mlTry('ml_fashion_icon'); return 'You got the Black Tuxedo! Looking sharp!'; }},
+  { label: 'Husky Pack Shirt!', icon: '🐺',
+    owned: () => ownedOutfits.has(HUSKY_IDX),
+    apply: () => { ownedOutfits.add(HUSKY_IDX); equipOutfit(HUSKY_IDX); mlTry('ml_fashion_icon'); return 'You got the Husky Pack shirt! Awoooo!'; }},
 ];
 
 function pickMysteryPrize() {
-  // 10% chance for money, 90% for items
+  // Filter to unowned items only
+  const available = MYSTERY_ITEMS.filter(item => !item.owned());
+  // If everything is owned, give money instead
+  if (available.length === 0) {
+    return MYSTERY_MONEY[Math.floor(Math.random() * MYSTERY_MONEY.length)];
+  }
+  // 10% chance for money, 90% for unowned items
   if (Math.random() < 0.1) {
     return MYSTERY_MONEY[Math.floor(Math.random() * MYSTERY_MONEY.length)];
   }
-  return MYSTERY_ITEMS[Math.floor(Math.random() * MYSTERY_ITEMS.length)];
+  return available[Math.floor(Math.random() * available.length)];
 }
 
 function checkMysteryBoxFriday() {
@@ -19622,7 +19773,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
