@@ -2385,10 +2385,10 @@ function buildBeanBag() {
   dimple.scale.set(1, 0.3, 1);
   dimple.position.set(0, 0.42, 0);
   g.add(dimple);
-  g.position.set(3.5, 0.15, -3.5);
+  g.position.set(1, 0.15, -1);
   scene.add(g);
   furnitureGroups.beanBag = g;
-  interactables.push({ mesh: bag, group: g, type: 'beanBag', label: 'Chill in Bean Bag', need: 'energy', usePos: new THREE.Vector3(2.8, 0.15, -3), floor: 0 });
+  interactables.push({ mesh: bag, group: g, type: 'beanBag', label: 'Chill in Bean Bag', need: 'energy', usePos: new THREE.Vector3(0.3, 0.15, -1), floor: 0 });
   actionConfig.beanBag = { label: 'Chilling...', duration: 4, restore: 35, cost: 0, funBonus: 15 };
 }
 
@@ -2413,6 +2413,8 @@ let foamBalls = [];
 let hasPhoneBook = false;
 let hasGGCartridge = false;
 let hasSparkleHair = false;
+let junkRewardItem = null;
+let junkRewardGroup = null;
 let sneakerColor = null; // null = no sneakers, hex number = wearing sneakers of that color
 let hairSparkles = [];
 let ggPosterGroup = null;
@@ -4396,6 +4398,182 @@ function buildGameConsole() {
   rebuildInteractMeshes();
   gameConsoleGroup = g;
   return g;
+}
+
+// ═══ JUNKUPLOOPS REWARD ITEM ═══
+const JUNK_REWARD_DATA = {
+  'Used Tissue': { color: 0xeeeeee, label: 'Honk Tissue [Q]', geo: 'dodeca',
+    lines: [
+      "HONK! You blew your nose on a $2,000 tissue. Exquisite.",
+      "The tissue barely survived. Neither did your dignity.",
+      "That was the most luxurious nose-blow of your life.",
+      "You honked so loud a Graham clone looked over. Worth it.",
+    ], use: () => { window._screenShake = 0.5; } },
+  'Half-Eaten Sandwich': { color: 0xdaa520, label: 'Eat Sandwich [Q]', geo: 'box',
+    lines: [
+      "You took a bite. The mould has... opinions.",
+      "Mmm, vintage sandwich. Your legs stopped working.",
+      "Your stomach filed a VIOLENT complaint.",
+      "It's somehow both stale AND soggy. Down you go.",
+    ], use: () => { startRagdoll(); } },
+  'Broken Pencil': { color: 0xcccc22, label: 'Scribble [Q]', geo: 'cylinder',
+    lines: [
+      "You drew a wobbly line with both halves. Picasso is quaking.",
+      "Your masterpiece: a dot. It's abstract expressionism.",
+      "The pencil broke more. You now own four pieces of pencil.",
+      "You wrote 'HELP' very shakily. It's modern art.",
+    ], use: () => {
+      // Spawn a scribble line on the ground in front of player
+      const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const pos = character.position.clone().add(fwd.multiplyScalar(1.5));
+      const pts = [];
+      for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3((i - 3.5) * 0.15 + (Math.random() - 0.5) * 0.1, 0.16, (Math.random() - 0.5) * 0.2));
+      const curve = new THREE.CatmullRomCurve3(pts);
+      const geo = new THREE.TubeGeometry(curve, 16, 0.015, 4, false);
+      const scribble = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: 0xcccc22 }));
+      scribble.position.copy(pos); scribble.rotation.y = yaw + (Math.random() - 0.5) * 0.5;
+      scene.add(scribble);
+      setTimeout(() => scene.remove(scribble), 8000);
+    } },
+  'Single Sock': { color: 0x5566aa, label: 'Sock Puppet [Q]', geo: 'cylinder',
+    lines: [
+      "You made a sock puppet. It said 'HELP ME I USED TO BE A PAIR.'",
+      "Mr. Socko demands snacks and a matching partner.",
+      "The sock puppet now has more personality than most NPCs here.",
+      "You did a whole puppet show for nobody. Standing ovation from the furniture.",
+    ], use: () => {
+      // Spawn a sock puppet that bobs in front of player for a few seconds
+      const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+      const pos = character.position.clone().add(fwd.multiplyScalar(1.2));
+      const puppet = new THREE.Group();
+      const sockMat = new THREE.MeshLambertMaterial({ color: 0x5566aa });
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.3, 6), sockMat);
+      puppet.add(body);
+      // Eyes
+      const eyeMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+      const pupilMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+      for (const ex of [-0.03, 0.03]) {
+        const eye = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), eyeMat);
+        eye.position.set(ex, 0.08, 0.06); puppet.add(eye);
+        const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.01, 4, 3), pupilMat);
+        pupil.position.set(ex, 0.08, 0.08); puppet.add(pupil);
+      }
+      // Mouth
+      const mouth = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.015, 0.02), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
+      mouth.position.set(0, 0.01, 0.07); puppet.add(mouth);
+      puppet.position.set(pos.x, pos.y + 1.3, pos.z);
+      puppet.rotation.y = yaw;
+      scene.add(puppet);
+      let t = 0;
+      const bobInterval = setInterval(() => {
+        t += 0.15;
+        puppet.position.y = pos.y + 1.3 + Math.sin(t * 3) * 0.15;
+        puppet.rotation.z = Math.sin(t * 5) * 0.3;
+        if (t > 3) { clearInterval(bobInterval); scene.remove(puppet); }
+      }, 30);
+    } },
+  'Empty Jar': { color: 0xaaccee, label: 'Jar On Head [Q]', geo: 'cylinder',
+    lines: [
+      "You put the jar on your head. It's dark in here.",
+      "Jar-based headwear: bold choice. You can't see anything.",
+      "You hear the ocean. Wait no, that's your own breathing.",
+      "Premium darkness. $3,200 well spent.",
+    ], use: () => {
+      // Screen goes jar-tinted briefly
+      const jarOv = document.createElement('div');
+      jarOv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(120,170,200,0.5);z-index:999;pointer-events:none;border-radius:50%;transition:opacity 0.3s;';
+      document.body.appendChild(jarOv);
+      setTimeout(() => { jarOv.style.opacity = '0'; setTimeout(() => jarOv.remove(), 400); }, 1500);
+    } },
+  'Mystery Lint Ball': { color: 0x999999, label: 'Throw Lint [Q]', geo: 'icosa',
+    lines: [
+      "You threw Gerald. Gerald bounced. Gerald doesn't care.",
+      "The lint ball rolled away. You chased it. This is your life now.",
+      "It's warm and fuzzy. Like a friend. An $8,888 friend.",
+      "You named it Gerald. Gerald doesn't care. Gerald is lint.",
+    ], use: () => {
+      // Throw a bouncing lint ball like foam balls
+      const forward = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
+      const ball = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 1), new THREE.MeshLambertMaterial({ color: 0x999999 }));
+      ball.position.copy(character.position);
+      ball.position.y += 1.2;
+      ball.position.add(forward.clone().multiplyScalar(0.5));
+      ball.userData.vel = forward.clone().multiplyScalar(10);
+      ball.userData.vel.y = 3 + pitch * -4;
+      ball.userData.life = 5;
+      ball.userData.bounces = 0;
+      scene.add(ball);
+      foamBalls.push(ball);
+    } },
+};
+
+function buildJunkReward(itemName) {
+  if (junkRewardGroup) { scene.remove(junkRewardGroup); junkRewardGroup = null; }
+  const data = JUNK_REWARD_DATA[itemName];
+  if (!data) return;
+  const g = new THREE.Group();
+  // Small pedestal
+  const pedMat = new THREE.MeshLambertMaterial({ color: 0x554433 });
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.3, 0.4, 8), pedMat);
+  ped.position.set(0, 0.2, 0);
+  g.add(ped);
+  // The item itself on top
+  const itemMat = new THREE.MeshLambertMaterial({ color: data.color });
+  let itemMesh;
+  if (data.geo === 'dodeca') itemMesh = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15, 0), itemMat);
+  else if (data.geo === 'icosa') itemMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(0.13, 1), itemMat);
+  else if (data.geo === 'cylinder') itemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.25, 6), itemMat);
+  else itemMesh = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.12, 0.2), itemMat);
+  itemMesh.position.set(0, 0.5, 0);
+  itemMesh.rotation.set(0.2, 0.5, 0.1);
+  g.add(itemMesh);
+  // Tiny label
+  const lblCvs = document.createElement('canvas');
+  lblCvs.width = 128; lblCvs.height = 32;
+  const lblCtx = lblCvs.getContext('2d');
+  lblCtx.fillStyle = '#c9a84c'; lblCtx.font = 'bold 11px sans-serif'; lblCtx.textAlign = 'center';
+  lblCtx.fillText(itemName, 64, 20);
+  const lblTex = new THREE.CanvasTexture(lblCvs);
+  const lbl = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.18),
+    new THREE.MeshBasicMaterial({ map: lblTex, transparent: true, side: THREE.DoubleSide }));
+  lbl.position.set(0, 0.75, 0);
+  g.add(lbl);
+  // Place on ground floor — left side near workbench
+  g.position.set(-3, 0.15, -2);
+  scene.add(g);
+  // Register interactable
+  interactables.push({ mesh: ped, group: g, type: 'junkReward', label: data.label, need: null,
+    usePos: new THREE.Vector3(-2, 0.15, -2), floor: 0 });
+  rebuildInteractMeshes();
+  junkRewardGroup = g;
+  junkRewardItem = itemName;
+}
+
+let junkRewardCooldown = 0;
+let ragdollTimer = 0;
+let ragdollSpin = 0;
+let ragdollTumble = 0;
+let ragdollSlide = null;
+
+function startRagdoll() {
+  ragdollTimer = 3.5;
+  ragdollSpin = (Math.random() - 0.5) * 8;
+  ragdollTumble = (Math.random() - 0.5) * 4;
+  const ang = yaw + (Math.random() - 0.5) * 1.5;
+  ragdollSlide = new THREE.Vector3(-Math.sin(ang) * 1.5, 0, -Math.cos(ang) * 1.5);
+}
+
+function useJunkReward() {
+  if (!junkRewardItem) return;
+  if (junkRewardCooldown > 0) return;
+  if (ragdollTimer > 0) return;
+  const data = JUNK_REWARD_DATA[junkRewardItem];
+  if (!data) return;
+  const line = data.lines[Math.floor(Math.random() * data.lines.length)];
+  showTip('[Q] ' + line);
+  if (data.use) data.use();
+  SFX.actionComplete();
+  junkRewardCooldown = 3;
 }
 
 function openGameConsole() {
@@ -11060,46 +11238,89 @@ function buildGrahamDimension() {
 
   interactables.push({ mesh: portalBtn, group: g, type: 'dimPortal', label: 'Return to Town', need: null, usePos: new THREE.Vector3(OX, 0.15, OZ + 49), floor: 0 });
 
-  // === JUNKUPLOOPS STORE (east side) ===
+  // === JUNKUPLOOPS STORE (east side) — janky as possible ===
   const junkX = OX + 45, junkZ = OZ + 25;
-  const junkWallMat = new THREE.MeshLambertMaterial({ color: 0x886644 }); // Brown-ish
-  const junkRoofMat = new THREE.MeshLambertMaterial({ color: 0x665533 });
-  const junkFloorMat = new THREE.MeshLambertMaterial({ color: 0x998866 });
-  // Walls (7 wide x 6 deep x 3 tall, door gap on south face)
-  makeWall(7, 3, 0.2, junkWallMat, junkX, 1.5, junkZ + 3);   // north wall
-  makeWall(0.2, 3, 6, junkWallMat, junkX - 3.5, 1.5, junkZ);  // west wall
-  makeWall(0.2, 3, 6, junkWallMat, junkX + 3.5, 1.5, junkZ);  // east wall
-  makeWall(2.2, 3, 0.2, junkWallMat, junkX - 2.4, 1.5, junkZ - 3); // south-left
-  makeWall(2.2, 3, 0.2, junkWallMat, junkX + 2.4, 1.5, junkZ - 3); // south-right
-  // Lintel above door
-  makeWall(3, 0.4, 0.2, junkWallMat, junkX, 2.8, junkZ - 3);
-  // Roof
-  makeWall(7.4, 0.15, 6.4, junkRoofMat, junkX, 3.05, junkZ);
-  // Floor
+  const junkWallMat = new THREE.MeshLambertMaterial({ color: 0x7a5c3a });
+  const junkWallMat2 = new THREE.MeshLambertMaterial({ color: 0x6e5030 }); // mismatched patches
+  const junkRoofMat = new THREE.MeshLambertMaterial({ color: 0x554428 });
+  const junkFloorMat = new THREE.MeshLambertMaterial({ color: 0x8a7755 });
+  const ductTapeMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+  // Walls — all slightly crooked
+  const nWall = makeWall(7, 3, 0.2, junkWallMat, junkX, 1.5, junkZ + 3);
+  nWall.rotation.z = 0.02; nWall.rotation.y = -0.01;
+  const wWall = makeWall(0.2, 3, 6, junkWallMat2, junkX - 3.5, 1.5, junkZ);
+  wWall.rotation.z = -0.03; wWall.position.y += 0.05;
+  const eWall = makeWall(0.2, 3, 6, junkWallMat, junkX + 3.5, 1.5, junkZ);
+  eWall.rotation.z = 0.04; eWall.position.y -= 0.08;
+  const slWall = makeWall(2.2, 3, 0.2, junkWallMat2, junkX - 2.4, 1.5, junkZ - 3);
+  slWall.rotation.z = 0.025;
+  const srWall = makeWall(2.2, 3, 0.2, junkWallMat, junkX + 2.4, 1.5, junkZ - 3);
+  srWall.rotation.z = -0.02;
+  // Wonky lintel above door — tilted and sagging
+  const lintel = makeWall(3.2, 0.35, 0.2, junkWallMat2, junkX + 0.1, 2.7, junkZ - 3);
+  lintel.rotation.z = -0.08;
+  // Roof — visibly tilted and sagging
+  const roof = makeWall(7.6, 0.15, 6.6, junkRoofMat, junkX - 0.1, 3.1, junkZ + 0.1);
+  roof.rotation.z = 0.06; roof.rotation.x = -0.03;
+  // Duct tape patches on walls
+  const tape1 = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.02), ductTapeMat);
+  tape1.position.set(junkX - 1, 1.8, junkZ + 3.12); tape1.rotation.z = 0.15; g.add(tape1);
+  const tape2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.5), ductTapeMat);
+  tape2.position.set(junkX + 3.52, 2.2, junkZ - 1); tape2.rotation.z = -0.1; g.add(tape2);
+  const tape3 = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.02), ductTapeMat);
+  tape3.position.set(junkX + 1.5, 0.8, junkZ - 3.02); tape3.rotation.z = -0.2; g.add(tape3);
+  // Crack in east wall — dark gap
+  const crack = new THREE.Mesh(new THREE.BoxGeometry(0.03, 1.2, 0.08), new THREE.MeshLambertMaterial({ color: 0x111111 }));
+  crack.position.set(junkX + 3.51, 1.6, junkZ + 1.5); crack.rotation.z = 0.1; g.add(crack);
+  // Floor — slightly uneven
   const junkFloor = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 6), junkFloorMat);
   junkFloor.position.set(junkX, 0.04, junkZ);
+  junkFloor.rotation.x = 0.01; junkFloor.rotation.z = -0.015;
   junkFloor.receiveShadow = true;
   g.add(junkFloor);
-  // Interior light
-  const junkLight = new THREE.PointLight(0xffcc88, 0.5, 10);
-  junkLight.position.set(junkX, 2.5, junkZ);
+  // Interior light — flickering yellow (dimmer, jankier)
+  const junkLight = new THREE.PointLight(0xffcc88, 0.4, 8);
+  junkLight.position.set(junkX, 2.3, junkZ);
   g.add(junkLight);
-  // Sign: "JUNKUPLOOPS" above door
+  // Dangling wire from ceiling to light
+  const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.7, 4),
+    new THREE.MeshLambertMaterial({ color: 0x222222 }));
+  wire.position.set(junkX + 0.15, 2.7, junkZ - 0.1); wire.rotation.z = 0.08; g.add(wire);
+  // Lopsided sign — hanging crooked from one rusty chain
   const junkSignCvs = document.createElement('canvas');
   junkSignCvs.width = 256; junkSignCvs.height = 64;
   const junkSignCtx = junkSignCvs.getContext('2d');
-  junkSignCtx.fillStyle = '#443322'; junkSignCtx.fillRect(0, 0, 256, 64);
-  junkSignCtx.strokeStyle = '#ffcc44'; junkSignCtx.lineWidth = 3; junkSignCtx.strokeRect(2, 2, 252, 60);
-  junkSignCtx.fillStyle = '#ffcc44'; junkSignCtx.font = 'bold 22px sans-serif'; junkSignCtx.textAlign = 'center';
-  junkSignCtx.fillText('JUNKUPLOOPS', 128, 42);
+  // Worn, faded background
+  junkSignCtx.fillStyle = '#3a2a18'; junkSignCtx.fillRect(0, 0, 256, 64);
+  // Scuffed border (patchy)
+  junkSignCtx.strokeStyle = '#bb9933'; junkSignCtx.lineWidth = 2;
+  junkSignCtx.strokeRect(3, 3, 250, 58);
+  junkSignCtx.strokeStyle = '#3a2a18'; junkSignCtx.lineWidth = 4;
+  junkSignCtx.beginPath(); junkSignCtx.moveTo(180, 3); junkSignCtx.lineTo(230, 3); junkSignCtx.stroke(); // chipped border
+  // Wobbly hand-painted text
+  junkSignCtx.fillStyle = '#ddaa33'; junkSignCtx.font = 'bold 20px sans-serif'; junkSignCtx.textAlign = 'center';
+  junkSignCtx.save(); junkSignCtx.translate(128, 38); junkSignCtx.rotate(-0.03);
+  junkSignCtx.fillText('JUNKUPLOOPS', 0, 0);
+  junkSignCtx.restore();
+  // Drip stain under the U
+  junkSignCtx.fillStyle = '#bb993366'; junkSignCtx.fillRect(88, 42, 4, 18);
   const junkSignTex = new THREE.CanvasTexture(junkSignCvs);
-  const junkSign = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.05),
-    new THREE.MeshLambertMaterial({ map: junkSignTex, emissive: 0x443311, emissiveIntensity: 0.3 }));
-  junkSign.position.set(junkX, 2.5, junkZ - 3.12);
+  const junkSign = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.65, 0.06),
+    new THREE.MeshLambertMaterial({ map: junkSignTex, emissive: 0x332211, emissiveIntensity: 0.2 }));
+  junkSign.position.set(junkX + 0.3, 2.6, junkZ - 3.15);
+  junkSign.rotation.z = -0.18; // heavily lopsided
   g.add(junkSign);
-  // Door light
-  const junkDoorLight = new THREE.PointLight(0xffaa44, 0.4, 8);
-  junkDoorLight.position.set(junkX, 2.8, junkZ - 3.3);
+  // Rusty chain holding the high end
+  const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.5, 4),
+    new THREE.MeshLambertMaterial({ color: 0x884422 }));
+  chain.position.set(junkX + 1.4, 2.95, junkZ - 3.13); chain.rotation.z = 0.1; g.add(chain);
+  // Broken chain on the low end (dangling)
+  const chainBroken = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.25, 4),
+    new THREE.MeshLambertMaterial({ color: 0x884422 }));
+  chainBroken.position.set(junkX - 0.8, 2.35, junkZ - 3.13); chainBroken.rotation.z = 0.4; g.add(chainBroken);
+  // Door light — dim, slightly off-center
+  const junkDoorLight = new THREE.PointLight(0xffaa44, 0.3, 6);
+  junkDoorLight.position.set(junkX + 0.3, 2.6, junkZ - 3.3);
   g.add(junkDoorLight);
   // Collision walls
   GRAHAM_DIM_COLLISIONS.push(
@@ -11183,10 +11404,17 @@ function buildGrahamDimension() {
       new THREE.MeshBasicMaterial({ map: tagTex, transparent: true, side: THREE.DoubleSide }));
     tag.position.set(junkX + item.x, 0.7, junkZ + item.z + 0.28);
     g.add(tag);
+    // Register shelf as interactable for Bodhi's quest
+    shelf.userData = { type: 'junkShelf', junkItemName: item.name };
+    interactables.push({
+      mesh: shelf, group: g, type: 'junkShelf',
+      label: item.name, need: null,
+      usePos: new THREE.Vector3(junkX + item.x, 0.15, junkZ + item.z - 0.8), floor: 0
+    });
   });
 
-  // Bodhi NPC — brown hair, goofy outfit (Pink Pop = outfit 6)
-  const bodhiOpts = { skinTone: 1, gender: 'male', hairStyle: 'curly', hairColor: 1, outfit: 6, accessory: 1, dress: -1 };
+  // Bodhi NPC — brown hair, Goofy Getup outfit
+  const bodhiOpts = { skinTone: 1, gender: 'male', hairStyle: 'curly', hairColor: 1, outfit: GOOFY_IDX, accessory: 1, dress: -1 };
   const bodhi = buildCharacter(bodhiOpts);
   bodhi.position.set(junkX, 0.15, junkZ + 2);
   bodhi.rotation.y = Math.PI; // Face south toward door
@@ -12256,7 +12484,28 @@ function openNPCDialogue(npcId) {
   // === BODHI — Junkuploops store owner ===
   if (npcId === 'bodhi') {
     nameEl.textContent = 'Bodhi';
-    const bodhiSayLines = [
+    const bq = questLog.bodhi_purchase;
+    // Quest turn-in: bought something, collect reward
+    if (bq && bq.status === 'active' && bq.itemBought) {
+      textEl.textContent = "YOU BOUGHT THE " + bq.itemBought.toUpperCase() + "!! MY FIRST SALE!! I'm literally crying right now. This is the greatest day of my life. Here — take it home! It's yours forever. You EARNED it. Also here's some cash because I'm emotional.";
+      addDialogueBtn(btnsEl, 'Take It Home (+$100, +fun)', 'npc-btn-accept', () => {
+        questLog.bodhi_purchase.status = 'completed';
+        money += 100;
+        needs.fun = Math.min(100, needs.fun + 30);
+        if (!gdTasksDone['bodhi_purchase']) {
+          gdTasksDone['bodhi_purchase'] = true;
+          grahamDimQuestsCompleted++;
+        }
+        checkGrahamMaster();
+        buildJunkReward(bq.itemBought);
+        SFX.kaChing();
+        showTip('Quest complete! ' + bq.itemBought + ' placed in your house!');
+        closeNPCDialogue();
+      });
+      overlay.classList.add('visible');
+      return;
+    }
+    const preQuestLines = [
       { say: "What even IS this stuff?", respond: "Art, my friend. You're looking at ART. The used tissue alone took me 3 years to curate. Well, to use. Same thing." },
       { say: "Why is everything so expensive?", respond: "Expensive?! These are BARGAINS. You won't find a lint ball this premium anywhere else in ANY dimension." },
       { say: "Has anyone actually bought anything here?", respond: "Define 'bought'. A Graham clone once looked at the jar for 40 minutes. I'm counting that as engagement." },
@@ -12270,9 +12519,39 @@ function openNPCDialogue(npcId) {
       { say: "I love what you've done with the place.", respond: "THANK YOU! Finally someone gets it. The Graham clones just stare at me and walk away. Rude honestly." },
       { say: "Do you actually live here?", respond: "Live here? I AM here. I'm basically furniture at this point. The shelves and I are one. We share a bond." },
     ];
+    const postQuestLines = [
+      { say: "What even IS this stuff?", respond: "Art, my friend. You're looking at ART. The used tissue alone took me 3 years to curate. Well, to use. Same thing." },
+      { say: "Why is everything so expensive?", respond: "Expensive?! These are BARGAINS. You won't find a lint ball this premium anywhere else in ANY dimension." },
+      { say: "Has anyone actually bought anything here?", respond: "YOU have! You're my number one customer. Well, my ONLY customer. Same thing. I framed your receipt." },
+      { say: "Is that sandwich safe to eat?", respond: "Safe? SAFE?! That's a $5,500 artisanal relic! It's been aging since last Tuesday. The mould adds character." },
+      { say: "Why is it called Junkuploops?", respond: "Because 'Overpriced Garbage Emporium' didn't fit on the sign. Also my mum picked the name. She's very supportive." },
+      { say: "Are you actually making money?", respond: "I made $50 last quarter! Thanks to YOU! My accountant — who is also me — is thrilled." },
+      { say: "That's literally just a sock.", respond: "A SINGLE sock. Do you know how hard it is to lose just ONE? That's $750 worth of dedication right there." },
+      { say: "I think I could find this stuff in a bin.", respond: "Yeah but would it come with a PRICE TAG? I don't think so. Presentation is everything, mate." },
+      { say: "You seem oddly proud of all this.", respond: "I once cried looking at the broken pencil. Not because it's beautiful. Because I stepped on it. But STILL." },
+      { say: "What's the return policy?", respond: "All sales are final. You already knew that. You're part of the Junkuploops family now. No takebacks." },
+      { say: "I love what you've done with the place.", respond: "THANK YOU! Finally someone gets it. The Graham clones just stare at me and walk away. Rude honestly." },
+      { say: "Do you actually live here?", respond: "Live here? I AM here. I'm basically furniture at this point. The shelves and I are one. We share a bond." },
+    ];
+    const done = bq && bq.status === 'completed';
+    const bodhiSayLines = done ? postQuestLines : preQuestLines;
     function showBodhiOptions() {
-      textEl.textContent = "Welcome to JUNKUPLOOPS! Premium pre-owned treasures at unbeatable* prices! *compared to a Ferrari dealership.";
+      if (done) {
+        textEl.textContent = "Welcome back to JUNKUPLOOPS! My favourite customer! ...my ONLY customer. But still!";
+      } else if (bq && bq.status === 'active') {
+        textEl.textContent = "Go on! Pick something from the shelves! Everything's $50! My mum said I'd never make a sale and I need to prove her wrong.";
+      } else {
+        textEl.textContent = "Welcome to JUNKUPLOOPS! Premium pre-owned treasures at unbeatable* prices! *compared to a Ferrari dealership.";
+      }
       btnsEl.innerHTML = '';
+      // Quest offer button (not yet accepted)
+      if (!bq) {
+        addDialogueBtn(btnsEl, "Buy something ($50 each — First Customer discount!)", 'npc-btn-accept', () => {
+          questLog.bodhi_purchase = { status: 'active' };
+          showTip('Quest accepted: First Sale — Buy something from the shelves!');
+          closeNPCDialogue();
+        });
+      }
       const shuffled = bodhiSayLines.slice().sort(() => Math.random() - 0.5);
       const picks = shuffled.slice(0, 3);
       picks.forEach(line => {
@@ -17554,11 +17833,12 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.code === 'Space') {
     e.preventDefault();
-    if (gameStarted && !gameOver && jumpOffset === 0 && !currentAction) {
+    if (gameStarted && !gameOver && jumpOffset === 0 && !currentAction && ragdollTimer <= 0) {
       jumpVel = JUMP_SPEED;
     }
   }
   if (e.code === 'KeyE' && gameStarted && !gameOver && !currentAction) firefoamBall();
+  if (e.code === 'KeyQ' && gameStarted && !gameOver && !currentAction) useJunkReward();
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
   // R key mystery box cheat removed
   if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
@@ -17760,6 +18040,75 @@ function startAction(obj) {
   // Clone Arena — picker for watch or perform
   if (obj.type === 'cloneArena') {
     openCloneArena();
+    return;
+  }
+
+  // Junkuploops reward item — toy use
+  if (obj.type === 'junkReward') {
+    if (ragdollTimer > 0 || junkRewardCooldown > 0) return;
+    const data = JUNK_REWARD_DATA[junkRewardItem];
+    if (data) {
+      const line = data.lines[Math.floor(Math.random() * data.lines.length)];
+      showTip(line);
+      if (data.use) data.use();
+      SFX.actionComplete();
+      junkRewardCooldown = 3;
+    }
+    return;
+  }
+
+  // Junkuploops shelf item — purchase ($50 bargain, always available after quest accepted)
+  if (obj.type === 'junkShelf') {
+    const bq = questLog.bodhi_purchase;
+    if (!bq) {
+      showTip("Talk to Bodhi first!");
+      return;
+    }
+    if (bq.status === 'active' && bq.itemBought) {
+      showTip("Go talk to Bodhi about your purchase!");
+      return;
+    }
+    if (npcDialogueOpen || jobMiniGameRunning) return;
+    npcDialogueOpen = true;
+    if (document.pointerLockElement) document.exitPointerLock();
+    const rawName = obj.mesh.userData.junkItemName || 'Mystery Item';
+    const cleanName = rawName.replace(/^\$[\d,]+ /, '');
+    const price = 50;
+    const isSwap = bq.status === 'completed' && junkRewardItem && junkRewardItem !== cleanName;
+    const overlay = document.getElementById('npc-dialogue-overlay');
+    const nameEl = document.getElementById('npc-dialogue-name');
+    const textEl = document.getElementById('npc-dialogue-text');
+    const btnsEl = document.getElementById('npc-dialogue-btns');
+    btnsEl.innerHTML = '';
+    nameEl.textContent = 'Junkuploops';
+    if (junkRewardItem === cleanName) {
+      textEl.textContent = "You already own the " + cleanName + "! It's at home being treasured.";
+      addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    } else {
+      textEl.textContent = 'Buy "' + cleanName + '" for $' + price + '?' + (isSwap ? ' (Replaces your ' + junkRewardItem + ' at home)' : ' (First Customer discount — was ' + rawName.split(' ')[0] + '!)');
+      if (money >= price) {
+        addDialogueBtn(btnsEl, 'Buy for $' + price, 'npc-btn-accept', () => {
+          money -= price;
+          SFX.kaChing();
+          if (bq.status === 'active') {
+            questLog.bodhi_purchase.itemBought = cleanName;
+            showTip('You bought: ' + cleanName + '! Talk to Bodhi.');
+          } else {
+            buildJunkReward(cleanName);
+            showTip('You bought: ' + cleanName + '! Placed at home.');
+          }
+          closeNPCDialogue();
+        });
+      } else {
+        const noBtn = document.createElement('button');
+        noBtn.textContent = '$' + price + ' — Not enough money';
+        noBtn.className = 'npc-btn-close';
+        noBtn.style.cssText = 'display:block;width:100%;padding:8px;margin:4px 0;border:none;border-radius:6px;font-size:0.9rem;cursor:default;background:#444;color:#aaa;';
+        btnsEl.appendChild(noBtn);
+      }
+      addDialogueBtn(btnsEl, 'No thanks', 'npc-btn-close', closeNPCDialogue);
+    }
+    overlay.classList.add('visible');
     return;
   }
 
@@ -19752,6 +20101,21 @@ function update() {
       character.position.add(dir.multiplyScalar(curSpeed * dt));
       updatePlayerY();
     }
+  } else if (ragdollTimer > 0) {
+    // Ragdoll — player tumbles, no control
+    ragdollTimer -= dt;
+    if (ragdollSlide) {
+      const slide = ragdollSlide.clone().multiplyScalar(dt * Math.max(0, ragdollTimer / 3.5));
+      character.position.add(slide);
+    }
+    yaw += ragdollSpin * dt;
+    ragdollSpin *= 0.97;
+    if (ragdollTimer <= 0) {
+      ragdollTimer = 0;
+      ragdollSlide = null;
+      pitch = 0;
+      showTip("You got back up. Somehow.");
+    }
   } else if (!currentAction || currentAction.phase !== 'doing') {
     // WASD movement
     const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
@@ -19955,10 +20319,28 @@ function update() {
   }
 
   // First-person camera
-  const bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) ? Math.sin(walkAnim) * 0.04 : 0;
+  let bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) ? Math.sin(walkAnim) * 0.04 : 0;
+  let shakeX = 0, shakeY = 0;
+  // Screen shake (tissue honk etc)
+  if (window._screenShake > 0) {
+    window._screenShake -= dt;
+    const intensity = window._screenShake * 0.15;
+    shakeX = (Math.random() - 0.5) * intensity;
+    shakeY = (Math.random() - 0.5) * intensity;
+  }
+  // Ragdoll camera tumble
+  let ragdollDrop = 0;
+  let ragdollRoll = 0;
+  if (ragdollTimer > 0) {
+    ragdollDrop = (3.5 - ragdollTimer) * 0.3; // camera drops toward ground
+    ragdollDrop = Math.min(ragdollDrop, 0.8);
+    ragdollRoll = Math.sin(ragdollTimer * 6) * 0.4;
+    pitch = Math.sin(ragdollTimer * 4) * 0.3 - 0.4; // looking down while tumbling
+    bobY = 0;
+  }
   camera.position.set(
-    character.position.x,
-    character.position.y + EYE_HEIGHT + bobY + jumpOffset,
+    character.position.x + shakeX,
+    character.position.y + EYE_HEIGHT + bobY + jumpOffset - ragdollDrop + shakeY,
     character.position.z
   );
   // Look direction from yaw/pitch
@@ -19967,6 +20349,12 @@ function update() {
     Math.sin(pitch),
     -Math.cos(yaw) * Math.cos(pitch)
   );
+  // Apply ragdoll roll to camera
+  if (ragdollTimer > 0) {
+    camera.up.set(Math.sin(ragdollRoll), Math.cos(ragdollRoll), 0);
+  } else {
+    camera.up.set(0, 1, 0);
+  }
   camera.lookAt(camera.position.clone().add(lookDir));
 
   // Crosshair raycast
@@ -19974,6 +20362,7 @@ function update() {
 
   // Foam balls
   if (foamBalls.length) updateFoamBalls(dt);
+  if (junkRewardCooldown > 0) junkRewardCooldown -= dt;
 
   // Pepper sabotage mission
   if (pepperMissionActive) updatePepperMission(dt);
@@ -20264,6 +20653,11 @@ function restartGame() {
     }
   }
   phoneOrders = [];
+  if (junkRewardGroup) { scene.remove(junkRewardGroup); junkRewardGroup = null; }
+  junkRewardItem = null;
+  for (let i = interactables.length - 1; i >= 0; i--) {
+    if (interactables[i].type === 'junkReward') interactables.splice(i, 1);
+  }
   // Reset town/car state
   if (carGroup) { scene.remove(carGroup); carGroup = null; }
   if (townGroup) { scene.remove(townGroup); townGroup = null; }
@@ -20309,7 +20703,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster' || t === 'junkShelf') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
@@ -20434,6 +20828,7 @@ function buildSaveData() {
     hasSparkleHair,
     sneakerColor,
     phoneOrders: [...phoneOrders],
+    junkRewardItem,
     inGrahamDimension,
     grahamDimQuestsCompleted,
     gdTasksDone: { ...gdTasksDone },
@@ -20578,6 +20973,7 @@ function loadSlot(index) {
       phoneOrders = [...save.phoneOrders];
       phoneOrders.forEach(itemId => buildPhoneItem(itemId));
     }
+    if (save.junkRewardItem) buildJunkReward(save.junkRewardItem);
   }
   currentFloor = save.currentFloor;
 
