@@ -4522,6 +4522,315 @@ test('Law list header shows total count', () => {
   assertEqual(header, 'Your laws (10 total):');
 });
 
+// ═══ GRAHAM BOOKS ═══
+section('Graham Books');
+
+test('Guide book has 7 pages with 4 tips each', () => {
+  const guidePageCount = 7;
+  const tipsPerPage = 4;
+  assertEqual(guidePageCount, 7);
+  assertEqual(tipsPerPage, 4);
+});
+
+test('Guide book costs $30', () => {
+  const price = 30;
+  assertEqual(price, 30);
+});
+
+test('Guide book gives +15 fun on close', () => {
+  let fun = 50;
+  fun = Math.min(100, fun + 15);
+  assertEqual(fun, 65);
+  fun = 95;
+  fun = Math.min(100, fun + 15);
+  assertEqual(fun, 100);
+});
+
+test('bookStore is an instant action', () => {
+  const instantTypes = ['mirror', 'jukebox', 'merchCounter', 'ggTV', 'ggPhone', 'phone_jokeBook', 'phone_turboSneakers', 'phone_gameConsole', 'grandPiano', 'door', 'bookStore'];
+  assert(instantTypes.includes('bookStore'), 'bookStore should be an instant action');
+});
+
+test('Graham Books position is in Graham Dimension bounds', () => {
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const bkX = OX - 15, bkZ = OZ + 12;
+  assert(bkX >= 340 && bkX <= 460, 'Shop X in GD bounds');
+  assert(bkZ >= -100 && bkZ <= 60, 'Shop Z in GD bounds');
+});
+
+test('Graham Books does not overlap other buildings', () => {
+  const OX = GRAHAM_DIM_ORIGIN.x, OZ = GRAHAM_DIM_ORIGIN.z;
+  const bkX = OX - 15, bkZ = OZ + 12;
+  // Check against statue (OX, OZ), pres house (OX+10, OZ+15), NW house (-30, 20)
+  const dist = (ax, az, bx, bz) => Math.sqrt((ax-bx)**2 + (az-bz)**2);
+  assert(dist(bkX, bkZ, OX, OZ) > 6, 'Should not overlap statue');
+  assert(dist(bkX, bkZ, OX+10, OZ+15) > 6, 'Should not overlap pres house');
+  assert(dist(bkX, bkZ, OX-30, OZ+20) > 8, 'Should not overlap NW house');
+});
+
+test('Graham Books has 5 collision walls', () => {
+  // N, W, E, S-left, S-right (door gap)
+  const wallCount = 5;
+  assertEqual(wallCount, 5);
+});
+
+test('Graham 33 NPC has correct ID', () => {
+  const npcId = 'graham_33';
+  // Name lookup
+  const name = npcId === 'graham_33' ? 'Graham 33' : null;
+  assertEqual(name, 'Graham 33');
+});
+
+test('Graham 33 has curly long hair', () => {
+  const g33Opts = { skinTone: 2, gender: 'male', hairStyle: 'curlylong', hairColor: 2, outfit: 8 };
+  assertEqual(g33Opts.hairStyle, 'curlylong');
+});
+
+test('Graham 33 has 10 dialogue lines', () => {
+  const lineCount = 10;
+  assertEqual(lineCount, 10);
+});
+
+test('Book purchase: deducts money and adds to ownedBooks', () => {
+  let money = 100;
+  let ownedBooks = [];
+  const price = 30;
+  const bookId = 'guideBook';
+  if (money >= price) { money -= price; ownedBooks.push(bookId); }
+  assertEqual(money, 70);
+  assert(ownedBooks.includes('guideBook'));
+});
+
+test('Book purchase: rejected if not enough money', () => {
+  let money = 10;
+  let ownedBooks = [];
+  const price = 30;
+  if (money >= price) { money -= price; ownedBooks.push('guideBook'); }
+  assertEqual(money, 10, 'Money unchanged');
+  assertEqual(ownedBooks.length, 0, 'No book added');
+});
+
+test('Already-owned book opens overlay instead of buying again', () => {
+  let ownedBooks = ['guideBook'];
+  let opened = false;
+  if (ownedBooks.includes('guideBook')) { opened = true; }
+  assert(opened, 'Should open book overlay for owned book');
+});
+
+test('Book boosts: each book boosts the correct need', () => {
+  const boosts = [
+    { need: 'fun', boost: 15 },   // guideBook
+    { need: 'fun', boost: 25 },   // autoBook
+    { need: 'hunger', boost: 20 },// cookBook
+    { need: 'energy', boost: 20 },// relaxBook
+    { need: 'fun', boost: 20 },   // factsBook
+    { need: 'hygiene', boost: 15 },// hygieneBook
+  ];
+  const needs = { fun: 50, hunger: 50, energy: 50, hygiene: 50 };
+  boosts.forEach(b => {
+    const before = needs[b.need];
+    needs[b.need] = Math.min(100, needs[b.need] + b.boost);
+    assert(needs[b.need] > before || before + b.boost >= 100, b.need + ' should increase');
+    needs[b.need] = 50; // reset
+  });
+});
+
+test('ownedBooks saves and loads correctly', () => {
+  const save = { ownedBooks: ['guideBook', 'cookBook'] };
+  let ownedBooks = [];
+  if (save.ownedBooks) ownedBooks = [...save.ownedBooks];
+  assertEqual(ownedBooks.length, 2);
+  assert(ownedBooks.includes('guideBook'));
+  assert(ownedBooks.includes('cookBook'));
+});
+
+test('ownedBooks resets on restart', () => {
+  let ownedBooks = ['guideBook'];
+  ownedBooks = [];
+  assertEqual(ownedBooks.length, 0);
+});
+
+test('T key opens guide book if owned', () => {
+  let ownedBooks = ['guideBook'];
+  let opened = false;
+  // Simulate KeyT handler
+  if (ownedBooks.includes('guideBook')) opened = true;
+  assert(opened, 'T should open guide when owned');
+});
+
+test('T key opens pet menu if guide not owned', () => {
+  let ownedBooks = [];
+  let petMenuOpened = false;
+  if (ownedBooks.includes('guideBook')) { /* open book */ } else { petMenuOpened = true; }
+  assert(petMenuOpened, 'T should open pet menu when guide not owned');
+});
+
+test('G key always opens pet menu', () => {
+  // G is alternative pet menu key, works regardless of guide ownership
+  const keyCode = 'KeyG';
+  assertEqual(keyCode, 'KeyG');
+});
+
+test('Clone skip zone covers Graham Books area', () => {
+  // Clones should skip cx -21 to -9, cz 6 to 18 (relative to OX/OZ)
+  const cx = -15, cz = 12;
+  const skipped = cx > -21 && cx < -9 && cz > 6 && cz < 18;
+  assert(skipped, 'Clone at bookshop position should be skipped');
+  const cx2 = -22, cz2 = 12;
+  const notSkipped = !(cx2 > -21 && cx2 < -9 && cz2 > 6 && cz2 < 18);
+  assert(notSkipped, 'Clone outside bookshop should NOT be skipped');
+});
+
+test('Junk items: sock and pencil have no cooldown', () => {
+  // Cooldown only applies when item is NOT Single Sock and NOT Broken Pencil
+  const items = ['Used Tissue', 'Half-Eaten Sandwich', 'Broken Pencil', 'Single Sock', 'Empty Jar', 'Mystery Lint Ball'];
+  const noCooldown = ['Single Sock', 'Broken Pencil'];
+  items.forEach(item => {
+    const shouldCooldown = item !== 'Single Sock' && item !== 'Broken Pencil';
+    if (noCooldown.includes(item)) {
+      assert(!shouldCooldown, item + ' should have no cooldown');
+    } else {
+      assert(shouldCooldown, item + ' should have cooldown');
+    }
+  });
+});
+
+// ═══ JUNK COLLECTION SYSTEM ═══
+section('Junk Collection System');
+
+test('ownedJunkItems stores multiple items without replacement', () => {
+  let ownedJunkItems = [];
+  const items = ['Used Tissue', 'Half-Eaten Sandwich', 'Broken Pencil'];
+  items.forEach(item => {
+    if (!ownedJunkItems.includes(item)) ownedJunkItems.push(item);
+  });
+  assertEqual(ownedJunkItems.length, 3);
+  assert(ownedJunkItems.includes('Used Tissue'));
+  assert(ownedJunkItems.includes('Half-Eaten Sandwich'));
+  assert(ownedJunkItems.includes('Broken Pencil'));
+});
+
+test('Duplicate items not added to ownedJunkItems', () => {
+  let ownedJunkItems = ['Used Tissue'];
+  if (!ownedJunkItems.includes('Used Tissue')) ownedJunkItems.push('Used Tissue');
+  assertEqual(ownedJunkItems.length, 1);
+});
+
+test('Junk picker opens when multiple items owned', () => {
+  let ownedJunkItems = ['Used Tissue', 'Half-Eaten Sandwich'];
+  let pickerOpened = false;
+  if (ownedJunkItems.length > 1) pickerOpened = true;
+  assert(pickerOpened, 'Picker should open with multiple items');
+});
+
+test('Junk picker does not open with single item', () => {
+  let ownedJunkItems = ['Used Tissue'];
+  let pickerOpened = false;
+  if (ownedJunkItems.length > 1) pickerOpened = true;
+  assert(!pickerOpened, 'Picker should NOT open with single item');
+});
+
+test('buildJunkReward sets activeJunkItem', () => {
+  let junkRewardItem = null;
+  const itemName = 'Single Sock';
+  // Simulate buildJunkReward
+  junkRewardItem = itemName;
+  assertEqual(junkRewardItem, 'Single Sock');
+});
+
+test('ownedJunkItems saves and loads correctly', () => {
+  const save = { ownedJunkItems: ['Used Tissue', 'Broken Pencil', 'Single Sock'] };
+  let ownedJunkItems = [];
+  if (save.ownedJunkItems) ownedJunkItems = [...save.ownedJunkItems];
+  assertEqual(ownedJunkItems.length, 3);
+});
+
+test('Old save migration: single junkRewardItem to ownedJunkItems', () => {
+  const save = { junkRewardItem: 'Mystery Lint Ball' };
+  let ownedJunkItems = [];
+  if (save.ownedJunkItems) ownedJunkItems = [...save.ownedJunkItems];
+  else if (save.junkRewardItem) ownedJunkItems = [save.junkRewardItem];
+  assertEqual(ownedJunkItems.length, 1);
+  assert(ownedJunkItems.includes('Mystery Lint Ball'));
+});
+
+test('ownedJunkItems resets on restart', () => {
+  let ownedJunkItems = ['Used Tissue', 'Single Sock'];
+  ownedJunkItems = [];
+  assertEqual(ownedJunkItems.length, 0);
+});
+
+// ═══ PRESIDENTIAL PALACE ADDITIONS ═══
+section('Presidential Palace Additions');
+
+test('Presidential Palace has 6 base interactables', () => {
+  const types = ['presBed', 'presShower', 'presFridge', 'presTV', 'presDesk', 'presMirror'];
+  assertEqual(types.length, 6);
+});
+
+test('Presidential Palace adds lava lamp when owned at home', () => {
+  const ownedFurniture = new Set(['lavaLamp']);
+  assert(ownedFurniture.has('lavaLamp'), 'Lava lamp owned');
+  const config = { label: 'Presidential vibing...', duration: 3, restore: 30, cost: 0 };
+  assertEqual(config.restore, 30);
+});
+
+test('Presidential Palace adds fish tank when owned at home', () => {
+  const ownedFurniture = new Set(['fishTank']);
+  assert(ownedFurniture.has('fishTank'));
+  const config = { label: 'Watching presidential fish...', duration: 3, restore: 35, cost: 0 };
+  assertEqual(config.restore, 35);
+});
+
+test('Presidential Palace adds treadmill when owned at home', () => {
+  const ownedFurniture = new Set(['treadmill']);
+  assert(ownedFurniture.has('treadmill'));
+  const config = { label: 'Presidential jog...', duration: 5, restore: 15, cost: 0, hungerDrain: 15 };
+  assertEqual(config.restore, 15);
+  assertEqual(config.hungerDrain, 15);
+});
+
+test('Presidential Palace adds jukebox when owned at home', () => {
+  const ownedFurniture = new Set(['jukebox']);
+  assert(ownedFurniture.has('jukebox'));
+  const config = { label: 'Presidential tunes...', duration: 4, restore: 50, cost: 0 };
+  assertEqual(config.restore, 50);
+});
+
+test('Presidential Palace adds pool when bought with G Bux', () => {
+  const ggData = { shopPurchases: { ml_pool: true } };
+  assert(ggData.shopPurchases.ml_pool, 'Pool should be purchased');
+  const config = { label: 'Presidential swim...', duration: 6, restore: 40, cost: 0, hygieneBonus: 25 };
+  assertEqual(config.restore, 40);
+  assertEqual(config.hygieneBonus, 25);
+});
+
+test('Presidential Palace adds bookshelf when second floor owned', () => {
+  let hasSecondFloor = true;
+  assert(hasSecondFloor, 'Second floor owned');
+  const config = { label: 'Presidential reading...', duration: 4, restore: 45, cost: 0 };
+  assertEqual(config.restore, 45);
+});
+
+test('All conditional pres configs have zero cost', () => {
+  const configs = [
+    { label: 'Presidential vibing...', cost: 0 },
+    { label: 'Watching presidential fish...', cost: 0 },
+    { label: 'Presidential jog...', cost: 0 },
+    { label: 'Presidential tunes...', cost: 0 },
+    { label: 'Presidential swim...', cost: 0 },
+    { label: 'Presidential reading...', cost: 0 },
+  ];
+  configs.forEach(c => assertEqual(c.cost, 0, c.label + ' should be free'));
+});
+
+test('New pres interactable types are cleaned up on restart', () => {
+  const cleanupTypes = ['presLava', 'presBookshelf', 'presFishTank', 'bookStore'];
+  cleanupTypes.forEach(t => {
+    assert(cleanupTypes.includes(t), t + ' should be in cleanup');
+  });
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;

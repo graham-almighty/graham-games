@@ -2414,6 +2414,8 @@ let hasPhoneBook = false;
 let hasGGCartridge = false;
 let hasSparkleHair = false;
 let junkRewardItem = null;
+let ownedJunkItems = [];
+let ownedBooks = [];
 let junkRewardGroup = null;
 let sneakerColor = null; // null = no sneakers, hex number = wearing sneakers of that color
 let hairSparkles = [];
@@ -4125,6 +4127,268 @@ function openJokeBook() {
   showJoke();
 }
 
+const GRAHAM_BOOKS_DATA = [
+  { id: 'guideBook', name: 'Mini Life Guide', price: 30, need: 'fun', boost: 15, color: '#c9a84c', author: 'Graham (the real one)', pages: [
+    { title: 'Welcome', tips: [
+      "Welcome to Mini Life! This guide was written by Graham himself. You're welcome.",
+      "Your goal: keep your needs up, earn money, buy stuff, and explore everything.",
+      "If all your needs hit zero... well, let's just say the game is very disappointed in you.",
+      "Press P to open the shop. Press I for your inventory. Press M for the map. Just kidding, there's no map.",
+    ]},
+    { title: 'Needs & Survival', tips: [
+      "You have 4 needs: Hunger, Energy, Fun, and Hygiene. They all drain over time.",
+      "Eat at the fridge ($5), shower ($2), sleep in bed (free!), watch TV for fun.",
+      "If a need drops below 20% your character starts to slow down and look miserable.",
+      "Pro tip: the mansion kitchen is FREE food. Get that mansion ASAP.",
+    ]},
+    { title: 'Making Money', tips: [
+      "Computer: $10 + minigame bonus. Workbench: $25 flat. Art easel at mansion: $15.",
+      "Town jobs pay $12-$35 per shift depending on the job and your score.",
+      "Complete quests for big payouts — Town Spirit from the Mayor pays $150!",
+      "Graham Dimension jobs pay well too. Pepper Sabotage is $25 + bonus.",
+    ]},
+    { title: 'Locations', tips: [
+      "HOME — Where you start. Buy the second floor, basement, and pool to expand.",
+      "TOWN — Drive there with your car. Shops, gym, library, arcade, jobs, basketball, and more.",
+      "MANSION — $500 to buy. Free kitchen, spa, hot tub, art studio, home theater. Worth every penny.",
+      "GRAHAM DIMENSION — Find the big red button in Graham's House in town. Good luck.",
+    ]},
+    { title: 'Town Tips', tips: [
+      "Talk to EVERY NPC — they give quests and jobs. Some have daily cooldowns.",
+      "The Merch Store sells the GG outfit, a pet beaver, a poster, and a TV. All great buys.",
+      "The basketball court has TWO activities: basketball AND cheerleading.",
+      "Sergeant Briggs at the army fort unlocks military missions after 5 training sessions.",
+    ]},
+    { title: 'Secrets', tips: [
+      "Buy the GG TV and dial random phone numbers. You might find something useful.",
+      "The Mega Blaster lets you shoot foam balls with E. It's not useful. It IS fun.",
+      "Sparkle Shampoo gives you permanent sparkles above your head. Fashion.",
+      "The Joke Book has 20 jokes. They're all terrible. You're welcome.",
+    ]},
+    { title: 'Graham Dimension', tips: [
+      "There are 3 Boss Grahams with jobs and a quest. Complete any 3 tasks for an achievement.",
+      "Graham Industries has an interview quiz — you need 3/5 to pass. 'LOL Dolls' is a correct answer.",
+      "Bodhi's Junkuploops sells very expensive junk. The sandwich makes you ragdoll. Worth it.",
+      "Run for president! Talk to the right people and you might end up running the whole dimension.",
+    ]},
+  ]},
+  { id: 'autoBook', name: "Graham's Autobiography", price: 40, need: 'fun', boost: 25, color: '#cc2222', author: 'Graham', pages: [
+    { title: 'Chapter 1: The Beginning', tips: [
+      "I was born already incredible. The doctors were SHOOK.",
+      "By age 2, I had learned to walk. Most babies take like a year. I'm built different.",
+      "My first word was 'Graham'. My parents said it was 'mama' but they misheard.",
+      "I once ate an entire birthday cake. It wasn't my birthday. Nobody minded. Probably.",
+    ]},
+    { title: 'Chapter 2: Rise to Greatness', tips: [
+      "I started Graham Games from my bedroom. The commute was incredible.",
+      "My first game got 3 downloads. All me. Testing is important.",
+      "People said I couldn't build a whole dimension. I built one and filled it with clones of myself.",
+      "The secret to success? Being Graham. It's honestly that simple.",
+    ]},
+    { title: 'Chapter 3: The Clone Era', tips: [
+      "I made 32 clones. Some people have pets. I have AN ARMY of myself.",
+      "Clone #7 once tried to start a union. I gave him a promotion. Problem solved.",
+      "The clones say I'm the best boss. I wrote their dialogue so they have to.",
+      "Running an entire dimension is hard. That's why I hired clones of myself to help. Genius.",
+    ]},
+    { title: 'Chapter 4: Legacy', tips: [
+      "My statue is 3x scale. I wanted 10x but the budget said no.",
+      "Graham Books was Clone 33's idea. I take full credit.",
+      "If you're reading this, you already have excellent taste.",
+      "This autobiography will be studied in schools one day. Graham schools. That I built.",
+    ]},
+  ]},
+  { id: 'cookBook', name: 'Clone Cookbook', price: 25, need: 'hunger', boost: 20, color: '#22aa44', author: 'Graham Clone #14', pages: [
+    { title: 'Breakfast', tips: [
+      "GRAHAM TOAST: Toast bread. Put Graham's face on it with a marker. Delicious.",
+      "CLONE CEREAL: Pour cereal. Add milk. Stare at it until it feels observed. Eat.",
+      "DIMENSION OMELETTE: 3 eggs, cheese, and the existential dread of being a clone. Fold twice.",
+      "MORNING SMOOTHIE: Blend everything in the fridge. Don't ask what's in there. Just drink.",
+    ]},
+    { title: 'Lunch', tips: [
+      "GRAHAM BURGER: Regular burger but you say 'Graham' before every bite. Trust the process.",
+      "CLONE SANDWICH: Make a sandwich. Make an identical sandwich. That's the clone part.",
+      "STATUE SALAD: Lettuce arranged to look like Graham. Nobody eats it. It's art.",
+      "QUICK SOUP: Boil water. Add anything. If it's wet and warm, it's soup. Don't overthink it.",
+    ]},
+    { title: 'Dinner', tips: [
+      "PRESIDENTIAL PASTA: Cook pasta. Declare yourself president of the pasta. Add sauce.",
+      "DIMENSION ROAST: Roast a chicken. Name it. Regret naming it. Eat it anyway.",
+      "BOSS GRAHAM'S STEAK: Medium rare. If anyone asks, say it's well done. Assert dominance.",
+      "CLONE PIZZA: Order pizza. When it arrives, say YOU made it. Technically a clone did.",
+    ]},
+    { title: 'Desserts', tips: [
+      "GRAHAM CRACKERS: Obvious choice. Named after the REAL Graham, obviously.",
+      "CLONE CAKE: Bake a cake. Cut it into 32 equal pieces. One for each clone. None for visitors.",
+      "LINT BALL SURPRISE: It's just a lint ball. The surprise is that someone tried to eat it.",
+      "VICTORY PIE: Bake after winning anything. Or losing. Pie doesn't judge.",
+    ]},
+  ]},
+  { id: 'relaxBook', name: 'Extreme Relaxation', price: 30, need: 'energy', boost: 20, color: '#4488cc', author: 'Graham Clone #8', pages: [
+    { title: 'Getting Started', tips: [
+      "Step 1: Stop moving. Step 2: Keep not moving. You're doing great.",
+      "Find a comfortable position. Now find an even MORE comfortable position. Peak relaxation.",
+      "Close your eyes. Open them. Close them again. That was a warmup. The real relaxing starts now.",
+      "If you're stressed, remember: you're in a game. Nothing here is real. Except Graham. Graham is VERY real.",
+    ]},
+    { title: 'Breathing Techniques', tips: [
+      "Breathe in for 4 seconds. Hold for 4 seconds. Out for 4 seconds. You just did a number.",
+      "The '4-7-8' method: breathe in 4s, hold 7s, out 8s. If you pass out, you held too long.",
+      "Imagine breathing in golden light. Now breathe out stress. If you breathe out gold, see a doctor.",
+      "Advanced: breathe with your SOUL. Nobody knows what this means but it sounds impressive.",
+    ]},
+    { title: 'Meditation', tips: [
+      "Clear your mind. If thoughts appear, politely ask them to leave. They're trespassing.",
+      "Focus on the sound of silence. If you hear clones talking, that's normal. Ignore them.",
+      "Visualise a peaceful lake. Now put Graham's face on the lake. Much better.",
+      "If meditation isn't working, try napping. It's meditation for quitters. Quitters who feel GREAT.",
+    ]},
+    { title: 'Advanced Relaxation', tips: [
+      "Become one with the floor. The floor accepts you. The floor doesn't judge.",
+      "Tense every muscle, then release. If something cracks, you went too far.",
+      "The ultimate relaxation technique: buy the mansion and use the spa. This book can't compete.",
+      "If all else fails, eat a sandwich from Junkuploops and ragdoll. Forced relaxation.",
+    ]},
+  ]},
+  { id: 'factsBook', name: '1000 Graham Facts', price: 20, need: 'fun', boost: 20, color: '#dd8800', author: 'The Graham Institute', pages: [
+    { title: 'Facts 1-10', tips: [
+      "FACT #1: Graham can sneeze with his eyes open. He chooses not to. Out of respect.",
+      "FACT #2: The Graham Dimension was built in 6 days. Graham rested on the 7th. Standing ovation.",
+      "FACT #3: Graham's hair is naturally curly. The clones' hair is curly out of LOYALTY.",
+      "FACT #4: There are exactly 32 Graham clones. 33 if you count the bookshop guy. He insists you count him.",
+    ]},
+    { title: 'Facts 11-20', tips: [
+      "FACT #11: Graham once won a staring contest against his own statue. The statue blinked.",
+      "FACT #12: The GG Merch outfit has never been washed. It's self-cleaning. Don't ask how.",
+      "FACT #13: Graham's favourite number is 13. He says it's lucky. For him. Only him.",
+      "FACT #14: Boss Graham #1 has never lost at Graham Says. Because Graham always says Graham.",
+    ]},
+    { title: 'Facts 21-30', tips: [
+      "FACT #21: The town was built before Graham arrived. It was boring. Then Graham arrived.",
+      "FACT #22: Bodhi's Junkuploops has made $0 in profit. Bodhi considers this 'breaking even emotionally'.",
+      "FACT #23: Graham's Autobiography is 100% true. Graham wrote that sentence too.",
+      "FACT #24: The mansion costs $500. Graham bought it for $0. Perks of being Graham.",
+    ]},
+    { title: 'Facts 31-40', tips: [
+      "FACT #31: This book was supposed to have 1000 facts. We ran out at 40. Nobody's perfect.",
+      "FACT #32: Graham Clone #33 applied to run this bookshop. His CV was just the word 'books' 47 times.",
+      "FACT #33: The exit portal works by folding spacetime. Or it's just a teleporter. Either way, don't touch it twice.",
+      "FACT #40: If you read this far, you're legally Graham's biggest fan. Congratulations. There's no prize.",
+    ]},
+  ]},
+  { id: 'hygieneBook', name: 'Hygiene & You', price: 20, need: 'hygiene', boost: 15, color: '#66bbaa', author: 'Graham Clone #22', pages: [
+    { title: 'The Basics', tips: [
+      "Showers exist. Use them. Your neighbours (32 identical clones) will thank you.",
+      "Soap is not optional. I repeat: SOAP. IS. NOT. OPTIONAL.",
+      "If you can smell yourself, others smelled you 3 hours ago. Act accordingly.",
+      "The $2 shower at home is the best investment you'll ever make. Every. Single. Day.",
+    ]},
+    { title: 'Advanced Hygiene', tips: [
+      "Sparkle Shampoo from the phone catalog gives you PERMANENT sparkles. Cleanliness AND style.",
+      "The mansion spa restores 80 hygiene AND gives fun. Two birds, one extremely clean stone.",
+      "The hot tub is NOT a substitute for a shower. It's a warm puddle with jets. Lovely, but not soap.",
+      "Deodorant hasn't been invented in this game yet. Make do with frequent showers.",
+    ]},
+    { title: 'Common Mistakes', tips: [
+      "Mistake #1: Thinking 'I'll shower later.' You won't. You never do. Shower NOW.",
+      "Mistake #2: Using the pool as a bath. The pool is for fun. The shower is for not being gross.",
+      "Mistake #3: Spending all your money on outfits but skipping showers. You look great. You smell terrible.",
+      "Mistake #4: Reading this book instead of showering. Go. NOW. I'll wait.",
+    ]},
+    { title: 'The Clean Life', tips: [
+      "A clean Graham is a happy Graham. A happy Graham buys more stuff. It's economics.",
+      "Fun fact: hygiene affects your vibe. Low hygiene? NPCs can tell. They're too polite to say it.",
+      "The ultimate hygiene loadout: Sparkle Shampoo + daily showers + mansion spa. You'll GLOW.",
+      "Remember: this book gives +15 hygiene just for reading it. Knowledge IS cleanliness.",
+    ]},
+  ]},
+];
+
+function openBookOverlay(bookId) {
+  const bookDef = GRAHAM_BOOKS_DATA.find(b => b.id === bookId);
+  if (!bookDef) return;
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+  overlay.innerHTML = '';
+
+  let pageIdx = 0;
+  const pages = bookDef.pages;
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:linear-gradient(135deg,#1a1a2e,#0a0a1a);border:2px solid ' + bookDef.color + ';border-radius:12px;padding:24px;max-width:400px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:' + bookDef.color + ';font-size:1.2rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = '\u{1F4D6} ' + bookDef.name;
+  panel.appendChild(title);
+
+  const author = document.createElement('div');
+  author.style.cssText = 'color:#666;font-size:0.7rem;margin-bottom:12px;font-style:italic;';
+  author.textContent = 'by ' + bookDef.author;
+  panel.appendChild(author);
+
+  const pageTitle = document.createElement('div');
+  pageTitle.style.cssText = 'color:' + bookDef.color + ';font-size:1rem;font-weight:bold;margin-bottom:10px;border-bottom:1px solid ' + bookDef.color + '44;padding-bottom:6px;';
+  panel.appendChild(pageTitle);
+
+  const tipsContainer = document.createElement('div');
+  tipsContainer.style.cssText = 'text-align:left;margin-bottom:16px;min-height:120px;';
+  panel.appendChild(tipsContainer);
+
+  const pageNum = document.createElement('div');
+  pageNum.style.cssText = 'color:#555;font-size:0.7rem;margin-bottom:10px;';
+  panel.appendChild(pageNum);
+
+  function showPage() {
+    const page = pages[pageIdx];
+    pageTitle.textContent = page.title;
+    pageNum.textContent = 'Page ' + (pageIdx + 1) + ' of ' + pages.length;
+    tipsContainer.innerHTML = '';
+    page.tips.forEach(tip => {
+      const row = document.createElement('div');
+      row.style.cssText = 'color:#ccc;font-size:0.85rem;line-height:1.5;margin-bottom:8px;padding-left:12px;border-left:2px solid ' + bookDef.color + '44;';
+      row.textContent = tip;
+      tipsContainer.appendChild(row);
+    });
+  }
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px;justify-content:center;margin-bottom:12px;';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.style.cssText = 'padding:8px 20px;border:1px solid ' + bookDef.color + ';border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:' + bookDef.color + '22;color:' + bookDef.color + ';transition:all 0.15s;';
+  prevBtn.textContent = '\u25C0 Prev';
+  prevBtn.onmouseover = () => { prevBtn.style.background = bookDef.color + '44'; };
+  prevBtn.onmouseout = () => { prevBtn.style.background = bookDef.color + '22'; };
+  prevBtn.onclick = () => { if (pageIdx > 0) { pageIdx--; showPage(); } };
+  btnRow.appendChild(prevBtn);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.style.cssText = 'padding:8px 20px;border:1px solid ' + bookDef.color + ';border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:bold;background:' + bookDef.color + '22;color:' + bookDef.color + ';transition:all 0.15s;';
+  nextBtn.textContent = 'Next \u25B6';
+  nextBtn.onmouseover = () => { nextBtn.style.background = bookDef.color + '44'; };
+  nextBtn.onmouseout = () => { nextBtn.style.background = bookDef.color + '22'; };
+  nextBtn.onclick = () => { if (pageIdx < pages.length - 1) { pageIdx++; showPage(); } };
+  btnRow.appendChild(nextBtn);
+  panel.appendChild(btnRow);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;';
+  closeBtn.textContent = 'Close Book';
+  closeBtn.onclick = () => {
+    overlay.style.display = 'none';
+    overlay.innerHTML = '';
+    needs[bookDef.need] = Math.min(100, needs[bookDef.need] + bookDef.boost);
+    SFX.actionComplete();
+  };
+  panel.appendChild(closeBtn);
+
+  overlay.appendChild(panel);
+  showPage();
+}
+
 function firefoamBall() {
   if (!phoneOrders.includes('megaBlaster')) return;
   const forward = new THREE.Vector3(0, 0, -1);
@@ -4549,6 +4813,54 @@ function buildJunkReward(itemName) {
   junkRewardItem = itemName;
 }
 
+function openJunkPicker() {
+  if (document.pointerLockElement) document.exitPointerLock();
+  const overlay = document.getElementById('merch-overlay');
+  overlay.style.display = 'flex';
+  overlay.onclick = null;
+  overlay.innerHTML = '';
+
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background:linear-gradient(135deg,#2a1a10,#1a0f08);border:2px solid #ddaa33;border-radius:12px;padding:24px;max-width:360px;text-align:center;font-family:Segoe UI,sans-serif;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'color:#ddaa33;font-size:1.1rem;font-weight:bold;margin-bottom:4px;font-family:Cinzel,serif;';
+  title.textContent = 'Junk Collection';
+  panel.appendChild(title);
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'color:#888;font-size:0.7rem;margin-bottom:12px;';
+  sub.textContent = 'Pick your active toy (Q to use)';
+  panel.appendChild(sub);
+
+  ownedJunkItems.forEach(name => {
+    const data = JUNK_REWARD_DATA[name];
+    if (!data) return;
+    const btn = document.createElement('button');
+    const isActive = name === junkRewardItem;
+    btn.style.cssText = 'display:block;width:100%;padding:10px;margin:4px 0;border:2px solid ' + (isActive ? '#ddaa33' : '#555') + ';border-radius:8px;font-size:0.9rem;cursor:pointer;background:' + (isActive ? '#ddaa3322' : '#222') + ';color:' + (isActive ? '#ddaa33' : '#ccc') + ';text-align:left;transition:all 0.15s;';
+    btn.textContent = (isActive ? '\u2605 ' : '') + name + (isActive ? ' (active)' : '');
+    btn.onmouseover = () => { if (!isActive) btn.style.background = '#333'; };
+    btn.onmouseout = () => { if (!isActive) btn.style.background = '#222'; };
+    btn.onclick = () => {
+      buildJunkReward(name);
+      overlay.style.display = 'none';
+      overlay.innerHTML = '';
+      showTip(name + ' is now your active toy!');
+      SFX.actionComplete();
+    };
+    panel.appendChild(btn);
+  });
+
+  const closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;background:#333;color:#aaa;margin-top:8px;';
+  closeBtn.textContent = 'Close';
+  closeBtn.onclick = () => { overlay.style.display = 'none'; overlay.innerHTML = ''; };
+  panel.appendChild(closeBtn);
+
+  overlay.appendChild(panel);
+}
+
 let junkRewardCooldown = 0;
 let ragdollTimer = 0;
 let ragdollSpin = 0;
@@ -4573,7 +4885,7 @@ function useJunkReward() {
   showTip('[Q] ' + line);
   if (data.use) data.use();
   SFX.actionComplete();
-  junkRewardCooldown = 3;
+  if (junkRewardItem !== 'Single Sock' && junkRewardItem !== 'Broken Pencil') junkRewardCooldown = 3;
 }
 
 function openGameConsole() {
@@ -8892,7 +9204,7 @@ function buildPresHouse(parentGroup) {
   addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
     new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }), PX - 3.76, 1.7, PZ - 0.15);
 
-  // Register interactables
+  // Register base interactables
   interactables.push(
     { mesh: bedMesh, group: parentGroup, type: 'presBed', label: 'Presidential Bed', need: 'energy', usePos: new THREE.Vector3(PX - 1.5, 0.15, PZ - 1.5), floor: 0 },
     { mesh: showerBase, group: parentGroup, type: 'presShower', label: 'Presidential Shower', need: 'hygiene', usePos: new THREE.Vector3(PX + 2.3, 0.15, PZ - 1.5), floor: 0 },
@@ -8901,14 +9213,91 @@ function buildPresHouse(parentGroup) {
     { mesh: deskMesh, group: parentGroup, type: 'presDesk', label: 'Presidential Desk', need: null, usePos: new THREE.Vector3(PX, 0.15, PZ + 1.2), floor: 0 },
     { mesh: mirGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null, usePos: new THREE.Vector3(PX - 3, 0.15, PZ), floor: 0 },
   );
-  rebuildInteractMeshes();
 
-  // Action configs
+  // Action configs (base)
   actionConfig.presBed = { label: 'Presidential nap...', duration: 5, restore: 70 };
   actionConfig.presShower = { label: 'Presidential shower...', duration: 3, restore: 60, cost: 0 };
   actionConfig.presFridge = { label: 'Presidential snack...', duration: 3, restore: 50, cost: 0 };
   actionConfig.presTV = { label: 'Watching presidential TV...', duration: 4, restore: 50 };
   // presDesk is an instant action handled in startAction
+
+  // === CONDITIONAL ADDITIONS — mirrors home upgrades ===
+  const ggData = JSON.parse(localStorage.getItem('graham-games-data') || '{}');
+
+  // LAVA LAMP (if owned at home)
+  if (ownedFurniture.has('lavaLamp')) {
+    const lavaBase = addMesh(new THREE.CylinderGeometry(0.1, 0.12, 0.15, 8), new THREE.MeshLambertMaterial({ color: 0x333333 }), PX - 3.5, 0.22, PZ + 1.5);
+    const lavaBody = addMesh(new THREE.CylinderGeometry(0.08, 0.08, 0.4, 8),
+      new THREE.MeshLambertMaterial({ color: 0x9b59b6, emissive: 0x6a1b9a, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 }), PX - 3.5, 0.5, PZ + 1.5);
+    addMesh(new THREE.CylinderGeometry(0.06, 0.1, 0.08, 8), new THREE.MeshLambertMaterial({ color: 0x333333 }), PX - 3.5, 0.74, PZ + 1.5);
+    const lavaGlow = new THREE.PointLight(0x9b59b6, 0.2, 3);
+    lavaGlow.position.set(PX - 3.5, 0.6, PZ + 1.5); g.add(lavaGlow);
+    interactables.push({ mesh: lavaBody, group: parentGroup, type: 'presLava', label: 'Presidential Lava Lamp', need: 'fun', usePos: new THREE.Vector3(PX - 3, 0.15, PZ + 1.5), floor: 0 });
+    actionConfig.presLava = { label: 'Presidential vibing...', duration: 3, restore: 30, cost: 0 };
+  }
+
+  // FISH TANK (if owned at home)
+  if (ownedFurniture.has('fishTank')) {
+    const tankGlass = addMesh(new THREE.BoxGeometry(0.6, 0.4, 0.3),
+      new THREE.MeshLambertMaterial({ color: 0x88ccee, transparent: true, opacity: 0.4 }), PX + 3.2, 0.35, PZ + 2.2);
+    addMesh(new THREE.BoxGeometry(0.55, 0.35, 0.25),
+      new THREE.MeshLambertMaterial({ color: 0x2266aa, transparent: true, opacity: 0.5 }), PX + 3.2, 0.33, PZ + 2.2);
+    addMesh(new THREE.BoxGeometry(0.08, 0.04, 0.03), new THREE.MeshLambertMaterial({ color: 0xff6644 }), PX + 3.1, 0.35, PZ + 2.2);
+    addMesh(new THREE.BoxGeometry(0.06, 0.03, 0.03), new THREE.MeshLambertMaterial({ color: 0xffcc22 }), PX + 3.3, 0.28, PZ + 2.15);
+    interactables.push({ mesh: tankGlass, group: parentGroup, type: 'presFishTank', label: 'Presidential Fish Tank', need: 'fun', usePos: new THREE.Vector3(PX + 2.5, 0.15, PZ + 2.2), floor: 0 });
+    actionConfig.presFishTank = { label: 'Watching presidential fish...', duration: 3, restore: 35, cost: 0 };
+  }
+
+  // TREADMILL (if owned at home)
+  if (ownedFurniture.has('treadmill')) {
+    const treadBase = addMesh(new THREE.BoxGeometry(0.6, 0.15, 1.2), new THREE.MeshLambertMaterial({ color: 0x333333 }), PX - 0.8, 0.08, PZ - 2.3);
+    const treadBelt = addMesh(new THREE.BoxGeometry(0.5, 0.04, 1.0), new THREE.MeshLambertMaterial({ color: 0x222222 }), PX - 0.8, 0.17, PZ - 2.3);
+    const treadBar = addMesh(new THREE.CylinderGeometry(0.03, 0.03, 1.0, 6), new THREE.MeshLambertMaterial({ color: 0x888888 }), PX - 0.8, 0.67, PZ - 2.8);
+    interactables.push({ mesh: treadBase, group: parentGroup, type: 'presTreadmill', label: 'Presidential Treadmill', need: 'energy', usePos: new THREE.Vector3(PX - 0.8, 0.15, PZ - 1.5), floor: 0 });
+    actionConfig.presTreadmill = { label: 'Presidential jog...', duration: 5, restore: 15, cost: 0, hungerDrain: 15 };
+  }
+
+  // JUKEBOX (if owned at home)
+  if (ownedFurniture.has('jukebox')) {
+    const jbBody = addMesh(new THREE.BoxGeometry(0.6, 1.3, 0.4), new THREE.MeshLambertMaterial({ color: 0x992222 }), PX + 1.5, 0.65, PZ - 2.6);
+    const jbTop = addMesh(new THREE.BoxGeometry(0.65, 0.3, 0.45),
+      new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.2 }), PX + 1.5, 1.45, PZ - 2.6);
+    interactables.push({ mesh: jbBody, group: parentGroup, type: 'presJukebox', label: 'Presidential Jukebox', need: 'fun', usePos: new THREE.Vector3(PX + 1.5, 0.15, PZ - 1.8), floor: 0 });
+    actionConfig.presJukebox = { label: 'Presidential tunes...', duration: 4, restore: 50, cost: 0 };
+  }
+
+  // SWIMMING POOL (if bought with G Bux)
+  if (ggData.shopPurchases && ggData.shopPurchases.ml_pool) {
+    const poolRimMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+    const poolBlueMat = new THREE.MeshLambertMaterial({ color: 0x2288dd });
+    const poolWaterMat = new THREE.MeshLambertMaterial({ color: 0x4499dd, transparent: true, opacity: 0.5 });
+    // Small presidential pool (outside, south side)
+    addMesh(new THREE.BoxGeometry(3.5, 0.15, 0.2), poolRimMat, PX, 0.22, PZ + 5);
+    addMesh(new THREE.BoxGeometry(3.5, 0.15, 0.2), poolRimMat, PX, 0.22, PZ + 7.5);
+    addMesh(new THREE.BoxGeometry(0.2, 0.15, 2.7), poolRimMat, PX - 1.65, 0.22, PZ + 6.25);
+    addMesh(new THREE.BoxGeometry(0.2, 0.15, 2.7), poolRimMat, PX + 1.65, 0.22, PZ + 6.25);
+    // Water
+    const presPoolWater = addMesh(new THREE.BoxGeometry(3.1, 0.05, 2.3), poolWaterMat, PX, 0.12, PZ + 6.25);
+    // Pool floor
+    addMesh(new THREE.BoxGeometry(3.1, 0.1, 2.3), poolBlueMat, PX, -0.4, PZ + 6.25);
+    interactables.push({ mesh: presPoolWater, group: parentGroup, type: 'presPool', label: 'Presidential Pool', need: 'fun', usePos: new THREE.Vector3(PX, 0.15, PZ + 4.5), floor: 0 });
+    actionConfig.presPool = { label: 'Presidential swim...', duration: 6, restore: 40, cost: 0, hygieneBonus: 25 };
+  }
+
+  // BOOKSHELF (if player has second floor — comes with bookshelf at home)
+  if (hasSecondFloor) {
+    const bshelf = addMesh(new THREE.BoxGeometry(0.8, 1.4, 0.35), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX - 0.8, 0.7, PZ - 2.6);
+    const bkColors = [0xcc2222, 0x2255cc, 0x22aa44, 0xdd8800, 0x8833aa];
+    for (let row = 0; row < 2; row++) {
+      for (let b = 0; b < 3; b++) {
+        addMesh(new THREE.BoxGeometry(0.15, 0.3, 0.2),
+          new THREE.MeshLambertMaterial({ color: bkColors[(row * 3 + b) % bkColors.length] }),
+          PX - 1.05 + b * 0.22, 0.3 + row * 0.55, PZ - 2.5);
+      }
+    }
+    interactables.push({ mesh: bshelf, group: parentGroup, type: 'presBookshelf', label: 'Presidential Library', need: 'fun', usePos: new THREE.Vector3(PX - 0.8, 0.15, PZ - 1.8), floor: 0 });
+    actionConfig.presBookshelf = { label: 'Presidential reading...', duration: 4, restore: 45, cost: 0 };
+  }
 
   // Collision — individual walls (thin boxes so interior is accessible)
   GRAHAM_DIM_COLLISIONS.push(
@@ -11458,6 +11847,8 @@ function buildGrahamDimension() {
       if (cx > -50 && cx < -30 && cz > -60 && cz < -38) continue;
       // Skip Junkuploops store area (center at +45, +25 relative)
       if (cx > 39 && cx < 51 && cz > 19 && cz < 31) continue;
+      // Skip Graham Books area (center at -15, +12 relative)
+      if (cx > -21 && cx < -9 && cz > 6 && cz < 18) continue;
       // Skip house positions (6 houses with ~8 unit radius exclusion)
       let nearHouse = false;
       [[-30, 20], [-30, -20], [30, 20], [30, -20], [-20, 40], [20, 40], [10, 15]].forEach(([hx, hz]) => {
@@ -11617,6 +12008,185 @@ function buildGrahamDimension() {
   henryTag.position.set(OX + 5, 2.0, OZ + 47);
   henryTag.rotation.y = Math.PI;
   g.add(henryTag);
+
+  // === GRAHAM BOOKS (west side, run by Graham 33) ===
+  const bkX = OX - 15, bkZ = OZ + 12;
+  const bkWallMat = new THREE.MeshLambertMaterial({ color: 0x4a3728 });
+  const bkInnerMat = new THREE.MeshLambertMaterial({ color: 0x3a2a1e });
+  const bkRoofMat = new THREE.MeshLambertMaterial({ color: 0x2a1a10 });
+  const bkFloorMat = new THREE.MeshLambertMaterial({ color: 0x5c4a38 });
+  const bkShelfMat = new THREE.MeshLambertMaterial({ color: 0x6b4226 });
+  const bkAccentMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+  // Walls (8 wide x 6 deep, door on south)
+  makeWall(8.3, 3.5, 0.3, bkWallMat, bkX, 1.75, bkZ + 3);       // Back (north)
+  makeWall(0.3, 3.5, 6, bkWallMat, bkX - 4, 1.75, bkZ);          // Left (west)
+  makeWall(0.3, 3.5, 6, bkWallMat, bkX + 4, 1.75, bkZ);          // Right (east)
+  makeWall(2.5, 3.5, 0.3, bkWallMat, bkX - 2.75, 1.75, bkZ - 3); // Front-left
+  makeWall(2.5, 3.5, 0.3, bkWallMat, bkX + 2.75, 1.75, bkZ - 3); // Front-right
+  makeWall(2.5, 1.0, 0.3, bkWallMat, bkX, 3.0, bkZ - 3);         // Above door
+  // Floor
+  const bkFloor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 6), bkFloorMat);
+  bkFloor.position.set(bkX, 0.04, bkZ); bkFloor.receiveShadow = true; g.add(bkFloor);
+  // Roof
+  const bkRoof = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.2, 6.8), bkRoofMat);
+  bkRoof.position.set(bkX, 3.6, bkZ); g.add(bkRoof);
+  // Interior back wall panelling
+  makeWall(7.6, 3, 0.05, bkInnerMat, bkX, 1.5, bkZ + 2.82);
+  // Windows (front face, flanking door)
+  const bkWinMat = new THREE.MeshLambertMaterial({ color: 0xddc88a, emissive: 0x887744, emissiveIntensity: 0.3 });
+  makeWall(1.0, 0.8, 0.05, bkWinMat, bkX - 2.8, 2.0, bkZ - 3.17);
+  makeWall(1.0, 0.8, 0.05, bkWinMat, bkX + 2.8, 2.0, bkZ - 3.17);
+  // Interior warm light
+  const bkLight = new THREE.PointLight(0xffddaa, 0.6, 10);
+  bkLight.position.set(bkX, 2.8, bkZ); g.add(bkLight);
+  // Hanging lantern mesh
+  const lantern = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.15, 0.25, 6),
+    new THREE.MeshLambertMaterial({ color: 0xffddaa, emissive: 0xffcc88, emissiveIntensity: 0.4 }));
+  lantern.position.set(bkX, 2.75, bkZ); g.add(lantern);
+  const lanternChain = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 4), lampMat);
+  lanternChain.position.set(bkX, 3.2, bkZ); g.add(lanternChain);
+  // Sign: "GRAHAM BOOKS"
+  const bkSignCvs = document.createElement('canvas');
+  bkSignCvs.width = 256; bkSignCvs.height = 64;
+  const bkSignCtx = bkSignCvs.getContext('2d');
+  bkSignCtx.fillStyle = '#2a1a10'; bkSignCtx.fillRect(0, 0, 256, 64);
+  bkSignCtx.strokeStyle = '#c9a84c'; bkSignCtx.lineWidth = 2;
+  bkSignCtx.strokeRect(4, 4, 248, 56);
+  bkSignCtx.fillStyle = '#c9a84c'; bkSignCtx.font = 'bold 22px sans-serif'; bkSignCtx.textAlign = 'center';
+  bkSignCtx.fillText('GRAHAM BOOKS', 128, 40);
+  const bkSignTex = new THREE.CanvasTexture(bkSignCvs);
+  const bkSign = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.08),
+    new THREE.MeshLambertMaterial({ map: bkSignTex, emissive: 0x332211, emissiveIntensity: 0.15 }));
+  bkSign.position.set(bkX, 2.8, bkZ - 3.2); g.add(bkSign);
+  // Gold trim along roofline
+  const bkTrim = new THREE.Mesh(new THREE.BoxGeometry(8.6, 0.1, 0.15), bkAccentMat);
+  bkTrim.position.set(bkX, 3.45, bkZ - 3.1); g.add(bkTrim);
+  // Counter near door (right side)
+  const bkCounter = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.9, 0.6), bkShelfMat);
+  bkCounter.position.set(bkX + 2.5, 0.45, bkZ - 1.5); g.add(bkCounter);
+  const bkCounterTop = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.05, 0.7), bkAccentMat);
+  bkCounterTop.position.set(bkX + 2.5, 0.925, bkZ - 1.5); g.add(bkCounterTop);
+  // Small "REGISTER" sign on counter
+  const regCvs = document.createElement('canvas');
+  regCvs.width = 64; regCvs.height = 32;
+  const regCtx = regCvs.getContext('2d');
+  regCtx.fillStyle = '#1a1a2e'; regCtx.fillRect(0, 0, 64, 32);
+  regCtx.fillStyle = '#c9a84c'; regCtx.font = 'bold 8px sans-serif'; regCtx.textAlign = 'center';
+  regCtx.fillText('REGISTER', 32, 20);
+  const regTex = new THREE.CanvasTexture(regCvs);
+  const regSign = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.2), new THREE.MeshBasicMaterial({ map: regTex }));
+  regSign.position.set(bkX + 2.5, 1.05, bkZ - 1.19); g.add(regSign);
+
+  // Tall bookshelves along back wall (decorative)
+  for (let sx = -3; sx <= 1; sx += 2) {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.6, 2.5, 0.4), bkShelfMat);
+    shelf.position.set(bkX + sx, 1.25, bkZ + 2.55); g.add(shelf);
+    // Rows of coloured book spines
+    const bookColors = [0xcc2222, 0x2255cc, 0x22aa44, 0xdd8800, 0x8833aa, 0xcc9944];
+    for (let row = 0; row < 4; row++) {
+      for (let b = 0; b < 5; b++) {
+        const spine = new THREE.Mesh(new THREE.BoxGeometry(0.12 + Math.random() * 0.08, 0.35, 0.25),
+          new THREE.MeshLambertMaterial({ color: bookColors[(row * 5 + b) % bookColors.length] }));
+        spine.position.set(bkX + sx - 0.55 + b * 0.28, 0.35 + row * 0.55, bkZ + 2.4);
+        g.add(spine);
+      }
+    }
+  }
+  // Side bookshelf along left wall
+  const sideShelf = new THREE.Mesh(new THREE.BoxGeometry(0.4, 2.0, 3), bkShelfMat);
+  sideShelf.position.set(bkX - 3.55, 1.0, bkZ + 0.5); g.add(sideShelf);
+  // Some books on the side shelf
+  for (let bz = -1; bz <= 1; bz++) {
+    const sideBook = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.3, 0.2),
+      new THREE.MeshLambertMaterial({ color: [0xcc4444, 0x44cc88, 0x4488cc][bz + 1] }));
+    sideBook.position.set(bkX - 3.4, 2.1, bkZ + 0.5 + bz * 0.8); g.add(sideBook);
+  }
+  // Comfy reading chair (left side, angled)
+  const chairMat = new THREE.MeshLambertMaterial({ color: 0x993333 });
+  const chairSeat = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.35, 0.7), chairMat);
+  chairSeat.position.set(bkX - 2.5, 0.35, bkZ - 1.5); chairSeat.rotation.y = 0.3; g.add(chairSeat);
+  const chairBack = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.12), chairMat);
+  chairBack.position.set(bkX - 2.7, 0.7, bkZ - 1.8); chairBack.rotation.y = 0.3; g.add(chairBack);
+  // Small rug
+  const rugMat = new THREE.MeshLambertMaterial({ color: 0x884422 });
+  const rug = new THREE.Mesh(new THREE.BoxGeometry(3, 0.02, 2), rugMat);
+  rug.position.set(bkX - 0.5, 0.09, bkZ); g.add(rug);
+
+  // === GUIDE BOOK DISPLAY (center of shop) ===
+  // Display stand
+  const guideStand = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.9, 0.6), bkShelfMat);
+  guideStand.position.set(bkX, 0.45, bkZ); g.add(guideStand);
+  const guideStandTop = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.05, 0.7), bkAccentMat);
+  guideStandTop.position.set(bkX, 0.925, bkZ); g.add(guideStandTop);
+  // Book on stand (large, upright, gold)
+  const guideBookMesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.65, 0.08),
+    new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.15 }));
+  guideBookMesh.position.set(bkX, 1.3, bkZ + 0.1);
+  guideBookMesh.rotation.x = -0.15;
+  g.add(guideBookMesh);
+  // Pages
+  const guidePagesM = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.61, 0.04),
+    new THREE.MeshLambertMaterial({ color: 0xfff8e8 }));
+  guidePagesM.position.set(bkX, 1.3, bkZ + 0.06);
+  guidePagesM.rotation.x = -0.15;
+  g.add(guidePagesM);
+  // Title label
+  const gblCvs = document.createElement('canvas');
+  gblCvs.width = 128; gblCvs.height = 64;
+  const gblCtx = gblCvs.getContext('2d');
+  gblCtx.fillStyle = '#1a1a2e'; gblCtx.fillRect(0, 0, 128, 64);
+  gblCtx.fillStyle = '#c9a84c'; gblCtx.font = 'bold 14px sans-serif'; gblCtx.textAlign = 'center';
+  gblCtx.fillText('MINI LIFE', 64, 22);
+  gblCtx.fillText('GUIDE BOOK', 64, 40);
+  gblCtx.fillStyle = '#88cc44'; gblCtx.font = 'bold 12px sans-serif';
+  gblCtx.fillText(ownedBooks.includes('guideBook') ? 'OWNED' : '$30', 64, 56);
+  const gblTex = new THREE.CanvasTexture(gblCvs);
+  const guideLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.35),
+    new THREE.MeshBasicMaterial({ map: gblTex, transparent: true, side: THREE.DoubleSide }));
+  guideLabel.position.set(bkX, 0.75, bkZ + 0.32); g.add(guideLabel);
+  // Spotlight on the guide book
+  const guideSpot = new THREE.PointLight(0xc9a84c, 0.3, 3);
+  guideSpot.position.set(bkX, 2.0, bkZ); g.add(guideSpot);
+  // Interactable — use the stand (bigger target)
+  guideStand.userData = { type: 'bookStore', bookId: 'guideBook' };
+  interactables.push({
+    mesh: guideStand, group: g, type: 'bookStore',
+    label: ownedBooks.includes('guideBook') ? 'Mini Life Guide (owned — press T)' : 'Mini Life Guide ($30)',
+    need: null,
+    usePos: new THREE.Vector3(bkX, 0.15, bkZ - 0.8), floor: 0
+  });
+
+  // Graham 33 NPC — behind counter
+  const g33Opts = { skinTone: 2, gender: 'male', hairStyle: 'curlylong', hairColor: 2, outfit: 8, accessory: 0, dress: -1 };
+  const graham33 = buildCharacter(g33Opts);
+  graham33.position.set(bkX + 2.5, 0.15, bkZ - 2.2);
+  graham33.rotation.y = 0; // Face north toward customers
+  g.add(graham33);
+  graham33.traverse(child => {
+    if (child.isMesh) {
+      child.userData = { type: 'npc', npcId: 'graham_33' };
+      gdNpcBodyMeshes.push(child);
+    }
+  });
+  // Name tag
+  const g33Cvs = document.createElement('canvas');
+  g33Cvs.width = 128; g33Cvs.height = 32;
+  const g33Ctx = g33Cvs.getContext('2d');
+  g33Ctx.fillStyle = '#c9a84c'; g33Ctx.font = 'bold 16px sans-serif'; g33Ctx.textAlign = 'center';
+  g33Ctx.fillText('Graham 33', 64, 22);
+  const g33Tex = new THREE.CanvasTexture(g33Cvs);
+  const g33Tag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.35),
+    new THREE.MeshBasicMaterial({ map: g33Tex, transparent: true, side: THREE.DoubleSide }));
+  g33Tag.position.set(bkX + 2.5, 2.0, bkZ - 2.2); g.add(g33Tag);
+
+  // Collision walls for Graham Books
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: bkX - 4.15, xMax: bkX + 4.15, zMin: bkZ + 2.85, zMax: bkZ + 3.15 },  // north
+    { xMin: bkX - 4.15, xMax: bkX - 3.85, zMin: bkZ - 3.15, zMax: bkZ + 3.15 },  // west
+    { xMin: bkX + 3.85, xMax: bkX + 4.15, zMin: bkZ - 3.15, zMax: bkZ + 3.15 },  // east
+    { xMin: bkX - 4.15, xMax: bkX - 1.3, zMin: bkZ - 3.15, zMax: bkZ - 2.85 },   // south-left
+    { xMin: bkX + 1.3, xMax: bkX + 4.15, zMin: bkZ - 3.15, zMax: bkZ - 2.85 },   // south-right
+  );
 
   // Rebuild campaign poster spots if campaign is in poster phase
   if (questLog.president_campaign && questLog.president_campaign.status === 'active'
@@ -12497,6 +13067,7 @@ function openNPCDialogue(npcId) {
           grahamDimQuestsCompleted++;
         }
         checkGrahamMaster();
+        if (!ownedJunkItems.includes(bq.itemBought)) ownedJunkItems.push(bq.itemBought);
         buildJunkReward(bq.itemBought);
         SFX.kaChing();
         showTip('Quest complete! ' + bq.itemBought + ' placed in your house!');
@@ -12565,6 +13136,28 @@ function openNPCDialogue(npcId) {
       addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     }
     showBodhiOptions();
+    overlay.classList.add('visible');
+    return;
+  }
+  // === GRAHAM 33 — bookshop owner ===
+  if (npcId === 'graham_33') {
+    nameEl.textContent = 'Graham 33';
+    const g33Lines = [
+      "Welcome to Graham Books! Every book here was written by a Graham. Some are even GOOD.",
+      "I'm Graham number thirty-three. The other Grahams got muscles, I got literacy.",
+      "Fun fact: I've read every book in here. My favourite? The one I wrote. Obviously.",
+      "The autobiography section is just one book but it's VERY long. Graham's life is complicated.",
+      "People ask why a clone runs a bookshop. I ask why more clones DON'T. We're wasting potential here.",
+      "The Clone Cookbook is our bestseller. Well, our ONLY seller. Nobody buys the hygiene one.",
+      "I tried to get Graham to do a signing but he said 'every Graham IS a signing.' Deep stuff.",
+      "Between you and me, the '1000 Graham Facts' book only has like 40 facts. The rest are vibes.",
+      "Extreme Relaxation was written in a hot tub. You can tell because pages 3-7 are waterlogged.",
+      "I shelve these books myself. Alphabetically? No. By FEELING. Much more efficient.",
+    ];
+    if (!window._g33DialogIdx) window._g33DialogIdx = 0;
+    textEl.textContent = g33Lines[window._g33DialogIdx % g33Lines.length];
+    window._g33DialogIdx++;
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     overlay.classList.add('visible');
     return;
   }
@@ -17841,7 +18434,10 @@ document.addEventListener('keydown', (e) => {
   if (e.code === 'KeyQ' && gameStarted && !gameOver && !currentAction) useJunkReward();
   if (e.code === 'KeyP' && gameStarted && !gameOver && !currentAction) toggleShop();
   // R key mystery box cheat removed
-  if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) togglePetMenu();
+  if (e.code === 'KeyT' && gameStarted && !gameOver && !currentAction) {
+    if (ownedBooks.includes('guideBook')) openBookOverlay('guideBook'); else togglePetMenu();
+  }
+  if (e.code === 'KeyG' && gameStarted && !gameOver && !currentAction) togglePetMenu();
   if (e.code === 'KeyC' && gameStarted && !gameOver && activePet !== 'none') {
     petStay = !petStay;
     showTip(petStay ? 'Stay!' : 'Come!');
@@ -17884,7 +18480,7 @@ function updateCrosshairRaycast() {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
       const nid = hitObj.userData.npcId;
       hoveredObj = { type: 'npc', npcId: nid };
-      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'bodhi' ? 'Bodhi' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
+      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'bodhi' ? 'Bodhi' : nid === 'graham_33' ? 'Graham 33' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
       tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
@@ -18043,16 +18639,20 @@ function startAction(obj) {
     return;
   }
 
-  // Junkuploops reward item — toy use
+  // Junkuploops reward item — open picker if multiple, else use
   if (obj.type === 'junkReward') {
     if (ragdollTimer > 0 || junkRewardCooldown > 0) return;
+    if (ownedJunkItems.length > 1) {
+      openJunkPicker();
+      return;
+    }
     const data = JUNK_REWARD_DATA[junkRewardItem];
     if (data) {
       const line = data.lines[Math.floor(Math.random() * data.lines.length)];
       showTip(line);
       if (data.use) data.use();
       SFX.actionComplete();
-      junkRewardCooldown = 3;
+      if (junkRewardItem !== 'Single Sock' && junkRewardItem !== 'Broken Pencil') junkRewardCooldown = 3;
     }
     return;
   }
@@ -18074,18 +18674,18 @@ function startAction(obj) {
     const rawName = obj.mesh.userData.junkItemName || 'Mystery Item';
     const cleanName = rawName.replace(/^\$[\d,]+ /, '');
     const price = 50;
-    const isSwap = bq.status === 'completed' && junkRewardItem && junkRewardItem !== cleanName;
+    const alreadyOwned = ownedJunkItems.includes(cleanName);
     const overlay = document.getElementById('npc-dialogue-overlay');
     const nameEl = document.getElementById('npc-dialogue-name');
     const textEl = document.getElementById('npc-dialogue-text');
     const btnsEl = document.getElementById('npc-dialogue-btns');
     btnsEl.innerHTML = '';
     nameEl.textContent = 'Junkuploops';
-    if (junkRewardItem === cleanName) {
+    if (alreadyOwned) {
       textEl.textContent = "You already own the " + cleanName + "! It's at home being treasured.";
       addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     } else {
-      textEl.textContent = 'Buy "' + cleanName + '" for $' + price + '?' + (isSwap ? ' (Replaces your ' + junkRewardItem + ' at home)' : ' (First Customer discount — was ' + rawName.split(' ')[0] + '!)');
+      textEl.textContent = 'Buy "' + cleanName + '" for $' + price + '?' + (bq.status !== 'completed' ? ' (First Customer discount — was ' + rawName.split(' ')[0] + '!)' : '');
       if (money >= price) {
         addDialogueBtn(btnsEl, 'Buy for $' + price, 'npc-btn-accept', () => {
           money -= price;
@@ -18094,6 +18694,7 @@ function startAction(obj) {
             questLog.bodhi_purchase.itemBought = cleanName;
             showTip('You bought: ' + cleanName + '! Talk to Bodhi.');
           } else {
+            if (!ownedJunkItems.includes(cleanName)) ownedJunkItems.push(cleanName);
             buildJunkReward(cleanName);
             showTip('You bought: ' + cleanName + '! Placed at home.');
           }
@@ -18137,6 +18738,26 @@ function startAction(obj) {
   // Joke Book — opens joke reader
   if (obj.type === 'phone_jokeBook') {
     openJokeBook();
+    return;
+  }
+
+  // Graham Books — purchase guide book
+  if (obj.type === 'bookStore') {
+    if (ownedBooks.includes('guideBook')) {
+      openBookOverlay('guideBook');
+    } else {
+      if (money < 30) {
+        showTip("You need $30 to buy the Mini Life Guide.");
+      } else {
+        money -= 30;
+        ownedBooks.push('guideBook');
+        SFX.kaChing();
+        showTip("Bought Mini Life Guide! Press T anywhere to read it.");
+        // Update the interactable label
+        const inter = interactables.find(i => i.type === 'bookStore');
+        if (inter) inter.label = 'Mini Life Guide (owned — press T)';
+      }
+    }
     return;
   }
 
@@ -20655,6 +21276,8 @@ function restartGame() {
   phoneOrders = [];
   if (junkRewardGroup) { scene.remove(junkRewardGroup); junkRewardGroup = null; }
   junkRewardItem = null;
+  ownedJunkItems = [];
+  ownedBooks = [];
   for (let i = interactables.length - 1; i >= 0; i--) {
     if (interactables[i].type === 'junkReward') interactables.splice(i, 1);
   }
@@ -20703,7 +21326,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'campaignPoster' || t === 'junkShelf') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'presLava' || t === 'presBookshelf' || t === 'presFishTank' || t === 'presTreadmill' || t === 'presJukebox' || t === 'presPool' || t === 'campaignPoster' || t === 'junkShelf' || t === 'bookStore') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }
@@ -20829,6 +21452,8 @@ function buildSaveData() {
     sneakerColor,
     phoneOrders: [...phoneOrders],
     junkRewardItem,
+    ownedJunkItems: [...ownedJunkItems],
+    ownedBooks: [...ownedBooks],
     inGrahamDimension,
     grahamDimQuestsCompleted,
     gdTasksDone: { ...gdTasksDone },
@@ -20973,7 +21598,10 @@ function loadSlot(index) {
       phoneOrders = [...save.phoneOrders];
       phoneOrders.forEach(itemId => buildPhoneItem(itemId));
     }
+    if (save.ownedJunkItems) ownedJunkItems = [...save.ownedJunkItems];
+    else if (save.junkRewardItem) ownedJunkItems = [save.junkRewardItem]; // migrate old saves
     if (save.junkRewardItem) buildJunkReward(save.junkRewardItem);
+    if (save.ownedBooks) ownedBooks = [...save.ownedBooks];
   }
   currentFloor = save.currentFloor;
 
