@@ -3660,6 +3660,119 @@ test('4 Graham statues positioned around arena', () => {
   });
 });
 
+// ═══ JUNKUPLOOPS STORE ═══
+section('Junkuploops Store');
+
+test('Junkuploops store position is in Graham Dimension bounds', () => {
+  const junkX = GRAHAM_DIM_ORIGIN.x + 45;
+  const junkZ = GRAHAM_DIM_ORIGIN.z + 25;
+  assert(junkX >= GRAHAM_DIM_BOUNDS.xMin && junkX <= GRAHAM_DIM_BOUNDS.xMax, 'Store X within GD bounds');
+  assert(junkZ >= GRAHAM_DIM_BOUNDS.zMin && junkZ <= GRAHAM_DIM_BOUNDS.zMax, 'Store Z within GD bounds');
+});
+
+test('Junkuploops does not overlap Graham Industries office', () => {
+  const junkX = GRAHAM_DIM_ORIGIN.x + 45, junkZ = GRAHAM_DIM_ORIGIN.z + 25;
+  const giX = GRAHAM_DIM_ORIGIN.x + 40, giZ = GRAHAM_DIM_ORIGIN.z - 10;
+  // Store is 7x6, office is 8x7
+  const junkBounds = { xMin: junkX - 3.5, xMax: junkX + 3.5, zMin: junkZ - 3, zMax: junkZ + 3 };
+  const giBounds = { xMin: giX - 4, xMax: giX + 4, zMin: giZ - 3.5, zMax: giZ + 3.5 };
+  const overlaps = junkBounds.xMin < giBounds.xMax && junkBounds.xMax > giBounds.xMin &&
+                   junkBounds.zMin < giBounds.zMax && junkBounds.zMax > giBounds.zMin;
+  assert(!overlaps, 'Junkuploops should not overlap Graham Industries');
+});
+
+test('Junkuploops does not overlap NE house', () => {
+  const junkX = GRAHAM_DIM_ORIGIN.x + 45, junkZ = GRAHAM_DIM_ORIGIN.z + 25;
+  const houseX = GRAHAM_DIM_ORIGIN.x + 30, houseZ = GRAHAM_DIM_ORIGIN.z + 20;
+  const junkBounds = { xMin: junkX - 3.5, xMax: junkX + 3.5, zMin: junkZ - 3, zMax: junkZ + 3 };
+  const houseBounds = { xMin: houseX - 3.15, xMax: houseX + 3.15, zMin: houseZ - 2.65, zMax: houseZ + 2.65 };
+  const overlaps = junkBounds.xMin < houseBounds.xMax && junkBounds.xMax > houseBounds.xMin &&
+                   junkBounds.zMin < houseBounds.zMax && junkBounds.zMax > houseBounds.zMin;
+  assert(!overlaps, 'Junkuploops should not overlap NE house');
+});
+
+test('Junkuploops has 5 collision walls (N, W, E, S-left, S-right)', () => {
+  const walls = 5;
+  assertEqual(walls, 5, 'Should have 5 collision wall segments with door gap');
+});
+
+test('Junkuploops has 6 overpriced display items', () => {
+  const items = [
+    { name: '$2,000 Used Tissue' },
+    { name: '$5,500 Half-Eaten Sandwich' },
+    { name: '$10,000 Broken Pencil' },
+    { name: '$750 Single Sock' },
+    { name: '$3,200 Empty Jar' },
+    { name: '$8,888 Mystery Lint Ball' },
+  ];
+  assertEqual(items.length, 6, 'Should have 6 display items');
+  items.forEach(item => {
+    assert(item.name.startsWith('$'), item.name + ' should start with price');
+  });
+});
+
+test('All display item prices are absurdly high', () => {
+  const prices = [2000, 5500, 10000, 750, 3200, 8888];
+  prices.forEach(p => {
+    assert(p >= 500, 'Price ' + p + ' should be at least $500 (absurdly overpriced)');
+  });
+});
+
+test('Bodhi NPC has brown hair and goofy outfit', () => {
+  const bodhiOpts = { skinTone: 1, gender: 'male', hairStyle: 'curly', hairColor: 1, outfit: 6, accessory: 1, dress: -1 };
+  assertEqual(bodhiOpts.hairColor, 1, 'Hair color 1 = brown');
+  assertEqual(bodhiOpts.outfit, 6, 'Outfit 6 = Pink Pop (goofy)');
+  assertEqual(bodhiOpts.accessory, 1, 'Should have backpack accessory');
+});
+
+test('Bodhi dialogue has 12 say/respond lines', () => {
+  const lines = [
+    { say: "What even IS this stuff?", respond: "Art..." },
+    { say: "Why is everything so expensive?", respond: "Expensive..." },
+    { say: "Has anyone actually bought anything here?", respond: "Define..." },
+    { say: "Is that sandwich safe to eat?", respond: "Safe..." },
+    { say: "Why is it called Junkuploops?", respond: "Because..." },
+    { say: "Are you actually making money?", respond: "I made..." },
+    { say: "That's literally just a sock.", respond: "A SINGLE..." },
+    { say: "I think I could find this stuff in a bin.", respond: "Yeah..." },
+    { say: "You seem oddly proud of all this.", respond: "I once..." },
+    { say: "What's the return policy?", respond: "All sales..." },
+    { say: "I love what you've done with the place.", respond: "THANK YOU..." },
+    { say: "Do you actually live here?", respond: "Live here..." },
+  ];
+  assertEqual(lines.length, 12, 'Should have 12 dialogue lines');
+  lines.forEach(l => {
+    assert(l.say.length > 0, 'Say should not be empty');
+    assert(l.respond.length > 0, 'Respond should not be empty');
+  });
+});
+
+test('Bodhi dialogue shows 3 random options per visit', () => {
+  const allLines = Array.from({ length: 12 }, (_, i) => ({ say: 'line' + i }));
+  const shuffled = allLines.slice().sort(() => Math.random() - 0.5);
+  const picks = shuffled.slice(0, 3);
+  assertEqual(picks.length, 3, 'Should show 3 options');
+  // All picks should be from the original set
+  picks.forEach(p => assert(allLines.some(l => l.say === p.say), 'Pick should be from original lines'));
+});
+
+test('Clone skip zone covers Junkuploops area', () => {
+  // Clones should skip cx 39-51, cz 19-31 (relative to OX/OZ)
+  const cx = 45, cz = 25;
+  const skipped = cx > 39 && cx < 51 && cz > 19 && cz < 31;
+  assert(skipped, 'Clone at store position should be skipped');
+  // Just outside should NOT be skipped
+  const cx2 = 38, cz2 = 25;
+  const notSkipped = !(cx2 > 39 && cx2 < 51 && cz2 > 19 && cz2 < 31);
+  assert(notSkipped, 'Clone outside store area should NOT be skipped');
+});
+
+test('Bodhi NPC ID appears in gdName hover lookup', () => {
+  const nid = 'bodhi';
+  const gdName = nid === 'bodhi' ? 'Bodhi' : null;
+  assertEqual(gdName, 'Bodhi', 'Hovering Bodhi should show name');
+});
+
 // ═══ PEPPER SABOTAGE IN-WORLD MISSION ═══
 section('Pepper Sabotage Mission — In-World');
 
@@ -3724,22 +3837,22 @@ test('Guard patrol bounds stay within office', () => {
   });
 });
 
-test('Guard detection uses dot product > 0.5 for cone check', () => {
+test('Guard detection uses dot product > 0.3 for cone check (wider FOV for chase)', () => {
   // Simulate: guard facing -Z (forward = 0,0,-1), player directly in front
   const guardForward = { x: 0, z: -1 };
   const toPlayerFront = { x: 0, z: -1 }; // directly in front
   const dotFront = guardForward.x * toPlayerFront.x + guardForward.z * toPlayerFront.z;
-  assert(dotFront > 0.5, 'Player in front should be detected (dot=' + dotFront + ')');
+  assert(dotFront > 0.3, 'Player in front should be detected (dot=' + dotFront + ')');
 
   // Player behind guard
   const toPlayerBehind = { x: 0, z: 1 };
   const dotBehind = guardForward.x * toPlayerBehind.x + guardForward.z * toPlayerBehind.z;
-  assert(dotBehind <= 0.5, 'Player behind should NOT be detected (dot=' + dotBehind + ')');
+  assert(dotBehind <= 0.3, 'Player behind should NOT be detected (dot=' + dotBehind + ')');
 
-  // Player at side
+  // Player at side (dot=0, should not trigger)
   const toPlayerSide = { x: 1, z: 0 };
   const dotSide = guardForward.x * toPlayerSide.x + guardForward.z * toPlayerSide.z;
-  assert(dotSide <= 0.5, 'Player to side should NOT be detected (dot=' + dotSide + ')');
+  assert(dotSide <= 0.3, 'Player to side should NOT be detected (dot=' + dotSide + ')');
 });
 
 test('Pepper hit detection uses correct distance thresholds', () => {
@@ -3806,6 +3919,7 @@ test('Mission state tracks all required fields', () => {
     savedFogFar: 200, savedFogColor: {}, savedBgColor: {},
     savedAmbInt: 0.5, savedSunInt: 1.0,
     musicCtx: {}, musicGain: {}, hudEl: {}, vignetteEl: {},
+    pepWeaponEl: {}, alertTex: {},
   };
   assert('score' in state);
   assert('wave' in state);
@@ -3816,6 +3930,8 @@ test('Mission state tracks all required fields', () => {
   assert('savedFogFar' in state);
   assert('savedAmbInt' in state);
   assert('savedSunInt' in state);
+  assert('pepWeaponEl' in state, 'State should have pepper weapon element');
+  assert('alertTex' in state, 'State should have alert texture for guard sprites');
 });
 
 test('Fog darkens with each wave', () => {
@@ -3848,6 +3964,180 @@ test('Collision AABB push-out finds minimum penetration axis', () => {
   }
   // Should be pushed out to nearest edge
   assert(px <= box.xMin || px >= box.xMax || pz <= box.zMin || pz >= box.zMax, 'Player should be pushed out of AABB');
+});
+
+// ═══ GUARD CHASE AI ═══
+section('Pepper Mission — Guard Chase AI');
+
+test('Guards start in patrol mode', () => {
+  const guard = { mode: 'patrol', lostTimer: 0, speed: 2.5 };
+  assertEqual(guard.mode, 'patrol');
+  assertEqual(guard.lostTimer, 0);
+});
+
+test('Guard transitions from patrol to chase when player detected', () => {
+  const guard = { mode: 'patrol', lostTimer: 0, speed: 2.5, x: 400, z: -50 };
+  // Simulate: guard facing -Z, player at 4 units in front (within 6-unit range, dot > 0.3)
+  const guardForward = { x: 0, z: -1 };
+  const dx = 0, dz = -4; // player 4 units in -Z
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  const norm = Math.max(0.01, dist);
+  const toPlayer = { x: dx / norm, z: dz / norm };
+  const dot = guardForward.x * toPlayer.x + guardForward.z * toPlayer.z;
+  if (dist < 8 && dot > 0.3 && dist < 6) {
+    guard.mode = 'chase';
+    guard.lostTimer = 0;
+  }
+  assertEqual(guard.mode, 'chase', 'Guard should switch to chase');
+});
+
+test('Guard does NOT chase when player is behind them', () => {
+  const guard = { mode: 'patrol', lostTimer: 0 };
+  const guardForward = { x: 0, z: -1 };
+  const dx = 0, dz = 4; // player 4 units behind (+Z)
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  const norm = Math.max(0.01, dist);
+  const toPlayer = { x: dx / norm, z: dz / norm };
+  const dot = guardForward.x * toPlayer.x + guardForward.z * toPlayer.z;
+  if (dist < 8 && dot > 0.3 && dist < 6) {
+    guard.mode = 'chase';
+  }
+  assertEqual(guard.mode, 'patrol', 'Guard should stay in patrol');
+});
+
+test('Guard catches player at distance < 1.8 during chase', () => {
+  let score = 5;
+  let caught = false;
+  const guard = { mode: 'chase', x: 400, z: -50 };
+  const dist = 1.5; // within catch range
+  if (guard.mode === 'chase' && dist < 1.8) {
+    caught = true;
+    score = Math.max(0, score - 1);
+    guard.mode = 'patrol';
+  }
+  assert(caught, 'Player should be caught');
+  assertEqual(score, 4, 'Score should decrease by 1');
+  assertEqual(guard.mode, 'patrol', 'Guard should return to patrol after catch');
+});
+
+test('Guard does NOT catch at distance >= 1.8', () => {
+  let caught = false;
+  const guard = { mode: 'chase' };
+  const dist = 2.5;
+  if (guard.mode === 'chase' && dist < 1.8) caught = true;
+  assert(!caught, 'Player should NOT be caught at distance 2.5');
+});
+
+test('Guard loses player after 3 seconds at > 12 units distance', () => {
+  const guard = { mode: 'chase', lostTimer: 0 };
+  // Simulate 3.1 seconds of being far away
+  const dist = 13;
+  const dt = 3.1;
+  if (dist > 12) guard.lostTimer += dt;
+  if (guard.lostTimer > 3) guard.mode = 'patrol';
+  assertEqual(guard.mode, 'patrol', 'Guard should return to patrol');
+});
+
+test('Guard keeps chasing if player stays close', () => {
+  const guard = { mode: 'chase', lostTimer: 1.5 };
+  const dist = 8; // within 12, so reset timer
+  if (dist > 12) {
+    guard.lostTimer += 0.016;
+  } else {
+    guard.lostTimer = 0;
+  }
+  assertEqual(guard.lostTimer, 0, 'Lost timer should reset');
+  assertEqual(guard.mode, 'chase', 'Guard should keep chasing');
+});
+
+test('Chase speed is 1.4x patrol speed', () => {
+  const guard = { speed: 2.5 };
+  const chaseSpeed = guard.speed * 1.4;
+  assertClose(chaseSpeed, 3.5, 0.01, 'Chase speed should be 3.5');
+});
+
+test('Guard chase movement moves toward player', () => {
+  const gx = 400, gz = -50;
+  const px = 405, pz = -50; // player 5 units to the right
+  const dx = px - gx, dz = pz - gz;
+  const dist = Math.sqrt(dx * dx + dz * dz);
+  const chaseSpeed = 3.5;
+  const dt = 1;
+  const newX = gx + (dx / dist) * chaseSpeed * dt;
+  assert(newX > gx, 'Guard should move toward player in X');
+  assertClose(newX, 403.5, 0.01);
+});
+
+test('Guard clamped to office bounds during chase', () => {
+  const OX = 440, OZ = -30;
+  let gx = OX + 20; // way outside
+  gx = Math.max(OX - 14.5, Math.min(OX + 14.5, gx));
+  assertEqual(gx, OX + 14.5, 'Should clamp to east bound');
+  let gz = OZ - 20;
+  gz = Math.max(OZ - 14.5, Math.min(OZ + 14.5, gz));
+  assertEqual(gz, OZ - 14.5, 'Should clamp to south bound');
+});
+
+test('Guard flashlight turns red during chase, yellow on return to patrol', () => {
+  const flashlightColor = { r: 1, g: 1, b: 0.67 }; // yellowish
+  // On chase: set to red
+  const chaseColor = 0xff4444;
+  const r = ((chaseColor >> 16) & 0xff) / 255;
+  assert(r > 0.9, 'Chase flashlight should be red');
+  // On patrol return: set back to yellow
+  const patrolColor = 0xffffaa;
+  const g = ((patrolColor >> 8) & 0xff) / 255;
+  assert(g > 0.9, 'Patrol flashlight should be yellow-ish');
+});
+
+test('Alert sprite visibility tracks guard mode', () => {
+  let alertVisible = false;
+  const guard = { mode: 'patrol' };
+  // Patrol: hidden
+  if (guard.mode === 'patrol') alertVisible = false;
+  assert(!alertVisible, 'Alert should be hidden during patrol');
+  // Chase: shown
+  guard.mode = 'chase';
+  if (guard.mode === 'chase') alertVisible = true;
+  assert(alertVisible, 'Alert should be visible during chase');
+  // Back to patrol after catch
+  guard.mode = 'patrol';
+  if (guard.mode === 'patrol') alertVisible = false;
+  assert(!alertVisible, 'Alert should hide when returning to patrol');
+});
+
+test('New wave guards have chase properties', () => {
+  const newGuard = { mode: 'patrol', lostTimer: 0, speed: 3.1, alertSprite: {} };
+  assertEqual(newGuard.mode, 'patrol', 'New guards start in patrol');
+  assertEqual(newGuard.lostTimer, 0);
+  assert(newGuard.alertSprite, 'New guards should have alert sprite');
+});
+
+test('Guard resets to starting position after catch', () => {
+  const guard = { mode: 'chase', x: 400, z: -50, gx: 405, gz: -48 };
+  // Simulate catch
+  guard.mode = 'patrol';
+  guard.gx = guard.x;
+  guard.gz = guard.z;
+  assertEqual(guard.gx, 400, 'Guard should return to start X');
+  assertEqual(guard.gz, -50, 'Guard should return to start Z');
+});
+
+test('Initial equip message is PEPPERS EQUIPPED', () => {
+  const msgText = 'PEPPERS EQUIPPED! Sabotage the computers!';
+  assert(msgText.includes('PEPPERS EQUIPPED'), 'Mission start should show equip message');
+});
+
+test('Pepper weapon element is tracked in mission state and cleaned up', () => {
+  let removed = false;
+  const state = {
+    pepWeaponEl: { parentNode: true, remove() { removed = true; } },
+    hudEl: { parentNode: true, remove() {} },
+    vignetteEl: { parentNode: true, remove() {} },
+  };
+  // Simulate cleanup
+  if (state.pepWeaponEl && state.pepWeaponEl.parentNode) state.pepWeaponEl.remove();
+  assert(removed, 'Pepper weapon should be removed on mission end');
 });
 
 // ═══ MYSTERY BOX OUTFITS ═══

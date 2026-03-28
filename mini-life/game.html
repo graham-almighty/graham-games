@@ -11060,6 +11060,158 @@ function buildGrahamDimension() {
 
   interactables.push({ mesh: portalBtn, group: g, type: 'dimPortal', label: 'Return to Town', need: null, usePos: new THREE.Vector3(OX, 0.15, OZ + 49), floor: 0 });
 
+  // === JUNKUPLOOPS STORE (east side) ===
+  const junkX = OX + 45, junkZ = OZ + 25;
+  const junkWallMat = new THREE.MeshLambertMaterial({ color: 0x886644 }); // Brown-ish
+  const junkRoofMat = new THREE.MeshLambertMaterial({ color: 0x665533 });
+  const junkFloorMat = new THREE.MeshLambertMaterial({ color: 0x998866 });
+  // Walls (7 wide x 6 deep x 3 tall, door gap on south face)
+  makeWall(7, 3, 0.2, junkWallMat, junkX, 1.5, junkZ + 3);   // north wall
+  makeWall(0.2, 3, 6, junkWallMat, junkX - 3.5, 1.5, junkZ);  // west wall
+  makeWall(0.2, 3, 6, junkWallMat, junkX + 3.5, 1.5, junkZ);  // east wall
+  makeWall(2.2, 3, 0.2, junkWallMat, junkX - 2.4, 1.5, junkZ - 3); // south-left
+  makeWall(2.2, 3, 0.2, junkWallMat, junkX + 2.4, 1.5, junkZ - 3); // south-right
+  // Lintel above door
+  makeWall(3, 0.4, 0.2, junkWallMat, junkX, 2.8, junkZ - 3);
+  // Roof
+  makeWall(7.4, 0.15, 6.4, junkRoofMat, junkX, 3.05, junkZ);
+  // Floor
+  const junkFloor = new THREE.Mesh(new THREE.BoxGeometry(7, 0.08, 6), junkFloorMat);
+  junkFloor.position.set(junkX, 0.04, junkZ);
+  junkFloor.receiveShadow = true;
+  g.add(junkFloor);
+  // Interior light
+  const junkLight = new THREE.PointLight(0xffcc88, 0.5, 10);
+  junkLight.position.set(junkX, 2.5, junkZ);
+  g.add(junkLight);
+  // Sign: "JUNKUPLOOPS" above door
+  const junkSignCvs = document.createElement('canvas');
+  junkSignCvs.width = 256; junkSignCvs.height = 64;
+  const junkSignCtx = junkSignCvs.getContext('2d');
+  junkSignCtx.fillStyle = '#443322'; junkSignCtx.fillRect(0, 0, 256, 64);
+  junkSignCtx.strokeStyle = '#ffcc44'; junkSignCtx.lineWidth = 3; junkSignCtx.strokeRect(2, 2, 252, 60);
+  junkSignCtx.fillStyle = '#ffcc44'; junkSignCtx.font = 'bold 22px sans-serif'; junkSignCtx.textAlign = 'center';
+  junkSignCtx.fillText('JUNKUPLOOPS', 128, 42);
+  const junkSignTex = new THREE.CanvasTexture(junkSignCvs);
+  const junkSign = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.6, 0.05),
+    new THREE.MeshLambertMaterial({ map: junkSignTex, emissive: 0x443311, emissiveIntensity: 0.3 }));
+  junkSign.position.set(junkX, 2.5, junkZ - 3.12);
+  g.add(junkSign);
+  // Door light
+  const junkDoorLight = new THREE.PointLight(0xffaa44, 0.4, 8);
+  junkDoorLight.position.set(junkX, 2.8, junkZ - 3.3);
+  g.add(junkDoorLight);
+  // Collision walls
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: junkX - 3.6, xMax: junkX + 3.6, zMin: junkZ + 2.9, zMax: junkZ + 3.1 },  // north
+    { xMin: junkX - 3.6, xMax: junkX - 3.4, zMin: junkZ - 3.1, zMax: junkZ + 3.1 },  // west
+    { xMin: junkX + 3.4, xMax: junkX + 3.6, zMin: junkZ - 3.1, zMax: junkZ + 3.1 },  // east
+    { xMin: junkX - 3.6, xMax: junkX - 1.3, zMin: junkZ - 3.1, zMax: junkZ - 2.9 },  // south-left
+    { xMin: junkX + 1.3, xMax: junkX + 3.6, zMin: junkZ - 3.1, zMax: junkZ - 2.9 },  // south-right
+  );
+
+  // Display shelves with overpriced junk
+  const shelfMat = new THREE.MeshLambertMaterial({ color: 0x554433 });
+  const junkItems = [
+    { name: '$2,000 Used Tissue', x: -2, z: 1.5, buildFn: (px, pz) => {
+      // Crumpled white tissue
+      const tissue = new THREE.Mesh(new THREE.DodecahedronGeometry(0.12, 0), new THREE.MeshLambertMaterial({ color: 0xeeeeee }));
+      tissue.position.set(px, 0.85, pz); tissue.rotation.set(0.3, 0.7, 0.2);
+      g.add(tissue);
+    }},
+    { name: '$5,500 Half-Eaten Sandwich', x: 0, z: 1.5, buildFn: (px, pz) => {
+      // Brown bread triangle
+      const bread = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.08, 0.15), new THREE.MeshLambertMaterial({ color: 0xdaa520 }));
+      bread.position.set(px, 0.84, pz); bread.rotation.y = 0.3;
+      g.add(bread);
+      const filling = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.03, 0.1), new THREE.MeshLambertMaterial({ color: 0x88cc44 }));
+      filling.position.set(px, 0.88, pz);
+      g.add(filling);
+    }},
+    { name: '$10,000 Broken Pencil', x: 2, z: 1.5, buildFn: (px, pz) => {
+      // Two halves of a yellow pencil
+      const half1 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.15, 6), new THREE.MeshLambertMaterial({ color: 0xcccc22 }));
+      half1.position.set(px - 0.05, 0.85, pz); half1.rotation.z = 0.1;
+      g.add(half1);
+      const half2 = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.12, 6), new THREE.MeshLambertMaterial({ color: 0xcccc22 }));
+      half2.position.set(px + 0.06, 0.84, pz); half2.rotation.z = -0.3;
+      g.add(half2);
+    }},
+    { name: '$750 Single Sock', x: -2, z: -0.5, buildFn: (px, pz) => {
+      // Sad droopy sock shape
+      const sock = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.18, 6), new THREE.MeshLambertMaterial({ color: 0x5566aa }));
+      sock.position.set(px, 0.88, pz); sock.rotation.z = 0.4; sock.rotation.x = 0.2;
+      g.add(sock);
+    }},
+    { name: '$3,200 Empty Jar', x: 0, z: -0.5, buildFn: (px, pz) => {
+      // Glass jar (transparent-ish)
+      const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.18, 8), new THREE.MeshLambertMaterial({ color: 0xaaccee, transparent: true, opacity: 0.6 }));
+      jar.position.set(px, 0.89, pz);
+      g.add(jar);
+      const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.03, 8), new THREE.MeshLambertMaterial({ color: 0x886644 }));
+      lid.position.set(px, 0.99, pz);
+      g.add(lid);
+    }},
+    { name: '$8,888 Mystery Lint Ball', x: 2, z: -0.5, buildFn: (px, pz) => {
+      // Fuzzy grey ball
+      const lint = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 1), new THREE.MeshLambertMaterial({ color: 0x999999 }));
+      lint.position.set(px, 0.87, pz); lint.rotation.set(0.5, 1.2, 0.3);
+      g.add(lint);
+    }},
+  ];
+  // Build shelves and items
+  junkItems.forEach(item => {
+    const shelf = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.06, 0.5), shelfMat);
+    shelf.position.set(junkX + item.x, 0.8, junkZ + item.z);
+    g.add(shelf);
+    // Shelf legs
+    [[-0.5, -0.2], [0.5, -0.2], [-0.5, 0.2], [0.5, 0.2]].forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.8, 0.04), shelfMat);
+      leg.position.set(junkX + item.x + lx, 0.4, junkZ + item.z + lz);
+      g.add(leg);
+    });
+    item.buildFn(junkX + item.x, junkZ + item.z);
+    // Price tag (tiny canvas)
+    const tagCvs = document.createElement('canvas');
+    tagCvs.width = 128; tagCvs.height = 32;
+    const tagCtx = tagCvs.getContext('2d');
+    tagCtx.fillStyle = '#ffffff'; tagCtx.fillRect(0, 0, 128, 32);
+    tagCtx.fillStyle = '#cc2222'; tagCtx.font = 'bold 10px sans-serif'; tagCtx.textAlign = 'center';
+    tagCtx.fillText(item.name, 64, 20);
+    const tagTex = new THREE.CanvasTexture(tagCvs);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15),
+      new THREE.MeshBasicMaterial({ map: tagTex, transparent: true, side: THREE.DoubleSide }));
+    tag.position.set(junkX + item.x, 0.7, junkZ + item.z + 0.28);
+    g.add(tag);
+  });
+
+  // Bodhi NPC — brown hair, goofy outfit (Pink Pop = outfit 6)
+  const bodhiOpts = { skinTone: 1, gender: 'male', hairStyle: 'curly', hairColor: 1, outfit: 6, accessory: 1, dress: -1 };
+  const bodhi = buildCharacter(bodhiOpts);
+  bodhi.position.set(junkX, 0.15, junkZ + 2);
+  bodhi.rotation.y = Math.PI; // Face south toward door
+  g.add(bodhi);
+  bodhi.traverse(child => {
+    if (child.isMesh) {
+      child.userData = { type: 'npc', npcId: 'bodhi' };
+      gdNpcBodyMeshes.push(child);
+    }
+  });
+  // Name tag
+  const bodhiCanvas = document.createElement('canvas');
+  bodhiCanvas.width = 128; bodhiCanvas.height = 32;
+  const bodhiCtx = bodhiCanvas.getContext('2d');
+  bodhiCtx.fillStyle = '#ffcc44';
+  bodhiCtx.font = 'bold 16px sans-serif';
+  bodhiCtx.textAlign = 'center';
+  bodhiCtx.fillText('Bodhi', 64, 22);
+  const bodhiTex = new THREE.CanvasTexture(bodhiCanvas);
+  const bodhiTag = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.35),
+    new THREE.MeshBasicMaterial({ map: bodhiTex, transparent: true, side: THREE.DoubleSide }));
+  bodhiTag.position.set(junkX, 2.0, junkZ + 2);
+  bodhiTag.rotation.y = Math.PI;
+  g.add(bodhiTag);
+
   // === 30+ GRAHAM CLONES ===
 
   // Clone positions — scattered across the expanded dimension, avoiding buildings
@@ -11076,6 +11228,8 @@ function buildGrahamDimension() {
       if (cx > 34 && cx < 46 && cz > -16 && cz < -4) continue;
       // Skip pepper building area (center at -40, -50 relative, 16x16)
       if (cx > -50 && cx < -30 && cz > -60 && cz < -38) continue;
+      // Skip Junkuploops store area (center at +45, +25 relative)
+      if (cx > 39 && cx < 51 && cz > 19 && cz < 31) continue;
       // Skip house positions (6 houses with ~8 unit radius exclusion)
       let nearHouse = false;
       [[-30, 20], [-30, -20], [30, 20], [30, -20], [-20, 40], [20, 40], [10, 15]].forEach(([hx, hz]) => {
@@ -12096,6 +12250,42 @@ function openNPCDialogue(npcId) {
       addDialogueBtn(btnsEl, 'Start Pepper Sabotage ($25 + $10/pepper)', 'npc-btn-accept', () => { closeNPCDialogue(); startPepperMission(); });
       addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     }
+    overlay.classList.add('visible');
+    return;
+  }
+  // === BODHI — Junkuploops store owner ===
+  if (npcId === 'bodhi') {
+    nameEl.textContent = 'Bodhi';
+    const bodhiSayLines = [
+      { say: "What even IS this stuff?", respond: "Art, my friend. You're looking at ART. The used tissue alone took me 3 years to curate. Well, to use. Same thing." },
+      { say: "Why is everything so expensive?", respond: "Expensive?! These are BARGAINS. You won't find a lint ball this premium anywhere else in ANY dimension." },
+      { say: "Has anyone actually bought anything here?", respond: "Define 'bought'. A Graham clone once looked at the jar for 40 minutes. I'm counting that as engagement." },
+      { say: "Is that sandwich safe to eat?", respond: "Safe? SAFE?! That's a $5,500 artisanal relic! It's been aging since last Tuesday. The mould adds character." },
+      { say: "Why is it called Junkuploops?", respond: "Because 'Overpriced Garbage Emporium' didn't fit on the sign. Also my mum picked the name. She's very supportive." },
+      { say: "Are you actually making money?", respond: "I made $0.00 last quarter. But the EXPOSURE? Through the roof. Zero people know who I am." },
+      { say: "That's literally just a sock.", respond: "A SINGLE sock. Do you know how hard it is to lose just ONE? That's $750 worth of dedication right there." },
+      { say: "I think I could find this stuff in a bin.", respond: "Yeah but would it come with a PRICE TAG? I don't think so. Presentation is everything, mate." },
+      { say: "You seem oddly proud of all this.", respond: "I once cried looking at the broken pencil. Not because it's beautiful. Because I stepped on it. But STILL." },
+      { say: "What's the return policy?", respond: "All sales are final. Also there have been no sales. So technically the policy is untested. Very exclusive." },
+      { say: "I love what you've done with the place.", respond: "THANK YOU! Finally someone gets it. The Graham clones just stare at me and walk away. Rude honestly." },
+      { say: "Do you actually live here?", respond: "Live here? I AM here. I'm basically furniture at this point. The shelves and I are one. We share a bond." },
+    ];
+    function showBodhiOptions() {
+      textEl.textContent = "Welcome to JUNKUPLOOPS! Premium pre-owned treasures at unbeatable* prices! *compared to a Ferrari dealership.";
+      btnsEl.innerHTML = '';
+      const shuffled = bodhiSayLines.slice().sort(() => Math.random() - 0.5);
+      const picks = shuffled.slice(0, 3);
+      picks.forEach(line => {
+        addDialogueBtn(btnsEl, line.say, 'npc-btn-accept', () => {
+          textEl.textContent = line.respond;
+          btnsEl.innerHTML = '';
+          addDialogueBtn(btnsEl, 'Say something else', 'npc-btn-accept', showBodhiOptions);
+          addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+        });
+      });
+      addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    }
+    showBodhiOptions();
     overlay.classList.add('visible');
     return;
   }
@@ -13863,6 +14053,15 @@ function performPepperTeleport() {
     { x: OX + 5, z: OZ + 5, patrolZ: [OZ - 8, OZ + 12], speed: 3, name: 'Guard Gary' },
     { x: OX, z: OZ - 5, patrolX: [OX - 10, OX + 10], speed: 2, name: 'Officer Nigel' },
   ];
+  // Alert "!" sprite shared texture
+  const alertCvs = document.createElement('canvas');
+  alertCvs.width = 32; alertCvs.height = 32;
+  const alertCtx = alertCvs.getContext('2d');
+  alertCtx.fillStyle = '#ff0000';
+  alertCtx.font = 'bold 28px sans-serif';
+  alertCtx.textAlign = 'center';
+  alertCtx.fillText('!', 16, 26);
+  const alertTex = new THREE.CanvasTexture(alertCvs);
   guardDefs.forEach(gd => {
     const gg = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.8, 0.3), guardMat);
@@ -13878,9 +14077,15 @@ function performPepperTeleport() {
     flBody.rotation.x = Math.PI / 2;
     flBody.position.set(0.2, 1.2, -0.15);
     gg.add(flBody);
+    // Alert "!" indicator above head
+    const alertSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: alertTex, transparent: true }));
+    alertSprite.position.y = 2.1;
+    alertSprite.scale.set(0.5, 0.5, 1);
+    alertSprite.visible = false;
+    gg.add(alertSprite);
     gg.position.set(gd.x, 0, gd.z);
     pepperOfficeGroup.add(gg);
-    guards.push({ group: gg, flashlight, dir: 1, ...gd });
+    guards.push({ group: gg, flashlight, alertSprite, dir: 1, mode: 'patrol', lostTimer: 0, ...gd });
   });
 
   // Build mission HUD
@@ -13894,6 +14099,55 @@ function performPepperTeleport() {
   const vignetteEl = document.createElement('div');
   vignetteEl.id = 'pepper-vignette';
   document.body.appendChild(vignetteEl);
+
+  // First-person pepper weapon visual (bottom-right HUD)
+  const pepWeaponEl = document.createElement('canvas');
+  pepWeaponEl.id = 'pepper-weapon';
+  pepWeaponEl.width = 120; pepWeaponEl.height = 160;
+  pepWeaponEl.style.cssText = 'position:fixed;bottom:10px;right:10px;z-index:11;pointer-events:none;';
+  const pwCtx = pepWeaponEl.getContext('2d');
+  // Draw a hand holding a pepper
+  pwCtx.save();
+  // Fist/hand
+  pwCtx.fillStyle = '#eeccaa';
+  pwCtx.beginPath();
+  pwCtx.ellipse(60, 130, 22, 18, 0, 0, Math.PI * 2);
+  pwCtx.fill();
+  // Fingers wrapped around
+  pwCtx.fillStyle = '#ddbb99';
+  for (let fi = 0; fi < 4; fi++) {
+    pwCtx.beginPath();
+    pwCtx.ellipse(48 + fi * 9, 120, 5, 10, 0.2, 0, Math.PI * 2);
+    pwCtx.fill();
+  }
+  // Thumb
+  pwCtx.fillStyle = '#eeccaa';
+  pwCtx.beginPath();
+  pwCtx.ellipse(78, 118, 6, 10, -0.5, 0, Math.PI * 2);
+  pwCtx.fill();
+  // Pepper body (red, curved)
+  pwCtx.fillStyle = '#dd2222';
+  pwCtx.beginPath();
+  pwCtx.moveTo(55, 115);
+  pwCtx.quadraticCurveTo(40, 60, 52, 20);
+  pwCtx.quadraticCurveTo(62, 10, 72, 20);
+  pwCtx.quadraticCurveTo(82, 60, 68, 115);
+  pwCtx.closePath();
+  pwCtx.fill();
+  // Pepper highlight
+  pwCtx.fillStyle = 'rgba(255,100,100,0.4)';
+  pwCtx.beginPath();
+  pwCtx.ellipse(58, 60, 5, 30, -0.1, 0, Math.PI * 2);
+  pwCtx.fill();
+  // Stem
+  pwCtx.fillStyle = '#228822';
+  pwCtx.fillRect(57, 8, 8, 16);
+  pwCtx.fillStyle = '#33aa33';
+  pwCtx.beginPath();
+  pwCtx.ellipse(61, 12, 12, 5, 0, 0, Math.PI * 2);
+  pwCtx.fill();
+  pwCtx.restore();
+  document.body.appendChild(pepWeaponEl);
 
   // Hide main HUD
   document.querySelector('.hud').style.display = 'none';
@@ -13912,11 +14166,11 @@ function performPepperTeleport() {
   pepperMissionState = {
     score: 0, wave: 1, guards, computers: pepperOfficeGroup._computers,
     ceilLights: pepperOfficeGroup._ceilLights, flyingPeppers: [],
-    aiming: false, msgText: 'Pepper the computers. Avoid the guards. ESC to quit.',
-    msgTimer: 3, caughtFlash: 0, pepperScreenMat, pepperMat, guardMat, guardHeadMat,
+    aiming: false, msgText: 'PEPPERS EQUIPPED! Sabotage the computers!',
+    msgTimer: 3, caughtFlash: 0, pepperScreenMat, pepperMat, guardMat, guardHeadMat, alertTex,
     screenMat: pepperOfficeGroup._screenMat,
     savedFogFar, savedFogColor, savedBgColor, savedAmbInt, savedSunInt,
-    musicCtx: mCtx, musicGain: mGain, hudEl, vignetteEl,
+    musicCtx: mCtx, musicGain: mGain, hudEl, vignetteEl, pepWeaponEl,
   };
 
   // Reset computers
@@ -13995,6 +14249,7 @@ function endPepperMission() {
   // Remove HUD
   if (st.hudEl && st.hudEl.parentNode) st.hudEl.remove();
   if (st.vignetteEl && st.vignetteEl.parentNode) st.vignetteEl.remove();
+  if (st.pepWeaponEl && st.pepWeaponEl.parentNode) st.pepWeaponEl.remove();
 
   // Show main HUD
   document.querySelector('.hud').style.display = '';
@@ -14047,6 +14302,17 @@ function firePepperInWorld() {
   pepper.position.y -= 0.1;
   scene.add(pepper);
   st.flyingPeppers.push({ mesh: pepper, vel: dir.multiplyScalar(18), life: 3 });
+  // Recoil animation on pepper weapon
+  if (st.pepWeaponEl) {
+    st.pepWeaponEl.style.transition = 'transform 0.05s ease-out';
+    st.pepWeaponEl.style.transform = 'translateY(-12px) rotate(-8deg)';
+    setTimeout(() => {
+      if (st.pepWeaponEl) {
+        st.pepWeaponEl.style.transition = 'transform 0.15s ease-in';
+        st.pepWeaponEl.style.transform = '';
+      }
+    }, 50);
+  }
 }
 
 function updatePepperMission(dt) {
@@ -14057,37 +14323,80 @@ function updatePepperMission(dt) {
   if (st.msgTimer > 0) st.msgTimer -= dt;
   if (st.caughtFlash > 0) st.caughtFlash -= dt;
 
-  // Guard patrol + player detection
+  // Guard AI: patrol → chase
   st.guards.forEach(g => {
-    if (g.patrolZ) {
-      g.group.position.z += g.dir * g.speed * dt;
-      if (g.group.position.z > g.patrolZ[1]) g.dir = -1;
-      if (g.group.position.z < g.patrolZ[0]) g.dir = 1;
-      g.group.rotation.y = g.dir > 0 ? 0 : Math.PI;
-    } else if (g.patrolX) {
-      g.group.position.x += g.dir * g.speed * dt;
-      if (g.group.position.x > g.patrolX[1]) g.dir = -1;
-      if (g.group.position.x < g.patrolX[0]) g.dir = 1;
-      g.group.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
-    }
-    g.flashlight.target.position.set(0, 0.5, g.dir > 0 ? -4 : 4);
-
-    // Detect player
     const gp = g.group.position;
     const dx = character.position.x - gp.x;
     const dz = character.position.z - gp.z;
     const dist = Math.sqrt(dx * dx + dz * dz);
-    if (dist < 5) {
-      const guardForward = new THREE.Vector3(0, 0, -1).applyEuler(g.group.rotation);
-      const toPlayer = new THREE.Vector3(dx, 0, dz).normalize();
-      const dot = guardForward.dot(toPlayer);
-      if (dot > 0.5 && dist < 4) {
+
+    if (g.mode === 'patrol') {
+      // Normal patrol movement
+      if (g.patrolZ) {
+        gp.z += g.dir * g.speed * dt;
+        if (gp.z > g.patrolZ[1]) g.dir = -1;
+        if (gp.z < g.patrolZ[0]) g.dir = 1;
+        g.group.rotation.y = g.dir > 0 ? 0 : Math.PI;
+      } else if (g.patrolX) {
+        gp.x += g.dir * g.speed * dt;
+        if (gp.x > g.patrolX[1]) g.dir = -1;
+        if (gp.x < g.patrolX[0]) g.dir = 1;
+        g.group.rotation.y = g.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+      }
+      g.flashlight.target.position.set(0, 0.5, -4);
+      if (g.alertSprite) g.alertSprite.visible = false;
+      // Detection: player in guard's forward cone
+      if (dist < 8) {
+        const guardForward = new THREE.Vector3(0, 0, -1).applyEuler(g.group.rotation);
+        const toPlayer = new THREE.Vector3(dx, 0, dz).normalize();
+        if (guardForward.dot(toPlayer) > 0.3 && dist < 6) {
+          g.mode = 'chase';
+          g.lostTimer = 0;
+          g.flashlight.color.set(0xff4444);
+          if (g.alertSprite) g.alertSprite.visible = true;
+          st.msgText = g.name + ' spotted you!';
+          st.msgTimer = 1.5;
+        }
+      }
+    } else if (g.mode === 'chase') {
+      // Chase player directly
+      const chaseSpeed = g.speed * 1.4;
+      const norm = Math.max(0.01, dist);
+      gp.x += (dx / norm) * chaseSpeed * dt;
+      gp.z += (dz / norm) * chaseSpeed * dt;
+      // Face player
+      g.group.rotation.y = Math.atan2(dx, dz) + Math.PI;
+      // Clamp to office bounds
+      gp.x = Math.max(OX - 14.5, Math.min(OX + 14.5, gp.x));
+      gp.z = Math.max(OZ - 14.5, Math.min(OZ + 14.5, gp.z));
+      g.flashlight.target.position.set(0, 0.5, -4);
+      if (g.alertSprite) g.alertSprite.visible = true;
+      // Catch player if close enough
+      if (dist < 1.8) {
         st.caughtFlash = 0.8;
         st.score = Math.max(0, st.score - 1);
         character.position.set(OX, 0.15, OZ + 12);
-        const msgs = ['SPOTTED! ' + g.name + ' caught you!', 'BUSTED! Back to the entrance!', g.name + ' saw you! -1 point!'];
+        const msgs = ['CAUGHT! ' + g.name + ' grabbed you!', 'BUSTED by ' + g.name + '!', g.name + ' tackled you! -1 point!'];
         st.msgText = msgs[Math.floor(Math.random() * msgs.length)];
         st.msgTimer = 2;
+        // Reset guard to patrol at starting position
+        g.mode = 'patrol';
+        g.lostTimer = 0;
+        g.flashlight.color.set(0xffffaa);
+        gp.set(g.x, 0, g.z);
+        if (g.alertSprite) g.alertSprite.visible = false;
+      }
+      // Lose player if far enough away
+      if (dist > 12) {
+        g.lostTimer += dt;
+        if (g.lostTimer > 3) {
+          g.mode = 'patrol';
+          g.flashlight.color.set(0xffffaa);
+          if (g.alertSprite) g.alertSprite.visible = false;
+          g.lostTimer = 0;
+        }
+      } else {
+        g.lostTimer = 0;
       }
     }
   });
@@ -14152,10 +14461,14 @@ function updatePepperMission(dt) {
       const nfl = new THREE.SpotLight(0xffffaa, 0.8, 12, Math.PI / 6, 0.5);
       nfl.position.set(0, 1.2, 0); nfl.target.position.set(0, 0.5, -4);
       ng.add(nfl); ng.add(nfl.target);
+      // Alert sprite for new guard
+      const nas = new THREE.Sprite(new THREE.SpriteMaterial({ map: st.alertTex, transparent: true }));
+      nas.position.y = 2.1; nas.scale.set(0.5, 0.5, 1); nas.visible = false;
+      ng.add(nas);
       ng.position.set(nx, 0, nz);
       pepperOfficeGroup.add(ng);
       const patrol = Math.random() < 0.5 ? { patrolZ: [OZ - 10, OZ + 10] } : { patrolX: [OX - 10, OX + 10] };
-      st.guards.push({ group: ng, flashlight: nfl, dir: 1, speed: 2.5 + st.wave * 0.3, name: 'Guard Wave ' + st.wave, x: nx, z: nz, ...patrol });
+      st.guards.push({ group: ng, flashlight: nfl, alertSprite: nas, dir: 1, mode: 'patrol', lostTimer: 0, speed: 2.5 + st.wave * 0.3, name: 'Guard Wave ' + st.wave, x: nx, z: nz, ...patrol });
     }
     st.guards.forEach(g => { g.speed = Math.min(g.speed + 0.3, 6); });
     st.msgText = 'WAVE ' + st.wave + '! Guards are faster!';
@@ -17291,7 +17604,7 @@ function updateCrosshairRaycast() {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
       const nid = hitObj.userData.npcId;
       hoveredObj = { type: 'npc', npcId: nid };
-      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
+      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'bodhi' ? 'Bodhi' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
       tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
@@ -19742,6 +20055,7 @@ function triggerGameOver(need) {
       try { pepperMissionState.musicCtx.close(); } catch(e) {}
       if (pepperMissionState.hudEl) pepperMissionState.hudEl.remove();
       if (pepperMissionState.vignetteEl) pepperMissionState.vignetteEl.remove();
+      if (pepperMissionState.pepWeaponEl) pepperMissionState.pepWeaponEl.remove();
       scene.fog.far = pepperMissionState.savedFogFar;
       scene.fog.color.copy(pepperMissionState.savedFogColor);
       scene.background.copy(pepperMissionState.savedBgColor);
