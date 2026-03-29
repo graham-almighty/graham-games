@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html><head><title>Mega IO Tests</title></head>
+<body>
+<div id="results"></div>
+<script>
+// ═══ TEST FRAMEWORK ═══
+let _passed = 0, _failed = 0, _currentGroup = '';
+function group(name) { _currentGroup = name; }
+function assert(cond, name) {
+  const fullName = _currentGroup ? _currentGroup + ': ' + name : name;
+  const div = document.createElement('div');
+  if (cond) { div.className = 'test pass'; _passed++; }
+  else { div.className = 'test fail'; _failed++; }
+  div.textContent = (cond ? 'PASS' : 'FAIL') + ': ' + fullName;
+  document.getElementById('results').appendChild(div);
+}
+function assertEqual(a, b, name) {
+  assert(a === b, name + ' (expected ' + b + ', got ' + a + ')');
+}
+function assertApprox(a, b, eps, name) {
+  assert(Math.abs(a - b) < eps, name + ' (expected ~' + b + ', got ' + a + ')');
+}
+function showSummary() {
+  const div = document.createElement('div');
+  div.className = 'summary';
+  div.textContent = _passed + ' passed, ' + _failed + ' failed (' + (_passed + _failed) + ' total)';
+  document.getElementById('results').appendChild(div);
+}
+
+// ═══ MOCK LOCALSTORAGE ═══
+const _store = {};
+const localStorage = {
+  getItem(k) { return _store[k] !== undefined ? _store[k] : null; },
+  setItem(k, v) { _store[k] = String(v); },
+  removeItem(k) { delete _store[k]; },
+  clear() { for (const k in _store) delete _store[k]; },
+};
+
+// ═══ CONSTANTS ═══
+const GRID_W = 300;
+const GRID_H = 300;
+const CELL = 8;
+const TOTAL_CELLS = GRID_W * GRID_H;
+const MAX_LIVES = 5;
+const KILL_WIN = 12;
+const BASE_SPEED = 11;
+const BOT_COUNT = 15;
+const SPAWN_SIZE = 3;
+const INVULN_TIME = 2.0;
+const GAME_TIME_LIMIT = 600;
+
+const BOT_PERSONALITY = {
+  Jake:   { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.40, huntTarget: null },
+  Lily:   { maxTrail: 6,  homeChance: 0.45, turnChance: 0.15, decisionSpeed: [0.15, 0.35], trailLook: 5, huntPlayer: 0.05, huntTarget: null },
+  Max:    { maxTrail: 12, homeChance: 0.25, turnChance: 0.20, decisionSpeed: [0.10, 0.30], trailLook: 4, huntPlayer: 0.15, huntTarget: null },
+  Zoe:    { maxTrail: 15, homeChance: 0.20, turnChance: 0.35, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.25, huntTarget: null },
+  Mia:    { maxTrail: 5,  homeChance: 0.50, turnChance: 0.10, decisionSpeed: [0.20, 0.45], trailLook: 5, huntPlayer: 0.0,  huntTarget: null },
+  Finn:   { maxTrail: 10, homeChance: 0.30, turnChance: 0.25, decisionSpeed: [0.12, 0.30], trailLook: 4, huntPlayer: 0.10, huntTarget: null },
+  Kai:    { maxTrail: 18, homeChance: 0.15, turnChance: 0.40, decisionSpeed: [0.05, 0.15], trailLook: 2, huntPlayer: 0.20, huntTarget: null },
+  Luna:   { maxTrail: 8,  homeChance: 0.40, turnChance: 0.15, decisionSpeed: [0.15, 0.35], trailLook: 5, huntPlayer: 0.05, huntTarget: null },
+  Rex:    { maxTrail: 16, homeChance: 0.15, turnChance: 0.30, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.35, huntTarget: null },
+  Skye:   { maxTrail: 10, homeChance: 0.30, turnChance: 0.20, decisionSpeed: [0.12, 0.30], trailLook: 4, huntPlayer: 0.10, huntTarget: null },
+  James:  { maxTrail: 18, homeChance: 0.10, turnChance: 0.40, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Zoe','Mia'] },
+  Bill:   { maxTrail: 25, homeChance: 0.05, turnChance: 0.30, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.20, huntTarget: null },
+  Sasha:  { maxTrail: 4,  homeChance: 0.55, turnChance: 0.10, decisionSpeed: [0.25, 0.50], trailLook: 5, huntPlayer: 0.0,  huntTarget: null },
+  Noah:   { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Arnold'] },
+  Arnold: { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Noah'] },
+};
+
+const PLAYER_COLORS = [
+  { fill: '#4488ff', trail: '#4488ff88', border: '#2266cc', name: 'You' },
+  { fill: '#ff4444', trail: '#ff444488', border: '#cc2222', name: 'Jake' },
+  { fill: '#44cc44', trail: '#44cc4488', border: '#22aa22', name: 'Lily' },
+  { fill: '#ffaa00', trail: '#ffaa0088', border: '#cc8800', name: 'Max' },
+  { fill: '#cc44cc', trail: '#cc44cc88', border: '#aa22aa', name: 'Zoe' },
+  { fill: '#ff6688', trail: '#ff668888', border: '#cc4466', name: 'Mia' },
+  { fill: '#44dddd', trail: '#44dddd88', border: '#22aaaa', name: 'Finn' },
+  { fill: '#dddd44', trail: '#dddd4488', border: '#aaaa22', name: 'Kai' },
+  { fill: '#ff8844', trail: '#ff884488', border: '#cc6622', name: 'Luna' },
+  { fill: '#8866ff', trail: '#8866ff88', border: '#6644cc', name: 'Rex' },
+  { fill: '#66ff88', trail: '#66ff8888', border: '#44cc66', name: 'Skye' },
+  { fill: '#ff4488', trail: '#ff448888', border: '#cc2266', name: 'James' },
+  { fill: '#88aa44', trail: '#88aa4488', border: '#668822', name: 'Bill' },
+  { fill: '#aa88ff', trail: '#aa88ff88', border: '#8866cc', name: 'Sasha' },
+  { fill: '#44ff44', trail: '#44ff4488', border: '#22cc22', name: 'Noah' },
+  { fill: '#ffdd88', trail: '#ffdd8888', border: '#ccaa66', name: 'Arnold' },
+];
+
+const DX = [0, 1, 0, -1];
+const DY = [-1, 0, 1, 0];
+const OPPOSITE = [2, 3, 0, 1];
+
+// ═══ MOCK G BUX ═══
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(d) { localStorage.setItem(GG_KEY, JSON.stringify(d)); }
+
+const MIO_ACH = {
+  mio_first_capture:  { name: 'First Claim',       reward: 5 },
+  mio_10_percent:     { name: 'Land Grab',          reward: 10 },
+  mio_25_percent:     { name: 'Territory Lord',     reward: 20 },
+  mio_50_percent:     { name: 'Domination',         reward: 30 },
+  mio_kill:           { name: 'Eliminated',          reward: 10 },
+  mio_5_kills:        { name: 'Serial Eliminator',  reward: 25 },
+  mio_survive_5min:   { name: 'Survivor',           reward: 15 },
+  mio_comeback:       { name: 'Comeback',           reward: 20 },
+  mio_speed_capture:  { name: 'Quick Claim',        reward: 15 },
+  mio_champion:       { name: 'Champion',           reward: 50 },
+};
+
+function ggTry(id) {
+  const a = MIO_ACH[id]; if (!a) return;
+  const d = ggLoad(); if (d.achievements[id]) return;
+  d.achievements[id] = true; d.gBux += a.reward; ggSave(d);
+}
+
+function hasPurchase(id) { return !!ggLoad().shopPurchases[id]; }
+
+// ═══ GRID HELPERS ═══
+let grid, trailGrid;
+
+function initGrid() {
+  grid = [];
+  trailGrid = [];
+  for (let y = 0; y < GRID_H; y++) {
+    grid[y] = new Array(GRID_W).fill(0);
+    trailGrid[y] = new Array(GRID_W).fill(0);
+  }
+}
+
+function placeStartTerritory(player, cx, cy) {
+  const half = Math.floor(SPAWN_SIZE / 2);
+  for (let dy = -half; dy <= half; dy++) {
+    for (let dx = -half; dx <= half; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+        grid[ny][nx] = player.id;
+      }
+    }
+  }
+}
+
+function countTerritory(id) {
+  let count = 0;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === id) count++;
+    }
+  }
+  return count;
+}
+
+function captureTerritory(player) {
+  const id = player.id;
+  if (player.trail.length === 0) return 0;
+
+  for (const t of player.trail) {
+    grid[t.y][t.x] = id;
+    trailGrid[t.y][t.x] = 0;
+  }
+  const trailLen = player.trail.length;
+  player.trail = [];
+
+  const visited = [];
+  for (let y = 0; y < GRID_H; y++) visited[y] = new Array(GRID_W).fill(false);
+
+  const stack = [];
+  for (let x = 0; x < GRID_W; x++) {
+    if (grid[0][x] !== id && !visited[0][x]) { visited[0][x] = true; stack.push(x, 0); }
+    if (grid[GRID_H-1][x] !== id && !visited[GRID_H-1][x]) { visited[GRID_H-1][x] = true; stack.push(x, GRID_H-1); }
+  }
+  for (let y = 1; y < GRID_H - 1; y++) {
+    if (grid[y][0] !== id && !visited[y][0]) { visited[y][0] = true; stack.push(0, y); }
+    if (grid[y][GRID_W-1] !== id && !visited[y][GRID_W-1]) { visited[y][GRID_W-1] = true; stack.push(GRID_W-1, y); }
+  }
+
+  while (stack.length > 0) {
+    const sy = stack.pop(), sx = stack.pop();
+    for (let d = 0; d < 4; d++) {
+      const nx = sx + DX[d], ny = sy + DY[d];
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (visited[ny][nx] || grid[ny][nx] === id) continue;
+      visited[ny][nx] = true;
+      stack.push(nx, ny);
+    }
+  }
+
+  let captured = 0;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (!visited[y][x] && grid[y][x] !== id) {
+        grid[y][x] = id;
+        captured++;
+      }
+    }
+  }
+
+  return captured + trailLen;
+}
+
+// ═══════════════════════════════════════════
+// TESTS
+// ═══════════════════════════════════════════
+
+group('Game Constants');
+assertEqual(GRID_W, 300, 'Grid width is 300');
+assertEqual(GRID_H, 300, 'Grid height is 300');
+assertEqual(TOTAL_CELLS, 90000, 'Total cells = 90000');
+assertEqual(MAX_LIVES, 5, 'Max lives is 5');
+assertEqual(KILL_WIN, 12, 'Kill win threshold is 12');
+assertEqual(BASE_SPEED, 11, 'Base speed is 11');
+assertEqual(BOT_COUNT, 15, 'Bot count is 15');
+assertEqual(SPAWN_SIZE, 3, 'Spawn size is 3x3');
+assertEqual(INVULN_TIME, 2.0, 'Invuln time is 2 seconds');
+assertEqual(PLAYER_COLORS.length, 16, '16 player colors (1 player + 15 bots)');
+
+group('Direction Constants');
+assertEqual(DX[0], 0, 'Up DX = 0');
+assertEqual(DY[0], -1, 'Up DY = -1');
+assertEqual(DX[1], 1, 'Right DX = 1');
+assertEqual(DY[1], 0, 'Right DY = 0');
+assertEqual(DX[2], 0, 'Down DX = 0');
+assertEqual(DY[2], 1, 'Down DY = 1');
+assertEqual(DX[3], -1, 'Left DX = -1');
+assertEqual(DY[3], 0, 'Left DY = 0');
+assertEqual(OPPOSITE[0], 2, 'Opposite of up is down');
+assertEqual(OPPOSITE[1], 3, 'Opposite of right is left');
+assertEqual(OPPOSITE[2], 0, 'Opposite of down is up');
+assertEqual(OPPOSITE[3], 1, 'Opposite of left is right');
+
+group('Grid Initialization');
+{
+  initGrid();
+  assertEqual(grid.length, GRID_H, 'Grid has correct height');
+  assertEqual(grid[0].length, GRID_W, 'Grid has correct width');
+  assertEqual(trailGrid.length, GRID_H, 'Trail grid has correct height');
+  assertEqual(trailGrid[0].length, GRID_W, 'Trail grid has correct width');
+  let allZero = true;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] !== 0 || trailGrid[y][x] !== 0) { allZero = false; break; }
+    }
+    if (!allZero) break;
+  }
+  assert(allZero, 'All grid cells start at 0');
+}
+
+group('Starting Territory');
+{
+  initGrid();
+  const p = { id: 1, trail: [] };
+  placeStartTerritory(p, 60, 60);
+  let count = countTerritory(1);
+  assertEqual(count, 9, '3x3 starting territory = 9 cells');
+  // Check specific cells
+  assert(grid[59][59] === 1, 'Top-left of spawn is owned');
+  assert(grid[60][60] === 1, 'Center of spawn is owned');
+  assert(grid[61][61] === 1, 'Bottom-right of spawn is owned');
+  assert(grid[58][58] === 0, 'Outside spawn is not owned');
+}
+
+group('Starting Territory at Edge');
+{
+  initGrid();
+  const p = { id: 2, trail: [] };
+  placeStartTerritory(p, 0, 0);
+  // Only 2x2 cells should be placed (corner clipped)
+  let count = countTerritory(2);
+  assertEqual(count, 4, 'Corner spawn clips to 2x2 = 4 cells');
+}
+
+group('Territory Counting');
+{
+  initGrid();
+  assertEqual(countTerritory(1), 0, 'No territory initially');
+  grid[5][5] = 1;
+  grid[5][6] = 1;
+  grid[6][5] = 1;
+  assertEqual(countTerritory(1), 3, 'Count matches placed cells');
+  assertEqual(countTerritory(2), 0, 'Other player has 0');
+}
+
+group('Trail and Capture - Simple Loop');
+{
+  initGrid();
+  const p = { id: 1, trail: [] };
+  // Place 3x3 territory at (10, 10)
+  placeStartTerritory(p, 10, 10);
+  assertEqual(countTerritory(1), 9, 'Starting territory is 9');
+
+  // Create a trail that goes right, down, and back left to territory
+  // Trail: (12,10) -> (13,10) -> (14,10) -> (14,11) -> (14,12) -> (13,12) -> (12,12) -> (11,12)
+  const trailCells = [
+    {x:12, y:10}, {x:13, y:10}, {x:14, y:10},
+    {x:14, y:11}, {x:14, y:12},
+    {x:13, y:12}, {x:12, y:12}, {x:11, y:12},
+  ];
+  for (const t of trailCells) {
+    trailGrid[t.y][t.x] = 1;
+    p.trail.push(t);
+  }
+
+  const captured = captureTerritory(p);
+  assert(captured > 0, 'Capture returns positive count');
+
+  // The trail cells should now be territory
+  assert(grid[10][13] === 1, 'Trail cell became territory');
+  assert(grid[12][14] === 1, 'Trail cell became territory');
+
+  // The enclosed area (between trail and original territory) should be filled
+  assert(grid[11][12] === 1, 'Enclosed cell became territory');
+  assert(grid[11][13] === 1, 'Enclosed cell became territory');
+}
+
+group('Trail and Capture - No Loop (Straight Line)');
+{
+  initGrid();
+  const p = { id: 1, trail: [] };
+  placeStartTerritory(p, 60, 60);
+  const before = countTerritory(1);
+
+  // Straight trail going right (no loop back)
+  // This trail connects from territory outward but returns to territory on the other end
+  // Actually for a straight line that returns to territory, it won't enclose anything
+  p.trail = [{x:62, y:60}, {x:63, y:60}, {x:64, y:60}];
+  for (const t of p.trail) trailGrid[t.y][t.x] = 1;
+
+  const captured = captureTerritory(p);
+  // Trail cells become territory but no enclosed area
+  const after = countTerritory(1);
+  assertEqual(after, before + 3, 'Straight trail only adds trail cells, no enclosed area');
+}
+
+group('Trail Cleanup on Kill');
+{
+  initGrid();
+  const p = { id: 1, trail: [{x:5, y:5}, {x:6, y:5}], alive: true, lives: 5 };
+  trailGrid[5][5] = 1;
+  trailGrid[5][6] = 1;
+
+  // Simulate kill: remove trail, decrement lives
+  for (const t of p.trail) trailGrid[t.y][t.x] = 0;
+  p.trail = [];
+  p.alive = false;
+  p.lives--;
+
+  assertEqual(trailGrid[5][5], 0, 'Trail cell 1 cleared');
+  assertEqual(trailGrid[5][6], 0, 'Trail cell 2 cleared');
+  assertEqual(p.trail.length, 0, 'Trail array emptied');
+  assertEqual(p.alive, false, 'Player marked dead');
+  assertEqual(p.lives, 4, 'Lives decremented to 4');
+}
+
+group('Lives System');
+{
+  // Player starts with 5 lives
+  assertEqual(MAX_LIVES, 5, 'Max lives is 5');
+
+  // Simulate multiple deaths
+  const p = { id: 1, lives: MAX_LIVES, alive: true, trail: [] };
+  for (let i = 0; i < 4; i++) {
+    p.lives--;
+    assert(p.lives > 0, 'Still has lives after death ' + (i + 1));
+  }
+  p.lives--;
+  assertEqual(p.lives, 0, 'No lives after 5 deaths');
+
+  // Territory cleared on permanent death
+  initGrid();
+  grid[5][5] = 2;
+  grid[5][6] = 2;
+  grid[6][5] = 2;
+  const deadPlayer = { id: 2, lives: 0 };
+  // Simulate territory removal
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === deadPlayer.id) grid[y][x] = 0;
+    }
+  }
+  assertEqual(countTerritory(2), 0, 'Dead player territory cleared');
+}
+
+group('Win Conditions');
+{
+  // Kill win at 12
+  assertEqual(KILL_WIN, 12, 'Need 12 kills to win');
+
+  // Territory win = all cells
+  assertEqual(TOTAL_CELLS, 90000, 'Need 90000 cells for territory win');
+
+  // Timer
+  assertEqual(GAME_TIME_LIMIT, 600, 'Game time limit is 10 minutes (600s)');
+}
+
+group('Timer Win - Player Leads');
+{
+  initGrid();
+  // Player 1 has more territory
+  for (let y = 0; y < 50; y++)
+    for (let x = 0; x < 50; x++) grid[y][x] = 1;
+  // Bot (player 2) has less
+  for (let y = 0; y < 20; y++)
+    for (let x = 0; x < 20; x++) grid[y][x] = 2;
+
+  const p1count = countTerritory(1);
+  const p2count = countTerritory(2);
+  assert(p1count > p2count, 'Player 1 has more territory than player 2');
+
+  // Simulate timer logic
+  const counts = [
+    { id: 1, count: p1count },
+    { id: 2, count: p2count },
+  ];
+  counts.sort((a, b) => b.count - a.count);
+  const playerWins = counts[0].id === 1 && counts[0].count > counts[1].count;
+  assert(playerWins, 'Player wins when they have most territory at timer');
+}
+
+group('Timer Loss - Tie');
+{
+  initGrid();
+  // Equal territory
+  for (let y = 0; y < 30; y++)
+    for (let x = 0; x < 30; x++) grid[y][x] = 1;
+  for (let y = 0; y < 30; y++)
+    for (let x = 30; x < 60; x++) grid[y][x] = 2;
+
+  const p1count = countTerritory(1);
+  const p2count = countTerritory(2);
+  assertEqual(p1count, p2count, 'Territory is tied');
+
+  const counts = [
+    { id: 1, count: p1count },
+    { id: 2, count: p2count },
+  ];
+  counts.sort((a, b) => b.count - a.count);
+  const playerWins = counts[0].id === 1 && counts[0].count > counts[1].count;
+  assert(!playerWins, 'Player does not win on tie');
+}
+
+group('Timer Loss - Behind');
+{
+  initGrid();
+  // Bot has more territory
+  for (let y = 0; y < 20; y++)
+    for (let x = 0; x < 20; x++) grid[y][x] = 1;
+  for (let y = 0; y < 80; y++)
+    for (let x = 0; x < 80; x++) if (grid[y][x] === 0) grid[y][x] = 2;
+
+  const p1count = countTerritory(1);
+  const p2count = countTerritory(2);
+  assert(p2count > p1count, 'Bot has more territory');
+
+  const counts = [
+    { id: 1, count: p1count },
+    { id: 2, count: p2count },
+  ];
+  counts.sort((a, b) => b.count - a.count);
+  const playerWins = counts[0].id === 1 && counts[0].count > counts[1].count;
+  assert(!playerWins, 'Player loses when behind at timer');
+}
+
+group('Achievements');
+{
+  localStorage.clear();
+  assertEqual(Object.keys(MIO_ACH).length, 10, '10 achievements defined');
+
+  // First capture
+  ggTry('mio_first_capture');
+  let d = ggLoad();
+  assert(d.achievements.mio_first_capture, 'First capture unlocked');
+  assertEqual(d.gBux, 5, 'Got 5G for first capture');
+
+  // No duplicate
+  ggTry('mio_first_capture');
+  d = ggLoad();
+  assertEqual(d.gBux, 5, 'No duplicate reward');
+
+  // Kill achievement
+  ggTry('mio_kill');
+  d = ggLoad();
+  assert(d.achievements.mio_kill, 'Kill achievement unlocked');
+  assertEqual(d.gBux, 15, 'Got 10G for kill (total 15)');
+
+  // Champion
+  ggTry('mio_champion');
+  d = ggLoad();
+  assertEqual(d.gBux, 65, 'Got 50G for champion (total 65)');
+
+  localStorage.clear();
+}
+
+group('Achievement Rewards Sum');
+{
+  let total = 0;
+  for (const id in MIO_ACH) total += MIO_ACH[id].reward;
+  assertEqual(total, 200, 'Total achievement rewards = 200G');
+}
+
+group('Shop Purchases');
+{
+  localStorage.clear();
+  assert(!hasPurchase('mio_speed_boost'), 'Speed boost not purchased by default');
+  assert(!hasPurchase('mio_trail_shield'), 'Trail shield not purchased by default');
+
+  // Simulate purchase
+  const d = ggLoad();
+  d.shopPurchases.mio_speed_boost = true;
+  ggSave(d);
+  assert(hasPurchase('mio_speed_boost'), 'Speed boost shows as purchased');
+  assert(!hasPurchase('mio_trail_shield'), 'Trail shield still not purchased');
+
+  localStorage.clear();
+}
+
+group('Player Colors');
+{
+  assertEqual(PLAYER_COLORS[0].name, 'You', 'Player 0 is You');
+  assertEqual(PLAYER_COLORS[1].name, 'Jake', 'Player 1 is Jake');
+  assertEqual(PLAYER_COLORS[2].name, 'Lily', 'Player 2 is Lily');
+  assertEqual(PLAYER_COLORS[3].name, 'Max', 'Player 3 is Max');
+  assertEqual(PLAYER_COLORS[4].name, 'Zoe', 'Player 4 is Zoe');
+  for (let i = 0; i < 11; i++) {
+    assert(PLAYER_COLORS[i].fill.startsWith('#'), 'Color ' + i + ' has fill');
+    assert(PLAYER_COLORS[i].trail.length > 0, 'Color ' + i + ' has trail');
+    assert(PLAYER_COLORS[i].border.startsWith('#'), 'Color ' + i + ' has border');
+  }
+}
+
+group('Capture Overwrites Other Territory');
+{
+  initGrid();
+  const p1 = { id: 1, trail: [] };
+  const p2 = { id: 2, trail: [] };
+  placeStartTerritory(p1, 10, 10);
+  // Place p2 territory inside where p1's capture loop will enclose
+  grid[11][12] = 2;
+  grid[11][13] = 2;
+
+  // Create enclosing trail for p1
+  const trailCells = [
+    {x:12, y:9}, {x:13, y:9}, {x:14, y:9},
+    {x:14, y:10}, {x:14, y:11}, {x:14, y:12},
+    {x:13, y:12}, {x:12, y:12}, {x:11, y:12},
+  ];
+  for (const t of trailCells) {
+    trailGrid[t.y][t.x] = 1;
+    p1.trail.push(t);
+  }
+
+  captureTerritory(p1);
+  // p2's cells inside the loop should now be p1's
+  assertEqual(grid[11][12], 1, 'P2 territory overwritten by P1 capture');
+  assertEqual(grid[11][13], 1, 'P2 territory overwritten by P1 capture (cell 2)');
+}
+
+group('Wall Bounce Direction');
+{
+  // Test opposite direction calculations for wall bouncing
+  let dir = 0; // up
+  let bounced = OPPOSITE[dir];
+  assertEqual(bounced, 2, 'Bouncing from up gives down');
+
+  dir = 1; // right
+  bounced = OPPOSITE[dir];
+  assertEqual(bounced, 3, 'Bouncing from right gives left');
+}
+
+group('Speed Boost');
+{
+  localStorage.clear();
+  const normalSpeed = BASE_SPEED;
+  const boostedSpeed = BASE_SPEED * 1.2;
+  assertApprox(boostedSpeed, 13.2, 0.01, 'Boosted speed is 13.2');
+  assertApprox(normalSpeed, 11, 0.01, 'Normal speed is 11');
+  localStorage.clear();
+}
+
+// ═══════════════════════════════════════════
+// IO BUX & MARKET TESTS
+// ═══════════════════════════════════════════
+
+const MIO_SAVE_KEY = 'mio-save';
+const PLAYER_SKINS = [
+  { id: 'default', name: 'Default',  cost: 0,  emoji: null },
+  { id: 'burger',  name: 'Burger',   cost: 40, emoji: '🍔' },
+  { id: 'star',    name: 'Star',     cost: 30, emoji: '⭐' },
+  { id: 'skull',   name: 'Skull',    cost: 55, emoji: '💀' },
+  { id: 'fire',    name: 'Fire',     cost: 70, emoji: '🔥' },
+  { id: 'diamond', name: 'Diamond',  cost: 90, emoji: '💎' },
+  { id: 'alien',   name: 'Alien',    cost: 55, emoji: '👽' },
+  { id: 'robot',   name: 'Robot',    cost: 70, emoji: '🤖' },
+];
+const LAND_SKINS = [
+  { id: 'default', name: 'Default',   cost: 0,  color: '#4488ff' },
+  { id: 'purple',  name: 'Purple',    cost: 30, color: '#9944ff' },
+  { id: 'neon',    name: 'Neon Green', cost: 40, color: '#44ff44' },
+  { id: 'crimson', name: 'Crimson',   cost: 40, color: '#ff2244' },
+  { id: 'gold',    name: 'Gold',      cost: 60, color: '#ffcc00' },
+  { id: 'pink',    name: 'Pink',      cost: 55, color: '#ff66aa' },
+  { id: 'cyan',    name: 'Cyan',      cost: 70, color: '#00ffff' },
+  { id: 'sunset',  name: 'Sunset',    cost: 85, color: '#ff6600' },
+];
+function drawPopTart() {} // stub for tests
+const TRAIL_SKINS = [
+  { id: 'default',    name: 'Default',    cost: 0,   emoji: null, draw: null, bg: null },
+  { id: 'pop_tarts',  name: 'Pop Tarts',  cost: 45,  emoji: '🍩', draw: drawPopTart, bg: null },
+  { id: 'stars',      name: 'Stardust',   cost: 35,  emoji: '✨', draw: null, bg: null },
+  { id: 'flames',     name: 'Flames',     cost: 50,  emoji: '🔥', draw: null, bg: '#cc1100' },
+  { id: 'hearts',     name: 'Hearts',     cost: 40,  emoji: '💖', draw: null, bg: '#111111' },
+  { id: 'lightning',  name: 'Lightning',  cost: 55,  emoji: '⚡', draw: null, bg: '#111111' },
+  { id: 'rainbows',   name: 'Rainbows',   cost: 60,  emoji: '🌈', draw: null, bg: null },
+  { id: 'skulls',     name: 'Skulls',     cost: 50,  emoji: '💀', draw: null, bg: '#111111' },
+];
+
+function mioLoad() {
+  const def = {
+    ioBux: 0, ownedSkins: ['default'], ownedLands: ['default'], ownedTrails: ['default'],
+    activeSkin: 'default', activeLand: 'default', activeTrail: 'default'
+  };
+  try {
+    const d = JSON.parse(localStorage.getItem(MIO_SAVE_KEY)) || def;
+    if (!d.ownedTrails) { d.ownedTrails = ['default']; d.activeTrail = 'default'; }
+    return d;
+  } catch { return def; }
+}
+function mioSave(d) { localStorage.setItem(MIO_SAVE_KEY, JSON.stringify(d)); }
+
+group('IO Bux - Save/Load');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  assertEqual(d.ioBux, 0, 'Starts with 0 IO Bux');
+  assert(d.ownedSkins.includes('default'), 'Default skin owned');
+  assert(d.ownedLands.includes('default'), 'Default land owned');
+  assert(d.ownedTrails.includes('default'), 'Default trail owned');
+  assertEqual(d.activeSkin, 'default', 'Default skin active');
+  assertEqual(d.activeLand, 'default', 'Default land active');
+  assertEqual(d.activeTrail, 'default', 'Default trail active');
+
+  d.ioBux = 50;
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.ioBux, 50, 'IO Bux persists after save/load');
+
+  localStorage.clear();
+}
+
+group('IO Bux - Earning');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux += 2; // kill reward
+  mioSave(d);
+  assertEqual(mioLoad().ioBux, 2, 'Earned 2 for kill');
+
+  d = mioLoad();
+  d.ioBux += 1; // capture reward
+  mioSave(d);
+  assertEqual(mioLoad().ioBux, 3, 'Earned 1 for capture');
+
+  d = mioLoad();
+  d.ioBux += 10; // win bonus
+  mioSave(d);
+  assertEqual(mioLoad().ioBux, 13, 'Earned 10 for win');
+
+  localStorage.clear();
+}
+
+group('Player Skins');
+{
+  assertEqual(PLAYER_SKINS.length, 8, '8 player skins');
+  assertEqual(PLAYER_SKINS[0].cost, 0, 'Default skin is free');
+  assert(PLAYER_SKINS[0].emoji === null, 'Default has no emoji');
+  assertEqual(PLAYER_SKINS[1].id, 'burger', 'Burger skin exists');
+  assertEqual(PLAYER_SKINS[1].emoji, '🍔', 'Burger has burger emoji');
+
+  // All skins have required fields
+  for (const s of PLAYER_SKINS) {
+    assert(s.id, 'Skin ' + s.name + ' has id');
+    assert(s.name, 'Skin ' + s.id + ' has name');
+    assert(typeof s.cost === 'number', 'Skin ' + s.id + ' has numeric cost');
+  }
+}
+
+group('Land Skins');
+{
+  assertEqual(LAND_SKINS.length, 8, '8 land skins');
+  assertEqual(LAND_SKINS[0].cost, 0, 'Default land is free');
+  assertEqual(LAND_SKINS[0].color, '#4488ff', 'Default land is blue');
+  assertEqual(LAND_SKINS[1].id, 'purple', 'Purple land exists');
+  assertEqual(LAND_SKINS[1].color, '#9944ff', 'Purple land has correct color');
+
+  for (const l of LAND_SKINS) {
+    assert(l.id, 'Land ' + l.name + ' has id');
+    assert(l.color && l.color.startsWith('#'), 'Land ' + l.id + ' has hex color');
+    assert(typeof l.cost === 'number', 'Land ' + l.id + ' has numeric cost');
+  }
+}
+
+group('Market - Buy Skin');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux = 100;
+  mioSave(d);
+
+  // Buy star skin (cost 30)
+  d = mioLoad();
+  const star = PLAYER_SKINS.find(s => s.id === 'star');
+  assert(!d.ownedSkins.includes('star'), 'Star not owned initially');
+  d.ioBux -= star.cost;
+  d.ownedSkins.push('star');
+  d.activeSkin = 'star';
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.ioBux, 70, 'Paid 30 for star');
+  assert(d.ownedSkins.includes('star'), 'Star now owned');
+  assertEqual(d.activeSkin, 'star', 'Star now equipped');
+
+  localStorage.clear();
+}
+
+group('Market - Buy Land');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux = 100;
+  mioSave(d);
+
+  // Buy purple land (cost 30)
+  d = mioLoad();
+  d.ioBux -= 30;
+  d.ownedLands.push('purple');
+  d.activeLand = 'purple';
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.ioBux, 70, 'Paid 30 for purple land');
+  assert(d.ownedLands.includes('purple'), 'Purple land now owned');
+  assertEqual(d.activeLand, 'purple', 'Purple land now active');
+
+  localStorage.clear();
+}
+
+group('Market - Cannot Afford');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux = 5;
+  mioSave(d);
+
+  // Try to buy burger (cost 40)
+  d = mioLoad();
+  const canAfford = d.ioBux >= 40;
+  assert(!canAfford, 'Cannot afford burger with 5 IO Bux');
+  // Balance unchanged
+  assertEqual(d.ioBux, 5, 'Balance unchanged when cannot afford');
+
+  localStorage.clear();
+}
+
+group('Market - Equip Owned Skin');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ownedSkins = ['default', 'star', 'burger'];
+  d.activeSkin = 'star';
+  mioSave(d);
+
+  // Switch to burger (already owned)
+  d = mioLoad();
+  d.activeSkin = 'burger';
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.activeSkin, 'burger', 'Switched to burger skin');
+
+  localStorage.clear();
+}
+
+group('Trail Skins');
+{
+  assertEqual(TRAIL_SKINS.length, 8, '8 trail skins');
+  assertEqual(TRAIL_SKINS[0].cost, 0, 'Default trail is free');
+  assert(TRAIL_SKINS[0].emoji === null, 'Default trail has no emoji');
+  assertEqual(TRAIL_SKINS[1].id, 'pop_tarts', 'Pop Tarts trail exists');
+  assertEqual(TRAIL_SKINS[1].emoji, '🍩', 'Pop Tarts has donut emoji');
+
+  for (const t of TRAIL_SKINS) {
+    assert(t.id, 'Trail ' + t.name + ' has id');
+    assert(t.name, 'Trail ' + t.id + ' has name');
+    assert(typeof t.cost === 'number', 'Trail ' + t.id + ' has numeric cost');
+  }
+
+  // Non-default trails all have emojis
+  for (const t of TRAIL_SKINS) {
+    if (t.id !== 'default') {
+      assert(t.emoji, 'Trail ' + t.id + ' has emoji');
+    }
+  }
+
+  // Pop Tarts has custom draw function
+  const pt = TRAIL_SKINS.find(t => t.id === 'pop_tarts');
+  assert(typeof pt.draw === 'function', 'Pop Tarts has custom draw function');
+
+  // Default has no draw function
+  assert(TRAIL_SKINS[0].draw === null, 'Default trail has no draw function');
+
+  // Background colors
+  const skulls = TRAIL_SKINS.find(t => t.id === 'skulls');
+  assertEqual(skulls.bg, '#111111', 'Skulls has black background');
+  const flames = TRAIL_SKINS.find(t => t.id === 'flames');
+  assertEqual(flames.bg, '#cc1100', 'Flames has red background');
+  const hearts = TRAIL_SKINS.find(t => t.id === 'hearts');
+  assertEqual(hearts.bg, '#111111', 'Hearts has black background');
+  const lightning = TRAIL_SKINS.find(t => t.id === 'lightning');
+  assertEqual(lightning.bg, '#111111', 'Lightning has black background');
+  assert(TRAIL_SKINS[0].bg === null, 'Default has no background');
+}
+
+group('Market - Buy Trail');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux = 100;
+  mioSave(d);
+
+  // Buy stardust trail (cost 35)
+  d = mioLoad();
+  const stars = TRAIL_SKINS.find(s => s.id === 'stars');
+  assert(!d.ownedTrails.includes('stars'), 'Stardust not owned initially');
+  d.ioBux -= stars.cost;
+  d.ownedTrails.push('stars');
+  d.activeTrail = 'stars';
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.ioBux, 65, 'Paid 35 for stardust');
+  assert(d.ownedTrails.includes('stars'), 'Stardust now owned');
+  assertEqual(d.activeTrail, 'stars', 'Stardust now equipped');
+
+  localStorage.clear();
+}
+
+group('Market - Equip Owned Trail');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ownedTrails = ['default', 'pop_tarts', 'flames'];
+  d.activeTrail = 'pop_tarts';
+  mioSave(d);
+
+  // Switch to flames (already owned)
+  d = mioLoad();
+  d.activeTrail = 'flames';
+  mioSave(d);
+  d = mioLoad();
+  assertEqual(d.activeTrail, 'flames', 'Switched to flames trail');
+
+  localStorage.clear();
+}
+
+group('Market - Cannot Afford Trail');
+{
+  localStorage.clear();
+  let d = mioLoad();
+  d.ioBux = 5;
+  mioSave(d);
+
+  d = mioLoad();
+  const canAfford = d.ioBux >= 45;
+  assert(!canAfford, 'Cannot afford pop tarts with 5 IO Bux');
+  assertEqual(d.ioBux, 5, 'Balance unchanged when cannot afford trail');
+
+  localStorage.clear();
+}
+
+group('IO Bux - Migration adds trails');
+{
+  localStorage.clear();
+  // Simulate old save without trails
+  localStorage.setItem(MIO_SAVE_KEY, JSON.stringify({
+    ioBux: 50, ownedSkins: ['default', 'star'], ownedLands: ['default'],
+    activeSkin: 'star', activeLand: 'default'
+  }));
+  const d = mioLoad();
+  assert(d.ownedTrails.includes('default'), 'Migration adds default trail');
+  assertEqual(d.activeTrail, 'default', 'Migration sets active trail to default');
+  assertEqual(d.ioBux, 50, 'IO Bux preserved during migration');
+
+  localStorage.clear();
+}
+
+group('Pause');
+{
+  // gamePaused should default to false
+  let gamePaused = false;
+  let gameRunning = true;
+  assertEqual(gamePaused, false, 'Game starts unpaused');
+
+  // Toggle pause on
+  gamePaused = true;
+  assertEqual(gamePaused, true, 'Game can be paused');
+
+  // Toggle pause off
+  gamePaused = false;
+  assertEqual(gamePaused, false, 'Game can be unpaused');
+
+  // Pause only works when game is running
+  gameRunning = false;
+  const shouldPause = gameRunning && !gamePaused;
+  assert(!shouldPause, 'Cannot pause when game not running');
+
+  // Game loop skips when paused
+  gameRunning = true;
+  gamePaused = true;
+  const shouldUpdate = gameRunning && !gamePaused;
+  assert(!shouldUpdate, 'Game loop skips updates when paused');
+
+  // Unpause resumes
+  gamePaused = false;
+  const shouldResume = gameRunning && !gamePaused;
+  assert(shouldResume, 'Game loop resumes when unpaused');
+}
+
+group('Save & Resume');
+{
+  const MIO_GAME_KEY = 'mio-game-save';
+  localStorage.clear();
+
+  // No save initially
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(MIO_GAME_KEY)); } catch {}
+  assert(!saved, 'No game save initially');
+
+  // Save game state
+  initGrid();
+  grid[50][50] = 1;
+  grid[51][50] = 2;
+  trailGrid[52][50] = 1;
+  const testPlayers = [
+    { id: 1, x: 50, y: 50, px: 50, py: 50, dir: 0, nextDir: -1, speed: 11, moveProgress: 0,
+      trail: [{x:52,y:50}], alive: true, invulnTimer: 0, isBot: false, botTimer: 0,
+      botTargetDir: 0, territoryCount: 1, lives: 4, shieldTimer: 0 },
+    { id: 2, x: 51, y: 50, px: 51, py: 50, dir: 2, nextDir: -1, speed: 12.65, moveProgress: 0,
+      trail: [], alive: true, invulnTimer: 0, isBot: true, botTimer: 0.3,
+      botTargetDir: 1, territoryCount: 1, lives: 5, shieldTimer: 0 }
+  ];
+  const state = {
+    grid: grid, trailGrid: trailGrid, players: testPlayers,
+    gameTime: 45.5, kills: 3, hasDied: true,
+    hasCapturedAfterDeath: true, maxTerritory: 12.5, ioBuxEarnedThisGame: 7
+  };
+  localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+
+  // Load game state
+  const loaded = JSON.parse(localStorage.getItem(MIO_GAME_KEY));
+  assert(loaded !== null, 'Game state saved');
+  assertEqual(loaded.gameTime, 45.5, 'Game time preserved');
+  assertEqual(loaded.kills, 3, 'Kills preserved');
+  assertEqual(loaded.hasDied, true, 'hasDied preserved');
+  assertEqual(loaded.hasCapturedAfterDeath, true, 'hasCapturedAfterDeath preserved');
+  assertEqual(loaded.maxTerritory, 12.5, 'maxTerritory preserved');
+  assertEqual(loaded.ioBuxEarnedThisGame, 7, 'IO Bux earned preserved');
+
+  // Grid state preserved
+  assertEqual(loaded.grid[50][50], 1, 'Player 1 territory preserved');
+  assertEqual(loaded.grid[51][50], 2, 'Player 2 territory preserved');
+  assertEqual(loaded.trailGrid[52][50], 1, 'Trail preserved');
+
+  // Player state preserved
+  assertEqual(loaded.players.length, 2, '2 players saved');
+  assertEqual(loaded.players[0].lives, 4, 'Player lives preserved');
+  assertEqual(loaded.players[0].trail.length, 1, 'Player trail preserved');
+  assertEqual(loaded.players[1].isBot, true, 'Bot flag preserved');
+  assertEqual(loaded.players[1].speed, 12.65, 'Bot speed preserved');
+  assertEqual(loaded.players[1].dir, 2, 'Bot direction preserved');
+
+  // Clear save
+  localStorage.removeItem(MIO_GAME_KEY);
+  let cleared = null;
+  try { cleared = JSON.parse(localStorage.getItem(MIO_GAME_KEY)); } catch {}
+  assert(!cleared, 'Game save cleared');
+
+  localStorage.clear();
+}
+
+group('Bot Personalities');
+{
+  // All 15 bots have a personality defined
+  const botNames = ['Jake','Lily','Max','Zoe','Mia','Finn','Kai','Luna','Rex','Skye','James','Bill','Sasha','Noah','Arnold'];
+  for (const name of botNames) {
+    assert(PLAYER_COLORS.find(c => c.name === name), 'Color entry for ' + name);
+  }
+
+  assertEqual(botNames.length, 15, '15 bot personalities');
+  assertEqual(PLAYER_COLORS.length, 16, '16 player colors (1 player + 15 bots)');
+  assertEqual(BOT_COUNT, 15, 'BOT_COUNT is 15');
+
+  // Jake is aggressive: high maxTrail, high huntPlayer, low trailLook
+  assert(BOT_PERSONALITY.Jake.maxTrail >= 18, 'Jake has long max trail (aggressive)');
+  assert(BOT_PERSONALITY.Jake.huntPlayer >= 0.3, 'Jake hunts the player');
+  assert(BOT_PERSONALITY.Jake.trailLook <= 2, 'Jake barely looks ahead (reckless)');
+
+  // Mia is timid: low maxTrail, high homeChance, no hunting
+  assert(BOT_PERSONALITY.Mia.maxTrail <= 6, 'Mia has short max trail (timid)');
+  assert(BOT_PERSONALITY.Mia.homeChance >= 0.4, 'Mia heads home often');
+  assertEqual(BOT_PERSONALITY.Mia.huntPlayer, 0, 'Mia never hunts player');
+
+  // Lily is careful: high trailLook, low turnChance
+  assert(BOT_PERSONALITY.Lily.trailLook >= 5, 'Lily looks far ahead');
+  assert(BOT_PERSONALITY.Lily.turnChance <= 0.2, 'Lily turns rarely');
+
+  // Kai is chaotic: fast decisions, high turn chance
+  assert(BOT_PERSONALITY.Kai.decisionSpeed[1] <= 0.20, 'Kai decides fast');
+  assert(BOT_PERSONALITY.Kai.turnChance >= 0.35, 'Kai turns a lot');
+
+  // Rex is a hunter
+  assert(BOT_PERSONALITY.Rex.huntPlayer >= 0.30, 'Rex hunts the player');
+
+  // James hunts Zoe and Mia specifically
+  assert(Array.isArray(BOT_PERSONALITY.James.huntTarget), 'James has huntTarget array');
+  assert(BOT_PERSONALITY.James.huntTarget.includes('Zoe'), 'James targets Zoe');
+  assert(BOT_PERSONALITY.James.huntTarget.includes('Mia'), 'James targets Mia');
+  assert(BOT_PERSONALITY.James.huntPlayer >= 0.4, 'James hunts aggressively');
+
+  // Bill is a bold conquistador
+  assert(BOT_PERSONALITY.Bill.maxTrail >= 25, 'Bill has very long max trail');
+  assert(BOT_PERSONALITY.Bill.homeChance <= 0.1, 'Bill rarely heads home');
+
+  // Sasha is quiet survivor
+  assert(BOT_PERSONALITY.Sasha.maxTrail <= 5, 'Sasha has tiny max trail');
+  assert(BOT_PERSONALITY.Sasha.homeChance >= 0.5, 'Sasha stays home');
+  assertEqual(BOT_PERSONALITY.Sasha.huntPlayer, 0, 'Sasha never hunts');
+
+  // Noah and Arnold target each other
+  assert(BOT_PERSONALITY.Noah.huntTarget.includes('Arnold'), 'Noah targets Arnold');
+  assert(BOT_PERSONALITY.Arnold.huntTarget.includes('Noah'), 'Arnold targets Noah');
+  assert(BOT_PERSONALITY.Noah.huntPlayer >= 0.4, 'Noah hunts aggressively');
+  assert(BOT_PERSONALITY.Arnold.huntPlayer >= 0.4, 'Arnold hunts aggressively');
+
+  // All personalities have required fields
+  for (const name of botNames) {
+    const per = BOT_PERSONALITY[name];
+    assert(typeof per.maxTrail === 'number', name + ' has maxTrail');
+    assert(typeof per.homeChance === 'number', name + ' has homeChance');
+    assert(typeof per.turnChance === 'number', name + ' has turnChance');
+    assert(Array.isArray(per.decisionSpeed), name + ' has decisionSpeed array');
+    assertEqual(per.decisionSpeed.length, 2, name + ' decisionSpeed has 2 values');
+    assert(typeof per.trailLook === 'number', name + ' has trailLook');
+    assert(typeof per.huntPlayer === 'number', name + ' has huntPlayer');
+    assert(per.huntTarget === null || Array.isArray(per.huntTarget), name + ' huntTarget is null or array');
+  }
+}
+
+group('Spawn Safety');
+{
+  initGrid();
+  // Fill a large area with player 1 territory
+  for (let y = 20; y < 80; y++) {
+    for (let x = 20; x < 80; x++) {
+      grid[y][x] = 1;
+    }
+  }
+
+  // isSpawnClear should reject spots inside territory
+  // Check center (50,50) - definitely in player 1's territory
+  let clear = true;
+  const half = Math.floor(SPAWN_SIZE / 2);
+  for (let dy = -half - 2; dy <= half + 2; dy++) {
+    for (let dx = -half - 2; dx <= half + 2; dx++) {
+      const nx = 50 + dx, ny = 50 + dy;
+      if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+        if (grid[ny][nx] !== 0 && grid[ny][nx] !== 2) { clear = false; break; }
+      }
+    }
+    if (!clear) break;
+  }
+  assert(!clear, 'Spawn in occupied territory is not clear');
+
+  // Check corner (5,5) - should be clear
+  let cornerClear = true;
+  for (let dy = -half - 2; dy <= half + 2; dy++) {
+    for (let dx = -half - 2; dx <= half + 2; dx++) {
+      const nx = 5 + dx, ny = 5 + dy;
+      if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+        if (grid[ny][nx] !== 0 && grid[ny][nx] !== 2) { cornerClear = false; break; }
+      }
+    }
+    if (!cornerClear) break;
+  }
+  assert(cornerClear, 'Spawn in empty corner is clear');
+}
+
+group('IO Bux Earning Rates');
+{
+  // Verify earning rates
+  const killReward = 2;
+  const captureReward = 1;
+  const winBonus = 10;
+  assertEqual(killReward, 2, 'Kill gives 2 IO Bux');
+  assertEqual(captureReward, 1, 'Capture gives 1 IO Bux');
+  assertEqual(winBonus, 10, 'Win gives 10 IO Bux');
+}
+
+// ═══ Background Music ═══
+group('Background Music');
+{
+  const SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+  assertEqual(SCALE.length, 8, 'medieval scale has 8 notes');
+  const HI = SCALE.map(f => f * 2);
+  assertApprox(HI[0], 293.66, 0.01, 'high scale starts at D4');
+}
+{
+  const MEL = [[0,2,4,3,2,0,4,3],[4,5,7,4,3,2,0,2],[7,4,3,2,0,2,3,4],[0,0,3,4,4,3,2,0]];
+  assertEqual(MEL.length, 4, '4 melody patterns');
+  for (let i = 0; i < MEL.length; i++) assertEqual(MEL[i].length, 8, 'melody ' + i + ' has 8 steps');
+}
+{
+  const DRM = [[1,0,0,1,1,0,0,1],[1,0,1,0,1,1,0,1],[1,1,0,1,1,0,1,1]];
+  assertEqual(DRM.length, 3, '3 drum patterns');
+  for (let i = 0; i < DRM.length; i++) assertEqual(DRM[i].length, 8, 'drum ' + i + ' has 8 steps');
+}
+{
+  const eighth = 60 / 120 / 2;
+  assertApprox(eighth, 0.25, 0.001, '120 BPM eighth note = 0.25s');
+  const barDur = eighth * 8;
+  assertApprox(barDur, 2.0, 0.001, 'bar duration = 2s');
+}
+{
+  let muted = false;
+  function getText(m) { return m ? '♫ OFF' : '♫ ON'; }
+  assertEqual(getText(false), '♫ ON', 'button shows ON when unmuted');
+  assertEqual(getText(true), '♫ OFF', 'button shows OFF when muted');
+}
+
+showSummary();
+</script>
+</body>
+</html>

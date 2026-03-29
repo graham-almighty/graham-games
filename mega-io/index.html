@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mega IO</title>
+<link rel="icon" href="../favicon.ico">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a1a; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+canvas { display: block; margin: 0 auto; }
+
+/* ═══ TITLE SCREEN ═══ */
+#title-screen {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; background: #0a0a1a; z-index: 10;
+}
+#title-screen h1 {
+  font-size: 72px; font-weight: 900; letter-spacing: 4px;
+  background: linear-gradient(135deg, #4488ff, #44ddff, #ff44aa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: none; margin-bottom: 10px;
+}
+#title-screen .subtitle {
+  color: #888; font-size: 18px; margin-bottom: 40px; letter-spacing: 2px;
+}
+#title-screen button {
+  padding: 14px 48px; font-size: 22px; font-weight: 700; border: none; border-radius: 8px;
+  cursor: pointer; margin: 8px; transition: transform 0.15s, box-shadow 0.15s;
+}
+#title-screen button:hover { transform: scale(1.05); }
+.btn-play {
+  background: linear-gradient(135deg, #4488ff, #44ddff); color: #fff;
+  box-shadow: 0 4px 20px #4488ff66;
+}
+.btn-exit {
+  background: #222; color: #c9a84c; border: 1px solid #c9a84c !important;
+  box-shadow: 0 4px 20px #c9a84c33; font-size: 16px !important; padding: 10px 28px !important;
+}
+.controls-hint {
+  color: #666; font-size: 14px; margin-top: 30px;
+}
+
+/* ═══ HUD ═══ */
+#hud {
+  position: fixed; top: 0; left: 0; right: 0; min-height: 44px;
+  background: #00000099; backdrop-filter: blur(6px);
+  display: flex; align-items: center; flex-wrap: wrap; padding: 4px 16px; z-index: 5;
+  font-size: 15px; color: #fff; gap: 6px 20px;
+}
+#hud .hud-item { display: flex; align-items: center; gap: 6px; }
+#hud .hud-label { color: #888; font-size: 12px; text-transform: uppercase; }
+#hud .hud-val { font-weight: 700; font-size: 16px; }
+.hud-territory { color: #4488ff; }
+.hud-kills { color: #ff6644; }
+.hud-time { color: #aaa; }
+.hud-timer { color: #44ddff; }
+.hud-timer.low { color: #ff4444; animation: timer-pulse 1s infinite; }
+@keyframes timer-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.hud-leaderboard {
+  margin-left: auto; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px;
+  max-width: 60%;
+}
+.hud-lb-entry { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hud-lb-entry.dead { opacity: 0.35; }
+.hud-lb-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.hud-lb-name { width: 42px; overflow: hidden; text-overflow: ellipsis; }
+.hud-lb-bar { width: 50px; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+.hud-lb-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+#hud-leader {
+  position: fixed; top: 50px; left: 10px; z-index: 5;
+  background: #00000099; backdrop-filter: blur(6px);
+  border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #fff;
+  display: flex; flex-direction: column; gap: 4px;
+}
+#hud-leader .leader-title { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+#hud-leader .leader-row { display: flex; align-items: center; gap: 6px; }
+#hud-leader .leader-dot { width: 10px; height: 10px; border-radius: 50%; }
+#hud-leader .leader-name { font-weight: 700; }
+#hud-leader .leader-stat { color: #aaa; font-size: 12px; }
+.hidden { display: none !important; }
+
+/* ═══ GAME OVER ═══ */
+#game-over {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; background: #000000cc;
+  z-index: 10;
+}
+#game-over h2 {
+  font-size: 48px; font-weight: 900; color: #fff; margin-bottom: 10px;
+}
+#game-over .stats { color: #aaa; font-size: 18px; margin-bottom: 30px; text-align: center; line-height: 1.8; }
+#game-over .stats span { color: #fff; font-weight: 700; }
+#game-over button { margin: 6px; }
+
+/* ═══ TOAST ═══ */
+#gg-toast {
+  position: fixed; bottom: 20px; right: 20px; padding: 14px 22px;
+  background: linear-gradient(135deg, #1a1a2e, #2a2a3e); border: 1px solid #c9a84c;
+  border-radius: 10px; color: #c9a84c; font-weight: 600; font-size: 14px;
+  z-index: 100; opacity: 0; transform: translateX(60px);
+  transition: opacity 0.3s, transform 0.3s; pointer-events: none;
+}
+#gg-toast.visible { opacity: 1; transform: translateX(0); }
+
+/* ═══ IO BUX ═══ */
+.io-bux-display {
+  color: #ffcc00; font-size: 20px; font-weight: 700; margin-bottom: 8px;
+  text-shadow: 0 0 10px #ffcc0044;
+}
+
+/* ═══ MARKET ═══ */
+#market-screen {
+  position: fixed; inset: 0; display: flex; flex-direction: column;
+  align-items: center; background: #0a0a1a; z-index: 15; overflow-y: auto; padding: 30px 20px;
+}
+#market-screen h2 {
+  font-size: 36px; font-weight: 900; color: #ffcc00; margin-bottom: 4px;
+}
+.market-bux { color: #ffcc00; font-size: 18px; margin-bottom: 20px; }
+.market-section { margin-bottom: 24px; width: 100%; max-width: 600px; }
+.market-section h3 {
+  font-size: 18px; color: #888; text-transform: uppercase; letter-spacing: 2px;
+  margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 6px;
+}
+.market-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.market-item {
+  background: #1a1a2e; border: 2px solid #333; border-radius: 10px;
+  padding: 12px 8px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.market-item:hover { transform: scale(1.05); }
+.market-item.owned { border-color: #44cc44; }
+.market-item.active { border-color: #ffcc00; box-shadow: 0 0 12px #ffcc0033; }
+.market-item .item-icon { font-size: 32px; margin-bottom: 4px; }
+.market-item .item-name { color: #fff; font-size: 13px; font-weight: 600; }
+.market-item .item-cost { color: #ffcc00; font-size: 12px; margin-top: 2px; }
+.market-item .item-status { font-size: 11px; margin-top: 2px; }
+.market-item .item-status.equipped { color: #ffcc00; }
+.market-item .item-status.owned-text { color: #44cc44; }
+.land-swatch {
+  width: 40px; height: 40px; border-radius: 6px; margin: 0 auto 4px;
+  border: 2px solid #ffffff22;
+}
+.btn-market {
+  background: linear-gradient(135deg, #ffcc00, #ff8800); color: #000;
+  box-shadow: 0 4px 20px #ffcc0033;
+}
+.btn-back {
+  background: #333; color: #fff; padding: 10px 28px !important;
+  font-size: 16px !important; margin-top: 10px;
+}
+.btn-fullscreen {
+  background: #333; color: #aaa; border: 1px solid #555 !important;
+  font-size: 14px !important; padding: 8px 20px !important;
+}
+#fs-btn-game {
+  position: fixed; top: 50px; right: 10px; z-index: 6;
+  background: #00000088; color: #aaa; border: 1px solid #555;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+#pause-btn {
+  position: fixed; top: 50px; right: 50px; z-index: 6;
+  background: #00000088; color: #aaa; border: 1px solid #555;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+}
+#pause-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: #000000aa; z-index: 5; display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+}
+#pause-overlay h2 { color: #fff; font-size: 48px; margin: 0 0 10px; }
+#pause-overlay p { color: #888; font-size: 14px; margin: 0 0 20px; }
+#pause-overlay button { margin: 5px; }
+.btn-resume { background: #44cc44; color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 16px; cursor: pointer; font-family: inherit; }
+.btn-save-exit { background: #ff6644; color: #fff; border: none; border-radius: 8px; padding: 12px 32px; font-size: 16px; cursor: pointer; font-family: inherit; }
+.btn-resume-title { background: #44cc44; color: #fff; border: none; border-radius: 8px; padding: 10px 24px; font-size: 14px; cursor: pointer; font-family: inherit; margin-top: 6px; }
+
+@media (max-width: 600px) {
+  #title-screen h1 { font-size: 48px; }
+  #title-screen button { padding: 12px 32px; font-size: 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TITLE SCREEN -->
+<div id="title-screen">
+  <h1>MEGA IO</h1>
+  <div class="subtitle">CAPTURE TERRITORY. DOMINATE THE MAP.</div>
+  <div class="io-bux-display" id="title-bux"></div>
+  <button class="btn-play" onclick="startGame()">PLAY</button>
+  <button class="btn-resume-title hidden" id="resume-btn" onclick="resumeGame()">RESUME</button>
+  <button class="btn-market" onclick="openMarket()">MARKET</button>
+  <button class="btn-exit" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+  <button class="btn-fullscreen" onclick="toggleFullscreen()">FULLSCREEN</button>
+  <div class="controls-hint">WASD / Arrow Keys to move &bull; Capture territory by making loops<br>Win by 12 kills, owning all land, or most territory at 10:00 &bull; 5 lives each</div>
+</div>
+
+<!-- MARKET -->
+<div id="market-screen" class="hidden">
+  <h2>MARKET</h2>
+  <div class="market-bux" id="market-bux"></div>
+  <div class="market-section">
+    <h3>Player Skins</h3>
+    <div class="market-grid" id="skin-grid"></div>
+  </div>
+  <div class="market-section">
+    <h3>Land Skins</h3>
+    <div class="market-grid" id="land-grid"></div>
+  </div>
+  <div class="market-section">
+    <h3>Trail Effects</h3>
+    <div class="market-grid" id="trail-grid"></div>
+  </div>
+  <button class="btn-back" onclick="closeMarket()">BACK</button>
+</div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div class="hud-item"><span class="hud-label">Territory</span><span class="hud-val hud-territory" id="hud-territory">0%</span></div>
+  <div class="hud-item"><span class="hud-label">Kills</span><span class="hud-val hud-kills" id="hud-kills">0/12</span></div>
+  <div class="hud-item"><span class="hud-label">Lives</span><span class="hud-val hud-time" id="hud-lives">5</span></div>
+  <div class="hud-item"><span class="hud-label">Time</span><span class="hud-val hud-timer" id="hud-timer">10:00</span></div>
+  <div class="hud-item"><span class="hud-label">IO Bux</span><span class="hud-val" id="hud-bux" style="color:#ffcc00">0</span></div>
+  <div class="hud-leaderboard" id="hud-leaderboard"></div>
+</div>
+<div id="hud-leader" class="hidden"></div>
+
+<!-- GAME OVER -->
+<div id="game-over" class="hidden">
+  <h2 id="go-title">GAME OVER</h2>
+  <div class="stats" id="go-stats"></div>
+  <button class="btn-play" onclick="startGame()">PLAY AGAIN</button>
+  <button class="btn-exit" onclick="showTitle()">EXIT</button>
+</div>
+
+<button id="music-btn" class="hidden" onclick="toggleMusic()" style="position:fixed;top:48px;right:44px;z-index:20;background:#00000099;border:1px solid #555;color:#888;font-family:'Segoe UI',sans-serif;font-size:0.7rem;padding:4px 10px;cursor:pointer;backdrop-filter:blur(4px)">♫ ON</button>
+<button id="pause-btn" class="hidden" onclick="togglePause()">⏸</button>
+<div id="pause-overlay" class="hidden">
+  <h2>PAUSED</h2>
+  <p>Press Escape to resume</p>
+  <button class="btn-resume" onclick="togglePause()">RESUME</button>
+  <button class="btn-save-exit" onclick="saveAndExit()">SAVE &amp; EXIT</button>
+</div>
+<button id="fs-btn-game" class="hidden" onclick="toggleFullscreen()">⛶</button>
+<canvas id="canvas"></canvas>
+<div id="gg-toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// G BUX INTEGRATION
+// ═══════════════════════════════════════════
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(d) { localStorage.setItem(GG_KEY, JSON.stringify(d)); }
+
+const toastQueue = [];
+let toastShowing = false;
+function showToast(msg) {
+  toastQueue.push(msg);
+  if (!toastShowing) drainToast();
+}
+function drainToast() {
+  if (!toastQueue.length) { toastShowing = false; return; }
+  toastShowing = true;
+  const el = document.getElementById('gg-toast');
+  el.textContent = toastQueue.shift();
+  el.classList.add('visible');
+  setTimeout(() => { el.classList.remove('visible'); setTimeout(drainToast, 400); }, 2500);
+}
+
+const MIO_ACH = {
+  mio_first_capture:  { name: 'First Claim',       reward: 5 },
+  mio_10_percent:     { name: 'Land Grab',          reward: 10 },
+  mio_25_percent:     { name: 'Territory Lord',     reward: 20 },
+  mio_50_percent:     { name: 'Domination',         reward: 30 },
+  mio_kill:           { name: 'Eliminated',          reward: 10 },
+  mio_5_kills:        { name: 'Serial Eliminator',  reward: 25 },
+  mio_survive_5min:   { name: 'Survivor',           reward: 15 },
+  mio_comeback:       { name: 'Comeback',           reward: 20 },
+  mio_speed_capture:  { name: 'Quick Claim',        reward: 15 },
+  mio_champion:       { name: 'Champion',           reward: 50 },
+};
+function ggTry(id) {
+  const a = MIO_ACH[id]; if (!a) return;
+  const d = ggLoad(); if (d.achievements[id]) return;
+  d.achievements[id] = true; d.gBux += a.reward; ggSave(d);
+  showToast('🏆 ' + a.name + ' +' + a.reward + 'G');
+}
+function hasPurchase(id) { return !!ggLoad().shopPurchases[id]; }
+
+// ═══════════════════════════════════════════
+// IO BUX SYSTEM
+// ═══════════════════════════════════════════
+const MIO_SAVE_KEY = 'mio-save';
+const PLAYER_SKINS = [
+  { id: 'default', name: 'Default',  cost: 0,  emoji: null },
+  { id: 'burger',  name: 'Burger',   cost: 40, emoji: '🍔' },
+  { id: 'star',    name: 'Star',     cost: 30, emoji: '⭐' },
+  { id: 'skull',   name: 'Skull',    cost: 55, emoji: '💀' },
+  { id: 'fire',    name: 'Fire',     cost: 70, emoji: '🔥' },
+  { id: 'diamond', name: 'Diamond',  cost: 90, emoji: '💎' },
+  { id: 'alien',   name: 'Alien',    cost: 55, emoji: '👽' },
+  { id: 'robot',   name: 'Robot',    cost: 70, emoji: '🤖' },
+];
+const LAND_SKINS = [
+  { id: 'default', name: 'Default',   cost: 0,  color: '#4488ff' },
+  { id: 'purple',  name: 'Purple',    cost: 30, color: '#9944ff' },
+  { id: 'neon',    name: 'Neon Green', cost: 40, color: '#44ff44' },
+  { id: 'crimson', name: 'Crimson',   cost: 40, color: '#ff2244' },
+  { id: 'gold',    name: 'Gold',      cost: 60, color: '#ffcc00' },
+  { id: 'pink',    name: 'Pink',      cost: 55, color: '#ff66aa' },
+  { id: 'cyan',    name: 'Cyan',      cost: 70, color: '#00ffff' },
+  { id: 'sunset',  name: 'Sunset',    cost: 85, color: '#ff6600' },
+];
+const SPRINKLE_COLORS = ['#ff2244','#44cc44','#4488ff','#ffcc00','#ff66aa','#9944ff','#ff8844'];
+function drawPopTart(ctx, cx, cy, C) {
+  // Light brown pastry base
+  ctx.fillStyle = '#c89660';
+  ctx.fillRect(cx, cy, C, C);
+  // White frosting (top 60%)
+  ctx.fillStyle = '#f0e8e0';
+  const frostH = Math.ceil(C * 0.6);
+  ctx.fillRect(cx + 1, cy, C - 2, frostH);
+  // Colorful sprinkles — seeded from position for consistency
+  const seed = (cx * 7 + cy * 13) | 0;
+  for (let i = 0; i < 4; i++) {
+    const si = (seed + i * 3) % SPRINKLE_COLORS.length;
+    ctx.fillStyle = SPRINKLE_COLORS[si];
+    const sx = cx + 1 + ((seed + i * 17) % (C - 2));
+    const sy = cy + ((seed + i * 11) % frostH);
+    ctx.fillRect(sx, sy, 1, 1);
+  }
+}
+const TRAIL_SKINS = [
+  { id: 'default',    name: 'Default',    cost: 0,   emoji: null, draw: null, bg: null },
+  { id: 'pop_tarts',  name: 'Pop Tarts',  cost: 45,  emoji: '🍩', draw: drawPopTart, bg: null },
+  { id: 'stars',      name: 'Stardust',   cost: 35,  emoji: '✨', draw: null, bg: null },
+  { id: 'flames',     name: 'Flames',     cost: 50,  emoji: '🔥', draw: null, bg: '#cc1100' },
+  { id: 'hearts',     name: 'Hearts',     cost: 40,  emoji: '💖', draw: null, bg: '#111111' },
+  { id: 'lightning',  name: 'Lightning',  cost: 55,  emoji: '⚡', draw: null, bg: '#111111' },
+  { id: 'rainbows',   name: 'Rainbows',   cost: 60,  emoji: '🌈', draw: null, bg: null },
+  { id: 'skulls',     name: 'Skulls',     cost: 50,  emoji: '💀', draw: null, bg: '#111111' },
+];
+
+function mioLoad() {
+  const def = {
+    ioBux: 0, ownedSkins: ['default'], ownedLands: ['default'], ownedTrails: ['default'],
+    activeSkin: 'default', activeLand: 'default', activeTrail: 'default'
+  };
+  try {
+    const d = JSON.parse(localStorage.getItem(MIO_SAVE_KEY)) || def;
+    if (!d.ownedTrails) { d.ownedTrails = ['default']; d.activeTrail = 'default'; }
+    return d;
+  } catch { return def; }
+}
+function mioSave(d) { localStorage.setItem(MIO_SAVE_KEY, JSON.stringify(d)); }
+
+function earnIoBux(amount) {
+  const d = mioLoad();
+  d.ioBux += amount;
+  mioSave(d);
+  ioBuxEarnedThisGame += amount;
+}
+
+function getActiveSkin() {
+  const d = mioLoad();
+  return PLAYER_SKINS.find(s => s.id === d.activeSkin) || PLAYER_SKINS[0];
+}
+function getActiveLand() {
+  const d = mioLoad();
+  return LAND_SKINS.find(s => s.id === d.activeLand) || LAND_SKINS[0];
+}
+function getActiveTrail() {
+  const d = mioLoad();
+  return TRAIL_SKINS.find(s => s.id === d.activeTrail) || TRAIL_SKINS[0];
+}
+
+let ioBuxEarnedThisGame = 0;
+
+function refreshBuxDisplays() {
+  const d = mioLoad();
+  const titleEl = document.getElementById('title-bux');
+  if (titleEl) titleEl.textContent = '💰 ' + d.ioBux + ' IO Bux';
+}
+
+// ═══ MARKET ═══
+function openMarket() {
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('market-screen').classList.remove('hidden');
+  renderMarket();
+}
+function closeMarket() {
+  document.getElementById('market-screen').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+  refreshBuxDisplays();
+}
+
+function renderMarket() {
+  const d = mioLoad();
+  document.getElementById('market-bux').textContent = '💰 ' + d.ioBux + ' IO Bux';
+
+  // Skins
+  const skinGrid = document.getElementById('skin-grid');
+  skinGrid.innerHTML = '';
+  for (const skin of PLAYER_SKINS) {
+    const owned = d.ownedSkins.includes(skin.id);
+    const active = d.activeSkin === skin.id;
+    const div = document.createElement('div');
+    div.className = 'market-item' + (active ? ' active' : owned ? ' owned' : '');
+    div.innerHTML =
+      '<div class="item-icon">' + (skin.emoji || '⚪') + '</div>' +
+      '<div class="item-name">' + skin.name + '</div>' +
+      (active ? '<div class="item-status equipped">EQUIPPED</div>' :
+       owned ? '<div class="item-status owned-text">OWNED</div>' :
+       '<div class="item-cost">' + skin.cost + ' IO Bux</div>');
+    div.onclick = () => buyOrEquipSkin(skin.id);
+    skinGrid.appendChild(div);
+  }
+
+  // Lands
+  const landGrid = document.getElementById('land-grid');
+  landGrid.innerHTML = '';
+  for (const land of LAND_SKINS) {
+    const owned = d.ownedLands.includes(land.id);
+    const active = d.activeLand === land.id;
+    const div = document.createElement('div');
+    div.className = 'market-item' + (active ? ' active' : owned ? ' owned' : '');
+    div.innerHTML =
+      '<div class="land-swatch" style="background:' + land.color + '55;border-color:' + land.color + '"></div>' +
+      '<div class="item-name">' + land.name + '</div>' +
+      (active ? '<div class="item-status equipped">EQUIPPED</div>' :
+       owned ? '<div class="item-status owned-text">OWNED</div>' :
+       '<div class="item-cost">' + land.cost + ' IO Bux</div>');
+    div.onclick = () => buyOrEquipLand(land.id);
+    landGrid.appendChild(div);
+  }
+
+  // Trails
+  const trailGrid = document.getElementById('trail-grid');
+  trailGrid.innerHTML = '';
+  for (const trail of TRAIL_SKINS) {
+    const owned = d.ownedTrails.includes(trail.id);
+    const active = d.activeTrail === trail.id;
+    const div = document.createElement('div');
+    div.className = 'market-item' + (active ? ' active' : owned ? ' owned' : '');
+    div.innerHTML =
+      '<div class="item-icon">' + (trail.emoji || '—') + '</div>' +
+      '<div class="item-name">' + trail.name + '</div>' +
+      (active ? '<div class="item-status equipped">EQUIPPED</div>' :
+       owned ? '<div class="item-status owned-text">OWNED</div>' :
+       '<div class="item-cost">' + trail.cost + ' IO Bux</div>');
+    div.onclick = () => buyOrEquipTrail(trail.id);
+    trailGrid.appendChild(div);
+  }
+}
+
+function buyOrEquipSkin(id) {
+  const d = mioLoad();
+  const skin = PLAYER_SKINS.find(s => s.id === id);
+  if (!skin) return;
+  if (d.ownedSkins.includes(id)) {
+    d.activeSkin = id;
+    mioSave(d);
+  } else if (d.ioBux >= skin.cost) {
+    d.ioBux -= skin.cost;
+    d.ownedSkins.push(id);
+    d.activeSkin = id;
+    mioSave(d);
+    showToast('Unlocked ' + skin.name + '!');
+  }
+  renderMarket();
+}
+
+function buyOrEquipLand(id) {
+  const d = mioLoad();
+  const land = LAND_SKINS.find(s => s.id === id);
+  if (!land) return;
+  if (d.ownedLands.includes(id)) {
+    d.activeLand = id;
+    mioSave(d);
+  } else if (d.ioBux >= land.cost) {
+    d.ioBux -= land.cost;
+    d.ownedLands.push(id);
+    d.activeLand = id;
+    mioSave(d);
+    showToast('Unlocked ' + land.name + ' land!');
+  }
+  renderMarket();
+}
+
+function buyOrEquipTrail(id) {
+  const d = mioLoad();
+  const trail = TRAIL_SKINS.find(s => s.id === id);
+  if (!trail) return;
+  if (d.ownedTrails.includes(id)) {
+    d.activeTrail = id;
+    mioSave(d);
+  } else if (d.ioBux >= trail.cost) {
+    d.ioBux -= trail.cost;
+    d.ownedTrails.push(id);
+    d.activeTrail = id;
+    mioSave(d);
+    showToast('Unlocked ' + trail.name + ' trail!');
+  }
+  renderMarket();
+}
+
+// ═══════════════════════════════════════════
+// GAME CONSTANTS
+// ═══════════════════════════════════════════
+const GRID_W = 300;
+const GRID_H = 300;
+const CELL = 8;
+const TOTAL_CELLS = GRID_W * GRID_H;
+const MAX_LIVES = 5;
+const KILL_WIN = 12;
+const BASE_SPEED = 11; // cells per second
+const BOT_COUNT = 15;
+const SPAWN_SIZE = 3; // 3x3 starting territory
+const INVULN_TIME = 2.0; // seconds of invulnerability after respawn
+const GAME_TIME_LIMIT = 600; // 10 minutes
+
+// Bot personalities: tweak AI behavior per bot
+// maxTrail: how long trail gets before heading home (lower = cautious)
+// homeChance: probability of heading back when wandering (higher = cautious)
+// turnChance: probability of random turn (higher = erratic)
+// decisionSpeed: [min, max] seconds between decisions (lower = sharper)
+// trailLook: how many cells ahead to check for trail danger
+// huntPlayer: chance of steering toward player 1's territory per decision
+// huntTarget: array of bot names to hunt (instead of player). null = hunt player 1
+const BOT_PERSONALITY = {
+  Jake:   { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.40, huntTarget: null }, // aggressive idiot, charges you
+  Lily:   { maxTrail: 6,  homeChance: 0.45, turnChance: 0.15, decisionSpeed: [0.15, 0.35], trailLook: 5, huntPlayer: 0.05, huntTarget: null }, // careful & methodical
+  Max:    { maxTrail: 12, homeChance: 0.25, turnChance: 0.20, decisionSpeed: [0.10, 0.30], trailLook: 4, huntPlayer: 0.15, huntTarget: null }, // balanced & smart
+  Zoe:    { maxTrail: 15, homeChance: 0.20, turnChance: 0.35, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.25, huntTarget: null }, // fast & risky
+  Mia:    { maxTrail: 5,  homeChance: 0.50, turnChance: 0.10, decisionSpeed: [0.20, 0.45], trailLook: 5, huntPlayer: 0.0,  huntTarget: null }, // timid, tiny grabs
+  Finn:   { maxTrail: 10, homeChance: 0.30, turnChance: 0.25, decisionSpeed: [0.12, 0.30], trailLook: 4, huntPlayer: 0.10, huntTarget: null }, // steady explorer
+  Kai:    { maxTrail: 18, homeChance: 0.15, turnChance: 0.40, decisionSpeed: [0.05, 0.15], trailLook: 2, huntPlayer: 0.20, huntTarget: null }, // chaotic & twitchy
+  Luna:   { maxTrail: 8,  homeChance: 0.40, turnChance: 0.15, decisionSpeed: [0.15, 0.35], trailLook: 5, huntPlayer: 0.05, huntTarget: null }, // safe & precise
+  Rex:    { maxTrail: 16, homeChance: 0.15, turnChance: 0.30, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.35, huntTarget: null }, // hunter, targets you
+  Skye:   { maxTrail: 10, homeChance: 0.30, turnChance: 0.20, decisionSpeed: [0.12, 0.30], trailLook: 4, huntPlayer: 0.10, huntTarget: null }, // all-rounder
+  James:  { maxTrail: 18, homeChance: 0.10, turnChance: 0.40, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Zoe','Mia'] }, // like Jake but bullies Zoe & Mia
+  Bill:   { maxTrail: 25, homeChance: 0.05, turnChance: 0.30, decisionSpeed: [0.08, 0.20], trailLook: 3, huntPlayer: 0.20, huntTarget: null }, // bold conquistador, huge grabs
+  Sasha:  { maxTrail: 4,  homeChance: 0.55, turnChance: 0.10, decisionSpeed: [0.25, 0.50], trailLook: 5, huntPlayer: 0.0,  huntTarget: null }, // quiet survivor, outlasts everyone
+  Noah:   { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Arnold'] }, // dingus, obsessed with Arnold
+  Arnold: { maxTrail: 20, homeChance: 0.10, turnChance: 0.45, decisionSpeed: [0.1, 0.25], trailLook: 2, huntPlayer: 0.45, huntTarget: ['Noah'] }, // dingus, obsessed with Noah
+};
+
+const PLAYER_COLORS = [
+  { fill: '#4488ff', trail: '#4488ff88', border: '#2266cc', name: 'You' },
+  { fill: '#ff4444', trail: '#ff444488', border: '#cc2222', name: 'Jake' },
+  { fill: '#44cc44', trail: '#44cc4488', border: '#22aa22', name: 'Lily' },
+  { fill: '#ffaa00', trail: '#ffaa0088', border: '#cc8800', name: 'Max' },
+  { fill: '#cc44cc', trail: '#cc44cc88', border: '#aa22aa', name: 'Zoe' },
+  { fill: '#ff6688', trail: '#ff668888', border: '#cc4466', name: 'Mia' },
+  { fill: '#44dddd', trail: '#44dddd88', border: '#22aaaa', name: 'Finn' },
+  { fill: '#dddd44', trail: '#dddd4488', border: '#aaaa22', name: 'Kai' },
+  { fill: '#ff8844', trail: '#ff884488', border: '#cc6622', name: 'Luna' },
+  { fill: '#8866ff', trail: '#8866ff88', border: '#6644cc', name: 'Rex' },
+  { fill: '#66ff88', trail: '#66ff8888', border: '#44cc66', name: 'Skye' },
+  { fill: '#ff4488', trail: '#ff448888', border: '#cc2266', name: 'James' },
+  { fill: '#88aa44', trail: '#88aa4488', border: '#668822', name: 'Bill' },
+  { fill: '#aa88ff', trail: '#aa88ff88', border: '#8866cc', name: 'Sasha' },
+  { fill: '#44ff44', trail: '#44ff4488', border: '#22cc22', name: 'Noah' },
+  { fill: '#ffdd88', trail: '#ffdd8888', border: '#ccaa66', name: 'Arnold' },
+];
+
+// Direction vectors: 0=up, 1=right, 2=down, 3=left
+const DX = [0, 1, 0, -1];
+const DY = [-1, 0, 1, 0];
+const OPPOSITE = [2, 3, 0, 1];
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let grid; // 2D array: 0=empty, 1-5=owner
+let trailGrid; // 2D array: 0=none, 1-5=trail owner
+let players; // array of player objects
+let gameTime;
+let gameRunning;
+let gamePaused = false;
+let kills;
+let hasDied;
+let hasCapturedAfterDeath;
+let maxTerritory;
+
+function initGrid() {
+  grid = [];
+  trailGrid = [];
+  for (let y = 0; y < GRID_H; y++) {
+    grid[y] = new Array(GRID_W).fill(0);
+    trailGrid[y] = new Array(GRID_W).fill(0);
+  }
+}
+
+function spawnPos(idx) {
+  // Spread players around the map
+  const positions = [
+    { x: Math.floor(GRID_W * 0.50), y: Math.floor(GRID_H * 0.80) },  // player: bottom center
+    { x: Math.floor(GRID_W * 0.20), y: Math.floor(GRID_H * 0.20) },
+    { x: Math.floor(GRID_W * 0.80), y: Math.floor(GRID_H * 0.20) },
+    { x: Math.floor(GRID_W * 0.20), y: Math.floor(GRID_H * 0.50) },
+    { x: Math.floor(GRID_W * 0.80), y: Math.floor(GRID_H * 0.50) },
+    { x: Math.floor(GRID_W * 0.20), y: Math.floor(GRID_H * 0.80) },
+    { x: Math.floor(GRID_W * 0.80), y: Math.floor(GRID_H * 0.80) },
+    { x: Math.floor(GRID_W * 0.50), y: Math.floor(GRID_H * 0.20) },
+    { x: Math.floor(GRID_W * 0.50), y: Math.floor(GRID_H * 0.50) },
+    { x: Math.floor(GRID_W * 0.35), y: Math.floor(GRID_H * 0.35) },
+    { x: Math.floor(GRID_W * 0.65), y: Math.floor(GRID_H * 0.65) },
+    { x: Math.floor(GRID_W * 0.35), y: Math.floor(GRID_H * 0.65) },
+    { x: Math.floor(GRID_W * 0.65), y: Math.floor(GRID_H * 0.35) },
+    { x: Math.floor(GRID_W * 0.10), y: Math.floor(GRID_H * 0.35) },
+    { x: Math.floor(GRID_W * 0.90), y: Math.floor(GRID_H * 0.65) },
+    { x: Math.floor(GRID_W * 0.50), y: Math.floor(GRID_H * 0.35) },
+  ];
+  return positions[idx] || { x: Math.floor(GRID_W / 2), y: Math.floor(GRID_H / 2) };
+}
+
+function createPlayer(idx) {
+  const pos = spawnPos(idx);
+  const speed = idx === 0 && hasPurchase('mio_speed_boost') ? BASE_SPEED * 1.2 : idx > 0 ? BASE_SPEED * 1.15 : BASE_SPEED;
+  const p = {
+    id: idx + 1, // 1-indexed for grid
+    x: pos.x, y: pos.y,
+    px: pos.x, py: pos.y, // pixel position (smooth)
+    dir: 0, // up
+    nextDir: -1,
+    speed: speed,
+    moveProgress: 0,
+    trail: [],
+    alive: true,
+    invulnTimer: INVULN_TIME,
+    isBot: idx > 0,
+    botTimer: 0,
+    botTargetDir: 0,
+    territoryCount: 0,
+    lives: MAX_LIVES,
+    shieldTimer: (idx === 0 && hasPurchase('mio_trail_shield')) ? 2.0 : 0,
+  };
+  // Place starting territory
+  placeStartTerritory(p, pos.x, pos.y);
+  return p;
+}
+
+function placeStartTerritory(player, cx, cy) {
+  const half = Math.floor(SPAWN_SIZE / 2);
+  for (let dy = -half; dy <= half; dy++) {
+    for (let dx = -half; dx <= half; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+        grid[ny][nx] = player.id;
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+// TERRITORY CAPTURE (FLOOD FILL)
+// ═══════════════════════════════════════════
+function captureTerritory(player) {
+  const id = player.id;
+  if (player.trail.length === 0) return 0;
+
+  // Convert trail to territory
+  for (const t of player.trail) {
+    grid[t.y][t.x] = id;
+    trailGrid[t.y][t.x] = 0;
+  }
+  const trailLen = player.trail.length;
+  player.trail = [];
+
+  // Flood fill from edges to find cells NOT enclosed
+  const visited = [];
+  for (let y = 0; y < GRID_H; y++) visited[y] = new Array(GRID_W).fill(false);
+
+  const stack = [];
+  // Seed from all border cells that aren't owned by this player
+  for (let x = 0; x < GRID_W; x++) {
+    if (grid[0][x] !== id && !visited[0][x]) { visited[0][x] = true; stack.push(x, 0); }
+    if (grid[GRID_H-1][x] !== id && !visited[GRID_H-1][x]) { visited[GRID_H-1][x] = true; stack.push(x, GRID_H-1); }
+  }
+  for (let y = 1; y < GRID_H - 1; y++) {
+    if (grid[y][0] !== id && !visited[y][0]) { visited[y][0] = true; stack.push(0, y); }
+    if (grid[y][GRID_W-1] !== id && !visited[y][GRID_W-1]) { visited[y][GRID_W-1] = true; stack.push(GRID_W-1, y); }
+  }
+
+  while (stack.length > 0) {
+    const sy = stack.pop(), sx = stack.pop();
+    for (let d = 0; d < 4; d++) {
+      const nx = sx + DX[d], ny = sy + DY[d];
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (visited[ny][nx] || grid[ny][nx] === id) continue;
+      visited[ny][nx] = true;
+      stack.push(nx, ny);
+    }
+  }
+
+  // Any unvisited cell not owned by this player becomes territory
+  let captured = 0;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (!visited[y][x] && grid[y][x] !== id) {
+        grid[y][x] = id;
+        captured++;
+      }
+    }
+  }
+
+  return captured + trailLen;
+}
+
+function countTerritory(id) {
+  let count = 0;
+  for (let y = 0; y < GRID_H; y++) {
+    for (let x = 0; x < GRID_W; x++) {
+      if (grid[y][x] === id) count++;
+    }
+  }
+  return count;
+}
+
+// ═══════════════════════════════════════════
+// PLAYER MOVEMENT & LOGIC
+// ═══════════════════════════════════════════
+function isOnOwnTerritory(p) {
+  return grid[p.y][p.x] === p.id;
+}
+
+function killPlayer(p) {
+  // Remove trail
+  for (const t of p.trail) {
+    trailGrid[t.y][t.x] = 0;
+  }
+  p.trail = [];
+  p.alive = false;
+  p.lives--;
+
+  // Remove territory if permanently dead
+  if (p.lives <= 0) {
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (grid[y][x] === p.id) grid[y][x] = 0;
+      }
+    }
+    checkWinCondition();
+    return;
+  }
+
+  // Respawn after a delay
+  setTimeout(() => {
+    if (!gameRunning) return;
+    respawnPlayer(p);
+  }, 1500);
+}
+
+function isSpawnClear(cx, cy, selfId) {
+  const half = Math.floor(SPAWN_SIZE / 2);
+  for (let dy = -half - 2; dy <= half + 2; dy++) {
+    for (let dx = -half - 2; dx <= half + 2; dx++) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (grid[ny][nx] !== 0 && grid[ny][nx] !== selfId) return false;
+      if (trailGrid[ny][nx] !== 0) return false;
+    }
+  }
+  // Also check distance from other alive players
+  for (const pl of players) {
+    if (!pl.alive || pl.id === selfId) continue;
+    const dist = Math.abs(pl.x - cx) + Math.abs(pl.y - cy);
+    if (dist < 15) return false;
+  }
+  return true;
+}
+
+function respawnPlayer(p) {
+  // Find a safe spot away from other players and territory
+  let bestX, bestY, found = false;
+  for (let attempt = 0; attempt < 100; attempt++) {
+    const tx = Math.floor(Math.random() * (GRID_W - 10)) + 5;
+    const ty = Math.floor(Math.random() * (GRID_H - 10)) + 5;
+    if (isSpawnClear(tx, ty, p.id)) {
+      bestX = tx; bestY = ty; found = true; break;
+    }
+  }
+  if (!found) {
+    bestX = Math.floor(Math.random() * (GRID_W - 10)) + 5;
+    bestY = Math.floor(Math.random() * (GRID_H - 10)) + 5;
+  }
+  p.x = bestX; p.y = bestY;
+  p.px = bestX; p.py = bestY;
+  p.dir = Math.floor(Math.random() * 4);
+  p.nextDir = -1;
+  p.moveProgress = 0;
+  p.alive = true;
+  p.invulnTimer = INVULN_TIME;
+  p.shieldTimer = (p.id === 1 && hasPurchase('mio_trail_shield')) ? 2.0 : 0;
+  placeStartTerritory(p, bestX, bestY);
+  if (!p.isBot) hasDied = true;
+}
+
+function checkWinCondition() {
+  if (!gameRunning) return;
+  const p = players[0];
+
+  // Player died permanently
+  if (p.lives <= 0) {
+    endGame(false);
+    return;
+  }
+
+  // Win by kills
+  if (kills >= KILL_WIN) {
+    endGame(true);
+    return;
+  }
+
+  // Win by owning all territory (100%)
+  const playerTerritory = countTerritory(p.id);
+  if (playerTerritory >= TOTAL_CELLS) {
+    endGame(true);
+    return;
+  }
+
+  // Check if all bots are permanently dead
+  const botsAlive = players.filter(b => b.isBot && b.lives > 0).length;
+  if (botsAlive === 0) {
+    endGame(true);
+    return;
+  }
+
+  // Timer expired — most territory wins
+  if (gameTime >= GAME_TIME_LIMIT) {
+    const counts = players.map(pl => ({ id: pl.id, count: countTerritory(pl.id) }));
+    counts.sort((a, b) => b.count - a.count);
+    if (counts[0].id === 1 && counts[0].count > counts[1].count) {
+      endGame(true);
+    } else {
+      endGame(false);
+    }
+    return;
+  }
+}
+
+function movePlayer(p, dt) {
+  if (!p.alive) return;
+
+  p.invulnTimer = Math.max(0, p.invulnTimer - dt);
+  p.shieldTimer = Math.max(0, p.shieldTimer - dt);
+  p.moveProgress += p.speed * dt;
+
+  while (p.moveProgress >= 1) {
+    p.moveProgress -= 1;
+
+    // Apply queued direction change
+    if (p.nextDir >= 0 && p.nextDir !== OPPOSITE[p.dir]) {
+      p.dir = p.nextDir;
+      p.nextDir = -1;
+    }
+
+    // Calculate next cell
+    const nx = p.x + DX[p.dir];
+    const ny = p.y + DY[p.dir];
+
+    // Wall bounce
+    if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) {
+      // Reverse direction
+      p.dir = OPPOSITE[p.dir];
+      p.moveProgress = 0;
+      continue;
+    }
+
+    // Move to next cell
+    p.x = nx;
+    p.y = ny;
+
+    // Check if we hit someone's trail (including our own)
+    if (trailGrid[ny][nx] > 0 && p.invulnTimer <= 0) {
+      const trailOwner = trailGrid[ny][nx];
+      if (trailOwner === p.id) {
+        // Hit own trail = die
+        killPlayer(p);
+        return;
+      } else {
+        // Hit someone else's trail = kill them
+        const victim = players.find(v => v.id === trailOwner);
+        if (victim && victim.alive) {
+          // Check shield
+          if (victim.shieldTimer <= 0) {
+            killPlayer(victim);
+            if (!p.isBot) {
+              kills++;
+              earnIoBux(2);
+              ggTry('mio_kill');
+              if (kills >= 5) ggTry('mio_5_kills');
+            }
+          }
+        }
+      }
+    }
+
+    if (!p.alive) return;
+
+    // Territory logic
+    if (isOnOwnTerritory(p)) {
+      // Returned home — capture!
+      if (p.trail.length > 0) {
+        const captured = captureTerritory(p);
+        if (!p.isBot && captured > 0) {
+          earnIoBux(1);
+          ggTry('mio_first_capture');
+          if (p.trail.length >= 20) ggTry('mio_speed_capture');
+          if (hasDied && !hasCapturedAfterDeath) {
+            hasCapturedAfterDeath = true;
+            ggTry('mio_comeback');
+          }
+        }
+      }
+    } else {
+      // Outside territory — leave trail
+      if (trailGrid[ny][nx] === 0) {
+        trailGrid[ny][nx] = p.id;
+        p.trail.push({ x: nx, y: ny });
+      }
+    }
+  }
+
+  // Smooth pixel position
+  p.px = p.x + DX[p.dir] * p.moveProgress;
+  p.py = p.y + DY[p.dir] * p.moveProgress;
+}
+
+// ═══════════════════════════════════════════
+// BOT AI
+// ═══════════════════════════════════════════
+function getBotPersonality(p) {
+  const name = PLAYER_COLORS[p.id - 1].name;
+  return BOT_PERSONALITY[name] || BOT_PERSONALITY.Skye; // fallback
+}
+
+function dirTowardTarget(p, target) {
+  if (!target || !target.alive) return -1;
+  const dx = target.x - p.x, dy = target.y - p.y;
+  const dirs = [];
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    dirs.push(dx > 0 ? 1 : 3, dy > 0 ? 2 : 0);
+  } else {
+    dirs.push(dy > 0 ? 2 : 0, dx > 0 ? 1 : 3);
+  }
+  for (const d of dirs) {
+    if (d !== OPPOSITE[p.dir]) return d;
+  }
+  return -1;
+}
+
+function getHuntTarget(p, per) {
+  if (per.huntTarget) {
+    // Find the closest alive target by name
+    let best = null, bestDist = Infinity;
+    for (const name of per.huntTarget) {
+      const t = players.find(pl => PLAYER_COLORS[pl.id - 1].name === name && pl.alive && pl.lives > 0);
+      if (t) {
+        const dist = Math.abs(t.x - p.x) + Math.abs(t.y - p.y);
+        if (dist < bestDist) { bestDist = dist; best = t; }
+      }
+    }
+    return best;
+  }
+  return players[0]; // default: hunt player 1
+}
+
+function updateBot(p, dt) {
+  if (!p.alive) return;
+  p.botTimer -= dt;
+  if (p.botTimer <= 0) {
+    const per = getBotPersonality(p);
+    p.botTimer = per.decisionSpeed[0] + Math.random() * (per.decisionSpeed[1] - per.decisionSpeed[0]);
+
+    if (p.trail.length > per.maxTrail) {
+      // Trail too long — head home
+      const homeDir = dirToOwnTerritory(p);
+      if (homeDir >= 0) p.nextDir = homeDir;
+      else {
+        const options = [0,1,2,3].filter(d => d !== OPPOSITE[p.dir]);
+        p.nextDir = options[Math.floor(Math.random() * options.length)];
+      }
+    } else {
+      const r = Math.random();
+      if (r < per.huntPlayer && !isOnOwnTerritory(p)) {
+        // Hunt a target
+        const target = getHuntTarget(p, per);
+        const huntDir = dirTowardTarget(p, target);
+        if (huntDir >= 0) p.nextDir = huntDir;
+      } else if (r < per.huntPlayer + per.turnChance) {
+        // Random turn
+        const turns = [p.dir, (p.dir + 1) % 4, (p.dir + 3) % 4];
+        p.nextDir = turns[Math.floor(Math.random() * turns.length)];
+      } else if (r < per.huntPlayer + per.turnChance + per.homeChance && !isOnOwnTerritory(p) && p.trail.length > 2) {
+        // Head back to territory
+        const homeDir = dirToOwnTerritory(p);
+        if (homeDir >= 0) p.nextDir = homeDir;
+      }
+      // else keep going straight
+    }
+
+    // Avoid walls
+    const lookAhead = 5;
+    const pendingDir = p.nextDir >= 0 ? p.nextDir : p.dir;
+    const nx = p.x + DX[pendingDir] * lookAhead;
+    const ny = p.y + DY[pendingDir] * lookAhead;
+    if (nx < 2 || nx >= GRID_W - 2 || ny < 2 || ny >= GRID_H - 2) {
+      const turns = [(p.dir + 1) % 4, (p.dir + 3) % 4];
+      p.nextDir = turns[Math.floor(Math.random() * turns.length)];
+    }
+
+    // Avoid trails ahead (personality controls look distance)
+    const finalDir = p.nextDir >= 0 ? p.nextDir : p.dir;
+    for (let step = 1; step <= per.trailLook; step++) {
+      const cx = p.x + DX[finalDir] * step;
+      const cy = p.y + DY[finalDir] * step;
+      if (cx < 0 || cx >= GRID_W || cy < 0 || cy >= GRID_H) break;
+      if (trailGrid[cy][cx] !== 0) {
+        const turns = [(p.dir + 1) % 4, (p.dir + 3) % 4];
+        let safeTurn = turns[0];
+        const ax = p.x + DX[turns[0]], ay = p.y + DY[turns[0]];
+        const bx = p.x + DX[turns[1]], by = p.y + DY[turns[1]];
+        if (ax >= 0 && ax < GRID_W && ay >= 0 && ay < GRID_H && trailGrid[ay][ax] !== 0) safeTurn = turns[1];
+        else if (bx >= 0 && bx < GRID_W && by >= 0 && by < GRID_H && trailGrid[by][bx] === 0) {
+          safeTurn = Math.random() < 0.5 ? turns[0] : turns[1];
+        }
+        p.nextDir = safeTurn;
+        break;
+      }
+    }
+  }
+}
+
+function dirToOwnTerritory(p) {
+  let bestDir = -1, bestDist = Infinity;
+  for (let d = 0; d < 4; d++) {
+    if (d === OPPOSITE[p.dir]) continue;
+    // Look along this direction for own territory
+    for (let step = 1; step < 20; step++) {
+      const nx = p.x + DX[d] * step;
+      const ny = p.y + DY[d] * step;
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) break;
+      if (trailGrid[ny][nx] === p.id) break; // own trail = bad
+      if (grid[ny][nx] === p.id) {
+        if (step < bestDist) { bestDist = step; bestDir = d; }
+        break;
+      }
+    }
+  }
+  return bestDir;
+}
+
+// ═══════════════════════════════════════════
+// INPUT
+// ═══════════════════════════════════════════
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (!gameRunning) return;
+  if (e.key === ' ' || e.key === 'Escape') { e.preventDefault(); togglePause(); return; }
+  if (gamePaused) return;
+  const p = players[0];
+  if (!p || !p.alive) return;
+  if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') p.nextDir = 0;
+  else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') p.nextDir = 1;
+  else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') p.nextDir = 2;
+  else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') p.nextDir = 3;
+});
+window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+// ═══════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+
+function render() {
+  const W = canvas.width, H = canvas.height;
+  ctx.fillStyle = '#12121f';
+  ctx.fillRect(0, 0, W, H);
+
+  if (!gameRunning || !players || !players[0]) return;
+
+  const player = players[0];
+  // Camera centered on player
+  const camX = player.px * CELL - W / 2;
+  const camY = player.py * CELL - H / 2 + 22; // offset for HUD
+
+  ctx.save();
+  ctx.translate(-camX, -camY);
+
+  // Draw grid background
+  const startX = Math.max(0, Math.floor(camX / CELL));
+  const startY = Math.max(0, Math.floor(camY / CELL));
+  const endX = Math.min(GRID_W, Math.ceil((camX + W) / CELL) + 1);
+  const endY = Math.min(GRID_H, Math.ceil((camY + H) / CELL) + 1);
+
+  // Draw territory
+  const _landColor = getActiveLand().color;
+  const _trailSkin = getActiveTrail();
+  for (let y = startY; y < endY; y++) {
+    for (let x = startX; x < endX; x++) {
+      const owner = grid[y][x];
+      const trail = trailGrid[y][x];
+      if (owner > 0) {
+        const landColor = (owner === 1) ? _landColor : PLAYER_COLORS[owner - 1].fill;
+        ctx.fillStyle = landColor + '55';
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+      } else {
+        // Empty cell — subtle grid
+        ctx.fillStyle = '#1a1a2a';
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+      }
+      if (trail > 0) {
+        const trailColor = (trail === 1) ? _landColor + '88' : PLAYER_COLORS[trail - 1].trail;
+        ctx.fillStyle = trailColor;
+        ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+        if (trail === 1 && (_trailSkin.draw || _trailSkin.emoji)) {
+          if (_trailSkin.bg) {
+            ctx.fillStyle = _trailSkin.bg;
+            ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+          }
+          if (_trailSkin.draw) {
+            _trailSkin.draw(ctx, x * CELL, y * CELL, CELL);
+          } else {
+            ctx.font = (CELL - 1) + 'px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(_trailSkin.emoji, x * CELL + CELL / 2, y * CELL + CELL / 2);
+          }
+        }
+      }
+    }
+  }
+
+  // Grid lines (very subtle)
+  ctx.strokeStyle = '#ffffff08';
+  ctx.lineWidth = 0.5;
+  for (let x = startX; x <= endX; x++) {
+    ctx.beginPath();
+    ctx.moveTo(x * CELL, startY * CELL);
+    ctx.lineTo(x * CELL, endY * CELL);
+    ctx.stroke();
+  }
+  for (let y = startY; y <= endY; y++) {
+    ctx.beginPath();
+    ctx.moveTo(startX * CELL, y * CELL);
+    ctx.lineTo(endX * CELL, y * CELL);
+    ctx.stroke();
+  }
+
+  // Map border
+  ctx.strokeStyle = '#ffffff33';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(0, 0, GRID_W * CELL, GRID_H * CELL);
+
+  // Draw players
+  for (const p of players) {
+    if (!p.alive) continue;
+    const px = p.px * CELL + CELL / 2;
+    const py = p.py * CELL + CELL / 2;
+    const r = CELL * 0.9;
+    const c = PLAYER_COLORS[p.id - 1];
+
+    const skin = (!p.isBot) ? getActiveSkin() : null;
+
+    // Glow
+    ctx.shadowColor = c.fill;
+    ctx.shadowBlur = 8;
+
+    if (skin && skin.emoji) {
+      // Emoji skin for player
+      ctx.font = (CELL + 6) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(skin.emoji, px, py);
+    } else {
+      // Default circle
+      ctx.fillStyle = c.fill;
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = c.border;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    ctx.shadowBlur = 0;
+
+    // Invulnerability flash
+    if (p.invulnTimer > 0 && Math.floor(p.invulnTimer * 8) % 2 === 0) {
+      ctx.strokeStyle = '#ffffff88';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, r + 3, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Name tag (for bots)
+    if (p.isBot) {
+      ctx.fillStyle = '#ffffffaa';
+      ctx.font = '9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.name, px, py - r - 4);
+    }
+  }
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+// HUD UPDATE
+// ═══════════════════════════════════════════
+function updateHUD() {
+  const p = players[0];
+  const pct = (countTerritory(p.id) / TOTAL_CELLS * 100).toFixed(1);
+  document.getElementById('hud-territory').textContent = pct + '%';
+  document.getElementById('hud-kills').textContent = kills + '/' + KILL_WIN;
+  document.getElementById('hud-lives').textContent = players[0].lives;
+  const remaining = Math.max(0, GAME_TIME_LIMIT - gameTime);
+  const timerEl = document.getElementById('hud-timer');
+  timerEl.textContent = formatTime(remaining);
+  timerEl.classList.toggle('low', remaining <= 60);
+  document.getElementById('hud-bux').textContent = mioLoad().ioBux;
+
+  // Leaderboard — all players sorted by lives (most to least)
+  const lb = document.getElementById('hud-leaderboard');
+  const entries = players.map(pl => ({
+    id: pl.id,
+    name: PLAYER_COLORS[pl.id - 1].name,
+    fill: PLAYER_COLORS[pl.id - 1].fill,
+    lives: pl.lives,
+    pct: (countTerritory(pl.id) / TOTAL_CELLS * 100).toFixed(0),
+    dead: pl.lives <= 0,
+  }));
+  entries.sort((a, b) => b.lives - a.lives || b.pct - a.pct);
+  lb.innerHTML = entries.map(e => {
+    const barW = (e.lives / MAX_LIVES * 100);
+    return '<span class="hud-lb-entry' + (e.dead ? ' dead' : '') + '">' +
+      '<span class="hud-lb-dot" style="background:' + e.fill + '"></span>' +
+      '<span class="hud-lb-name">' + e.name + '</span>' +
+      '<span class="hud-lb-bar"><span class="hud-lb-fill" style="width:' + barW + '%;background:' + e.fill + '"></span></span>' +
+      '<span>' + e.lives + '♥ ' + e.pct + '%</span></span>';
+  }).join('');
+
+  // Leader panel — top in land, top in lives
+  const byLand = [...entries].sort((a, b) => b.pct - a.pct);
+  const byLives = [...entries].sort((a, b) => b.lives - a.lives || b.pct - a.pct);
+  const topLand = byLand[0];
+  const topLives = byLives[0];
+  const ldr = document.getElementById('hud-leader');
+  ldr.innerHTML =
+    '<span class="leader-title">Top Territory</span>' +
+    '<span class="leader-row"><span class="leader-dot" style="background:' + topLand.fill + '"></span>' +
+    '<span class="leader-name">' + topLand.name + '</span>' +
+    '<span class="leader-stat">' + topLand.pct + '%</span></span>' +
+    '<span class="leader-title">Top Lives</span>' +
+    '<span class="leader-row"><span class="leader-dot" style="background:' + topLives.fill + '"></span>' +
+    '<span class="leader-name">' + topLives.name + '</span>' +
+    '<span class="leader-stat">' + topLives.lives + '♥</span></span>';
+}
+
+// ═══════════════════════════════════════════
+// GAME LOOP
+// ═══════════════════════════════════════════
+let lastTime = 0;
+let hudTimer = 0;
+
+const MIO_GAME_KEY = 'mio-game-save';
+
+function togglePause() {
+  if (!gameRunning) return;
+  gamePaused = !gamePaused;
+  document.getElementById('pause-overlay').classList.toggle('hidden', !gamePaused);
+  document.getElementById('pause-btn').textContent = gamePaused ? '▶' : '⏸';
+  if (!gamePaused) {
+    lastTime = performance.now();
+    requestAnimationFrame(gameLoop);
+  }
+}
+
+function saveGameState() {
+  const state = {
+    grid: grid,
+    trailGrid: trailGrid,
+    players: players.map(p => ({
+      id: p.id, x: p.x, y: p.y, px: p.px, py: p.py,
+      dir: p.dir, nextDir: p.nextDir, speed: p.speed,
+      moveProgress: p.moveProgress, trail: p.trail,
+      alive: p.alive, invulnTimer: p.invulnTimer,
+      isBot: p.isBot, botTimer: p.botTimer, botTargetDir: p.botTargetDir,
+      territoryCount: p.territoryCount, lives: p.lives, shieldTimer: p.shieldTimer
+    })),
+    gameTime: gameTime, kills: kills, hasDied: hasDied,
+    hasCapturedAfterDeath: hasCapturedAfterDeath,
+    maxTerritory: maxTerritory, ioBuxEarnedThisGame: ioBuxEarnedThisGame
+  };
+  localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+}
+
+function loadGameState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(MIO_GAME_KEY));
+    if (!s || !s.grid) return null;
+    return s;
+  } catch { return null; }
+}
+
+function clearGameSave() {
+  localStorage.removeItem(MIO_GAME_KEY);
+  document.getElementById('resume-btn').classList.add('hidden');
+}
+
+function saveAndExit() {
+  saveGameState();
+  gameRunning = false;
+  gamePaused = false;
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('hud-leader').classList.add('hidden');
+  document.getElementById('fs-btn-game').classList.add('hidden');
+  document.getElementById('pause-btn').classList.add('hidden');
+  document.getElementById('pause-overlay').classList.add('hidden');
+  document.getElementById('title-screen').classList.remove('hidden');
+  document.getElementById('resume-btn').classList.remove('hidden');
+  refreshBuxDisplays();
+}
+
+function resumeGame() {
+  const s = loadGameState();
+  if (!s) return;
+
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('game-over').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('hud-leader').classList.remove('hidden');
+  document.getElementById('fs-btn-game').classList.remove('hidden');
+  document.getElementById('pause-btn').classList.remove('hidden');
+  document.getElementById('pause-overlay').classList.add('hidden');
+
+  grid = s.grid;
+  trailGrid = s.trailGrid;
+  players = s.players;
+  gameTime = s.gameTime;
+  kills = s.kills;
+  hasDied = s.hasDied;
+  hasCapturedAfterDeath = s.hasCapturedAfterDeath;
+  maxTerritory = s.maxTerritory;
+  ioBuxEarnedThisGame = s.ioBuxEarnedThisGame;
+  hudTimer = 0;
+  gamePaused = false;
+  gameRunning = true;
+
+  clearGameSave();
+  resizeCanvas();
+  lastTime = performance.now();
+  document.getElementById('music-btn').classList.remove('hidden');
+  if (!musicMuted) startMusic();
+  requestAnimationFrame(gameLoop);
+}
+
+function gameLoop(ts) {
+  if (!gameRunning || gamePaused) return;
+  const dt = Math.min((ts - lastTime) / 1000, 0.05);
+  lastTime = ts;
+
+  gameTime += dt;
+  hudTimer += dt;
+
+  // Update players
+  for (const p of players) {
+    if (p.isBot) updateBot(p, dt);
+    movePlayer(p, dt);
+  }
+
+  // Achievement checks
+  const playerPct = countTerritory(1) / TOTAL_CELLS * 100;
+  if (playerPct > maxTerritory) maxTerritory = playerPct;
+  if (playerPct >= 10) ggTry('mio_10_percent');
+  if (playerPct >= 25) ggTry('mio_25_percent');
+  if (playerPct >= 50) ggTry('mio_50_percent');
+  if (gameTime >= 300) ggTry('mio_survive_5min');
+
+  // Check win conditions
+  checkWinCondition();
+  if (!gameRunning) return;
+
+  // HUD update every 0.25s
+  if (hudTimer >= 0.25) {
+    hudTimer = 0;
+    updateHUD();
+  }
+
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════
+function startGame() {
+  clearGameSave();
+  document.getElementById('title-screen').classList.add('hidden');
+  document.getElementById('game-over').classList.add('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('hud-leader').classList.remove('hidden');
+  document.getElementById('fs-btn-game').classList.remove('hidden');
+  document.getElementById('pause-btn').classList.remove('hidden');
+  document.getElementById('music-btn').classList.remove('hidden');
+  document.getElementById('pause-overlay').classList.add('hidden');
+
+  initGrid();
+  players = [];
+  for (let i = 0; i <= BOT_COUNT; i++) {
+    players.push(createPlayer(i));
+  }
+  gameTime = 0;
+  kills = 0;
+  hasDied = false;
+  hasCapturedAfterDeath = false;
+  maxTerritory = 0;
+  hudTimer = 0;
+  ioBuxEarnedThisGame = 0;
+  gamePaused = false;
+  gameRunning = true;
+
+  resizeCanvas();
+  lastTime = performance.now();
+  if (!musicMuted) startMusic();
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame(isWinner) {
+  gameRunning = false;
+  gamePaused = false;
+  clearGameSave();
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('hud-leader').classList.add('hidden');
+  document.getElementById('fs-btn-game').classList.add('hidden');
+  document.getElementById('pause-btn').classList.add('hidden');
+  document.getElementById('music-btn').classList.add('hidden');
+  document.getElementById('pause-overlay').classList.add('hidden');
+  document.getElementById('game-over').classList.remove('hidden');
+  stopMusic();
+
+  const playerCount = countTerritory(1);
+  const pct = (playerCount / TOTAL_CELLS * 100).toFixed(1);
+
+  let reason = '';
+  if (isWinner) {
+    if (kills >= KILL_WIN) reason = 'Kill victory!';
+    else if (playerCount >= TOTAL_CELLS) reason = 'Total domination!';
+    else if (gameTime >= GAME_TIME_LIMIT) reason = 'Most territory at time!';
+    else reason = 'All bots eliminated!';
+    earnIoBux(10);
+  } else {
+    if (gameTime >= GAME_TIME_LIMIT && players[0].lives > 0) reason = 'Time up — tied or behind!';
+    else reason = 'Out of lives!';
+  }
+
+  // Territory bonus
+  const terBonus = Math.floor(parseFloat(pct) / 10);
+  if (terBonus > 0) earnIoBux(terBonus);
+
+  document.getElementById('go-title').textContent = isWinner ? 'VICTORY!' : 'GAME OVER';
+  document.getElementById('go-title').style.color = isWinner ? '#44ddff' : '#ff4444';
+  document.getElementById('go-stats').innerHTML =
+    '<span>' + reason + '</span><br>' +
+    'Territory: <span>' + pct + '%</span><br>' +
+    'Kills: <span>' + kills + '</span><br>' +
+    'Lives remaining: <span>' + players[0].lives + '</span><br>' +
+    'Time: <span>' + formatTime(gameTime) + '</span><br>' +
+    'IO Bux earned: <span style="color:#ffcc00">+' + ioBuxEarnedThisGame + '</span>';
+
+  if (isWinner) ggTry('mio_champion');
+  refreshBuxDisplays();
+}
+
+function formatTime(t) {
+  const m = Math.floor(t / 60), s = Math.floor(t % 60);
+  return m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+function showTitle() {
+  gameRunning = false;
+  gamePaused = false;
+  document.getElementById('title-screen').classList.remove('hidden');
+  document.getElementById('game-over').classList.add('hidden');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('hud-leader').classList.add('hidden');
+  document.getElementById('pause-btn').classList.add('hidden');
+  document.getElementById('music-btn').classList.add('hidden');
+  document.getElementById('pause-overlay').classList.add('hidden');
+  stopMusic();
+  document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState());
+  refreshBuxDisplays();
+}
+
+// ═══════════════════════════════════════════
+// BACKGROUND MUSIC — Medieval War Theme
+// ═══════════════════════════════════════════
+let musicCtx = null, musicGain = null, musicPlaying = false, musicMuted = false;
+let musicInterval = null, musicBeat = 0;
+const MUSIC_BPM = 120;
+
+function initMusicCtx() {
+  if (musicCtx) return;
+  musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = musicCtx.createGain();
+  musicGain.gain.value = 0.2;
+  musicGain.connect(musicCtx.destination);
+}
+
+function mPlayNote(freq, type, start, dur, vol, detune) {
+  if (!musicCtx || musicMuted) return;
+  const osc = musicCtx.createOscillator(), g = musicCtx.createGain();
+  osc.type = type; osc.frequency.value = freq;
+  if (detune) osc.detune.value = detune;
+  g.gain.setValueAtTime(0, start);
+  g.gain.linearRampToValueAtTime(vol, start + 0.02);
+  g.gain.setValueAtTime(vol, start + dur * 0.7);
+  g.gain.linearRampToValueAtTime(0, start + dur);
+  osc.connect(g); g.connect(musicGain);
+  osc.start(start); osc.stop(start + dur + 0.05);
+}
+
+function mPlayDrum(start, dur, freq, vol) {
+  if (!musicCtx || musicMuted) return;
+  const bufSize = musicCtx.sampleRate * dur;
+  const buf = musicCtx.createBuffer(1, bufSize, musicCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) d[i] = (Math.random() * 2 - 1);
+  const src = musicCtx.createBufferSource(); src.buffer = buf;
+  const filt = musicCtx.createBiquadFilter(); filt.type = 'lowpass'; filt.frequency.value = freq;
+  const g = musicCtx.createGain();
+  g.gain.setValueAtTime(vol, start); g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+  src.connect(filt); filt.connect(g); g.connect(musicGain);
+  src.start(start); src.stop(start + dur + 0.05);
+}
+
+const M_SCALE = [146.83, 164.81, 174.61, 196.00, 220.00, 233.08, 261.63, 293.66];
+const M_SCALE_HI = M_SCALE.map(f => f * 2);
+const M_BASS = [73.42, 82.41, 87.31, 98.00, 110.00];
+const M_MEL = [
+  [0, 2, 4, 3, 2, 0, 4, 3], [4, 5, 7, 4, 3, 2, 0, 2],
+  [7, 4, 3, 2, 0, 2, 3, 4], [0, 0, 3, 4, 4, 3, 2, 0]
+];
+const M_BSS = [[0,-1,0,-1,3,-1,3,-1],[0,-1,4,-1,3,-1,2,-1],[4,-1,3,-1,0,-1,0,-1]];
+const M_DRM = [[1,0,0,1,1,0,0,1],[1,0,1,0,1,1,0,1],[1,1,0,1,1,0,1,1]];
+const M_HH = [0,1,0,1,0,1,0,1];
+
+function scheduleMusicBar() {
+  if (!musicCtx || musicMuted || !musicPlaying) return;
+  const t = musicCtx.currentTime + 0.05;
+  const eighth = 60 / MUSIC_BPM / 2;
+  const bar = musicBeat++;
+
+  const melody = M_MEL[(bar + 1) % 4];
+  const melVol = 0.10;
+  for (let i = 0; i < 8; i++) {
+    const freq = M_SCALE_HI[melody[i]];
+    mPlayNote(freq, 'sawtooth', t + i * eighth, eighth * 0.85, melVol, 0);
+    if (i % 2 === 0) mPlayNote(freq * 0.667, 'triangle', t + i * eighth, eighth * 1.5, melVol * 0.4, 5);
+  }
+
+  const bass = M_BSS[bar % 3];
+  for (let i = 0; i < 8; i++) {
+    if (bass[i] >= 0) mPlayNote(M_BASS[bass[i]], 'square', t + i * eighth, eighth * 0.9, 0.08, 0);
+  }
+
+  const drums = M_DRM[1]; // always intense for IO game
+  for (let i = 0; i < 8; i++) {
+    if (drums[i]) mPlayDrum(t + i * eighth, 0.15, 200, 0.25);
+    if (M_HH[i]) mPlayDrum(t + i * eighth, 0.05, 5000, 0.04);
+  }
+}
+
+function startMusic() {
+  initMusicCtx();
+  if (musicCtx.state === 'suspended') musicCtx.resume();
+  musicPlaying = true; musicBeat = 0;
+  const barDur = (60 / MUSIC_BPM / 2) * 8;
+  if (musicInterval) clearInterval(musicInterval);
+  scheduleMusicBar();
+  musicInterval = setInterval(scheduleMusicBar, barDur * 1000);
+  updateMusicBtn();
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+  updateMusicBtn();
+}
+
+function toggleMusic() {
+  if (musicMuted) { musicMuted = false; if (!musicPlaying) startMusic(); else updateMusicBtn(); }
+  else { musicMuted = true; updateMusicBtn(); }
+}
+
+function updateMusicBtn() {
+  const btn = document.getElementById('music-btn');
+  if (btn) { btn.textContent = musicMuted ? '♫ OFF' : '♫ ON'; btn.classList.toggle('active', !musicMuted); }
+}
+
+// ═══════════════════════════════════════════
+// SOUND EFFECTS
+// ═══════════════════════════════════════════
+let audioCtx;
+function getAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+const SFX = {
+  capture() {
+    try {
+      const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sine'; o.frequency.setValueAtTime(600, a.currentTime);
+      o.frequency.exponentialRampToValueAtTime(1200, a.currentTime + 0.1);
+      g.gain.setValueAtTime(0.15, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, a.currentTime + 0.15);
+      o.start(); o.stop(a.currentTime + 0.15);
+    } catch(e) {}
+  },
+  kill() {
+    try {
+      const a = getAudio(), o = a.createOscillator(), g = a.createGain();
+      o.connect(g); g.connect(a.destination);
+      o.type = 'sawtooth'; o.frequency.setValueAtTime(200, a.currentTime);
+      o.frequency.exponentialRampToValueAtTime(80, a.currentTime + 0.3);
+      g.gain.setValueAtTime(0.2, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.01, a.currentTime + 0.3);
+      o.start(); o.stop(a.currentTime + 0.3);
+    } catch(e) {}
+  },
+};
+
+// ═══════════════════════════════════════════
+// FULLSCREEN
+// ═══════════════════════════════════════════
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+resizeCanvas();
+refreshBuxDisplays();
+document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState());
+</script>
+</body>
+</html>

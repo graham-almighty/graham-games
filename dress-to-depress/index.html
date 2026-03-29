@@ -1,0 +1,2627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DRESS TO DEPRESS - Graham Games</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='22' text-anchor='middle' font-family='serif' font-weight='bold' font-size='16' fill='%23c9a84c'>GG</text></svg>">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #ddd;
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 30% 20%, #2a0a1a22 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, #1a0a2a22 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 40%, #000000aa 100%);
+    pointer-events: none;
+  }
+
+  #title-screen, #theme-screen, #dressup-screen, #runway-screen, #rating-screen, #judging-screen, #results-screen, #final-screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 1;
+    transition: opacity 0.3s;
+  }
+  .hidden { opacity: 0; pointer-events: none; }
+
+  /* Title Screen */
+  #title-screen h1 {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.8rem;
+    font-weight: 900;
+    color: #ff69b4;
+    text-shadow: 0 0 20px #ff69b444, 0 0 40px #ff69b422, 2px 2px 0 #1a0012;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .title-sub {
+    font-family: 'Cinzel', serif;
+    font-size: 0.9rem;
+    color: #888;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+  }
+  .title-icon {
+    font-size: 4rem;
+    margin-bottom: 16px;
+    filter: drop-shadow(0 0 20px #ff69b444);
+  }
+  .punk-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 1.1rem;
+    padding: 12px 48px;
+    background: linear-gradient(135deg, #ff69b433, #ff69b411);
+    border: 2px solid #ff69b4;
+    color: #ff69b4;
+    cursor: pointer;
+    letter-spacing: 0.15em;
+    transition: all 0.2s;
+    margin: 6px;
+  }
+  .punk-btn:hover {
+    background: linear-gradient(135deg, #ff69b444, #ff69b422);
+    box-shadow: 0 0 30px #ff69b433;
+    transform: translateY(-2px);
+  }
+  .punk-btn:active { transform: translateY(0); }
+  .punk-btn.secondary {
+    font-size: 0.8rem;
+    padding: 8px 24px;
+    border-color: #666;
+    color: #888;
+    background: transparent;
+  }
+  .punk-btn.secondary:hover { border-color: #ff69b4; color: #ff69b4; }
+
+  /* Theme Screen */
+  #theme-screen {
+    background: rgba(0,0,0,0.9);
+  }
+  .theme-name {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.5rem;
+    color: #ff69b4;
+    text-shadow: 0 0 20px #ff69b444;
+    margin-bottom: 12px;
+  }
+  .theme-desc {
+    font-size: 1.1rem;
+    color: #aaa;
+    max-width: 500px;
+    text-align: center;
+    margin-bottom: 8px;
+    line-height: 1.5;
+  }
+  .theme-round {
+    font-family: 'Cinzel', serif;
+    color: #c9a84c;
+    font-size: 1rem;
+    letter-spacing: 0.2em;
+    margin-bottom: 24px;
+  }
+
+  /* Dress-Up Screen */
+  #dressup-screen {
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding-top: 42px;
+  }
+  #preview-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+  }
+  #preview-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  #clothing-panel {
+    width: 300px;
+    background: #00000088;
+    backdrop-filter: blur(4px);
+    border-left: 1px solid #ff69b444;
+    display: flex;
+    flex-direction: column;
+    z-index: 5;
+  }
+  #category-tabs {
+    display: flex;
+    gap: 6px;
+    padding: 8px;
+    border-bottom: 1px solid #ff69b444;
+  }
+  .cat-tab {
+    flex: 1;
+    padding: 10px 4px;
+    background: #ffffff08;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #888;
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .cat-tab:hover { color: #ff69b4; border-color: #ff69b4; }
+  .cat-tab.active {
+    color: #ff69b4;
+    background: #ff69b422;
+    border-color: #ff69b4;
+  }
+  #item-grid {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .item-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #ffffff08;
+    border: 1px solid #444;
+    border-radius: 5px;
+    color: #ddd;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.15s;
+  }
+  .item-btn:hover { border-color: #ff69b4; background: #ff69b411; }
+  .item-btn.selected { border-color: #ff69b4; background: #ff69b422; color: #ff69b4; }
+  .item-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    border: 1px solid #555;
+    flex-shrink: 0;
+  }
+  #color-picker-wrap {
+    padding: 8px;
+    border-top: 1px solid #ff69b444;
+  }
+  #color-picker-wrap.hidden-cp { display: none; }
+  .color-row {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .color-swatch {
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    border: 2px solid #333;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .color-swatch:hover { transform: scale(1.15); border-color: #aaa; }
+  .color-swatch.active { border-color: #ff69b4; box-shadow: 0 0 8px #ff69b488; }
+
+  #timer-wrap {
+    padding: 8px;
+    border-top: 1px solid #ff69b444;
+  }
+  #timer-bar {
+    height: 6px;
+    background: #333;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  #timer-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff69b4, #ff1493);
+    transition: width 0.5s linear;
+    width: 100%;
+  }
+  #timer-text {
+    text-align: center;
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: #ff69b4;
+    margin-top: 4px;
+  }
+  #done-btn-wrap {
+    padding: 8px;
+  }
+  #done-btn-wrap .punk-btn {
+    width: 100%;
+    font-size: 0.9rem;
+    padding: 10px;
+  }
+
+  /* Runway Screen */
+  #runway-screen {
+    background: #000;
+  }
+  #runway-wrap {
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  #runway-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  /* Judging Screen */
+  #judging-screen {
+    background: rgba(0,0,0,0.92);
+    overflow-y: auto;
+    padding: 40px 16px 20px;
+  }
+  .judge-panels {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .judge-card {
+    background: #ffffff08;
+    border: 1px solid #ff69b444;
+    border-radius: 10px;
+    padding: 16px 20px;
+    width: 200px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.5s;
+  }
+  .judge-card.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .judge-name {
+    font-family: 'Cinzel', serif;
+    font-size: 0.85rem;
+    color: #ff69b4;
+    margin-bottom: 8px;
+  }
+  .judge-score {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2.5rem;
+    color: #c9a84c;
+    margin-bottom: 8px;
+  }
+  .judge-comment {
+    font-size: 0.8rem;
+    color: #aaa;
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .judge-avatar {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 8px;
+  }
+  .judge-avatar canvas {
+    width: 60px !important;
+    height: 60px !important;
+    border-radius: 50%;
+    border: 2px solid #ff69b444;
+  }
+  .judge-total {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    color: #c9a84c;
+    margin-bottom: 8px;
+  }
+  .judge-stars {
+    font-size: 2rem;
+    margin-bottom: 16px;
+  }
+  .judge-breakdown {
+    font-size: 0.85rem;
+    color: #aaa;
+    margin-bottom: 4px;
+  }
+
+  /* Results / Final */
+  #results-screen, #final-screen {
+    background: rgba(0,0,0,0.92);
+  }
+  .final-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 2rem;
+    color: #ff69b4;
+    margin-bottom: 16px;
+  }
+  .final-score {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 3rem;
+    color: #c9a84c;
+    margin-bottom: 8px;
+  }
+  .final-rank {
+    font-size: 1.2rem;
+    color: #ff69b4;
+    margin-bottom: 8px;
+  }
+  .final-stars {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+  }
+
+  /* Exit bar */
+  .exit-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 42px;
+    background: linear-gradient(180deg, #111118, #0a0a0f);
+    border-bottom: 1px solid #ff69b444;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    z-index: 100;
+  }
+  .exit-bar .gg-logo { width: 28px; height: 28px; margin-right: 10px; }
+  .exit-bar .gg-title {
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    color: #888;
+    letter-spacing: 0.1em;
+    flex: 1;
+  }
+  .exit-bar .exit-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid #555;
+    color: #777;
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+  }
+  .exit-bar .exit-btn:hover { color: #ff69b4; border-color: #ff69b4; }
+  .exit-bar .music-btn {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    padding: 5px 10px;
+    background: transparent;
+    border: 1px solid #555;
+    color: #777;
+    cursor: pointer;
+    margin-right: 8px;
+    transition: all 0.2s;
+  }
+  .exit-bar .music-btn:hover { color: #ff69b4; border-color: #ff69b4; }
+
+  /* Toast */
+  #gg-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #1a1a2e, #0d0d1a);
+    border: 1px solid #c9a84c;
+    border-radius: 8px;
+    padding: 12px 18px;
+    z-index: 200;
+    opacity: 0;
+    transform: translateX(100px);
+    transition: all 0.4s;
+    box-shadow: 0 0 20px #c9a84c22;
+  }
+  #gg-toast.visible { opacity: 1; transform: translateX(0); }
+  .toast-header {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    color: #c9a84c;
+    letter-spacing: 0.15em;
+    margin-bottom: 4px;
+  }
+  .toast-name { font-size: 0.9rem; color: #fff; margin-bottom: 2px; }
+  .toast-reward { font-size: 0.8rem; color: #c9a84c; }
+
+  /* Character setup */
+  .char-setup {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .setup-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .setup-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.75rem;
+    color: #888;
+    width: 80px;
+    text-align: right;
+  }
+  .setup-opt {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #444;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .setup-opt:hover { border-color: #ff69b4; transform: scale(1.1); }
+  .setup-opt.active { border-color: #ff69b4; box-shadow: 0 0 8px #ff69b488; }
+
+  /* Bonus combo callout */
+  .combo-callout {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: #c9a84c;
+    margin-bottom: 8px;
+    text-shadow: 0 0 10px #c9a84c44;
+  }
+
+  /* Rating Screen */
+  #rating-screen {
+    overflow-y: auto;
+    padding: 60px 16px 20px;
+    z-index: 2;
+  }
+  .rating-title {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.4rem;
+    color: #ff69b4;
+    text-shadow: 0 0 10px #ff69b444;
+    margin-bottom: 4px;
+  }
+  .rating-subtitle {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 16px;
+  }
+  .bot-cards {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-bottom: 16px;
+    max-width: 900px;
+  }
+  .bot-card {
+    background: #00000088;
+    backdrop-filter: blur(4px);
+    border: 1px solid #ff69b444;
+    border-radius: 8px;
+    padding: 14px 18px;
+    width: 250px;
+    text-align: center;
+  }
+  .bot-preview-wrap {
+    width: 180px;
+    height: 200px;
+    margin: 0 auto 8px;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #1a1a2e;
+  }
+  .bot-preview-wrap canvas {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .bot-name {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: #ff69b4;
+    margin-bottom: 8px;
+  }
+  .bot-outfit-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+  .outfit-tag {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.65rem;
+    padding: 5px 8px;
+    background: #ffffff0a;
+    border: 1px solid #555;
+    border-radius: 3px;
+    color: #ccc;
+    white-space: nowrap;
+  }
+  .outfit-tag .tag-label {
+    color: #888;
+    font-size: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .bot-rating-stars {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+  .rate-star {
+    background: transparent;
+    border: 1px solid #555;
+    border-radius: 4px;
+    color: #555;
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .rate-star:hover { color: #ffcc00; border-color: #ffcc00; }
+  .rate-star.active { color: #ffcc00; border-color: #ffcc00; background: #ffcc0011; }
+  .bot-ratings-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 12px 0;
+    align-items: center;
+  }
+  .bot-rating-item {
+    font-size: 0.9rem;
+    color: #ddd;
+  }
+  .bot-rater-name { color: #ff69b4; }
+  .leaderboard-rank {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1.2rem;
+    color: #c9a84c;
+    margin-bottom: 4px;
+  }
+  .player-card { border-color: #ff69b4 !important; box-shadow: 0 0 12px #ff69b433; }
+  .round-winner-label {
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    color: #c9a84c;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+  }
+  .final-leaderboard {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 16px 0;
+    width: 100%;
+    max-width: 400px;
+  }
+  .final-lb-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: #00000088;
+    border: 1px solid #444;
+    border-radius: 6px;
+  }
+  .final-lb-entry.winner { border-color: #c9a84c; background: #c9a84c11; }
+  .final-lb-entry.player { border-color: #ff69b4; }
+  .final-lb-rank {
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 1rem;
+    color: #c9a84c;
+    min-width: 60px;
+  }
+  .final-lb-name { flex: 1; font-size: 0.95rem; }
+  .final-lb-score {
+    font-family: 'Cinzel', serif;
+    font-size: 1rem;
+    color: #ff69b4;
+  }
+
+  @media (max-width: 600px) {
+    #title-screen h1 { font-size: 1.6rem; }
+    .theme-name { font-size: 1.6rem; }
+    #dressup-screen { flex-direction: column; }
+    #preview-wrap { height: 40vh; }
+    #clothing-panel { width: 100%; height: 60vh; border-left: none; border-top: 1px solid #ff69b444; }
+    .judge-card { width: 150px; padding: 10px 12px; }
+    .judge-score { font-size: 1.8rem; }
+    .bot-cards { flex-direction: column; align-items: center; }
+    .bot-card { width: 90%; }
+    .rating-title { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Exit Bar -->
+<div class="exit-bar">
+  <svg class="gg-logo" viewBox="0 0 300 260" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="s1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1a5c2a"/><stop offset="50%" stop-color="#3aaa5a"/><stop offset="100%" stop-color="#1a5c2a"/>
+      </linearGradient>
+    </defs>
+    <path d="M130,40 C120,25 90,15 65,20 C35,28 18,55 15,85 C12,115 18,150 35,175 C50,195 75,205 100,200 C115,196 125,185 128,170 L128,145 L95,145" fill="none" stroke="url(#s1)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M275,60 C268,42 245,30 220,32 C190,37 170,60 168,90 C165,120 172,158 190,182 C205,200 228,210 252,206 C268,202 278,190 280,176 L280,150 L248,150" fill="none" stroke="url(#s1)" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span class="gg-title">DRESS TO DEPRESS</span>
+  <button class="music-btn" id="music-toggle" onclick="toggleMusic()">&#9835; ON</button>
+  <button class="exit-btn" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+</div>
+
+<!-- Achievement Toast -->
+<div id="gg-toast">
+  <div class="toast-header">&#127942; ACHIEVEMENT UNLOCKED</div>
+  <div class="toast-name" id="gg-toast-name"></div>
+  <div class="toast-reward" id="gg-toast-reward"></div>
+</div>
+
+<!-- Title Screen -->
+<div id="title-screen">
+  <div class="title-icon">&#128094;</div>
+  <h1>DRESS TO DEPRESS</h1>
+  <div class="title-sub">Fashion's Worst Nightmare</div>
+
+  <div class="char-setup" id="char-setup"></div>
+
+  <button class="punk-btn" onclick="startGame()">PLAY</button>
+  <button class="punk-btn secondary" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+</div>
+
+<!-- Theme Reveal Screen -->
+<div id="theme-screen" class="hidden">
+  <div class="theme-round" id="theme-round-label"></div>
+  <div class="theme-name" id="theme-name"></div>
+  <div class="theme-desc" id="theme-desc"></div>
+  <button class="punk-btn" onclick="startDressUp()">LET'S GO</button>
+</div>
+
+<!-- Dress-Up Screen -->
+<div id="dressup-screen" class="hidden">
+  <div id="preview-wrap"></div>
+  <div id="clothing-panel">
+    <div id="category-tabs"></div>
+    <div id="item-grid"></div>
+    <div id="color-picker-wrap" class="hidden-cp">
+      <div class="color-row" id="color-row"></div>
+    </div>
+    <div id="timer-wrap">
+      <div id="timer-bar"><div id="timer-fill"></div></div>
+      <div id="timer-text">45s</div>
+    </div>
+    <div id="done-btn-wrap">
+      <button class="punk-btn" onclick="finishDressing()">DONE</button>
+    </div>
+  </div>
+</div>
+
+<!-- Runway Screen -->
+<div id="runway-screen" class="hidden">
+  <div id="runway-wrap"></div>
+</div>
+
+<!-- Rating Screen -->
+<div id="rating-screen" class="hidden">
+  <div class="theme-round" id="rating-round-label"></div>
+  <div class="rating-title">RATE THE COMPETITION</div>
+  <div class="rating-subtitle">How ugly is their outfit? (1 = mild, 5 = hideous)</div>
+  <div class="bot-cards" id="bot-cards"></div>
+  <button class="punk-btn" id="submit-ratings-btn" onclick="submitRatings()">SUBMIT RATINGS</button>
+</div>
+
+<!-- Judging Screen -->
+<div id="judging-screen" class="hidden">
+  <div class="theme-round" id="judging-round-label"></div>
+  <div class="judge-panels" id="judge-panels"></div>
+  <div class="judge-total" id="judge-total"></div>
+  <div class="judge-stars" id="judge-stars"></div>
+  <div id="judge-breakdown-wrap"></div>
+  <div class="combo-callout" id="combo-callout"></div>
+  <button class="punk-btn" id="judging-next-btn" style="display:none"></button>
+</div>
+
+<!-- Final Screen -->
+<div id="final-screen" class="hidden">
+  <div class="final-title">FINAL RESULTS</div>
+  <div class="final-rank" id="final-rank"></div>
+  <div class="final-score" id="final-total-score"></div>
+  <div class="final-stars" id="final-stars"></div>
+  <div class="final-leaderboard" id="final-leaderboard"></div>
+  <button class="punk-btn" onclick="restartGame()">PLAY AGAIN</button>
+  <button class="punk-btn secondary" onclick="window.location.href='../index.html'">EXIT TO LAUNCHER</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════
+// G BUX SYSTEM
+// ═══════════════════════════════════════════
+const GG_KEY = 'graham-games-data';
+function ggLoad() {
+  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
+  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
+}
+function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+function ggUnlockAchievement(id, name, reward) {
+  const data = ggLoad();
+  if (data.achievements[id]) return false;
+  data.achievements[id] = true;
+  data.gBux += reward;
+  ggSave(data);
+  showAchievementToast(name, reward);
+  return true;
+}
+let ggToastQueue = [], ggToastShowing = false;
+function showAchievementToast(name, reward) {
+  ggToastQueue.push({ name, reward });
+  if (!ggToastShowing) processToastQueue();
+}
+function processToastQueue() {
+  if (!ggToastQueue.length) { ggToastShowing = false; return; }
+  ggToastShowing = true;
+  const { name, reward } = ggToastQueue.shift();
+  document.getElementById('gg-toast-name').textContent = name;
+  document.getElementById('gg-toast-reward').textContent = '+' + reward + ' G Bux';
+  document.getElementById('gg-toast').classList.add('visible');
+  setTimeout(() => {
+    document.getElementById('gg-toast').classList.remove('visible');
+    setTimeout(processToastQueue, 400);
+  }, 3000);
+}
+
+const DTD_ACH = {
+  dtd_first_show:    { name: 'First Show',            reward: 5 },
+  dtd_full_outfit:   { name: 'Fully Dressed',         reward: 10 },
+  dtd_3_stars:       { name: 'Fashion Disaster',      reward: 15 },
+  dtd_5_stars:       { name: 'Depressingly Perfect',  reward: 30 },
+  dtd_all_themes:    { name: 'World Tour of Shame',   reward: 25 },
+  dtd_color_clash:   { name: 'Rainbow Wreck',         reward: 15 },
+  dtd_style_clash:   { name: 'Identity Crisis',       reward: 20 },
+  dtd_bonus_combo:   { name: 'Combo Breaker',         reward: 15 },
+  dtd_high_score:    { name: 'Master of Disaster',    reward: 40 },
+  dtd_speed_dresser: { name: 'Speed Dresser',         reward: 25 },
+};
+function ggTry(id) { const a = DTD_ACH[id]; if (a) ggUnlockAchievement(id, a.name, a.reward); }
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+const STATS_KEY = 'dtd-stats';
+function loadStats() {
+  try { const s = JSON.parse(localStorage.getItem(STATS_KEY)) || {}; return { gamesPlayed: s.gamesPlayed || 0, bestRound: s.bestRound || 0, bestTotal: s.bestTotal || 0, themesPlayed: s.themesPlayed || [] }; }
+  catch(e) { return { gamesPlayed: 0, bestRound: 0, bestTotal: 0, themesPlayed: [] }; }
+}
+function saveStats(s) { localStorage.setItem(STATS_KEY, JSON.stringify(s)); }
+
+// ═══════════════════════════════════════════
+// MUSIC — Cheesy Quirky Fashion Show
+// ═══════════════════════════════════════════
+let musicCtx = null, musicGain = null, musicPlaying = false, musicMuted = false;
+let musicInterval = null, musicBeat = 0;
+const MUSIC_BPM = 120;
+
+function initMusicCtx() {
+  if (musicCtx) return;
+  musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = musicCtx.createGain();
+  musicGain.gain.value = 0.15;
+  musicGain.connect(musicCtx.destination);
+}
+
+function mNote(freq, start, dur, type, vol) {
+  if (!musicCtx || musicMuted) return;
+  const o = musicCtx.createOscillator();
+  const g = musicCtx.createGain();
+  o.type = type || 'square';
+  o.frequency.setValueAtTime(freq, musicCtx.currentTime + start);
+  g.gain.setValueAtTime((vol || 0.12) * 0.5, musicCtx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + start + dur);
+  o.connect(g);
+  g.connect(musicGain);
+  o.start(musicCtx.currentTime + start);
+  o.stop(musicCtx.currentTime + start + dur);
+}
+
+function mDrum(freq, start, dur) {
+  if (!musicCtx || musicMuted) return;
+  const o = musicCtx.createOscillator();
+  const g = musicCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(freq, musicCtx.currentTime + start);
+  o.frequency.exponentialRampToValueAtTime(20, musicCtx.currentTime + start + dur);
+  g.gain.setValueAtTime(0.3, musicCtx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + start + dur);
+  o.connect(g);
+  g.connect(musicGain);
+  o.start(musicCtx.currentTime + start);
+  o.stop(musicCtx.currentTime + start + dur);
+}
+
+function mHihat(start, dur) {
+  if (!musicCtx || musicMuted) return;
+  const bufSize = musicCtx.sampleRate * dur;
+  const buf = musicCtx.createBuffer(1, bufSize, musicCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) data[i] = (Math.random() * 2 - 1) * 0.15;
+  const src = musicCtx.createBufferSource();
+  src.buffer = buf;
+  const g = musicCtx.createGain();
+  g.gain.setValueAtTime(0.08, musicCtx.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(0.001, musicCtx.currentTime + start + dur);
+  src.connect(g);
+  g.connect(musicGain);
+  src.start(musicCtx.currentTime + start);
+}
+
+// Cheesy C major scale melody
+const SCALE = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25];
+const BASS_NOTES = [130.81, 146.83, 164.81, 174.61, 196.00, 220.00];
+// Cheesy repeating melody pattern (scale indices)
+const MELODY = [0, 2, 4, 7, 4, 2, 5, 3, 0, 4, 5, 7, 5, 4, 2, 0];
+const BASS_PAT = [0, 0, 3, 3, 4, 4, 0, 0];
+
+function playMusicBeat() {
+  const beatDur = 60 / MUSIC_BPM;
+  const b = musicBeat % 16;
+
+  // Kick on 1, 3
+  if (b % 4 === 0) mDrum(120, 0, 0.15);
+  // Snare on 2, 4
+  if (b % 4 === 2) {
+    mDrum(200, 0, 0.08);
+    mHihat(0, 0.06);
+  }
+  // Hihat on every 8th
+  if (b % 2 === 0) mHihat(0, 0.04);
+
+  // Melody — bouncy sawtooth
+  const melIdx = MELODY[b];
+  mNote(SCALE[melIdx], 0, beatDur * 0.7, 'sawtooth', 0.08);
+
+  // Bass
+  if (b % 2 === 0) {
+    const bassIdx = BASS_PAT[Math.floor(b / 2)];
+    mNote(BASS_NOTES[bassIdx], 0, beatDur * 1.5, 'square', 0.1);
+  }
+
+  // Cheesy brass stab every 8 beats
+  if (b === 0 || b === 8) {
+    mNote(SCALE[0], 0, beatDur * 0.3, 'triangle', 0.06);
+    mNote(SCALE[4], 0.01, beatDur * 0.3, 'triangle', 0.06);
+    mNote(SCALE[7] * 0.5, 0.02, beatDur * 0.3, 'triangle', 0.05);
+  }
+
+  // Extra quirky trill on beat 12
+  if (b === 12) {
+    for (let i = 0; i < 4; i++) {
+      mNote(SCALE[4 + (i % 4)], i * 0.05, 0.06, 'square', 0.04);
+    }
+  }
+
+  musicBeat++;
+}
+
+function startMusic() {
+  if (musicPlaying) return;
+  initMusicCtx();
+  musicPlaying = true;
+  musicBeat = 0;
+  const interval = (60 / MUSIC_BPM) * 1000 / 2; // 8th notes
+  musicInterval = setInterval(playMusicBeat, interval);
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
+}
+
+function toggleMusic() {
+  musicMuted = !musicMuted;
+  document.getElementById('music-toggle').textContent = musicMuted ? '\u266B OFF' : '\u266B ON';
+  if (musicMuted) stopMusic();
+  else startMusic();
+}
+
+// ═══════════════════════════════════════════
+// SFX
+// ═══════════════════════════════════════════
+let audioCtx = null;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function sfxFlash() {
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(2000, audioCtx.currentTime);
+  g.gain.setValueAtTime(0.05, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.05);
+}
+
+function sfxApplause() {
+  initAudio();
+  const dur = 1.5;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    const t = i / audioCtx.sampleRate;
+    data[i] = (Math.random() * 2 - 1) * 0.12 * Math.min(1, (dur - t) / 0.5) * Math.min(1, t / 0.2);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination);
+  src.start();
+}
+
+function sfxFanfare() {
+  initAudio();
+  const notes = [392, 440, 523.25, 659.25];
+  notes.forEach((f, i) => {
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = 'triangle';
+    o.frequency.setValueAtTime(f, audioCtx.currentTime + i * 0.15);
+    g.gain.setValueAtTime(0.1, audioCtx.currentTime + i * 0.15);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + i * 0.15 + 0.4);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(audioCtx.currentTime + i * 0.15);
+    o.stop(audioCtx.currentTime + i * 0.15 + 0.4);
+  });
+}
+
+function sfxBuzzer() {
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(80, audioCtx.currentTime);
+  g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.5);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.5);
+}
+
+function sfxClick() {
+  initAudio();
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = 'sine';
+  o.frequency.setValueAtTime(800, audioCtx.currentTime);
+  g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + 0.04);
+}
+
+// ═══════════════════════════════════════════
+// CLOTHING DATA
+// ═══════════════════════════════════════════
+const SKIN_TONES = [
+  { name: 'Light',  hex: 0xffdbac },
+  { name: 'Fair',   hex: 0xf1c27d },
+  { name: 'Medium', hex: 0xc9956b },
+  { name: 'Olive',  hex: 0xa67c52 },
+  { name: 'Brown',  hex: 0x8d5524 },
+  { name: 'Dark',   hex: 0x5c3a1e },
+];
+
+const HAIR_COLORS = [
+  { name: 'Black',  hex: 0x222222 },
+  { name: 'Brown',  hex: 0x6b3a2a },
+  { name: 'Blonde', hex: 0xd4a835 },
+  { name: 'Red',    hex: 0xaa3322 },
+  { name: 'White',  hex: 0xcccccc },
+  { name: 'Blue',   hex: 0x3366cc },
+  { name: 'Pink',   hex: 0xff69b4 },
+];
+
+const HAIR_STYLES = ['short', 'long', 'curly', 'buzz', 'ponytail', 'bun'];
+
+const COLOR_PALETTE = [
+  { name: 'Red',     hex: 0xcc3333, hue: 0 },
+  { name: 'Orange',  hex: 0xff8833, hue: 30 },
+  { name: 'Yellow',  hex: 0xddcc22, hue: 55 },
+  { name: 'Green',   hex: 0x33aa44, hue: 130 },
+  { name: 'Blue',    hex: 0x3355cc, hue: 230 },
+  { name: 'Purple',  hex: 0x8833aa, hue: 280 },
+  { name: 'Pink',    hex: 0xff66aa, hue: 340 },
+  { name: 'White',   hex: 0xeeeeee, hue: -1 },
+  { name: 'Black',   hex: 0x222222, hue: -2 },
+  { name: 'Neon Green', hex: 0x33ff33, hue: 120 },
+];
+
+const HATS = [
+  { name: 'None',          style: null,       color: null },
+  { name: 'Baseball Cap',  style: 'casual',   color: 'variable' },
+  { name: 'Top Hat',       style: 'formal',   color: 0x111111 },
+  { name: 'Cowboy Hat',    style: 'western',  color: 0x8b6914 },
+  { name: 'Beanie',        style: 'casual',   color: 'variable' },
+  { name: 'Crown',         style: 'royal',    color: 0xffcc00 },
+  { name: 'Chef Hat',      style: 'occupation', color: 0xffffff },
+  { name: 'Viking Helmet', style: 'costume',  color: 0x888888 },
+  { name: 'Propeller Hat', style: 'silly',    color: 'variable' },
+  { name: 'Pirate Hat',    style: 'costume',  color: 0x222222 },
+  { name: 'Shower Cap',    style: 'bathroom', color: 0x88ccff },
+  { name: 'Tinfoil Hat',   style: 'conspiracy', color: 0xcccccc },
+];
+
+const TOPS = [
+  { name: 'Plain T-Shirt',    style: 'casual',     color: 'variable' },
+  { name: 'Suit Jacket',      style: 'formal',     color: 0x222233 },
+  { name: 'Hawaiian Shirt',   style: 'vacation',   color: 0xff6633 },
+  { name: 'Tuxedo Shirt',     style: 'formal',     color: 0xffffff },
+  { name: 'Hoodie',           style: 'casual',     color: 0x556677 },
+  { name: 'Tank Top',         style: 'gym',        color: 'variable' },
+  { name: 'Bathrobe',         style: 'bathroom',   color: 0xeeddcc },
+  { name: 'Armor Breastplate', style: 'medieval',  color: 0x888888 },
+  { name: 'Crop Top',         style: 'trendy',     color: 'variable' },
+  { name: 'Lab Coat',         style: 'occupation', color: 0xfafafa },
+];
+
+const BOTTOMS = [
+  { name: 'Jeans',          style: 'casual',    color: 0x334466 },
+  { name: 'Suit Pants',     style: 'formal',    color: 0x222233 },
+  { name: 'Cargo Shorts',   style: 'casual',    color: 0x667744 },
+  { name: 'Sweatpants',     style: 'gym',       color: 0x555555 },
+  { name: 'Kilt',           style: 'costume',   color: 0x224488 },
+  { name: 'Tutu',           style: 'dance',     color: 0xff88cc },
+  { name: 'Pajama Pants',   style: 'sleepwear', color: 0x6688aa },
+  { name: 'Board Shorts',   style: 'beach',     color: 'variable' },
+  { name: 'Lederhosen',     style: 'costume',   color: 0x8b6914 },
+  { name: 'Tuxedo Pants',   style: 'formal',    color: 0x111111 },
+];
+
+const SHOES = [
+  { name: 'Sneakers',      style: 'casual',    color: 'variable' },
+  { name: 'Dress Shoes',   style: 'formal',    color: 0x222222 },
+  { name: 'Flip Flops',    style: 'beach',     color: 'variable' },
+  { name: 'Cowboy Boots',  style: 'western',   color: 0x8b4513 },
+  { name: 'Crocs',         style: 'controversial', color: 'variable' },
+  { name: 'Slippers',      style: 'sleepwear', color: 0xdd88aa },
+  { name: 'Rain Boots',    style: 'weather',   color: 0xffcc00 },
+  { name: 'Armor Boots',   style: 'medieval',  color: 0x888888 },
+];
+
+const ACCESSORIES = [
+  { name: 'None',         style: null,      color: null },
+  { name: 'Bow Tie',      style: 'formal',  color: 'variable' },
+  { name: 'Sunglasses',   style: 'cool',    color: 0x222222 },
+  { name: 'Feather Boa',  style: 'glam',    color: 0xff44aa },
+  { name: 'Fanny Pack',   style: 'tourist', color: 'variable' },
+  { name: 'Monocle',      style: 'posh',    color: 0xccaa44 },
+  { name: 'Rubber Duck',  style: 'bathroom', color: 0xffdd00 },
+  { name: 'Toy Sword',    style: 'costume', color: 0x888888 },
+];
+
+const CATEGORIES = [
+  { key: 'hat',       name: 'Hats',        items: HATS },
+  { key: 'top',       name: 'Tops',        items: TOPS },
+  { key: 'bottom',    name: 'Bottoms',     items: BOTTOMS },
+  { key: 'shoes',     name: 'Shoes',       items: SHOES },
+  { key: 'accessory', name: 'Accessories', items: ACCESSORIES },
+];
+
+// ═══════════════════════════════════════════
+// THEMES
+// ═══════════════════════════════════════════
+const THEMES = [
+  {
+    name: 'Job Interview',
+    desc: "You're applying to be CEO of a Fortune 500 company. Dress... accordingly.",
+    appropriate: ['formal'],
+    inappropriate: ['beach', 'bathroom', 'sleepwear', 'costume', 'silly', 'dance', 'conspiracy'],
+    bonusCombos: [
+      { items: ['Bathrobe', 'Flip Flops'], bonus: 8, comment: 'Ready for the boardroom!' },
+      { items: ['Viking Helmet', 'Suit Jacket'], bonus: 6, comment: 'Nordic management style!' },
+      { items: ['Shower Cap', 'Tuxedo Shirt'], bonus: 7, comment: 'Fresh out of the bath and into the office!' },
+      { items: ['Crown', 'Sweatpants'], bonus: 7, comment: 'King of casual Friday!' },
+    ],
+  },
+  {
+    name: 'Royal Wedding',
+    desc: "The King and Queen invited you personally. Don't let them down... or do.",
+    appropriate: ['formal', 'royal'],
+    inappropriate: ['gym', 'beach', 'bathroom', 'casual', 'conspiracy', 'silly'],
+    bonusCombos: [
+      { items: ['Tutu', 'Cowboy Boots'], bonus: 8, comment: 'Country meets ballet at the altar!' },
+      { items: ['Chef Hat', 'Tuxedo Pants'], bonus: 6, comment: 'Cooking up romance!' },
+      { items: ['Tinfoil Hat', 'Feather Boa'], bonus: 8, comment: 'The wedding is a conspiracy... but make it glamorous!' },
+      { items: ['Armor Breastplate', 'Flip Flops'], bonus: 7, comment: 'Battle-ready beach knight!' },
+    ],
+  },
+  {
+    name: 'First Date',
+    desc: "You want to make an unforgettable first impression. For all the wrong reasons.",
+    appropriate: ['casual', 'trendy'],
+    inappropriate: ['bathroom', 'sleepwear', 'medieval', 'occupation', 'conspiracy'],
+    bonusCombos: [
+      { items: ['Lab Coat', 'Crocs'], bonus: 7, comment: 'Mad scientist chic!' },
+      { items: ['Armor Breastplate', 'Pajama Pants'], bonus: 8, comment: 'Battle-ready for bedtime!' },
+      { items: ['Viking Helmet', 'Hawaiian Shirt'], bonus: 7, comment: 'Pillaging the tropics!' },
+      { items: ['Shower Cap', 'Suit Pants'], bonus: 6, comment: 'Business on the bottom, bathroom on top!' },
+    ],
+  },
+  {
+    name: 'Beach Party',
+    desc: "Sun, sand, and spectacularly questionable fashion choices.",
+    appropriate: ['beach', 'casual'],
+    inappropriate: ['formal', 'medieval', 'occupation', 'sleepwear'],
+    bonusCombos: [
+      { items: ['Top Hat', 'Board Shorts'], bonus: 7, comment: 'Formal swimming attire!' },
+      { items: ['Suit Jacket', 'Flip Flops'], bonus: 6, comment: 'Business casual, beach edition!' },
+      { items: ['Armor Boots', 'Tank Top'], bonus: 7, comment: 'Ready to conquer the sandcastle!' },
+      { items: ['Crown', 'Cargo Shorts'], bonus: 6, comment: 'King of the sandpit!' },
+    ],
+  },
+  {
+    name: 'School Picture Day',
+    desc: "This photo will haunt you forever. Make it count.",
+    appropriate: ['casual'],
+    inappropriate: ['costume', 'bathroom', 'medieval', 'glam', 'dance', 'conspiracy', 'silly'],
+    bonusCombos: [
+      { items: ['Tinfoil Hat', 'Lab Coat'], bonus: 8, comment: 'The truth is out there... in science class!' },
+      { items: ['Chef Hat', 'Tutu'], bonus: 7, comment: 'Cooking up some moves!' },
+      { items: ['Pirate Hat', 'Pajama Pants'], bonus: 7, comment: 'Swashbuckling sleepover!' },
+      { items: ['Feather Boa', 'Rain Boots'], bonus: 6, comment: 'Glamorous puddle jumping!' },
+    ],
+  },
+];
+
+// ═══════════════════════════════════════════
+// NPC JUDGES
+// ═══════════════════════════════════════════
+const JUDGES = [
+  {
+    name: 'Francesca Von Flair',
+    skinTone: 1, hairStyle: 'bun', hairColor: 2,
+    comments: {
+      1: ["I've seen better outfits on a scarecrow.", "My grandmother dresses more daring than this."],
+      2: ["Mildly offensive. I suppose that's something.", "My left eye twitched. Once."],
+      3: ["Now THAT is a fashion crime!", "The fashion police have been dispatched!"],
+      4: ["I need therapy after seeing this.", "Spectacularly horrific! Bravo!"],
+      5: ["I'm calling the Geneva Convention!", "My eyes will never recover. PERFECT."],
+    },
+  },
+  {
+    name: 'Chad Broseph',
+    skinTone: 3, hairStyle: 'buzz', hairColor: 0,
+    comments: {
+      1: ["Bro, that's just... normal. Boring.", "Dude, my gym clothes are wilder."],
+      2: ["Okay, kinda weird bro. Respect.", "I've seen worse at frat parties... barely."],
+      3: ["BRO WHAT ARE THOSE?! Incredible!", "My protein shake just curdled!"],
+      4: ["DUDE this is LEGENDARY bad!", "I'm screenshotting this for the group chat!"],
+      5: ["BRO I'M ACTUALLY CRYING RIGHT NOW!", "This is the worst thing I've ever seen. I LOVE it!"],
+    },
+  },
+  {
+    name: 'Granny Mildred',
+    skinTone: 0, hairStyle: 'curly', hairColor: 4,
+    comments: {
+      1: ["Oh dear, that's quite... sensible.", "You look presentable. How boring."],
+      2: ["My word! That's a bit unusual, dear.", "I once wore something similar. In 1947. Accidentally."],
+      3: ["Oh my stars! What on earth?!", "I'm clutching my pearls, dearie!"],
+      4: ["Good heavens! I need to sit down!", "My knitting club will NOT believe this!"],
+      5: ["I'm having palpitations! Delightfully dreadful!", "Sweet mercy! Even my cats are judging you!"],
+    },
+  },
+];
+
+// ═══════════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════════
+let currentRound = 0;
+const TOTAL_ROUNDS = 5;
+let roundScores = [];
+let roundThemes = [];
+let dressTimer = null;
+let dressTimeLeft = 45;
+let dressStartTime = 0;
+let activeCategory = 'hat';
+
+// Bot competitors
+const BOT_NAMES = ['Bella Disastro', 'Sir Wrinkleton', 'Missy Mishmash'];
+const BOT_CHARS = [
+  { skinTone: 1, hairStyle: 'long', hairColor: 2 },
+  { skinTone: 3, hairStyle: 'buzz', hairColor: 0 },
+  { skinTone: 0, hairStyle: 'curly', hairColor: 4 },
+];
+let bots = [];
+let botPlayerRatings = [0, 0, 0];
+let playerBotRatings = [0, 0, 0];
+let roundBotScores = [];
+let botPreviews = []; // [{renderer, scene, camera, model}]
+let botPreviewAnimId = null;
+
+let charOpts = {
+  skinTone: 2,
+  hairStyle: 'short',
+  hairColor: 0,
+};
+
+let outfit = {
+  hat: 0,       // index into HATS
+  top: 0,       // index into TOPS
+  bottom: 0,    // index into BOTTOMS
+  shoes: 0,     // index into SHOES
+  accessory: 0, // index into ACCESSORIES
+  hatColor: 0,  // COLOR_PALETTE index for variable items
+  topColor: 0,
+  bottomColor: 0,
+  shoesColor: 0,
+  accessoryColor: 0,
+};
+
+// Preview scene
+let prevRenderer, prevScene, prevCamera, prevCharacter, prevAnimId;
+// Runway scene
+let runRenderer, runScene, runCamera, runCharacter, runAnimId;
+let runwayPhase = 0, runwayTime = 0;
+// Audience flash meshes
+let flashMeshes = [];
+
+// ═══════════════════════════════════════════
+// 3D CHARACTER BUILDER
+// ═══════════════════════════════════════════
+function buildModel(opts, outfitOpts) {
+  const group = new THREE.Group();
+  const skinMat = new THREE.MeshLambertMaterial({ color: SKIN_TONES[opts.skinTone].hex });
+  const hairMat = new THREE.MeshLambertMaterial({ color: HAIR_COLORS[opts.hairColor].hex });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+
+  const hatDef = HATS[outfitOpts.hat];
+  const topDef = TOPS[outfitOpts.top];
+  const bottomDef = BOTTOMS[outfitOpts.bottom];
+  const shoesDef = SHOES[outfitOpts.shoes];
+  const accDef = ACCESSORIES[outfitOpts.accessory];
+
+  function getColor(def, colorIdx) {
+    if (def.color === 'variable') return COLOR_PALETTE[colorIdx] ? COLOR_PALETTE[colorIdx].hex : 0x888888;
+    return def.color || 0x888888;
+  }
+
+  const topColor = getColor(topDef, outfitOpts.topColor);
+  const bottomColor = getColor(bottomDef, outfitOpts.bottomColor);
+  const shoesColor = getColor(shoesDef, outfitOpts.shoesColor);
+
+  const shirtMat = new THREE.MeshLambertMaterial({ color: topColor });
+  const pantsMat = new THREE.MeshLambertMaterial({ color: bottomColor });
+  const shoeMat = new THREE.MeshLambertMaterial({ color: shoesColor });
+
+  // Legs
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), pantsMat);
+  legL.position.set(-0.15, 0.25, 0); legL.castShadow = true; group.add(legL);
+  const legR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.5, 0.25), pantsMat);
+  legR.position.set(0.15, 0.25, 0); legR.castShadow = true; group.add(legR);
+
+  // Special bottoms
+  if (bottomDef.name === 'Tutu') {
+    const tutuMat = new THREE.MeshLambertMaterial({ color: bottomColor, transparent: true, opacity: 0.8 });
+    const tutu = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.45, 0.2, 12), tutuMat);
+    tutu.position.set(0, 0.55, 0); group.add(tutu);
+  }
+  if (bottomDef.name === 'Kilt') {
+    const kiltMat = new THREE.MeshLambertMaterial({ color: bottomColor });
+    const kilt = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 0.3, 8), kiltMat);
+    kilt.position.set(0, 0.45, 0); group.add(kilt);
+  }
+  if (bottomDef.name === 'Cargo Shorts' || bottomDef.name === 'Board Shorts') {
+    // Shorts are shorter legs — already handled by default leg meshes being same height
+    // Add cargo pockets
+    if (bottomDef.name === 'Cargo Shorts') {
+      const pocketMat = new THREE.MeshLambertMaterial({ color: bottomColor * 0.8 | 0 });
+      const pL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.06), pocketMat);
+      pL.position.set(-0.28, 0.3, 0); group.add(pL);
+      const pR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.12, 0.06), pocketMat);
+      pR.position.set(0.28, 0.3, 0); group.add(pR);
+    }
+  }
+
+  // Shoes
+  const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.3), shoeMat);
+  shoeL.position.set(-0.15, 0.03, 0.02); group.add(shoeL);
+  const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.3), shoeMat);
+  shoeR.position.set(0.15, 0.03, 0.02); group.add(shoeR);
+
+  // Special shoes
+  if (shoesDef.name === 'Cowboy Boots' || shoesDef.name === 'Rain Boots' || shoesDef.name === 'Armor Boots') {
+    const bootL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.26), shoeMat);
+    bootL.position.set(-0.15, 0.12, 0); group.add(bootL);
+    const bootR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.26), shoeMat);
+    bootR.position.set(0.15, 0.12, 0); group.add(bootR);
+  }
+  if (shoesDef.name === 'Flip Flops') {
+    // Flat sandals — already have base shoes, just skin-colored feet visible
+    shoeL.scale.y = 0.5;
+    shoeR.scale.y = 0.5;
+  }
+  if (shoesDef.name === 'Crocs') {
+    // Rounded clogs
+    const crocL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), shoeMat);
+    crocL.position.set(-0.15, 0.04, 0.08); crocL.rotation.x = Math.PI; group.add(crocL);
+    const crocR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2), shoeMat);
+    crocR.position.set(0.15, 0.04, 0.08); crocR.rotation.x = Math.PI; group.add(crocR);
+  }
+
+  // Skin body underneath clothing (prevents gaps with tank top, crop top, etc.)
+  const skinBody = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.62, 0.28), skinMat);
+  skinBody.position.set(0, 0.81, 0); group.add(skinBody);
+
+  // Torso
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.3), shirtMat);
+  torso.position.set(0, 0.8, 0); torso.castShadow = true; group.add(torso);
+
+  // Special tops
+  if (topDef.name === 'Bathrobe') {
+    // Collar/lapels
+    const lapelMat = new THREE.MeshLambertMaterial({ color: 0xccbbaa });
+    const lapelL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.05), lapelMat);
+    lapelL.position.set(-0.15, 0.95, 0.16); group.add(lapelL);
+    const lapelR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.35, 0.05), lapelMat);
+    lapelR.position.set(0.15, 0.95, 0.16); group.add(lapelR);
+    // Belt/sash
+    const belt = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.04, 0.32), lapelMat);
+    belt.position.set(0, 0.65, 0); group.add(belt);
+  }
+  if (topDef.name === 'Armor Breastplate') {
+    // Slightly larger armor overlay
+    const armorMat = new THREE.MeshLambertMaterial({ color: 0x999999 });
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.58, 0.34), armorMat);
+    plate.position.set(0, 0.81, 0); group.add(plate);
+    // Shoulder pads
+    const padL = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), armorMat);
+    padL.position.set(-0.32, 1.05, 0); group.add(padL);
+    const padR = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), armorMat);
+    padR.position.set(0.32, 1.05, 0); group.add(padR);
+  }
+  if (topDef.name === 'Hawaiian Shirt') {
+    // Add small flower decorations
+    const flowerColors = [0xff4444, 0xffff44, 0x44ff44, 0xff44ff];
+    for (let i = 0; i < 6; i++) {
+      const fm = new THREE.MeshBasicMaterial({ color: flowerColors[i % flowerColors.length] });
+      const f = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), fm);
+      f.position.set(
+        -0.18 + (i % 3) * 0.18,
+        0.65 + Math.floor(i / 3) * 0.2,
+        0.16
+      );
+      group.add(f);
+    }
+  }
+  if (topDef.name === 'Tank Top') {
+    // Narrower torso — shows skin on shoulders
+    torso.scale.x = 0.8;
+    // Skin shoulders visible behind narrow tank
+    const shoulderL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.28), skinMat);
+    shoulderL.position.set(-0.24, 1.02, 0); group.add(shoulderL);
+    const shoulderR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.28), skinMat);
+    shoulderR.position.set(0.24, 1.02, 0); group.add(shoulderR);
+    // Straps
+    const strapL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.06), shirtMat);
+    strapL.position.set(-0.14, 1.08, 0.1); group.add(strapL);
+    const strapR = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.12, 0.06), shirtMat);
+    strapR.position.set(0.14, 1.08, 0.1); group.add(strapR);
+  }
+  if (topDef.name === 'Crop Top') {
+    torso.scale.y = 0.6;
+    torso.position.y = 0.9;
+    // Skin body underneath handles the exposed midriff
+  }
+  if (topDef.name === 'Lab Coat') {
+    // Lab coat extends below torso
+    const coatMat = new THREE.MeshLambertMaterial({ color: 0xf8f8f8 });
+    const coatBottom = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.25, 0.32), coatMat);
+    coatBottom.position.set(0, 0.45, 0); group.add(coatBottom);
+  }
+
+  // Arms — sleeveless tops get skin-colored arms
+  const armMat = (topDef.name === 'Tank Top' || topDef.name === 'Crop Top') ? skinMat : shirtMat;
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), armMat);
+  armL.position.set(-0.35, 0.75, 0); armL.castShadow = true; group.add(armL);
+  group.userData.armL = armL;
+  const armR = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.5, 0.15), armMat);
+  armR.position.set(0.35, 0.75, 0); armR.castShadow = true; group.add(armR);
+  group.userData.armR = armR;
+
+  // Hands
+  const handL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), skinMat);
+  handL.position.set(-0.35, 0.47, 0); group.add(handL);
+  const handR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), skinMat);
+  handR.position.set(0.35, 0.47, 0); group.add(handR);
+
+  // Head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 10), skinMat);
+  head.position.set(0, 1.32, 0); head.castShadow = true; group.add(head);
+  group.userData.head = head;
+
+  // Eyes
+  const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), eyeMat);
+  eyeL.position.set(-0.08, 1.34, 0.18); group.add(eyeL);
+  const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), eyeMat);
+  eyeR.position.set(0.08, 1.34, 0.18); group.add(eyeR);
+
+  // Hair
+  const hs = opts.hairStyle;
+  if (hs === 'short') {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    h.position.set(0, 1.35, 0); group.add(h);
+  } else if (hs === 'long') {
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    top.position.set(0, 1.35, 0); group.add(top);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.55, 0.2), hairMat);
+    back.position.set(0, 1.1, -0.15); group.add(back);
+  } else if (hs === 'curly') {
+    [[0, 1.55, 0], [-0.12, 1.52, 0.05], [0.12, 1.52, 0.05],
+     [-0.08, 1.52, -0.1], [0.08, 1.52, -0.1], [0, 1.52, 0.12],
+     [-0.15, 1.45, 0], [0.15, 1.45, 0], [0, 1.45, -0.15],
+     [-0.18, 1.42, 0.06], [0.18, 1.42, 0.06],
+     [-0.2, 1.38, 0], [0.2, 1.38, 0],
+     [-0.06, 1.48, 0.14], [0.06, 1.48, 0.14]].forEach(p => {
+      const c = new THREE.Mesh(new THREE.SphereGeometry(0.07, 8, 6), hairMat);
+      c.position.set(p[0], p[1], p[2]); group.add(c);
+    });
+  } else if (hs === 'buzz') {
+    const h = new THREE.Mesh(new THREE.SphereGeometry(0.23, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2.5), hairMat);
+    h.position.set(0, 1.35, 0); group.add(h);
+  } else if (hs === 'ponytail') {
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    top.position.set(0, 1.35, 0); group.add(top);
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.04, 0.45, 8), hairMat);
+    tail.position.set(0, 1.1, -0.22); tail.rotation.x = 0.15; group.add(tail);
+    const band = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.015, 8, 12), new THREE.MeshLambertMaterial({ color: 0xcc3333 }));
+    band.position.set(0, 1.28, -0.22); band.rotation.x = Math.PI / 2; group.add(band);
+  } else if (hs === 'bun') {
+    const top = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    top.position.set(0, 1.35, 0); group.add(top);
+    const bun = new THREE.Mesh(new THREE.SphereGeometry(0.1, 10, 8), hairMat);
+    bun.position.set(0, 1.48, -0.15); group.add(bun);
+  }
+
+  // Hat
+  if (hatDef && hatDef.name !== 'None') {
+    const hatColor = getColor(hatDef, outfitOpts.hatColor);
+    const hatMat = new THREE.MeshLambertMaterial({ color: hatColor });
+
+    if (hatDef.name === 'Baseball Cap') {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 10, 0, Math.PI * 2, 0, Math.PI / 3), hatMat);
+      cap.position.set(0, 1.4, 0); group.add(cap);
+      const brim = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.02, 0.15), hatMat);
+      brim.position.set(0, 1.4, 0.2); group.add(brim);
+    } else if (hatDef.name === 'Top Hat') {
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 12), hatMat);
+      brim.position.set(0, 1.52, 0); group.add(brim);
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 0.3, 12), hatMat);
+      top.position.set(0, 1.68, 0); group.add(top);
+    } else if (hatDef.name === 'Cowboy Hat') {
+      const brim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.02, 12), hatMat);
+      brim.position.set(0, 1.52, 0); group.add(brim);
+      const crown = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.18, 8), hatMat);
+      crown.position.set(0, 1.62, 0); group.add(crown);
+    } else if (hatDef.name === 'Beanie') {
+      const beanie = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.2), hatMat);
+      beanie.position.set(0, 1.38, 0); group.add(beanie);
+    } else if (hatDef.name === 'Crown') {
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.1, 8), hatMat);
+      base.position.set(0, 1.55, 0); group.add(base);
+      // Points
+      for (let i = 0; i < 5; i++) {
+        const a = (i / 5) * Math.PI * 2;
+        const point = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.1, 4), hatMat);
+        point.position.set(Math.sin(a) * 0.15, 1.65, Math.cos(a) * 0.15);
+        group.add(point);
+      }
+      // Jewels
+      const jewelMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+      const jewel = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), jewelMat);
+      jewel.position.set(0, 1.56, 0.19); group.add(jewel);
+    } else if (hatDef.name === 'Chef Hat') {
+      const chefBase = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 12), hatMat);
+      chefBase.position.set(0, 1.52, 0); group.add(chefBase);
+      const chefTop = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), hatMat);
+      chefTop.position.set(0, 1.68, 0); group.add(chefTop);
+    } else if (hatDef.name === 'Viking Helmet') {
+      const helm = new THREE.Mesh(new THREE.SphereGeometry(0.24, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), hatMat);
+      helm.position.set(0, 1.38, 0); group.add(helm);
+      // Horns
+      const hornMat = new THREE.MeshLambertMaterial({ color: 0xccbb88 });
+      const hornL = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 6), hornMat);
+      hornL.position.set(-0.22, 1.52, 0); hornL.rotation.z = 0.6; group.add(hornL);
+      const hornR = new THREE.Mesh(new THREE.ConeGeometry(0.04, 0.25, 6), hornMat);
+      hornR.position.set(0.22, 1.52, 0); hornR.rotation.z = -0.6; group.add(hornR);
+    } else if (hatDef.name === 'Propeller Hat') {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.22, 12, 8, 0, Math.PI * 2, 0, Math.PI / 3), hatMat);
+      cap.position.set(0, 1.4, 0); group.add(cap);
+      // Propeller
+      const propMat = new THREE.MeshLambertMaterial({ color: 0xff4444 });
+      const blade1 = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.015, 0.04), propMat);
+      blade1.position.set(0, 1.56, 0); group.add(blade1);
+      const blade2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.25), propMat);
+      blade2.position.set(0, 1.56, 0); group.add(blade2);
+      group.userData.propeller = [blade1, blade2];
+    } else if (hatDef.name === 'Pirate Hat') {
+      const main = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.15, 0.3), hatMat);
+      main.position.set(0, 1.55, 0); group.add(main);
+      const front = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.04), hatMat);
+      front.position.set(0, 1.63, 0.14); group.add(front);
+      // Skull emblem
+      const skullMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const skull = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), skullMat);
+      skull.position.set(0, 1.56, 0.16); group.add(skull);
+    } else if (hatDef.name === 'Shower Cap') {
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), hatMat);
+      cap.position.set(0, 1.36, 0); group.add(cap);
+      // Ruffle edge
+      const ruffleMat = new THREE.MeshLambertMaterial({ color: 0xaaddff });
+      const ruffle = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 8, 16), ruffleMat);
+      ruffle.position.set(0, 1.38, 0); ruffle.rotation.x = Math.PI / 2; group.add(ruffle);
+    } else if (hatDef.name === 'Tinfoil Hat') {
+      const foilMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.35, 8), foilMat);
+      cone.position.set(0, 1.65, 0); group.add(cone);
+    }
+  }
+
+  // Accessories
+  if (accDef && accDef.name !== 'None') {
+    const accColor = getColor(accDef, outfitOpts.accessoryColor);
+    const accMat = new THREE.MeshLambertMaterial({ color: accColor });
+
+    if (accDef.name === 'Bow Tie') {
+      const bow = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.08, 0.04), accMat);
+      bow.position.set(0, 1.08, 0.16); group.add(bow);
+      const knot = new THREE.Mesh(new THREE.SphereGeometry(0.02, 6, 4), accMat);
+      knot.position.set(0, 1.08, 0.18); group.add(knot);
+    } else if (accDef.name === 'Sunglasses') {
+      const glassMat = new THREE.MeshBasicMaterial({ color: 0x222222 });
+      const lensL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.02), glassMat);
+      lensL.position.set(-0.07, 1.35, 0.2); group.add(lensL);
+      const lensR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.05, 0.02), glassMat);
+      lensR.position.set(0.07, 1.35, 0.2); group.add(lensR);
+      const bridge = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.015, 0.02), glassMat);
+      bridge.position.set(0, 1.35, 0.2); group.add(bridge);
+    } else if (accDef.name === 'Feather Boa') {
+      const boaMat = new THREE.MeshLambertMaterial({ color: 0xff44aa });
+      for (let i = 0; i < 8; i++) {
+        const puff = new THREE.Mesh(new THREE.SphereGeometry(0.05, 6, 4), boaMat);
+        const a = (i / 8) * Math.PI;
+        puff.position.set(Math.sin(a) * 0.28, 1.05 + Math.cos(a) * 0.05, Math.cos(a) * 0.15);
+        group.add(puff);
+      }
+    } else if (accDef.name === 'Fanny Pack') {
+      const packMat = new THREE.MeshLambertMaterial({ color: accColor });
+      const pack = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.12), packMat);
+      pack.position.set(0, 0.55, 0.2); group.add(pack);
+      const strap = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.02), packMat);
+      strap.position.set(0, 0.58, 0); group.add(strap);
+    } else if (accDef.name === 'Monocle') {
+      const monMat = new THREE.MeshLambertMaterial({ color: 0xccaa44 });
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.04, 0.005, 8, 12), monMat);
+      ring.position.set(0.08, 1.35, 0.2); ring.rotation.y = Math.PI / 8; group.add(ring);
+      // Chain
+      const chain = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.3, 4), monMat);
+      chain.position.set(0.12, 1.15, 0.18); chain.rotation.z = 0.2; group.add(chain);
+    } else if (accDef.name === 'Rubber Duck') {
+      const duckMat = new THREE.MeshLambertMaterial({ color: 0xffdd00 });
+      const body = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), duckMat);
+      body.position.set(0.38, 0.55, 0.08); group.add(body);
+      const duckHead = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 6), duckMat);
+      duckHead.position.set(0.38, 0.62, 0.12); group.add(duckHead);
+      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.015, 0.04, 4), new THREE.MeshLambertMaterial({ color: 0xff8800 }));
+      beak.position.set(0.38, 0.62, 0.17); beak.rotation.x = Math.PI / 2; group.add(beak);
+    } else if (accDef.name === 'Toy Sword') {
+      const bladeMat = new THREE.MeshLambertMaterial({ color: 0xaaaaaa });
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.5, 0.01), bladeMat);
+      blade.position.set(0.42, 0.65, 0); group.add(blade);
+      const hilt = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.03), new THREE.MeshLambertMaterial({ color: 0x664422 }));
+      hilt.position.set(0.42, 0.42, 0); group.add(hilt);
+    }
+  }
+
+  return group;
+}
+
+// ═══════════════════════════════════════════
+// BOT SYSTEM
+// ═══════════════════════════════════════════
+function generateRandomOutfit() {
+  return {
+    hat: Math.floor(Math.random() * HATS.length),
+    top: Math.floor(Math.random() * TOPS.length),
+    bottom: Math.floor(Math.random() * BOTTOMS.length),
+    shoes: Math.floor(Math.random() * SHOES.length),
+    accessory: Math.floor(Math.random() * ACCESSORIES.length),
+    hatColor: Math.floor(Math.random() * COLOR_PALETTE.length),
+    topColor: Math.floor(Math.random() * COLOR_PALETTE.length),
+    bottomColor: Math.floor(Math.random() * COLOR_PALETTE.length),
+    shoesColor: Math.floor(Math.random() * COLOR_PALETTE.length),
+    accessoryColor: Math.floor(Math.random() * COLOR_PALETTE.length),
+  };
+}
+
+function initBots() {
+  bots = BOT_NAMES.map((name, i) => ({
+    name,
+    charOpts: BOT_CHARS[i],
+    outfit: null,
+    roundScores: [],
+  }));
+  roundBotScores = [];
+}
+
+function dressBotsForRound(theme) {
+  bots.forEach(bot => {
+    bot.outfit = generateRandomOutfit();
+    const scoreData = calcTotalScore(bot.outfit, theme);
+    bot.currentScore = scoreData.total;
+  });
+}
+
+// ═══════════════════════════════════════════
+// SCORING
+// ═══════════════════════════════════════════
+function getItemNames(outfitOpts) {
+  const names = [];
+  if (HATS[outfitOpts.hat].name !== 'None') names.push(HATS[outfitOpts.hat].name);
+  names.push(TOPS[outfitOpts.top].name);
+  names.push(BOTTOMS[outfitOpts.bottom].name);
+  names.push(SHOES[outfitOpts.shoes].name);
+  if (ACCESSORIES[outfitOpts.accessory].name !== 'None') names.push(ACCESSORIES[outfitOpts.accessory].name);
+  return names;
+}
+
+function getItemStyles(outfitOpts) {
+  const styles = [];
+  const items = [HATS[outfitOpts.hat], TOPS[outfitOpts.top], BOTTOMS[outfitOpts.bottom], SHOES[outfitOpts.shoes], ACCESSORIES[outfitOpts.accessory]];
+  items.forEach(item => { if (item.style) styles.push(item.style); });
+  return styles;
+}
+
+function calcStyleMismatch(outfitOpts) {
+  const styles = new Set(getItemStyles(outfitOpts));
+  const SCORES = [0, 0, 5, 12, 22, 30];
+  return SCORES[Math.min(styles.size, 5)] || 0;
+}
+
+function getItemColors(outfitOpts) {
+  const colors = [];
+  const items = [
+    { def: HATS[outfitOpts.hat], colorIdx: outfitOpts.hatColor },
+    { def: TOPS[outfitOpts.top], colorIdx: outfitOpts.topColor },
+    { def: BOTTOMS[outfitOpts.bottom], colorIdx: outfitOpts.bottomColor },
+    { def: SHOES[outfitOpts.shoes], colorIdx: outfitOpts.shoesColor },
+    { def: ACCESSORIES[outfitOpts.accessory], colorIdx: outfitOpts.accessoryColor },
+  ];
+  items.forEach(({ def, colorIdx }) => {
+    if (!def.color) return;
+    if (def.color === 'variable') {
+      const cp = COLOR_PALETTE[colorIdx];
+      if (cp) colors.push(cp.hue);
+    } else {
+      // Extract approximate hue from hex
+      const r = (def.color >> 16) & 0xff;
+      const g = (def.color >> 8) & 0xff;
+      const b = def.color & 0xff;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b);
+      if (max - min < 30) colors.push(-1); // Neutral
+      else {
+        let h = 0;
+        if (max === r) h = ((g - b) / (max - min)) * 60;
+        else if (max === g) h = (2 + (b - r) / (max - min)) * 60;
+        else h = (4 + (r - g) / (max - min)) * 60;
+        if (h < 0) h += 360;
+        colors.push(h);
+      }
+    }
+  });
+  return colors;
+}
+
+function calcColorClash(outfitOpts) {
+  const hues = getItemColors(outfitOpts).filter(h => h >= 0);
+  if (hues.length < 2) return 0;
+  let score = 0;
+  // Check pairwise hue distances
+  for (let i = 0; i < hues.length; i++) {
+    for (let j = i + 1; j < hues.length; j++) {
+      let dist = Math.abs(hues[i] - hues[j]);
+      if (dist > 180) dist = 360 - dist;
+      if (dist > 120) score += 5; // Near complementary
+      else if (dist > 80) score += 3;
+    }
+  }
+  // Bonus for many different hues
+  const uniqueHueGroups = new Set(hues.map(h => Math.floor(h / 60)));
+  if (uniqueHueGroups.size >= 4) score += 8;
+
+  return Math.min(30, score);
+}
+
+function calcThemeScore(outfitOpts, theme) {
+  let score = 0;
+  const styles = getItemStyles(outfitOpts);
+  styles.forEach(s => {
+    if (theme.inappropriate.includes(s)) score += 7;
+    if (theme.appropriate.includes(s)) score -= 4;
+  });
+  // Check bonus combos
+  const names = getItemNames(outfitOpts);
+  let comboComment = null;
+  theme.bonusCombos.forEach(combo => {
+    if (combo.items.every(item => names.includes(item))) {
+      score += combo.bonus;
+      comboComment = combo.comment;
+    }
+  });
+  return { score: Math.max(0, Math.min(40, score)), comboComment };
+}
+
+function calcTotalScore(outfitOpts, theme) {
+  const styleMismatch = calcStyleMismatch(outfitOpts);
+  const colorClash = calcColorClash(outfitOpts);
+  const { score: themeScore, comboComment } = calcThemeScore(outfitOpts, theme);
+  const total = styleMismatch + colorClash + themeScore;
+  return { total, styleMismatch, colorClash, themeScore, comboComment };
+}
+
+function getStars(score) {
+  if (score >= 81) return 5;
+  if (score >= 61) return 4;
+  if (score >= 41) return 3;
+  if (score >= 21) return 2;
+  return 1;
+}
+
+function starString(n) {
+  return '\u2B50'.repeat(n) + '\u2606'.repeat(5 - n);
+}
+
+// ═══════════════════════════════════════════
+// SCREEN MANAGEMENT
+// ═══════════════════════════════════════════
+const SCREENS = ['title-screen', 'theme-screen', 'dressup-screen', 'runway-screen', 'rating-screen', 'judging-screen', 'final-screen'];
+function showScreen(id) {
+  SCREENS.forEach(s => {
+    document.getElementById(s).classList.toggle('hidden', s !== id);
+  });
+}
+
+// ═══════════════════════════════════════════
+// CHARACTER SETUP (Title Screen)
+// ═══════════════════════════════════════════
+function buildCharSetup() {
+  const wrap = document.getElementById('char-setup');
+  wrap.innerHTML = '';
+
+  // Skin tone
+  const skinRow = document.createElement('div');
+  skinRow.className = 'setup-row';
+  const skinLabel = document.createElement('span');
+  skinLabel.className = 'setup-label';
+  skinLabel.textContent = 'Skin';
+  skinRow.appendChild(skinLabel);
+  SKIN_TONES.forEach((st, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'setup-opt' + (charOpts.skinTone === i ? ' active' : '');
+    btn.style.background = '#' + st.hex.toString(16).padStart(6, '0');
+    btn.onclick = () => { charOpts.skinTone = i; buildCharSetup(); sfxClick(); };
+    skinRow.appendChild(btn);
+  });
+  wrap.appendChild(skinRow);
+
+  // Hair color
+  const hairCRow = document.createElement('div');
+  hairCRow.className = 'setup-row';
+  const hairCLabel = document.createElement('span');
+  hairCLabel.className = 'setup-label';
+  hairCLabel.textContent = 'Hair Color';
+  hairCRow.appendChild(hairCLabel);
+  HAIR_COLORS.forEach((hc, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'setup-opt' + (charOpts.hairColor === i ? ' active' : '');
+    btn.style.background = '#' + hc.hex.toString(16).padStart(6, '0');
+    btn.onclick = () => { charOpts.hairColor = i; buildCharSetup(); sfxClick(); };
+    hairCRow.appendChild(btn);
+  });
+  wrap.appendChild(hairCRow);
+
+  // Hair style
+  const hairSRow = document.createElement('div');
+  hairSRow.className = 'setup-row';
+  const hairSLabel = document.createElement('span');
+  hairSLabel.className = 'setup-label';
+  hairSLabel.textContent = 'Hair Style';
+  hairSRow.appendChild(hairSLabel);
+  HAIR_STYLES.forEach(hs => {
+    const btn = document.createElement('button');
+    btn.className = 'setup-opt' + (charOpts.hairStyle === hs ? ' active' : '');
+    btn.style.background = '#333';
+    btn.style.borderRadius = '6px';
+    btn.style.width = 'auto';
+    btn.style.padding = '4px 8px';
+    btn.style.fontSize = '0.6rem';
+    btn.style.color = charOpts.hairStyle === hs ? '#ff69b4' : '#888';
+    btn.textContent = hs.charAt(0).toUpperCase() + hs.slice(1);
+    btn.onclick = () => { charOpts.hairStyle = hs; buildCharSetup(); sfxClick(); };
+    hairSRow.appendChild(btn);
+  });
+  wrap.appendChild(hairSRow);
+}
+
+// ═══════════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════════
+function startGame() {
+  initAudio();
+  currentRound = 0;
+  roundScores = [];
+  initBots();
+  // Shuffle themes
+  roundThemes = [...THEMES];
+  for (let i = roundThemes.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [roundThemes[i], roundThemes[j]] = [roundThemes[j], roundThemes[i]];
+  }
+  startMusic();
+  showThemeReveal();
+}
+
+function showThemeReveal() {
+  const theme = roundThemes[currentRound];
+  document.getElementById('theme-round-label').textContent = 'ROUND ' + (currentRound + 1) + ' OF ' + TOTAL_ROUNDS;
+  document.getElementById('theme-name').textContent = theme.name;
+  document.getElementById('theme-desc').textContent = theme.desc;
+  showScreen('theme-screen');
+}
+
+function startDressUp() {
+  // Reset outfit
+  outfit = { hat: 0, top: 0, bottom: 0, shoes: 0, accessory: 0, hatColor: 0, topColor: 0, bottomColor: 0, shoesColor: 0, accessoryColor: 0 };
+  activeCategory = 'hat';
+
+  showScreen('dressup-screen');
+  initPreviewScene();
+  buildCategoryTabs();
+  buildItemGrid();
+  updatePreview();
+
+  // Start timer
+  const ggData = ggLoad();
+  dressTimeLeft = ggData.shopPurchases && ggData.shopPurchases.dtd_extra_time ? 60 : 45;
+  dressStartTime = Date.now();
+  document.getElementById('timer-fill').style.width = '100%';
+  document.getElementById('timer-text').textContent = dressTimeLeft + 's';
+  if (dressTimer) clearInterval(dressTimer);
+  dressTimer = setInterval(updateTimer, 500);
+}
+
+function updateTimer() {
+  const elapsed = (Date.now() - dressStartTime) / 1000;
+  const ggData = ggLoad();
+  const maxTime = ggData.shopPurchases && ggData.shopPurchases.dtd_extra_time ? 60 : 45;
+  const remaining = Math.max(0, maxTime - elapsed);
+  document.getElementById('timer-fill').style.width = (remaining / maxTime * 100) + '%';
+  document.getElementById('timer-text').textContent = Math.ceil(remaining) + 's';
+  if (remaining <= 0) {
+    finishDressing();
+  }
+  if (remaining < 10) {
+    document.getElementById('timer-fill').style.background = 'linear-gradient(90deg, #ff4444, #ff0000)';
+  }
+}
+
+function finishDressing() {
+  if (dressTimer) { clearInterval(dressTimer); dressTimer = null; }
+
+  // Check speed dresser achievement
+  const elapsed = (Date.now() - dressStartTime) / 1000;
+  if (elapsed < 15) ggTry('dtd_speed_dresser');
+
+  // Check fully dressed achievement
+  if (outfit.hat > 0 && outfit.accessory > 0) ggTry('dtd_full_outfit');
+
+  // Clean up preview
+  if (prevAnimId) cancelAnimationFrame(prevAnimId);
+  prevAnimId = null;
+
+  startRunway();
+}
+
+// ═══════════════════════════════════════════
+// PREVIEW SCENE
+// ═══════════════════════════════════════════
+function initPreviewScene() {
+  const wrap = document.getElementById('preview-wrap');
+  wrap.innerHTML = '';
+
+  prevScene = new THREE.Scene();
+  prevScene.background = new THREE.Color(0x1a1a2e);
+
+  prevCamera = new THREE.PerspectiveCamera(45, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+  prevCamera.position.set(0, 1.2, 3);
+  prevCamera.lookAt(0, 0.8, 0);
+
+  prevRenderer = new THREE.WebGLRenderer({ antialias: true });
+  prevRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  prevRenderer.setPixelRatio(window.devicePixelRatio);
+  wrap.appendChild(prevRenderer.domElement);
+
+  // Lighting
+  prevScene.add(new THREE.AmbientLight(0x666666));
+  const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+  dirLight.position.set(2, 4, 3);
+  prevScene.add(dirLight);
+
+  // Floor disc
+  const floor = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 0.05, 24), new THREE.MeshLambertMaterial({ color: 0x2a2a3a }));
+  floor.position.set(0, -0.025, 0);
+  prevScene.add(floor);
+
+  animatePreview();
+}
+
+let prevRotation = 0;
+function animatePreview() {
+  prevAnimId = requestAnimationFrame(animatePreview);
+  if (prevCharacter) {
+    prevRotation += 0.008;
+    prevCharacter.rotation.y = prevRotation;
+  }
+  if (prevRenderer && prevScene && prevCamera) {
+    prevRenderer.render(prevScene, prevCamera);
+  }
+}
+
+function updatePreview() {
+  if (prevCharacter) prevScene.remove(prevCharacter);
+  prevCharacter = buildModel(charOpts, outfit);
+  prevScene.add(prevCharacter);
+}
+
+// ═══════════════════════════════════════════
+// DRESS-UP UI
+// ═══════════════════════════════════════════
+function buildCategoryTabs() {
+  const wrap = document.getElementById('category-tabs');
+  wrap.innerHTML = '';
+  CATEGORIES.forEach(cat => {
+    const tab = document.createElement('button');
+    tab.className = 'cat-tab' + (activeCategory === cat.key ? ' active' : '');
+    tab.textContent = cat.name;
+    tab.onclick = () => { activeCategory = cat.key; buildCategoryTabs(); buildItemGrid(); sfxClick(); };
+    wrap.appendChild(tab);
+  });
+}
+
+function buildItemGrid() {
+  const grid = document.getElementById('item-grid');
+  grid.innerHTML = '';
+  const cat = CATEGORIES.find(c => c.key === activeCategory);
+  if (!cat) return;
+
+  cat.items.forEach((item, idx) => {
+    const btn = document.createElement('button');
+    btn.className = 'item-btn' + (outfit[activeCategory] === idx ? ' selected' : '');
+
+    // Color swatch
+    if (item.color) {
+      const swatch = document.createElement('div');
+      swatch.className = 'item-swatch';
+      const c = item.color === 'variable' ? COLOR_PALETTE[outfit[activeCategory + 'Color']].hex : item.color;
+      swatch.style.background = '#' + c.toString(16).padStart(6, '0');
+      btn.appendChild(swatch);
+    }
+
+    const label = document.createElement('span');
+    label.textContent = item.name + (item.style ? ' (' + item.style + ')' : '');
+    btn.appendChild(label);
+
+    btn.onclick = () => {
+      outfit[activeCategory] = idx;
+      buildItemGrid();
+      updateColorPicker();
+      updatePreview();
+      sfxClick();
+    };
+    grid.appendChild(btn);
+  });
+
+  updateColorPicker();
+}
+
+function updateColorPicker() {
+  const cat = CATEGORIES.find(c => c.key === activeCategory);
+  const item = cat ? cat.items[outfit[activeCategory]] : null;
+  const wrap = document.getElementById('color-picker-wrap');
+  const row = document.getElementById('color-row');
+
+  if (!item || item.color !== 'variable') {
+    wrap.classList.add('hidden-cp');
+    return;
+  }
+
+  wrap.classList.remove('hidden-cp');
+  row.innerHTML = '';
+  const colorKey = activeCategory + 'Color';
+
+  COLOR_PALETTE.forEach((cp, i) => {
+    const swatch = document.createElement('button');
+    swatch.className = 'color-swatch' + (outfit[colorKey] === i ? ' active' : '');
+    swatch.style.background = '#' + cp.hex.toString(16).padStart(6, '0');
+    swatch.onclick = () => {
+      outfit[colorKey] = i;
+      buildItemGrid();
+      updatePreview();
+      sfxClick();
+    };
+    row.appendChild(swatch);
+  });
+}
+
+// ═══════════════════════════════════════════
+// RUNWAY
+// ═══════════════════════════════════════════
+function startRunway() {
+  showScreen('runway-screen');
+  const wrap = document.getElementById('runway-wrap');
+  wrap.innerHTML = '';
+
+  runScene = new THREE.Scene();
+  runScene.background = new THREE.Color(0x0a0a0f);
+  runScene.fog = new THREE.Fog(0x0a0a0f, 8, 25);
+
+  runCamera = new THREE.PerspectiveCamera(50, wrap.clientWidth / wrap.clientHeight, 0.1, 100);
+
+  runRenderer = new THREE.WebGLRenderer({ antialias: true });
+  runRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  runRenderer.setPixelRatio(window.devicePixelRatio);
+  runRenderer.shadowMap.enabled = true;
+  wrap.appendChild(runRenderer.domElement);
+
+  // Lighting
+  runScene.add(new THREE.AmbientLight(0x444444));
+  const spot1 = new THREE.SpotLight(0xff69b4, 0.8, 20, 0.4);
+  spot1.position.set(-3, 6, 2);
+  spot1.castShadow = true;
+  runScene.add(spot1);
+  const spot2 = new THREE.SpotLight(0x6969ff, 0.6, 20, 0.4);
+  spot2.position.set(3, 6, 2);
+  runScene.add(spot2);
+  const frontLight = new THREE.PointLight(0xffffff, 0.5, 15);
+  frontLight.position.set(0, 3, 8);
+  runScene.add(frontLight);
+
+  // Runway floor
+  const runwayMat = new THREE.MeshLambertMaterial({ color: 0x2a2a3a });
+  const runway = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.05, 16), runwayMat);
+  runway.position.set(0, -0.025, 0);
+  runway.receiveShadow = true;
+  runScene.add(runway);
+
+  // Gold edge strips
+  const stripMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+  const stripL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 16), stripMat);
+  stripL.position.set(-1.25, 0, 0); runScene.add(stripL);
+  const stripR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.06, 16), stripMat);
+  stripR.position.set(1.25, 0, 0); runScene.add(stripR);
+
+  // Audience silhouettes
+  flashMeshes = [];
+  for (let side = -1; side <= 1; side += 2) {
+    for (let z = -4; z <= 6; z += 1.5) {
+      const audience = new THREE.Mesh(
+        new THREE.BoxGeometry(0.3, 0.6 + Math.random() * 0.3, 0.2),
+        new THREE.MeshLambertMaterial({ color: 0x111111 })
+      );
+      audience.position.set(side * (2 + Math.random() * 0.5), 0.3, z + Math.random() * 0.5);
+      runScene.add(audience);
+
+      // Camera flash square
+      if (Math.random() < 0.4) {
+        const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+        const flash = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 0.1), flashMat);
+        flash.position.set(audience.position.x, 0.7, audience.position.z);
+        flash.lookAt(0, 0.8, audience.position.z);
+        runScene.add(flash);
+        flashMeshes.push({ mesh: flash, nextFlash: 1 + Math.random() * 3 });
+      }
+    }
+  }
+
+  // Character
+  runCharacter = buildModel(charOpts, outfit);
+  runCharacter.position.set(0, 0, -6);
+  runScene.add(runCharacter);
+
+  runwayPhase = 0; // 0 = walking, 1 = posing, 2 = done
+  runwayTime = 0;
+  runCamera.position.set(1.5, 1.5, 4);
+  runCamera.lookAt(0, 0.8, 0);
+
+  animateRunway();
+}
+
+function animateRunway() {
+  runAnimId = requestAnimationFrame(animateRunway);
+  const dt = 1 / 60;
+  runwayTime += dt;
+
+  if (runwayPhase === 0) {
+    // Walk forward
+    runCharacter.position.z += 1.8 * dt;
+    // Head bob
+    if (runCharacter.userData.head) {
+      runCharacter.userData.head.position.y = 1.32 + Math.sin(runwayTime * 8) * 0.02;
+    }
+    // Arm swing
+    if (runCharacter.userData.armL) {
+      runCharacter.userData.armL.rotation.x = Math.sin(runwayTime * 8) * 0.3;
+    }
+    if (runCharacter.userData.armR) {
+      runCharacter.userData.armR.rotation.x = -Math.sin(runwayTime * 8) * 0.3;
+    }
+    // Propeller spin
+    if (runCharacter.userData.propeller) {
+      runCharacter.userData.propeller.forEach(b => { b.rotation.y += 0.15; });
+    }
+    // Camera tracks
+    runCamera.position.set(1.5, 1.5, runCharacter.position.z + 3);
+    runCamera.lookAt(runCharacter.position.x, 0.8, runCharacter.position.z);
+
+    if (runCharacter.position.z >= 5) {
+      runwayPhase = 1;
+      runwayTime = 0;
+      sfxApplause();
+    }
+  } else if (runwayPhase === 1) {
+    // Pose — slow rotation
+    runCharacter.rotation.y += 0.02;
+    runCamera.position.set(0, 1.3, 8);
+    runCamera.lookAt(runCharacter.position.x, 0.8, runCharacter.position.z);
+
+    if (runwayTime > 3) {
+      runwayPhase = 2;
+      runwayTime = 0;
+    }
+  } else if (runwayPhase === 2) {
+    // Done
+    cancelAnimationFrame(runAnimId);
+    runAnimId = null;
+    // Calculate player score, dress bots, then show rating screen
+    const theme = roundThemes[currentRound];
+    const scoreData = calcTotalScore(outfit, theme);
+    roundScores.push(scoreData.total);
+    dressBotsForRound(theme);
+    showRatingScreen();
+    return;
+  }
+
+  // Camera flashes
+  flashMeshes.forEach(f => {
+    f.nextFlash -= dt;
+    if (f.nextFlash <= 0) {
+      f.mesh.material.opacity = 1;
+      f.nextFlash = 1 + Math.random() * 4;
+      sfxFlash();
+    } else if (f.mesh.material.opacity > 0) {
+      f.mesh.material.opacity = Math.max(0, f.mesh.material.opacity - dt * 8);
+    }
+  });
+
+  runRenderer.render(runScene, runCamera);
+}
+
+// ═══════════════════════════════════════════
+// RATING SCREEN
+// ═══════════════════════════════════════════
+function cleanupBotPreviews() {
+  if (botPreviewAnimId) { cancelAnimationFrame(botPreviewAnimId); botPreviewAnimId = null; }
+  botPreviews.forEach(bp => {
+    if (bp.renderer) bp.renderer.dispose();
+  });
+  botPreviews = [];
+}
+
+function animateBotPreviews() {
+  botPreviewAnimId = requestAnimationFrame(animateBotPreviews);
+  botPreviews.forEach(bp => {
+    if (bp.model) bp.model.rotation.y += 0.012;
+    bp.renderer.render(bp.scene, bp.camera);
+  });
+}
+
+function showRatingScreen() {
+  showScreen('rating-screen');
+  cleanupBotPreviews();
+  const theme = roundThemes[currentRound];
+  document.getElementById('rating-round-label').textContent = 'ROUND ' + (currentRound + 1) + ' \u2014 ' + theme.name;
+
+  const cardsEl = document.getElementById('bot-cards');
+  cardsEl.innerHTML = '';
+  botPlayerRatings = [0, 0, 0];
+
+  document.getElementById('submit-ratings-btn').style.display = '';
+
+  bots.forEach((bot, i) => {
+    const card = document.createElement('div');
+    card.className = 'bot-card';
+
+    // 3D preview
+    const previewWrap = document.createElement('div');
+    previewWrap.className = 'bot-preview-wrap';
+    card.appendChild(previewWrap);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'bot-name';
+    nameEl.textContent = bot.name;
+    card.appendChild(nameEl);
+
+    const outfitEl = document.createElement('div');
+    outfitEl.className = 'bot-outfit-list';
+    const slotLabels = ['hat', 'top', 'bottom', 'shoes', 'acc'];
+    const slotItems = [
+      HATS[bot.outfit.hat],
+      TOPS[bot.outfit.top],
+      BOTTOMS[bot.outfit.bottom],
+      SHOES[bot.outfit.shoes],
+      ACCESSORIES[bot.outfit.accessory],
+    ];
+    slotItems.forEach((item, si) => {
+      if (item.name === 'None') return;
+      const tag = document.createElement('span');
+      tag.className = 'outfit-tag';
+      tag.innerHTML = '<span class="tag-label">' + slotLabels[si] + '</span><span>' + item.name + '</span>';
+      outfitEl.appendChild(tag);
+    });
+    card.appendChild(outfitEl);
+
+    const starsEl = document.createElement('div');
+    starsEl.className = 'bot-rating-stars';
+    starsEl.id = 'bot-stars-' + i;
+    for (let s = 1; s <= 5; s++) {
+      const star = document.createElement('button');
+      star.className = 'rate-star';
+      star.textContent = '\u2605';
+      const si = s;
+      const bi = i;
+      star.onclick = () => {
+        botPlayerRatings[bi] = si;
+        updateBotStars(bi);
+        sfxClick();
+      };
+      starsEl.appendChild(star);
+    }
+    card.appendChild(starsEl);
+    cardsEl.appendChild(card);
+
+    // Create Three.js scene for this bot
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1a1a2e);
+    const camera = new THREE.PerspectiveCamera(45, 180 / 200, 0.1, 100);
+    camera.position.set(0, 1.0, 2.8);
+    camera.lookAt(0, 0.7, 0);
+    scene.add(new THREE.AmbientLight(0x666666));
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(2, 4, 3);
+    scene.add(dir);
+    // Floor disc
+    const floor = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.04, 16), new THREE.MeshLambertMaterial({ color: 0x2a2a3a }));
+    floor.position.set(0, -0.02, 0);
+    scene.add(floor);
+    // Bot model
+    const model = buildModel(bot.charOpts, bot.outfit);
+    scene.add(model);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(180, 200);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    previewWrap.appendChild(renderer.domElement);
+    botPreviews.push({ renderer, scene, camera, model });
+  });
+
+  animateBotPreviews();
+}
+
+function updateBotStars(botIdx) {
+  const starsEl = document.getElementById('bot-stars-' + botIdx);
+  const stars = starsEl.querySelectorAll('.rate-star');
+  stars.forEach((s, j) => {
+    s.classList.toggle('active', j < botPlayerRatings[botIdx]);
+  });
+}
+
+function submitRatings() {
+  if (botPlayerRatings.some(r => r === 0)) {
+    // Flash unrated bot cards
+    bots.forEach((bot, i) => {
+      if (botPlayerRatings[i] === 0) {
+        const starsEl = document.getElementById('bot-stars-' + i);
+        starsEl.style.animation = 'none';
+        starsEl.offsetHeight;
+        starsEl.style.animation = '';
+      }
+    });
+    return;
+  }
+
+  document.getElementById('submit-ratings-btn').style.display = 'none';
+
+  // Bots rate player based on algorithm score (revealed on results screen)
+  const playerScore = roundScores[roundScores.length - 1];
+  playerBotRatings = bots.map(() => {
+    const raw = Math.ceil(playerScore / 20);
+    const variance = Math.random() < 0.3 ? -1 : (Math.random() < 0.7 ? 0 : 1);
+    return Math.max(1, Math.min(5, raw + variance));
+  });
+
+  // Go straight to results
+  showRoundResults();
+}
+
+// ═══════════════════════════════════════════
+// ROUND RESULTS (LEADERBOARD)
+// ═══════════════════════════════════════════
+function showRoundResults() {
+  cleanupBotPreviews();
+  const theme = roundThemes[currentRound];
+  const scoreData = calcTotalScore(outfit, theme);
+  const playerScore = roundScores[roundScores.length - 1];
+  const stars = getStars(playerScore);
+
+  // Store bot scores for this round
+  bots.forEach(bot => { bot.roundScores.push(bot.currentScore); });
+
+  // Achievement checks
+  ggTry('dtd_first_show');
+  if (stars >= 3) ggTry('dtd_3_stars');
+  if (stars >= 5) ggTry('dtd_5_stars');
+  if (scoreData.styleMismatch >= 30) ggTry('dtd_style_clash');
+  if (scoreData.colorClash >= 30) ggTry('dtd_color_clash');
+  if (scoreData.comboComment) ggTry('dtd_bonus_combo');
+
+  const stats = loadStats();
+  if (!stats.themesPlayed.includes(theme.name)) {
+    stats.themesPlayed.push(theme.name);
+  }
+  if (playerScore > stats.bestRound) stats.bestRound = playerScore;
+  saveStats(stats);
+  if (stats.themesPlayed.length >= 5) ggTry('dtd_all_themes');
+
+  // Build leaderboard entries
+  const entries = [
+    { name: 'YOU', score: playerScore, isPlayer: true },
+    ...bots.map(bot => ({ name: bot.name, score: bot.currentScore, isPlayer: false }))
+  ];
+  entries.sort((a, b) => b.score - a.score);
+
+  showScreen('judging-screen');
+  document.getElementById('judging-round-label').textContent = 'ROUND ' + (currentRound + 1) + ' \u2014 ' + theme.name;
+
+  const panelsEl = document.getElementById('judge-panels');
+  panelsEl.innerHTML = '';
+
+  const PLACE_LABELS = ['1st Place \uD83D\uDC51', '2nd Place \uD83E\uDD48', '3rd Place \uD83E\uDD49', '4th Place'];
+  entries.forEach((entry, rank) => {
+    const card = document.createElement('div');
+    card.className = 'judge-card' + (entry.isPlayer ? ' player-card' : '');
+    card.style.opacity = '0';
+
+    const placeEl = document.createElement('div');
+    placeEl.className = 'round-winner-label';
+    placeEl.textContent = PLACE_LABELS[rank];
+    card.appendChild(placeEl);
+
+    const rankEl = document.createElement('div');
+    rankEl.className = 'leaderboard-rank';
+    rankEl.textContent = '#' + (rank + 1);
+    card.appendChild(rankEl);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'judge-name';
+    nameEl.textContent = entry.name;
+    card.appendChild(nameEl);
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'judge-score';
+    scoreEl.textContent = entry.score + '/100';
+    card.appendChild(scoreEl);
+
+    const starsEl = document.createElement('div');
+    starsEl.className = 'judge-comment';
+    starsEl.textContent = starString(getStars(entry.score));
+    card.appendChild(starsEl);
+
+    panelsEl.appendChild(card);
+
+    setTimeout(() => {
+      card.style.opacity = '1';
+      card.style.transition = 'opacity 0.4s';
+      if (rank === 0) sfxFanfare();
+    }, (rank + 1) * 500);
+  });
+
+  // Show player breakdown and next button
+  setTimeout(() => {
+    document.getElementById('judge-total').textContent = 'YOUR SCORE: ' + playerScore + '/100';
+    document.getElementById('judge-stars').textContent = starString(stars);
+
+    const breakWrap = document.getElementById('judge-breakdown-wrap');
+    breakWrap.innerHTML = '';
+    const lines = [
+      'Style Mismatch: ' + scoreData.styleMismatch + '/30',
+      'Color Clash: ' + scoreData.colorClash + '/30',
+      'Theme Score: ' + scoreData.themeScore + '/40',
+    ];
+    lines.forEach(l => {
+      const div = document.createElement('div');
+      div.className = 'judge-breakdown';
+      div.textContent = l;
+      breakWrap.appendChild(div);
+    });
+
+    const comboEl = document.getElementById('combo-callout');
+    comboEl.textContent = scoreData.comboComment ? '\u2728 COMBO: ' + scoreData.comboComment : '';
+
+    // Reveal bot ratings of player
+    const ratingsWrap = document.getElementById('judge-breakdown-wrap');
+    const ratingsTitle = document.createElement('div');
+    ratingsTitle.className = 'judge-breakdown';
+    ratingsTitle.style.color = '#ff69b4';
+    ratingsTitle.style.marginTop = '10px';
+    ratingsTitle.textContent = 'THEY RATED YOU:';
+    ratingsWrap.appendChild(ratingsTitle);
+    bots.forEach((bot, i) => {
+      const div = document.createElement('div');
+      div.className = 'judge-breakdown';
+      div.innerHTML = '<span style="color:#ff69b4">' + bot.name + ':</span> ' +
+        '\u2605'.repeat(playerBotRatings[i]) + '\u2606'.repeat(5 - playerBotRatings[i]);
+      ratingsWrap.appendChild(div);
+    });
+
+    const nextBtn = document.getElementById('judging-next-btn');
+    nextBtn.style.display = '';
+    if (currentRound < TOTAL_ROUNDS - 1) {
+      nextBtn.textContent = 'NEXT ROUND';
+      nextBtn.onclick = () => {
+        currentRound++;
+        showThemeReveal();
+      };
+    } else {
+      nextBtn.textContent = 'SEE FINAL RESULTS';
+      nextBtn.onclick = showFinalResults;
+    }
+  }, entries.length * 500 + 600);
+}
+
+// ═══════════════════════════════════════════
+// FINAL RESULTS
+// ═══════════════════════════════════════════
+function showFinalResults() {
+  showScreen('final-screen');
+  stopMusic();
+
+  const playerTotal = roundScores.reduce((a, b) => a + b, 0);
+  const avgScore = Math.round(playerTotal / TOTAL_ROUNDS);
+  const totalStars = getStars(avgScore);
+
+  // Build final leaderboard
+  const entries = [
+    { name: 'YOU', total: playerTotal, isPlayer: true },
+    ...bots.map(bot => ({
+      name: bot.name,
+      total: bot.roundScores.reduce((a, b) => a + b, 0),
+      isPlayer: false,
+    }))
+  ];
+  entries.sort((a, b) => b.total - a.total);
+
+  const playerRank = entries.findIndex(e => e.isPlayer) + 1;
+  const ranks = ['Fashion Novice', 'Style Offender', 'Fashion Criminal', 'Style Catastrophe', 'Master of Disaster'];
+  const rankTitle = playerRank === 1 ? '\uD83D\uDC51 CHAMPION OF CHAOS' : ranks[Math.min(totalStars, 5) - 1];
+
+  document.getElementById('final-total-score').textContent = playerTotal + ' / ' + (TOTAL_ROUNDS * 100);
+  document.getElementById('final-stars').textContent = starString(totalStars);
+  document.getElementById('final-rank').textContent = rankTitle;
+
+  // Leaderboard
+  const FINAL_PLACES = ['1st \uD83D\uDC51', '2nd \uD83E\uDD48', '3rd \uD83E\uDD49', '4th'];
+  const lbEl = document.getElementById('final-leaderboard');
+  lbEl.innerHTML = '';
+  entries.forEach((entry, i) => {
+    const row = document.createElement('div');
+    row.className = 'final-lb-entry' + (entry.isPlayer ? ' player' : '') + (i === 0 ? ' winner' : '');
+
+    const rankEl = document.createElement('div');
+    rankEl.className = 'final-lb-rank';
+    rankEl.textContent = FINAL_PLACES[i];
+    row.appendChild(rankEl);
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'final-lb-name';
+    nameEl.textContent = entry.name;
+    row.appendChild(nameEl);
+
+    const scoreEl = document.createElement('div');
+    scoreEl.className = 'final-lb-score';
+    scoreEl.textContent = entry.total + '/' + (TOTAL_ROUNDS * 100);
+    row.appendChild(scoreEl);
+
+    lbEl.appendChild(row);
+  });
+
+  // Stats
+  const stats = loadStats();
+  stats.gamesPlayed++;
+  if (playerTotal > stats.bestTotal) stats.bestTotal = playerTotal;
+  saveStats(stats);
+
+  // Achievements
+  if (playerTotal >= 400) ggTry('dtd_high_score');
+
+  if (totalStars >= 4) sfxFanfare();
+}
+
+function restartGame() {
+  showScreen('title-screen');
+}
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+buildCharSetup();
+showScreen('title-screen');
+
+// M key for music toggle
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM') toggleMusic();
+});
+
+// Window resize
+window.addEventListener('resize', () => {
+  if (prevRenderer && prevCamera) {
+    const wrap = document.getElementById('preview-wrap');
+    if (wrap.clientWidth > 0) {
+      prevCamera.aspect = wrap.clientWidth / wrap.clientHeight;
+      prevCamera.updateProjectionMatrix();
+      prevRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    }
+  }
+  if (runRenderer && runCamera) {
+    const wrap = document.getElementById('runway-wrap');
+    if (wrap.clientWidth > 0) {
+      runCamera.aspect = wrap.clientWidth / wrap.clientHeight;
+      runCamera.updateProjectionMatrix();
+      runRenderer.setSize(wrap.clientWidth, wrap.clientHeight);
+    }
+  }
+});
+</script>
+</body>
+</html>
