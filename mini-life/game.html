@@ -2340,6 +2340,8 @@ function buildJukebox() {
 function updateJukeboxLabel() {
   const jukeInteract = interactables.find(i => i.type === 'jukebox');
   if (jukeInteract) jukeInteract.label = 'Switch to ' + SFX.getNextTrackName();
+  const presJukeInteract = interactables.find(i => i.type === 'presJukebox');
+  if (presJukeInteract) presJukeInteract.label = 'Switch to ' + SFX.getNextTrackName();
 }
 
 function buildDiscoBall() {
@@ -4147,11 +4149,47 @@ const GRAHAM_BOOKS_DATA = [
       "Complete quests for big payouts — Town Spirit from the Mayor pays $150!",
       "Graham Dimension jobs pay well too. Pepper Sabotage is $25 + bonus.",
     ]},
+    { title: 'Your Home', tips: [
+      "HOME is your base of operations. You start with a bed, fridge, TV, shower, and computer.",
+      "Buy the SECOND FLOOR from the shop for extra space — a cozy bed, bookshelf, and room for upgrades.",
+      "The BASEMENT (G Bux shop) adds a workbench ($25 per craft!) and a punching bag. Both free to use.",
+      "The SWIMMING POOL (G Bux shop) goes in the yard. Restores fun AND hygiene. Two birds, one pool.",
+    ]},
+    { title: 'Furniture & Upgrades', tips: [
+      "Buy furniture from the shop: Lava Lamp ($30), Fish Tank ($40), Treadmill ($50), Jukebox ($75).",
+      "The JUKEBOX cycles through music tracks. Click it to switch songs. Free fun boost every time.",
+      "The TREADMILL gives energy but costs hunger. Use it 3 times for the Gym Rat achievement.",
+      "The BOOKSHELF comes with the second floor. Read 3 books total for Knowledge is Power achievement.",
+    ]},
+    { title: 'Phone & TV Products', tips: [
+      "Buy the GG TV ($75) and Landline Phone ($100) from the Merch Store in town.",
+      "The phone has a catalog — dial numbers to order products delivered to your house!",
+      "Buy the Phone Book ($10, dial 129-8364) to see all available product numbers at a glance.",
+      "Products include: Mega Blaster, Turbo Sneakers, Glow Lamp, Chef Apron, Comfy Pillow, and more.",
+    ]},
+    { title: 'GG TV Channels', tips: [
+      "The GG TV has 4 channels: GG Trivia, GG News, Screen Savers, and TV Ads.",
+      "GG Trivia tests your Graham Games knowledge with 5 random questions. Great fun boost!",
+      "GG News has reporters Tina Tonkins and Chuck Chuckleton with hilarious stories.",
+      "TV Ads hint at products you can order by phone. Watch the ads, note the phone numbers!",
+    ]},
+    { title: 'Cool Phone Items', tips: [
+      "MEGA BLASTER ($30): Press E to shoot foam balls! Bouncy physics. Not useful. Incredibly fun.",
+      "COMFY PILLOW ($25): Goes on your bed. Boosts sleep energy from 60 to 80. Sweet dreams.",
+      "SPARKLE SHAMPOO ($20): Use once for PERMANENT sparkles above your head. Maximum style.",
+      "GAME CONSOLE ($35): Play Slug Assault! A retro top-down shooter with 3 levels and a boss.",
+    ]},
     { title: 'Locations', tips: [
       "HOME — Where you start. Buy the second floor, basement, and pool to expand.",
       "TOWN — Drive there with your car. Shops, gym, library, arcade, jobs, basketball, and more.",
       "MANSION — $500 to buy. Free kitchen, spa, hot tub, art studio, home theater. Worth every penny.",
       "GRAHAM DIMENSION — Find the big red button in Graham's House in town. Good luck.",
+    ]},
+    { title: 'The Mansion', tips: [
+      "The mansion costs $500. Sounds expensive. It's worth every single dollar.",
+      "Ground floor: FREE kitchen (no food cost!), grand piano (+50 fun instant), home theater, spa.",
+      "Upper floor: king bed (85 energy!), library, art studio ($15 per painting), arcade, hot tub.",
+      "Outside: tennis court (+45 fun, +20 energy) and zen garden (+30 fun, +10 hygiene). Fancy.",
     ]},
     { title: 'Town Tips', tips: [
       "Talk to EVERY NPC — they give quests and jobs. Some have daily cooldowns.",
@@ -4159,17 +4197,89 @@ const GRAHAM_BOOKS_DATA = [
       "The basketball court has TWO activities: basketball AND cheerleading.",
       "Sergeant Briggs at the army fort unlocks military missions after 5 training sessions.",
     ]},
-    { title: 'Secrets', tips: [
-      "Buy the GG TV and dial random phone numbers. You might find something useful.",
-      "The Mega Blaster lets you shoot foam balls with E. It's not useful. It IS fun.",
-      "Sparkle Shampoo gives you permanent sparkles above your head. Fashion.",
-      "The Joke Book has 20 jokes. They're all terrible. You're welcome.",
+    { title: 'Town Jobs', tips: [
+      "Order Rush (Barista): fill drink orders using A/D to select and Space to serve. $15 base.",
+      "Shelf Stocker (Merchant Mike): catch falling items with A/D. $15 base.",
+      "Stamp Sorter (Mayor): sort documents — A to approve, D to deny. $15 base.",
+      "Target Practice (Sergeant): aim with WASD, Space to shoot. $20 base. Do 5 for missions!",
+    ]},
+    { title: 'More Town Jobs', tips: [
+      "Fry Cook (Mic Ronaldz): match food orders by pressing 1-4 keys. $12 base.",
+      "Military Mission: side-scrolling combat! A/D to move, W to jump, Space to shoot. $35 base!",
+      "All jobs pay base + floor(score/2). Higher score = more money. Get good.",
+      "There's a daily cooldown per NPC, so spread your shifts around for maximum earnings.",
+    ]},
+    { title: 'Quests', tips: [
+      "COFFEE RUN (Barista Bean): Use the fridge at home. Reward: $75. Easiest quest in the game.",
+      "SUPPLY RUN (Merchant Mike): Use the workbench in the basement. Reward: $100.",
+      "TOWN SPIRIT (Mayor Maple): Get all 4 needs above 70%. Reward: $150! Biggest payout.",
+      "TALL TALES (Old Pete): Read 3 books (bookshelf or library). Reward: $50 + 30 fun.",
+    ]},
+    { title: 'Outfits & Fashion', tips: [
+      "Buy outfits from the P shop: Sporty Red ($20), Forest Green ($25), Purple Royale ($30), and more.",
+      "Golden Drip ($50) is the fanciest standard outfit. But GG Merch ($40) is exclusive to the Merch Store!",
+      "DRESSES are separate from outfits! 8 colors from $25-$55. Equipping a dress unequips your outfit.",
+      "The DAILY MYSTERY BOX can award exclusive outfits: Slug Shirt, Goofy Getup, Disco Fever, Camo Commando, Tuxedo, Husky Pack!",
+    ]},
+    { title: 'Pets', tips: [
+      "Unlock pets with G Bux (50G): Dog and Cat are both unlocked with one purchase!",
+      "The GG Beaver costs $100 in-game money at the Merch Store. It gives +10 fun every 30 seconds!",
+      "Pets follow you around the house. They stay home when you drive to town or the mansion.",
+      "Press G (or T if you don't own the guide) to open the pet menu and switch between your pets.",
+    ]},
+    { title: 'Daily Mystery Box', tips: [
+      "A mystery box appears once per real-world day. Pick one of three boxes!",
+      "Prize pool includes exclusive outfits, furniture (Disco Ball, Bean Bag), and cash prizes ($150-$500).",
+      "Already own everything? You'll get cash prizes instead. No duplicates!",
+      "The Disco Ball adds colored spotlights to your ceiling. The Bean Bag gives energy + fun.",
     ]},
     { title: 'Graham Dimension', tips: [
       "There are 3 Boss Grahams with jobs and a quest. Complete any 3 tasks for an achievement.",
       "Graham Industries has an interview quiz — you need 3/5 to pass. 'LOL Dolls' is a correct answer.",
       "Bodhi's Junkuploops sells very expensive junk. The sandwich makes you ragdoll. Worth it.",
       "Run for president! Talk to the right people and you might end up running the whole dimension.",
+    ]},
+    { title: 'GD Jobs & Arena', tips: [
+      "Graham Says (Boss 1): Simon-says game with WASD. Gets harder each round. $20 + rounds*3.",
+      "Fan Mail Sorter (Boss 2): Letters slide down — A to approve, D to reject. 30 seconds. $15 + score/2.",
+      "Paperwork Filing (Graham Industries): Press 1/2/3 to file into the right cabinet. $18 + score/2.",
+      "Pepper Sabotage: 3D stealth mission! Sneak past guards, pepper their computers with E. $25 + score*2.",
+    ]},
+    { title: 'The Clone Arena', tips: [
+      "The Clone Arena is a colosseum in the Graham Dimension. Two modes: Watch and Perform!",
+      "WATCH mode: pick 3 acts to watch. Throw tomatoes at bad performances for bonus fun.",
+      "PERFORM mode: pick an act and nail a rhythm game with 1/2/3/4 keys. Higher combo = more fun!",
+      "The arena is also a great place to compliment clones for the Ego Boost quest (Boss 3).",
+    ]},
+    { title: 'Presidential Campaign', tips: [
+      "To run for president: complete any GD job, then talk to the Campaign Manager by the statue.",
+      "Phase 1: Design a campaign poster slogan (3 choices). Phase 2: Place 6 posters on road easels.",
+      "Phase 3: Give a speech (choose 3 talking points). You need 17+ out of 32 clone votes to win!",
+      "After winning, the Presidential Palace is built! You get a desk, mirror, bed, shower, fridge, and TV.",
+    ]},
+    { title: 'Being President', tips: [
+      "Use the Presidential Desk to pass laws, check approval rating, or resign.",
+      "LAWS have visual effects in the GD! Mandatory Cat Ownership spawns cats. Trampoline Tuesdays adds trampolines!",
+      "Your approval rating starts at 50%. Pass good laws to raise it, bad laws to tank it.",
+      "If approval hits 0%, you get IM-CHERRIED (impeached with actual cherries). Get it above 90% for the Pizza Throne!",
+    ]},
+    { title: "Bodhi's Junkuploops", tips: [
+      "Bodhi's store is in the Graham Dimension. Talk to Bodhi to start the First Customer quest.",
+      "All junk costs $50 (discounted from absurd prices). You can eventually buy all 6 items!",
+      "Press Q anywhere to use your active junk item. The SANDWICH makes you ragdoll. Comedy gold.",
+      "The SINGLE SOCK and BROKEN PENCIL have no cooldown. Other items have a 3-second cooldown.",
+    ]},
+    { title: 'Achievements', tips: [
+      "There are 20 achievements worth 595G total. Check the launcher to see what you've unlocked!",
+      "LIVING LARGE (50G) requires owning ALL furniture, second floor, car, and outfits. The big one.",
+      "GRAHAM'S FAVORITE (50G): Complete any 3 of the 4 Graham Dimension tasks (jobs, quest, or interview).",
+      "EMPLOYEE OF THE MONTH (50G): Complete 25 town job shifts total. Keep grinding!",
+    ]},
+    { title: 'Secrets & Tips', tips: [
+      "Buy the GG TV and dial random phone numbers. You might find something useful.",
+      "The Mega Blaster lets you shoot foam balls with E. It's not useful. It IS fun.",
+      "Sparkle Shampoo gives you permanent sparkles above your head. Fashion.",
+      "Everything you buy at home also shows up in the Presidential Palace. President perks!",
     ]},
   ]},
   { id: 'autoBook', name: "Graham's Autobiography", price: 40, need: 'fun', boost: 25, color: '#cc2222', author: 'Graham', pages: [
@@ -8390,6 +8500,10 @@ let gdPresThroneGroup = null; // 3D pizza throne mesh
 let lawVisualGroups = {}; // { effectKey: THREE.Group } — law visual effects in GD
 const GRAHAM_DIM_ORIGIN = { x: 400, z: 0 };
 const GRAHAM_DIM_BOUNDS = { xMin: 340, xMax: 460, zMin: -100, zMax: 60 };
+// Presidential palace second floor stairs (left wall, back to middle)
+const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+// Presidential palace basement stairs (outside right wall, descends from X=416.5 to X=414)
+const PRES_BSTAIR = { xMin: 414, xMax: 416.5, zMin: 14, zMax: 16 };
 const GRAHAM_DIM_PLAYER_SPAWN = { x: 400, y: 0.15, z: 50 };
 const GRAHAM_DIM_FOG_FAR = 200;
 const GRAHAM_DIM_COLLISIONS = [
@@ -9113,8 +9227,8 @@ function buildPresHouse(parentGroup) {
   addMesh(new THREE.BoxGeometry(8, 0.1, 6), floorMat, PX, 0.05, PZ);
   // Interior back wall accent
   addMesh(new THREE.BoxGeometry(7.6, 3, 0.05), innerMat, PX, 1.5, PZ - 2.8);
-  // Gold roof
-  addMesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat, PX, 3.6, PZ);
+  // Gold roof (skip if second floor)
+  if (!hasSecondFloor) addMesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat, PX, 3.6, PZ);
   // Windows
   const winMat = new THREE.MeshLambertMaterial({ color: 0xbb99ee, emissive: 0x664488, emissiveIntensity: 0.3 });
   addMesh(new THREE.BoxGeometry(1, 0.7, 0.05), winMat, PX - 2.75, 2, PZ + 3.05);
@@ -9143,10 +9257,11 @@ function buildPresHouse(parentGroup) {
   signMesh.position.set(PX, 3.3, PZ + 3.16);
   g.add(signMesh);
 
-  // === BED (back-left) ===
-  const bedFrame = addMesh(new THREE.BoxGeometry(2, 0.4, 1.4), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX - 2.5, 0.2, PZ - 2);
-  const bedSheet = addMesh(new THREE.BoxGeometry(1.8, 0.15, 1.2), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX - 2.5, 0.42, PZ - 2);
-  const bedPillow = addMesh(new THREE.BoxGeometry(0.5, 0.12, 0.4), new THREE.MeshLambertMaterial({ color: 0xc9a84c }), PX - 3.2, 0.48, PZ - 2);
+  // === BED (back-left, shifts right if second floor to make room for stairs) ===
+  const bedX = hasSecondFloor ? PX - 0.5 : PX - 2.5;
+  const bedFrame = addMesh(new THREE.BoxGeometry(2, 0.4, 1.4), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), bedX, 0.2, PZ - 2);
+  const bedSheet = addMesh(new THREE.BoxGeometry(1.8, 0.15, 1.2), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), bedX, 0.42, PZ - 2);
+  const bedPillow = addMesh(new THREE.BoxGeometry(0.5, 0.12, 0.4), new THREE.MeshLambertMaterial({ color: 0xc9a84c }), bedX - 0.7, 0.48, PZ - 2);
   const bedMesh = bedFrame;
   bedMesh.userData = { type: 'interactable', iType: 'presBed' };
 
@@ -9197,22 +9312,27 @@ function buildPresHouse(parentGroup) {
   // Rug
   addMesh(new THREE.BoxGeometry(3, 0.02, 2), new THREE.MeshLambertMaterial({ color: 0x9b59b6 }), PX, 0.11, PZ + 1);
 
-  // === MIRROR (left wall) ===
-  const mirFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX - 3.8, 1.6, PZ);
-  const mirGlass = addMesh(new THREE.BoxGeometry(0.04, 1.2, 0.6),
-    new THREE.MeshLambertMaterial({ color: 0xaaccee, emissive: 0x334455, emissiveIntensity: 0.3 }), PX - 3.78, 1.6, PZ);
-  addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }), PX - 3.76, 1.7, PZ - 0.15);
+  // === MIRROR (left wall — moves upstairs when second floor built) ===
+  let mirGlass = null;
+  if (!hasSecondFloor) {
+    const mirFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX - 3.8, 1.6, PZ);
+    mirGlass = addMesh(new THREE.BoxGeometry(0.04, 1.2, 0.6),
+      new THREE.MeshLambertMaterial({ color: 0xaaccee, emissive: 0x334455, emissiveIntensity: 0.3 }), PX - 3.78, 1.6, PZ);
+    addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }), PX - 3.76, 1.7, PZ - 0.15);
+  }
 
   // Register base interactables
   interactables.push(
-    { mesh: bedMesh, group: parentGroup, type: 'presBed', label: 'Presidential Bed', need: 'energy', usePos: new THREE.Vector3(PX - 1.5, 0.15, PZ - 1.5), floor: 0 },
+    { mesh: bedMesh, group: parentGroup, type: 'presBed', label: 'Presidential Bed', need: 'energy', usePos: new THREE.Vector3(hasSecondFloor ? PX + 0.5 : PX - 1.5, 0.15, PZ - 1.5), floor: 0 },
     { mesh: showerBase, group: parentGroup, type: 'presShower', label: 'Presidential Shower', need: 'hygiene', usePos: new THREE.Vector3(PX + 2.3, 0.15, PZ - 1.5), floor: 0 },
     { mesh: fridgeMesh, group: parentGroup, type: 'presFridge', label: 'Presidential Fridge', need: 'hunger', usePos: new THREE.Vector3(PX - 2.8, 0.15, PZ + 1.5), floor: 0 },
     { mesh: tvBody, group: parentGroup, type: 'presTV', label: 'Presidential TV', need: 'fun', usePos: new THREE.Vector3(PX + 2.5, 0.15, PZ + 1), floor: 0 },
     { mesh: deskMesh, group: parentGroup, type: 'presDesk', label: 'Presidential Desk', need: null, usePos: new THREE.Vector3(PX, 0.15, PZ + 1.2), floor: 0 },
-    { mesh: mirGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null, usePos: new THREE.Vector3(PX - 3, 0.15, PZ), floor: 0 },
   );
+  if (mirGlass) {
+    interactables.push({ mesh: mirGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null, usePos: new THREE.Vector3(PX - 3, 0.15, PZ), floor: 0 });
+  }
 
   // Action configs (base)
   actionConfig.presBed = { label: 'Presidential nap...', duration: 5, restore: 70 };
@@ -9263,7 +9383,7 @@ function buildPresHouse(parentGroup) {
     const jbTop = addMesh(new THREE.BoxGeometry(0.65, 0.3, 0.45),
       new THREE.MeshLambertMaterial({ color: 0xc9a84c, emissive: 0xc9a84c, emissiveIntensity: 0.2 }), PX + 1.5, 1.45, PZ - 2.6);
     interactables.push({ mesh: jbBody, group: parentGroup, type: 'presJukebox', label: 'Presidential Jukebox', need: 'fun', usePos: new THREE.Vector3(PX + 1.5, 0.15, PZ - 1.8), floor: 0 });
-    actionConfig.presJukebox = { label: 'Presidential tunes...', duration: 4, restore: 50, cost: 0 };
+    // presJukebox is an instant action handled in startAction (like home jukebox)
   }
 
   // SWIMMING POOL (if bought with G Bux)
@@ -9297,6 +9417,269 @@ function buildPresHouse(parentGroup) {
     }
     interactables.push({ mesh: bshelf, group: parentGroup, type: 'presBookshelf', label: 'Presidential Library', need: 'fun', usePos: new THREE.Vector3(PX - 0.8, 0.15, PZ - 1.8), floor: 0 });
     actionConfig.presBookshelf = { label: 'Presidential reading...', duration: 4, restore: 45, cost: 0 };
+  }
+
+  // DISCO BALL (if owned at home)
+  if (ownedFurniture.has('discoBall')) {
+    const dbWire = addMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.6, 4), new THREE.MeshLambertMaterial({ color: 0x888888 }), PX + 2, 3.3, PZ);
+    const dbBallMat = new THREE.MeshLambertMaterial({ color: 0xddddee, emissive: 0x444466, emissiveIntensity: 0.3 });
+    const dbBall = addMesh(new THREE.SphereGeometry(0.2, 12, 8), dbBallMat, PX + 2, 3.0, PZ);
+    [0xff4444, 0x44ff44, 0x4444ff, 0xffff44].forEach((c, i) => {
+      const pl = new THREE.PointLight(c, 0.1, 3);
+      const angle = (i / 4) * Math.PI * 2;
+      pl.position.set(PX + 2 + Math.cos(angle) * 0.15, 2.9, PZ + Math.sin(angle) * 0.15);
+      g.add(pl);
+    });
+    interactables.push({ mesh: dbBall, group: parentGroup, type: 'presDiscoBall', label: 'Presidential Disco Ball', need: 'fun', usePos: new THREE.Vector3(PX + 2, 0.15, PZ + 1), floor: 0 });
+    actionConfig.presDiscoBall = { label: 'Presidential dancing...', duration: 4, restore: 40, cost: 0 };
+  }
+
+  // BEAN BAG (if owned at home)
+  if (ownedFurniture.has('beanBag')) {
+    const bbMat = new THREE.MeshLambertMaterial({ color: 0x6a1b9a });
+    const bbBag = addMesh(new THREE.SphereGeometry(0.4, 10, 8), bbMat, PX + 1.5, 0.39, PZ + 2);
+    bbBag.scale.set(1, 0.6, 1);
+    const bbDimple = addMesh(new THREE.SphereGeometry(0.15, 8, 6), new THREE.MeshLambertMaterial({ color: 0x4a1570 }), PX + 1.5, 0.57, PZ + 2);
+    bbDimple.scale.set(1, 0.3, 1);
+    interactables.push({ mesh: bbBag, group: parentGroup, type: 'presBeanBag', label: 'Presidential Bean Bag', need: 'energy', usePos: new THREE.Vector3(PX + 1, 0.15, PZ + 2), floor: 0 });
+    actionConfig.presBeanBag = { label: 'Presidential chilling...', duration: 4, restore: 35, cost: 0, funBonus: 15 };
+  }
+
+  // === SECOND FLOOR (mirrors home second floor) ===
+  if (hasSecondFloor) {
+    // Stairs (7 steps along left wall, back to middle)
+    const STEPS = 7;
+    const stairW = 1.4, stairD = (PRES_STAIR.zMax - PRES_STAIR.zMin) / STEPS;
+    const stairMat = new THREE.MeshLambertMaterial({ color: 0x4a2a1a });
+    for (let i = 0; i < STEPS; i++) {
+      const stepH = ((i + 1) / STEPS) * (UPPER_Y - GROUND_Y);
+      const step = addMesh(new THREE.BoxGeometry(stairW, stepH, stairD), stairMat,
+        PX - 3.3, GROUND_Y + stepH / 2, PRES_STAIR.zMin + (i + 0.5) * stairD);
+    }
+    // Stair railing (open side)
+    addMesh(new THREE.BoxGeometry(0.06, 1.2, PRES_STAIR.zMax - PRES_STAIR.zMin), stairMat,
+      PRES_STAIR.xMax, 2.5, (PRES_STAIR.zMin + PRES_STAIR.zMax) / 2);
+    for (let z = PRES_STAIR.zMin; z <= PRES_STAIR.zMax; z += 1.0) {
+      addMesh(new THREE.BoxGeometry(0.06, 1.2, 0.06), stairMat, PRES_STAIR.xMax, 2.5, z);
+    }
+
+    // Upper floor slab (with stairwell hole)
+    // Right portion: X from stair xMax to right wall
+    const rightFloor = addMesh(new THREE.BoxGeometry(PX + 4 - PRES_STAIR.xMax, 0.15, 6), floorMat,
+      (PRES_STAIR.xMax + PX + 4) / 2, UPPER_Y - 0.075, PZ);
+    // Left-front portion (above stair top)
+    const leftFront = addMesh(new THREE.BoxGeometry(PRES_STAIR.xMax - (PX - 4), 0.15, PZ + 3 - PRES_STAIR.zMax), floorMat,
+      (PX - 4 + PRES_STAIR.xMax) / 2, UPPER_Y - 0.075, (PRES_STAIR.zMax + PZ + 3) / 2);
+
+    // Upper floor stairwell railing
+    addMesh(new THREE.BoxGeometry(PRES_STAIR.xMax - (PX - 4), 0.8, 0.08), goldTrimMat,
+      (PX - 4 + PRES_STAIR.xMax) / 2, UPPER_Y + 0.4, PRES_STAIR.zMax);
+    addMesh(new THREE.BoxGeometry(0.08, 0.8, Math.abs(PRES_STAIR.zMax - PRES_STAIR.zMin)), goldTrimMat,
+      PRES_STAIR.xMax, UPPER_Y + 0.4, (PRES_STAIR.zMin + PRES_STAIR.zMax) / 2);
+
+    // Upper walls
+    const uwh = 3.5, uwy = UPPER_Y + uwh / 2;
+    addMesh(new THREE.BoxGeometry(8.3, uwh, 0.3), purpleMat, PX, uwy, PZ - 3);     // Back
+    addMesh(new THREE.BoxGeometry(0.3, uwh, 6), purpleMat, PX - 4, uwy, PZ);         // Left
+    addMesh(new THREE.BoxGeometry(0.3, uwh, 6), purpleMat, PX + 4, uwy, PZ);         // Right
+    addMesh(new THREE.BoxGeometry(8.3, uwh, 0.3), purpleMat, PX, uwy, PZ + 3);       // Front (solid, no door)
+
+    // Ceiling
+    addMesh(new THREE.BoxGeometry(9, 0.3, 7), roofMat, PX, UPPER_Y + uwh + 0.15, PZ);
+
+    // Upper window (back wall)
+    addMesh(new THREE.BoxGeometry(1.5, 0.8, 0.05), new THREE.MeshLambertMaterial({ color: 0xbb99ee, emissive: 0x664488, emissiveIntensity: 0.3 }),
+      PX + 1.5, UPPER_Y + 2, PZ - 2.8);
+
+    // Upper interior accent
+    addMesh(new THREE.BoxGeometry(7.6, 3, 0.05), innerMat, PX, UPPER_Y + 1.5, PZ - 2.8);
+
+    // Upper light
+    const upLight = new THREE.PointLight(0xcc88ff, 0.6, 10);
+    upLight.position.set(PX, UPPER_Y + 3, PZ);
+    g.add(upLight);
+
+    // Rug upstairs
+    addMesh(new THREE.BoxGeometry(3, 0.02, 2), new THREE.MeshLambertMaterial({ color: 0x9b59b6 }),
+      PX + 1, UPPER_Y + 0.01, PZ);
+
+    // === PRESIDENTIAL KING BED (upper floor, back-right) ===
+    const kbMat = new THREE.MeshLambertMaterial({ color: 0x4a2a1a });
+    const kbSheet = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+    const kbFrame = addMesh(new THREE.BoxGeometry(2.5, 0.5, 3), kbMat, PX + 2, UPPER_Y + 0.25, PZ - 1);
+    addMesh(new THREE.BoxGeometry(2.3, 0.2, 2.8), kbSheet, PX + 2, UPPER_Y + 0.55, PZ - 1);
+    addMesh(new THREE.BoxGeometry(1.8, 0.15, 0.5), new THREE.MeshLambertMaterial({ color: 0xffffff }),
+      PX + 2, UPPER_Y + 0.7, PZ - 2.2);
+    // Headboard
+    addMesh(new THREE.BoxGeometry(2.5, 1.2, 0.15), kbMat, PX + 2, UPPER_Y + 0.9, PZ - 2.45);
+    interactables.push({ mesh: kbFrame, group: parentGroup, type: 'presKingBed', label: 'Presidential King Bed', need: 'energy',
+      usePos: new THREE.Vector3(PX + 1, UPPER_Y, PZ), floor: 1 });
+    actionConfig.presKingBed = { label: 'Presidential slumber...', duration: 7, restore: 85, cost: 0 };
+
+    // === PRESIDENTIAL MIRROR (upper floor, right wall) ===
+    const umFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX + 3.8, UPPER_Y + 1.6, PZ + 1);
+    const umGlass = addMesh(new THREE.BoxGeometry(0.04, 1.2, 0.6),
+      new THREE.MeshLambertMaterial({ color: 0xaaccee, emissive: 0x334455, emissiveIntensity: 0.3 }),
+      PX + 3.78, UPPER_Y + 1.6, PZ + 1);
+    addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }),
+      PX + 3.76, UPPER_Y + 1.7, PZ + 0.85);
+    interactables.push({ mesh: umGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null,
+      usePos: new THREE.Vector3(PX + 3, UPPER_Y, PZ + 1), floor: 1 });
+
+    // === PLANT (decorative, upper floor front-left) ===
+    const plantLeafMat = new THREE.MeshLambertMaterial({ color: 0x33aa44 });
+    const plantPotMat = new THREE.MeshLambertMaterial({ color: 0xaa5533 });
+    addMesh(new THREE.CylinderGeometry(0.2, 0.15, 0.4, 8), plantPotMat, PX - 2, UPPER_Y + 0.2, PZ + 2);
+    addMesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6), plantLeafMat, PX - 2, UPPER_Y + 0.55, PZ + 2);
+    addMesh(new THREE.SphereGeometry(0.2, 8, 6), plantLeafMat, PX - 2, UPPER_Y + 0.85, PZ + 2);
+    addMesh(new THREE.SphereGeometry(0.15, 8, 6), plantLeafMat, PX - 2.15, UPPER_Y + 0.7, PZ + 2.1);
+    addMesh(new THREE.SphereGeometry(0.15, 8, 6), plantLeafMat, PX - 1.85, UPPER_Y + 0.7, PZ + 1.9);
+
+    // === HOME PURCHASES MIRRORED TO UPPER FLOOR ===
+
+    // GG POSTER (if owned at home — exact same as home poster)
+    if (hasGGPoster) {
+      const pCvs = document.createElement('canvas');
+      pCvs.width = 512; pCvs.height = 720;
+      const pCtx = pCvs.getContext('2d');
+      pCtx.fillStyle = '#1a1a2e'; pCtx.fillRect(0, 0, 512, 720);
+      pCtx.fillStyle = '#cc2222'; pCtx.font = 'bold 76px sans-serif'; pCtx.textAlign = 'center';
+      pCtx.fillText('GRAHAM', 256, 80);
+      drawPosterCharacter(pCtx, 256, 340, 2, { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 });
+      pCtx.fillStyle = '#c9a84c'; pCtx.font = 'bold 88px serif'; pCtx.textAlign = 'center';
+      pCtx.fillText('GG', 256, 660);
+      pCtx.strokeStyle = '#c9a84c'; pCtx.lineWidth = 6; pCtx.strokeRect(12, 12, 488, 696);
+      const pTex = new THREE.CanvasTexture(pCvs);
+      // Frame + poster on back wall
+      const pFrame = addMesh(new THREE.BoxGeometry(1.1, 1.5, 0.04), new THREE.MeshLambertMaterial({ color: 0x3a2a1a }),
+        PX - 0.5, UPPER_Y + 2.0, PZ - 2.8);
+      const pFace = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 1.35),
+        new THREE.MeshLambertMaterial({ map: pTex }));
+      pFace.position.set(PX - 0.5, UPPER_Y + 2.0, PZ - 2.76);
+      g.add(pFace);
+      interactables.push({ mesh: pFrame, group: parentGroup, type: 'ggPoster', label: 'Admire GG Poster', need: 'fun',
+        usePos: new THREE.Vector3(PX - 0.5, UPPER_Y, PZ - 2), floor: 1 });
+      if (!actionConfig.ggPoster) actionConfig.ggPoster = { label: 'Admiring...', duration: 2, restore: 15, cost: 0 };
+    }
+
+    // GG TV (if owned at home — below the poster on back wall)
+    if (hasGGTV) {
+      const tvMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+      const tvBody2 = addMesh(new THREE.BoxGeometry(0.8, 0.6, 0.5), tvMat, PX - 0.5, UPPER_Y + 0.7, PZ - 2.5);
+      addMesh(new THREE.BoxGeometry(0.7, 0.5, 0.05), new THREE.MeshLambertMaterial({ color: 0x224488, emissive: 0x112244, emissiveIntensity: 0.4 }),
+        PX - 0.5, UPPER_Y + 0.72, PZ - 2.22);
+      // Antenna
+      addMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 4), new THREE.MeshLambertMaterial({ color: 0x888888 }),
+        PX - 0.65, UPPER_Y + 1.15, PZ - 2.5);
+      addMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 4), new THREE.MeshLambertMaterial({ color: 0x888888 }),
+        PX - 0.35, UPPER_Y + 1.15, PZ - 2.5);
+      // TV stand
+      addMesh(new THREE.BoxGeometry(0.9, 0.4, 0.4), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }),
+        PX - 0.5, UPPER_Y + 0.2, PZ - 2.5);
+      interactables.push({ mesh: tvBody2, group: parentGroup, type: 'ggTV', label: 'GG TV', need: 'fun',
+        usePos: new THREE.Vector3(PX - 0.5, UPPER_Y, PZ - 1.5), floor: 1 });
+    }
+
+    // GAME CONSOLE (if ordered via phone)
+    if (phoneOrders.includes('gameConsole')) {
+      const gcMat = new THREE.MeshLambertMaterial({ color: 0x3a2a5c });
+      const gcTable = addMesh(new THREE.BoxGeometry(0.8, 0.5, 0.5), new THREE.MeshLambertMaterial({ color: 0x4a3728 }),
+        PX + 0.5, UPPER_Y + 0.25, PZ + 2);
+      const gcBody = addMesh(new THREE.BoxGeometry(0.6, 0.12, 0.35), gcMat, PX + 0.5, UPPER_Y + 0.56, PZ + 2);
+      addMesh(new THREE.SphereGeometry(0.02, 6, 4), new THREE.MeshLambertMaterial({ color: 0x00ff00, emissive: 0x00ff00, emissiveIntensity: 0.8 }),
+        PX + 0.25, UPPER_Y + 0.63, PZ + 2.17);
+      interactables.push({ mesh: gcBody, group: parentGroup, type: 'phone_gameConsole', label: 'Play Game Console', need: 'fun',
+        usePos: new THREE.Vector3(PX + 0.5, UPPER_Y, PZ + 1.5), floor: 1 });
+      if (!actionConfig.phone_gameConsole) actionConfig.phone_gameConsole = { label: 'Playing console...', duration: 5, restore: 40, cost: 0 };
+    }
+
+    // GLOW LAMP EXTREME (if ordered via phone)
+    if (phoneOrders.includes('glowLamp')) {
+      const glGlass = addMesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 12),
+        new THREE.MeshLambertMaterial({ color: 0xe040fb, emissive: 0xe040fb, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 }),
+        PX - 3.5, UPPER_Y + 0.85, PZ - 1);
+      addMesh(new THREE.CylinderGeometry(0.25, 0.3, 0.25, 12), new THREE.MeshLambertMaterial({ color: 0x999999 }),
+        PX - 3.5, UPPER_Y + 0.125, PZ - 1);
+      const glGlow = new THREE.PointLight(0xe040fb, 0.3, 4);
+      glGlow.position.set(PX - 3.5, UPPER_Y + 0.9, PZ - 1); g.add(glGlow);
+      interactables.push({ mesh: glGlass, group: parentGroup, type: 'phone_glowLamp', label: 'Glow Lamp EXTREME', need: 'fun',
+        usePos: new THREE.Vector3(PX - 3, UPPER_Y, PZ - 1), floor: 1 });
+      if (!actionConfig.phone_glowLamp) actionConfig.phone_glowLamp = { label: 'Staring at Glow Lamp...', duration: 3, restore: 30, cost: 0 };
+    }
+
+    // COMFY PILLOW — boost king bed restore
+    if (phoneOrders.includes('comfyPillow')) {
+      addMesh(new THREE.BoxGeometry(0.6, 0.12, 0.5), new THREE.MeshLambertMaterial({ color: 0x8844aa }),
+        PX + 2, UPPER_Y + 0.78, PZ - 1.8);
+      actionConfig.presKingBed.restore = 95;
+      actionConfig.presKingBed.label = 'Presidential luxury slumber...';
+    }
+  }
+
+  // === PRESIDENTIAL BASEMENT (mirrors home basement, outside entrance on right) ===
+  if (basementLoaded) {
+    const BY = -3.35;
+    const bWallMat = new THREE.MeshLambertMaterial({ color: 0x555566 });
+    const bFloorMat = new THREE.MeshLambertMaterial({ color: 0x444455 });
+    const bStairMat = new THREE.MeshLambertMaterial({ color: 0x777777 });
+
+    // Basement room (under the palace)
+    addMesh(new THREE.BoxGeometry(8, 0.15, 6), bFloorMat, PX, BY + 0.075, PZ);           // Floor
+    addMesh(new THREE.BoxGeometry(8, 0.15, 6), floorMat, PX, BY + 3.5, PZ);               // Ceiling (ground floor)
+    addMesh(new THREE.BoxGeometry(8, 3.5, 0.15), bWallMat, PX, BY + 1.75, PZ - 3);       // Back wall
+    addMesh(new THREE.BoxGeometry(8, 3.5, 0.15), bWallMat, PX, BY + 1.75, PZ + 3);       // Front wall
+    addMesh(new THREE.BoxGeometry(0.15, 3.5, 6), bWallMat, PX - 4, BY + 1.75, PZ);       // Left wall
+    // Right wall — split for stair opening (Z 14-16)
+    addMesh(new THREE.BoxGeometry(0.15, 3.5, 2), bWallMat, PX + 4, BY + 1.75, PZ - 2);   // Right-back (Z 12-14)
+    addMesh(new THREE.BoxGeometry(0.15, 3.5, 1), bWallMat, PX + 4, BY + 1.75, PZ + 2.5); // Right-front (Z 16-18)
+
+    // Basement light
+    const bLight = new THREE.PointLight(0xffcc88, 0.5, 10);
+    bLight.position.set(PX, BY + 3.2, PZ); g.add(bLight);
+
+    // Outdoor stairs (descend from X=416.5 down to X=414, at Z 14-16)
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7;
+      addMesh(new THREE.BoxGeometry(0.35, 0.15, 2), bStairMat,
+        PRES_BSTAIR.xMax - i * 0.36, GROUND_Y - t * (GROUND_Y - (BY + 0.15)), PZ);
+    }
+    // Stairwell side walls
+    const swMat = new THREE.MeshLambertMaterial({ color: 0x666666 });
+    for (let i = 0; i < 8; i++) {
+      const t = i / 7;
+      const sx = PRES_BSTAIR.xMax - i * 0.36;
+      const sy = GROUND_Y - t * (GROUND_Y - (BY + 0.15));
+      const sh = GROUND_Y - sy + 0.3;
+      addMesh(new THREE.BoxGeometry(0.36, sh, 0.1), swMat, sx, sy + sh / 2, PRES_BSTAIR.zMin);
+      addMesh(new THREE.BoxGeometry(0.36, sh, 0.1), swMat, sx, sy + sh / 2, PRES_BSTAIR.zMax);
+    }
+    // Railing at top of stairs
+    const railMat = new THREE.MeshLambertMaterial({ color: 0xc9a84c });
+    addMesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), railMat, (PRES_BSTAIR.xMin + PRES_BSTAIR.xMax) / 2, 1.1, PRES_BSTAIR.zMin);
+    addMesh(new THREE.BoxGeometry(2.6, 0.06, 0.06), railMat, (PRES_BSTAIR.xMin + PRES_BSTAIR.xMax) / 2, 1.1, PRES_BSTAIR.zMax);
+
+    // Basement workbench
+    const benchMat = new THREE.MeshLambertMaterial({ color: 0x8B6914 });
+    const bench = addMesh(new THREE.BoxGeometry(2, 0.15, 1), benchMat, PX - 2, BY + 1, PZ - 2);
+    addMesh(new THREE.BoxGeometry(0.15, 1, 0.15), benchMat, PX - 3, BY + 0.5, PZ - 2.4);
+    addMesh(new THREE.BoxGeometry(0.15, 1, 0.15), benchMat, PX - 1, BY + 0.5, PZ - 2.4);
+    addMesh(new THREE.BoxGeometry(0.15, 1, 0.15), benchMat, PX - 3, BY + 0.5, PZ - 1.6);
+    addMesh(new THREE.BoxGeometry(0.15, 1, 0.15), benchMat, PX - 1, BY + 0.5, PZ - 1.6);
+    // Tools
+    addMesh(new THREE.BoxGeometry(0.1, 0.1, 0.4), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }), PX - 2.3, BY + 1.12, PZ - 2);
+
+    // Basement punching bag
+    const bagMat2 = new THREE.MeshLambertMaterial({ color: 0xcc3333 });
+    const bag2 = addMesh(new THREE.CylinderGeometry(0.3, 0.3, 1, 8), bagMat2, PX + 2, BY + 2.5, PZ - 2);
+    addMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 4), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }), PX + 2, BY + 3.1, PZ - 2);
+
+    interactables.push(
+      { mesh: bench, group: parentGroup, type: 'workbench', label: 'Craft (Workbench)', need: 'money', usePos: new THREE.Vector3(PX - 2, BY + 0.15, PZ - 1), floor: -1 },
+      { mesh: bag2, group: parentGroup, type: 'punchingBag', label: 'Box (Punching Bag)', need: 'fun', usePos: new THREE.Vector3(PX + 2, BY + 0.15, PZ - 1), floor: -1 },
+    );
+    if (!actionConfig.workbench) actionConfig.workbench = { label: 'Crafting...', duration: 8, restore: 0, cost: 0, earn: 25 };
+    if (!actionConfig.punchingBag) actionConfig.punchingBag = { label: 'Boxing...', duration: 4, restore: 30, cost: 0, hungerDrain: 10 };
   }
 
   // Collision — individual walls (thin boxes so interior is accessible)
@@ -18603,7 +18986,7 @@ function startAction(obj) {
   }
 
   // Jukebox is instant — cycles tracks
-  if (obj.type === 'jukebox') {
+  if (obj.type === 'jukebox' || obj.type === 'presJukebox') {
     const trackName = SFX.switchTrack();
     needs.fun = Math.min(100, needs.fun + 15);
     showTip('Now playing: ' + trackName);
@@ -18821,13 +19204,13 @@ function beginAction(action) {
   startActionAnim(action.obj.type, config.duration);
 
   // Lower player into pool
-  if (action.obj.type === 'pool') {
+  if (action.obj.type === 'pool' || action.obj.type === 'presPool') {
     camera.position.y -= 0.7;
   }
 
   // Start looping sounds
-  if (action.obj.type === 'shower' || action.obj.type === 'mansionSpa' || action.obj.type === 'hotTub') SFX.startShower();
-  else if (action.obj.type === 'bed' || action.obj.type === 'bed2' || action.obj.type === 'kingBed') SFX.startSleep();
+  if (action.obj.type === 'shower' || action.obj.type === 'mansionSpa' || action.obj.type === 'hotTub' || action.obj.type === 'presShower') SFX.startShower();
+  else if (action.obj.type === 'bed' || action.obj.type === 'bed2' || action.obj.type === 'kingBed' || action.obj.type === 'presBed' || action.obj.type === 'presKingBed') SFX.startSleep();
 }
 
 function finishAction(action) {
@@ -18875,8 +19258,8 @@ function finishAction(action) {
     if (config.hygieneBonus) needs.hygiene = Math.min(100, needs.hygiene + config.hygieneBonus);
     if (config.funBonus) needs.fun = Math.min(100, needs.fun + config.funBonus);
     if (config.energyBonus) needs.energy = Math.min(100, needs.energy + config.energyBonus);
-    if (obj.type === 'bookshelf' || obj.type === 'mansionLibrary') { booksRead++; if (booksRead >= 3) mlTry('ml_bookworm'); }
-    if (obj.type === 'treadmill') { treadmillUses++; if (treadmillUses >= 3) mlTry('ml_gym_rat'); }
+    if (obj.type === 'bookshelf' || obj.type === 'mansionLibrary' || obj.type === 'presBookshelf') { booksRead++; if (booksRead >= 3) mlTry('ml_bookworm'); }
+    if (obj.type === 'treadmill' || obj.type === 'presTreadmill') { treadmillUses++; if (treadmillUses >= 3) mlTry('ml_gym_rat'); }
     if (obj.type === 'phone_proteinBars') {
       speedBoostTimer = 20; // 20 seconds of 10x speed
       showTip('PROTEIN POWER! 10x speed for 20 seconds!');
@@ -19001,6 +19384,15 @@ let animIntervals = [];
 
 function startActionAnim(type, duration) {
   clearAnimIntervals();
+
+  // Remap presidential types to home equivalents for animations
+  const PRES_ANIM_MAP = {
+    presBed: 'bed', presShower: 'shower', presFridge: 'fridge',
+    presTV: 'tv', presBookshelf: 'bookshelf', presLava: 'lavaLamp',
+    presFishTank: 'fishTank', presTreadmill: 'treadmill', presPool: 'pool',
+    presKingBed: 'bed', presDiscoBall: 'discoBall', presBeanBag: 'beanBag'
+  };
+  if (PRES_ANIM_MAP[type]) type = PRES_ANIM_MAP[type];
 
   if (type === 'bed') {
     const overlay = document.getElementById('sleep-overlay');
@@ -19604,6 +19996,15 @@ function startActionAnim(type, duration) {
 
 function stopActionAnim(type) {
   clearAnimIntervals();
+
+  // Remap presidential types to home equivalents
+  const PRES_ANIM_MAP = {
+    presBed: 'bed', presShower: 'shower', presFridge: 'fridge',
+    presTV: 'tv', presBookshelf: 'bookshelf', presLava: 'lavaLamp',
+    presFishTank: 'fishTank', presTreadmill: 'treadmill', presPool: 'pool',
+    presKingBed: 'bed', presDiscoBall: 'discoBall', presBeanBag: 'beanBag'
+  };
+  if (PRES_ANIM_MAP[type]) type = PRES_ANIM_MAP[type];
 
   if (type === 'bed') {
     const overlay = document.getElementById('sleep-overlay');
@@ -20626,6 +21027,53 @@ function updatePlayerY() {
     }
   }
 
+  // Presidential palace stairs (in Graham Dimension)
+  if (inGrahamDimension && hasSecondFloor && gdPresHouseBuilt) {
+    const onPresStairs = x >= PRES_STAIR.xMin && x <= PRES_STAIR.xMax && z >= PRES_STAIR.zMin && z <= PRES_STAIR.zMax;
+    if (onPresStairs) {
+      const t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+      character.position.y = GROUND_Y + t * (UPPER_Y - GROUND_Y);
+      if (t < 0.15) currentFloor = 0;
+      else if (t > 0.85) currentFloor = 1;
+      return;
+    }
+    // Inside palace on upper floor
+    const PX = 410, PZ = 15;
+    if (currentFloor === 1 && x >= PX - 4 && x <= PX + 4 && z >= PZ - 3 && z <= PZ + 3) {
+      // Prevent walking into stairwell hole
+      if (x < PRES_STAIR.xMax && z < PRES_STAIR.zMax && z > PRES_STAIR.zMin) {
+        character.position.x = PRES_STAIR.xMax;
+      }
+      // Block door gap on upper floor (solid front wall upstairs)
+      if (z > PZ + 2.5) character.position.z = PZ + 2.5;
+      character.position.y = UPPER_Y;
+      return;
+    }
+    // Outside palace on upper floor — drop to ground
+    if (currentFloor === 1) currentFloor = 0;
+  }
+
+  // Presidential basement stairs (outside right wall)
+  if (inGrahamDimension && basementLoaded && gdPresHouseBuilt) {
+    const onPresBStairs = x >= PRES_BSTAIR.xMin && x <= PRES_BSTAIR.xMax && z >= PRES_BSTAIR.zMin && z <= PRES_BSTAIR.zMax;
+    if (onPresBStairs && (currentFloor === 0 || currentFloor === -1)) {
+      const t = (PRES_BSTAIR.xMax - x) / (PRES_BSTAIR.xMax - PRES_BSTAIR.xMin);
+      character.position.y = GROUND_Y - t * (GROUND_Y - (BASEMENT_Y + 0.15));
+      if (t < 0.15) currentFloor = 0;
+      else if (t > 0.85) currentFloor = -1;
+      return;
+    }
+    // Inside presidential basement
+    if (currentFloor === -1) {
+      const PX = 410, PZ = 15;
+      const inStairGap = z >= PRES_BSTAIR.zMin && z <= PRES_BSTAIR.zMax;
+      character.position.x = Math.max(PX - 4, Math.min(inStairGap ? PRES_BSTAIR.xMax : PX + 4, x));
+      character.position.z = Math.max(PZ - 3, Math.min(PZ + 3, z));
+      character.position.y = BASEMENT_Y + 0.15;
+      return;
+    }
+  }
+
   // Outside the house — always ground level
   if (x > 5.0) { character.position.y = GROUND_Y; return; }
 
@@ -21326,7 +21774,7 @@ function restartGame() {
   gdPresThroneGroup = null;
   for (let i = interactables.length - 1; i >= 0; i--) {
     const t = interactables[i].type;
-    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'presLava' || t === 'presBookshelf' || t === 'presFishTank' || t === 'presTreadmill' || t === 'presJukebox' || t === 'presPool' || t === 'campaignPoster' || t === 'junkShelf' || t === 'bookStore') interactables.splice(i, 1);
+    if (t === 'dimPortal' || t === 'redButton' || t === 'cloneArena' || t === 'grahamInterview' || t === 'pepperDoor' || t === 'pepperTerminal' || t === 'presBed' || t === 'presShower' || t === 'presFridge' || t === 'presTV' || t === 'presDesk' || t === 'presMirror' || t === 'presLava' || t === 'presBookshelf' || t === 'presFishTank' || t === 'presTreadmill' || t === 'presJukebox' || t === 'presPool' || t === 'presDiscoBall' || t === 'presBeanBag' || t === 'presKingBed' || t === 'campaignPoster' || t === 'junkShelf' || t === 'bookStore') interactables.splice(i, 1);
   }
   // Reset mansion state
   if (mansionGroup) { scene.remove(mansionGroup); mansionGroup = null; }

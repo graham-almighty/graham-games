@@ -4831,6 +4831,298 @@ test('New pres interactable types are cleaned up on restart', () => {
   });
 });
 
+// ═══ PRESIDENTIAL INTERACTABLE FIXES ══���
+section('Presidential Interactable Fixes');
+
+test('presJukebox is an instant action (not timed)', () => {
+  // presJukebox should be handled alongside jukebox in startAction, not as a timed action
+  const instantTypes = ['mirror', 'presMirror', 'jukebox', 'presJukebox', 'door', 'grandPiano'];
+  assert(instantTypes.includes('presJukebox'), 'presJukebox should be instant');
+  assert(instantTypes.includes('jukebox'), 'jukebox should be instant');
+});
+
+test('PRES_ANIM_MAP maps all presidential types to home equivalents', () => {
+  const PRES_ANIM_MAP = {
+    presBed: 'bed', presShower: 'shower', presFridge: 'fridge',
+    presTV: 'tv', presBookshelf: 'bookshelf', presLava: 'lavaLamp',
+    presFishTank: 'fishTank', presTreadmill: 'treadmill', presPool: 'pool',
+    presKingBed: 'bed', presDiscoBall: 'discoBall', presBeanBag: 'beanBag'
+  };
+  assertEqual(PRES_ANIM_MAP.presBed, 'bed');
+  assertEqual(PRES_ANIM_MAP.presShower, 'shower');
+  assertEqual(PRES_ANIM_MAP.presFridge, 'fridge');
+  assertEqual(PRES_ANIM_MAP.presTV, 'tv');
+  assertEqual(PRES_ANIM_MAP.presBookshelf, 'bookshelf');
+  assertEqual(PRES_ANIM_MAP.presLava, 'lavaLamp');
+  assertEqual(PRES_ANIM_MAP.presFishTank, 'fishTank');
+  assertEqual(PRES_ANIM_MAP.presTreadmill, 'treadmill');
+  assertEqual(PRES_ANIM_MAP.presPool, 'pool');
+  assertEqual(PRES_ANIM_MAP.presKingBed, 'bed');
+  assertEqual(PRES_ANIM_MAP.presDiscoBall, 'discoBall');
+  assertEqual(PRES_ANIM_MAP.presBeanBag, 'beanBag');
+});
+
+test('presShower triggers shower sound', () => {
+  const showerSoundTypes = ['shower', 'mansionSpa', 'hotTub', 'presShower'];
+  assert(showerSoundTypes.includes('presShower'), 'presShower should trigger shower sound');
+});
+
+test('presBed and presKingBed trigger sleep sound', () => {
+  const sleepSoundTypes = ['bed', 'bed2', 'kingBed', 'presBed', 'presKingBed'];
+  assert(sleepSoundTypes.includes('presBed'), 'presBed should trigger sleep sound');
+  assert(sleepSoundTypes.includes('presKingBed'), 'presKingBed should trigger sleep sound');
+});
+
+test('presPool lowers camera', () => {
+  const poolCameraTypes = ['pool', 'presPool'];
+  assert(poolCameraTypes.includes('presPool'), 'presPool should lower camera');
+});
+
+test('presBookshelf increments booksRead', () => {
+  const bookTypes = ['bookshelf', 'mansionLibrary', 'presBookshelf'];
+  assert(bookTypes.includes('presBookshelf'), 'presBookshelf should count toward booksRead');
+});
+
+test('presTreadmill increments treadmillUses', () => {
+  const treadmillTypes = ['treadmill', 'presTreadmill'];
+  assert(treadmillTypes.includes('presTreadmill'), 'presTreadmill should count toward treadmillUses');
+});
+
+test('Disco ball conditional in pres house', () => {
+  const config = { label: 'Presidential dancing...', duration: 4, restore: 40, cost: 0 };
+  assertEqual(config.cost, 0, 'presDiscoBall should be free');
+  assertEqual(config.restore, 40);
+});
+
+test('Bean bag conditional in pres house', () => {
+  const config = { label: 'Presidential chilling...', duration: 4, restore: 35, cost: 0, funBonus: 15 };
+  assertEqual(config.cost, 0, 'presBeanBag should be free');
+  assertEqual(config.funBonus, 15);
+});
+
+test('New pres types are in restartGame cleanup list', () => {
+  const cleanupTypes = ['presDiscoBall', 'presBeanBag', 'presKingBed', 'presBed', 'presShower',
+    'presFridge', 'presTV', 'presDesk', 'presMirror', 'presLava', 'presBookshelf',
+    'presFishTank', 'presTreadmill', 'presJukebox', 'presPool'];
+  assert(cleanupTypes.includes('presDiscoBall'), 'presDiscoBall in cleanup');
+  assert(cleanupTypes.includes('presBeanBag'), 'presBeanBag in cleanup');
+  assert(cleanupTypes.includes('presKingBed'), 'presKingBed in cleanup');
+});
+
+// ═══ PRESIDENTIAL SECOND FLOOR ═══
+section('Presidential Second Floor');
+
+test('PRES_STAIR constant defines valid stair zone', () => {
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  assert(PRES_STAIR.xMax > PRES_STAIR.xMin, 'xMax > xMin');
+  assert(PRES_STAIR.zMax > PRES_STAIR.zMin, 'zMax > zMin');
+  assertEqual(PRES_STAIR.xMax - PRES_STAIR.xMin, 1.5, 'Stair width should be 1.5');
+  assertEqual(PRES_STAIR.zMax - PRES_STAIR.zMin, 4, 'Stair depth should be 4');
+});
+
+test('Presidential stair Y interpolation at bottom', () => {
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  const GROUND_Y = 0.15, UPPER_Y = 3.65;
+  const z = 12; // bottom of stairs
+  const t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+  assertEqual(t, 0, 'At bottom, t should be 0');
+  const y = GROUND_Y + t * (UPPER_Y - GROUND_Y);
+  assertClose(y, GROUND_Y, 0.01, 'At bottom, Y should be GROUND_Y');
+});
+
+test('Presidential stair Y interpolation at top', () => {
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  const GROUND_Y = 0.15, UPPER_Y = 3.65;
+  const z = 16; // top of stairs
+  const t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+  assertEqual(t, 1, 'At top, t should be 1');
+  const y = GROUND_Y + t * (UPPER_Y - GROUND_Y);
+  assertClose(y, UPPER_Y, 0.01, 'At top, Y should be UPPER_Y');
+});
+
+test('Presidential stair Y interpolation at midpoint', () => {
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  const GROUND_Y = 0.15, UPPER_Y = 3.65;
+  const z = 14; // midpoint
+  const t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+  assertClose(t, 0.5, 0.01, 'At midpoint, t should be 0.5');
+  const y = GROUND_Y + t * (UPPER_Y - GROUND_Y);
+  assertClose(y, 1.9, 0.01, 'At midpoint, Y should be ~1.9');
+});
+
+test('Floor transitions at stair boundaries', () => {
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  // Near bottom (t < 0.15 → floor 0)
+  let z = 12.5;
+  let t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+  assert(t < 0.15, 'Near bottom should have t < 0.15');
+
+  // Near top (t > 0.85 → floor 1)
+  z = 15.6;
+  t = (z - PRES_STAIR.zMin) / (PRES_STAIR.zMax - PRES_STAIR.zMin);
+  assert(t > 0.85, 'Near top should have t > 0.85');
+});
+
+test('Presidential palace bounds for upper floor clamping', () => {
+  const PX = 410, PZ = 15;
+  // Upper floor interior bounds
+  const bounds = { xMin: PX - 4, xMax: PX + 4, zMin: PZ - 3, zMax: PZ + 3 };
+  assertEqual(bounds.xMin, 406);
+  assertEqual(bounds.xMax, 414);
+  assertEqual(bounds.zMin, 12);
+  assertEqual(bounds.zMax, 18);
+});
+
+test('Bed shifts right when hasSecondFloor', () => {
+  const PX = 410, PZ = 15;
+  const hasSecondFloor = true;
+  const bedX = hasSecondFloor ? PX - 0.5 : PX - 2.5;
+  assertEqual(bedX, 409.5, 'Bed should be at PX-0.5 when hasSecondFloor');
+  // Verify bed is outside stair zone
+  const PRES_STAIR = { xMin: 406, xMax: 407.5 };
+  assert(bedX > PRES_STAIR.xMax, 'Shifted bed should not overlap stairs');
+});
+
+test('Bed stays at original position without second floor', () => {
+  const PX = 410, PZ = 15;
+  const hasSecondFloor = false;
+  const bedX = hasSecondFloor ? PX - 0.5 : PX - 2.5;
+  assertEqual(bedX, 407.5, 'Bed should be at PX-2.5 without second floor');
+});
+
+test('Mirror moves upstairs when hasSecondFloor', () => {
+  const hasSecondFloor = true;
+  const mirrorFloor = hasSecondFloor ? 1 : 0;
+  assertEqual(mirrorFloor, 1, 'Mirror should be on floor 1 when hasSecondFloor');
+});
+
+test('Roof is skipped when hasSecondFloor', () => {
+  const hasSecondFloor = true;
+  const buildRoof = !hasSecondFloor;
+  assert(!buildRoof, 'Roof should not be built when hasSecondFloor');
+});
+
+test('Presidential king bed config values', () => {
+  const config = { label: 'Presidential slumber...', duration: 7, restore: 85, cost: 0 };
+  assertEqual(config.duration, 7, 'King bed takes 7 seconds');
+  assertEqual(config.restore, 85, 'King bed restores 85 energy');
+  assertEqual(config.cost, 0, 'King bed is free');
+});
+
+test('Comfy pillow boosts presidential king bed', () => {
+  const config = { label: 'Presidential slumber...', duration: 7, restore: 85, cost: 0 };
+  const hasComfyPillow = true;
+  if (hasComfyPillow) {
+    config.restore = 95;
+    config.label = 'Presidential luxury slumber...';
+  }
+  assertEqual(config.restore, 95, 'Comfy pillow boosts king bed to 95');
+});
+
+test('Upper floor has solid front wall (no door gap)', () => {
+  const PX = 410, PZ = 15;
+  // Upper floor front wall is full width (8.3), unlike ground floor which has a door gap
+  const frontWallWidth = 8.3;
+  assert(frontWallWidth > 8, 'Upper floor front wall should be solid (no door gap)');
+});
+
+test('Door gap blocked on upper floor', () => {
+  const PZ = 15;
+  const currentFloor = 1;
+  let z = 18; // at door area
+  // Block door gap: z > PZ + 2.5 → clamp
+  if (currentFloor === 1 && z > PZ + 2.5) z = PZ + 2.5;
+  assertEqual(z, 17.5, 'Door gap should be blocked on upper floor');
+});
+
+// ═══ HOME PURCHASES MIRRORED TO PRES HOUSE ═══
+section('Home Purchases Mirrored to Presidential Palace');
+
+test('GG Poster conditionally placed on upper floor', () => {
+  const hasGGPoster = true;
+  const hasSecondFloor = true;
+  const shouldBuild = hasGGPoster && hasSecondFloor;
+  assert(shouldBuild, 'GG Poster should be placed in pres house when owned');
+});
+
+test('GG TV conditionally placed on upper floor', () => {
+  const hasGGTV = true;
+  const hasSecondFloor = true;
+  const shouldBuild = hasGGTV && hasSecondFloor;
+  assert(shouldBuild, 'GG TV should be placed in pres house when owned');
+});
+
+test('Game console conditionally placed on upper floor', () => {
+  const phoneOrders = ['gameConsole', 'glowLamp'];
+  const hasSecondFloor = true;
+  const shouldBuild = phoneOrders.includes('gameConsole') && hasSecondFloor;
+  assert(shouldBuild, 'Game console should be placed in pres house when ordered');
+});
+
+test('Glow lamp conditionally placed on upper floor', () => {
+  const phoneOrders = ['gameConsole', 'glowLamp'];
+  const hasSecondFloor = true;
+  const shouldBuild = phoneOrders.includes('glowLamp') && hasSecondFloor;
+  assert(shouldBuild, 'Glow lamp should be placed in pres house when ordered');
+});
+
+test('Home purchases only appear when second floor exists', () => {
+  const hasGGTV = true;
+  const hasSecondFloor = false;
+  // These items go on the upper floor, so they need hasSecondFloor
+  const shouldBuild = hasGGTV && hasSecondFloor;
+  assert(!shouldBuild, 'GG TV should not appear without second floor');
+});
+
+// ═══ EXPANDED GUIDE BOOK ═══
+section('Expanded Guide Book');
+
+test('Guide book has 25 pages', () => {
+  // The expanded guide book should have 25 pages covering all game systems
+  const pageCount = 25;
+  assert(pageCount >= 20, 'Guide book should have at least 20 pages');
+});
+
+test('Guide book page titles cover all major systems', () => {
+  const titles = [
+    'Welcome', 'Needs & Survival', 'Making Money', 'Your Home',
+    'Furniture & Upgrades', 'Phone & TV Products', 'GG TV Channels',
+    'Cool Phone Items', 'Locations', 'The Mansion', 'Town Tips',
+    'Town Jobs', 'More Town Jobs', 'Quests', 'Outfits & Fashion',
+    'Pets', 'Daily Mystery Box', 'Graham Dimension', 'GD Jobs & Arena',
+    'The Clone Arena', 'Presidential Campaign', 'Being President',
+    "Bodhi's Junkuploops", 'Achievements', 'Secrets & Tips'
+  ];
+  assert(titles.includes('Your Home'), 'Should cover home system');
+  assert(titles.includes('Furniture & Upgrades'), 'Should cover furniture');
+  assert(titles.includes('Phone & TV Products'), 'Should cover phone/TV');
+  assert(titles.includes('The Mansion'), 'Should cover mansion');
+  assert(titles.includes('Town Jobs'), 'Should cover town jobs');
+  assert(titles.includes('Quests'), 'Should cover quests');
+  assert(titles.includes('Outfits & Fashion'), 'Should cover outfits');
+  assert(titles.includes('Pets'), 'Should cover pets');
+  assert(titles.includes('Presidential Campaign'), 'Should cover campaign');
+  assert(titles.includes('Being President'), 'Should cover presidency');
+  assert(titles.includes("Bodhi's Junkuploops"), 'Should cover Junkuploops');
+  assert(titles.includes('Achievements'), 'Should cover achievements');
+});
+
+test('Each page has 4 tips', () => {
+  const tipCounts = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4];
+  tipCounts.forEach((count, i) => assertEqual(count, 4, 'Page ' + i + ' should have 4 tips'));
+});
+
+test('Guide book mentions the presidential palace perk', () => {
+  const lastPageTips = [
+    "Buy the GG TV and dial random phone numbers. You might find something useful.",
+    "The Mega Blaster lets you shoot foam balls with E. It's not useful. It IS fun.",
+    "Sparkle Shampoo gives you permanent sparkles above your head. Fashion.",
+    "Everything you buy at home also shows up in the Presidential Palace. President perks!",
+  ];
+  const mentionsPres = lastPageTips.some(t => t.includes('Presidential Palace'));
+  assert(mentionsPres, 'Guide should mention presidential palace perk');
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;

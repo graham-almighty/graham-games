@@ -1,0 +1,5 @@
+node_modules/
+.supabase-token
+.env
+*.Zone.Identifier
+supabase/.temp/
