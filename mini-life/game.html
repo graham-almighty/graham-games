@@ -9215,7 +9215,13 @@ function buildPresHouse(parentGroup) {
   // Walls (8x6 house, 3.5 tall, door gap on south face)
   addMesh(new THREE.BoxGeometry(8.3, 3.5, 0.3), purpleMat, PX, 1.75, PZ - 3);     // Back
   addMesh(new THREE.BoxGeometry(0.3, 3.5, 6), purpleMat, PX - 4, 1.75, PZ);         // Left
-  addMesh(new THREE.BoxGeometry(0.3, 3.5, 6), purpleMat, PX + 4, 1.75, PZ);         // Right
+  // Right wall — split with gap for basement stairs if basement exists
+  if (basementLoaded) {
+    addMesh(new THREE.BoxGeometry(0.3, 3.5, PRES_BSTAIR.zMin - (PZ - 3)), purpleMat, PX + 4, 1.75, (PZ - 3 + PRES_BSTAIR.zMin) / 2);  // Right back
+    addMesh(new THREE.BoxGeometry(0.3, 3.5, (PZ + 3) - PRES_BSTAIR.zMax), purpleMat, PX + 4, 1.75, (PRES_BSTAIR.zMax + PZ + 3) / 2);  // Right front
+  } else {
+    addMesh(new THREE.BoxGeometry(0.3, 3.5, 6), purpleMat, PX + 4, 1.75, PZ);  // Right (full)
+  }
   addMesh(new THREE.BoxGeometry(2.5, 3.5, 0.3), purpleMat, PX - 2.75, 1.75, PZ + 3); // Front-left
   addMesh(new THREE.BoxGeometry(2.5, 3.5, 0.3), purpleMat, PX + 2.75, 1.75, PZ + 3); // Front-right
   addMesh(new THREE.BoxGeometry(2, 1, 0.3), purpleMat, PX, 3, PZ + 3);               // Above door
@@ -9686,10 +9692,20 @@ function buildPresHouse(parentGroup) {
   GRAHAM_DIM_COLLISIONS.push(
     { xMin: PX - 4.15, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PZ - 2.85 },  // Back wall (full width)
     { xMin: PX - 4.15, xMax: PX - 3.85, zMin: PZ - 3.15, zMax: PZ + 3.15 },  // Left wall
-    { xMin: PX + 3.85, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PZ + 3.15 },  // Right wall
     { xMin: PX - 4.15, xMax: PX - 1, zMin: PZ + 2.85, zMax: PZ + 3.15 },     // Front-left wall
     { xMin: PX + 1, xMax: PX + 4.15, zMin: PZ + 2.85, zMax: PZ + 3.15 },     // Front-right wall
   );
+  // Right wall — split with gap for basement stairs if basement exists
+  if (basementLoaded) {
+    GRAHAM_DIM_COLLISIONS.push(
+      { xMin: PX + 3.85, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PRES_BSTAIR.zMin },  // Right wall back
+      { xMin: PX + 3.85, xMax: PX + 4.15, zMin: PRES_BSTAIR.zMax, zMax: PZ + 3.15 },  // Right wall front
+    );
+  } else {
+    GRAHAM_DIM_COLLISIONS.push(
+      { xMin: PX + 3.85, xMax: PX + 4.15, zMin: PZ - 3.15, zMax: PZ + 3.15 },  // Right wall (full)
+    );
+  }
 
   parentGroup.add(g);
   gdPresHouseBuilt = true;
@@ -12984,14 +13000,14 @@ function buildMansion() {
   const screenFrame = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.4, 0.1), new THREE.MeshLambertMaterial({ color: 0x111111 }));
   screenFrame.position.set(290, 2, -9.9);
   g.add(screenFrame);
-  // Recliner seats (2 rows)
+  // Recliner seats (2 rows, facing screen at Z=-9.8)
   [-1.5, 0, 1.5].forEach(dx => {
     const seat = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.5, 1), leatherMat);
     seat.position.set(290 + dx, 0.35, -7);
     seat.castShadow = true;
     g.add(seat);
     const sBack = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 0.2), leatherMat);
-    sBack.position.set(290 + dx, 0.75, -7.5);
+    sBack.position.set(290 + dx, 0.75, -6.5);
     g.add(sBack);
   });
   const theaterLight = new THREE.PointLight(0x4466aa, 0.3, 10);
