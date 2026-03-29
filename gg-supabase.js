@@ -127,10 +127,10 @@ async function ggLogin(gamerName, password) {
   _ggAuthReady = true;
   localStorage.setItem(GG_AUTH_KEY, JSON.stringify({ gamerName: nameRow.display_name }));
 
-  // Pull cloud data → localStorage (cloud is authoritative)
-  await _pullCloudData(userId);
+  // Smart merge: local progress is never lost
+  const syncResult = await _pullCloudData(userId);
 
-  return { user: _ggUser };
+  return { user: _ggUser, localUploaded: syncResult.localUploaded };
 }
 
 async function ggLogout() {
@@ -224,26 +224,80 @@ function processToastQueue() {
 
 async function _pullCloudData(userId) {
   const sb = getSupabase();
-  if (!sb) return;
+  if (!sb) return { localUploaded: false };
 
-  // Pull G Bux data (cloud is authoritative on login)
+  const localData = ggLoad();
   const { data: userData } = await sb.from('user_data').select('*').eq('user_id', userId).single();
-  if (userData) {
-    const merged = {
-      gBux: userData.g_bux,
-      achievements: userData.achievements || {},
-      shopPurchases: userData.shop_purchases || {},
-    };
-    localStorage.setItem(GG_KEY, JSON.stringify(merged));
+
+  if (!userData) return { localUploaded: false };
+
+  const cloudAch = userData.achievements || {};
+  const localAch = localData.achievements || {};
+  const cloudShop = userData.shop_purchases || {};
+  const localShop = localData.shopPurchases || {};
+
+  // Check if cloud is empty (fresh account logging in on a device with local progress)
+  const cloudEmpty = userData.g_bux === 0 && Object.keys(cloudAch).length === 0;
+  const localHasData = localData.gBux > 0 || Object.keys(localAch).length > 0;
+
+  if (cloudEmpty && localHasData) {
+    // First login — upload local data to cloud instead of overwriting
+    await sb.from('user_data').update({
+      g_bux: localData.gBux || 0,
+      achievements: localAch,
+      shop_purchases: localShop,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+    await _uploadAllLocalSaves(userId);
+    return { localUploaded: true };
   }
 
-  // Pull game saves
-  const { data: saves } = await sb.from('game_saves').select('save_key, data').eq('user_id', userId);
-  if (saves) {
-    for (const s of saves) {
-      localStorage.setItem(s.save_key, s.data);
+  // Merge: union of achievements + shop purchases, take higher gBux
+  const mergedAch = { ...localAch, ...cloudAch };
+  const mergedShop = { ...localShop, ...cloudShop };
+  // Recount gBux from merged achievements to prevent inflation
+  // But also respect cloud balance if it's higher (from other device earnings)
+  const mergedGBux = Math.max(userData.g_bux, localData.gBux);
+
+  const merged = { gBux: mergedGBux, achievements: mergedAch, shopPurchases: mergedShop };
+  _origSetItem(GG_KEY, JSON.stringify(merged));
+
+  // Push merged data back to cloud if local contributed anything new
+  const localAddedAch = Object.keys(localAch).some(k => !cloudAch[k]);
+  const localAddedShop = Object.keys(localShop).some(k => !cloudShop[k]);
+  if (localAddedAch || localAddedShop || localData.gBux > userData.g_bux) {
+    await sb.from('user_data').update({
+      g_bux: mergedGBux,
+      achievements: mergedAch,
+      shop_purchases: mergedShop,
+      updated_at: new Date().toISOString(),
+    }).eq('user_id', userId);
+  }
+
+  // Merge game saves: cloud wins for keys that exist on cloud,
+  // local keys not on cloud get uploaded
+  const { data: cloudSaves } = await sb.from('game_saves').select('save_key, data').eq('user_id', userId);
+  const cloudSaveMap = {};
+  if (cloudSaves) {
+    for (const s of cloudSaves) {
+      cloudSaveMap[s.save_key] = s.data;
+      _origSetItem(s.save_key, s.data);
     }
   }
+
+  // Upload any local saves that aren't on the cloud yet
+  const localOnlyRows = [];
+  for (const key of _SYNC_KEYS) {
+    const localVal = localStorage.getItem(key);
+    if (localVal !== null && !cloudSaveMap[key]) {
+      localOnlyRows.push({ user_id: userId, save_key: key, data: localVal });
+    }
+  }
+  if (localOnlyRows.length > 0) {
+    await sb.from('game_saves').upsert(localOnlyRows, { onConflict: 'user_id,save_key' });
+  }
+
+  return { localUploaded: localOnlyRows.length > 0 || localAddedAch || localAddedShop };
 }
 
 async function _uploadAllLocalSaves(userId) {

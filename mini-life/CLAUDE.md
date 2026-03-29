@@ -274,6 +274,36 @@ On load: rebuilds character, second floor, furniture, car, town/mansion as neede
 - Phase 3: Cleanup → `startDrivingTransition('grahamDimension')`
 - SKIP button (bottom-right, gold/dark style) sets phase=3 to skip instantly
 
+## Presidential Palace
+
+Built by `buildPresHouse()` when player wins the presidential campaign. Located at PX=OX+10 (410), PZ=OZ+15 (15). Purple/gold 8x6 building.
+
+**Ground floor interactables** (all free, floor 0):
+| Type | Label | Need | Restore | Notes |
+|------|-------|------|---------|-------|
+| presBed | Presidential Bed | energy | 70 | Shifts right when hasSecondFloor |
+| presShower | Presidential Shower | hygiene | 60 | Shower sound |
+| presFridge | Presidential Fridge | hunger | 50 | |
+| presTV | Presidential TV | fun | 50 | |
+| presDesk | Presidential Desk | — | — | Instant: opens presDesk overlay |
+| presMirror | Presidential Mirror | — | — | Instant: opens mirror (moves upstairs with 2nd floor) |
+| presJukebox | Presidential Jukebox | fun | +15 | Instant: cycles tracks (like home) |
+
+**Conditional ground floor** (mirrors home furniture when owned):
+presLava, presFishTank, presTreadmill, presPool, presBookshelf, presDiscoBall, presBeanBag
+
+**Second floor** (when `hasSecondFloor`):
+- `PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 }` — left wall stairs
+- Roof skipped, bed shifts to PX-0.5, mirror moves upstairs
+- King bed (presKingBed: 85 energy, 95 with comfy pillow), mirror, plant
+- GG Poster, GG TV, Game Console, Glow Lamp (when owned at home)
+
+**Basement** (when `basementLoaded`):
+- `PRES_BSTAIR = { xMin: 414, xMax: 416.5, zMin: 14, zMax: 16 }` — outside right wall
+- Workbench + punching bag (reuse home types, floor -1)
+
+**Animation remapping**: All pres* types map to home equivalents via `PRES_ANIM_MAP` in `startActionAnim`/`stopActionAnim`.
+
 ## Military Progression
 
 - `militaryTraining` counter (0-4 = training, 5 = missions unlocked)

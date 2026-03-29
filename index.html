@@ -125,6 +125,113 @@
     letter-spacing: 0.1em;
   }
 
+  /* ═══ ACCOUNT BAR ═══ */
+  .account-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  .account-btn {
+    background: #c9a84c22;
+    border: 1px solid #c9a84c44;
+    color: #c9a84c;
+    padding: 5px 14px;
+    border-radius: 16px;
+    font-family: 'Cinzel', serif;
+    font-size: 0.7rem;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+  }
+  .account-btn:hover { background: #c9a84c44; border-color: #c9a84c88; }
+  .gamer-name-display {
+    color: #c9a84c;
+    font-family: 'Cinzel', serif;
+    font-size: 0.8rem;
+    font-weight: 700;
+  }
+
+  /* ═══ AUTH MODAL ═══ */
+  .auth-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000000cc;
+    align-items: center;
+    justify-content: center;
+  }
+  .auth-overlay.visible { display: flex; }
+  .auth-panel {
+    background: #1a1a2e;
+    border: 2px solid #c9a84c;
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: 340px;
+    max-width: 90vw;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .auth-panel h2 {
+    color: #c9a84c;
+    font-family: 'Cinzel', serif;
+    font-size: 1.2rem;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .auth-panel input {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #0a0a1a;
+    color: #eee;
+    font-size: 0.95rem;
+    font-family: 'Segoe UI', sans-serif;
+  }
+  .auth-panel input:focus { outline: none; border-color: #c9a84c; }
+  .auth-panel .auth-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    background: #c9a84c;
+    color: #1a1a2e;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    font-family: 'Cinzel', serif;
+    margin-bottom: 8px;
+  }
+  .auth-panel .auth-btn:hover { background: #d4b85c; }
+  .auth-panel .auth-btn.secondary {
+    background: transparent;
+    color: #888;
+    border: 1px solid #333;
+  }
+  .auth-panel .auth-btn.secondary:hover { color: #c9a84c; border-color: #c9a84c44; }
+  .auth-error {
+    color: #ff4444;
+    font-size: 0.8rem;
+    text-align: center;
+    margin-bottom: 8px;
+    min-height: 1.2em;
+  }
+  .auth-info {
+    color: #888;
+    font-size: 0.75rem;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+  .auth-link {
+    color: #c9a84c;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .auth-link:hover { color: #d4b85c; }
   /* ═══ NAV BUTTONS ═══ */
   .launcher-nav {
     display: flex;
@@ -1021,6 +1128,10 @@
       margin-bottom: 6px;
     }
     .gbux-amount { font-size: 1.1rem; }
+    .account-bar { gap: 6px; }
+    .account-btn { font-size: 0.6rem; padding: 4px 10px; }
+    .gamer-name-display { font-size: 0.7rem; }
+    .auth-panel { padding: 20px 18px; width: 300px; }
     .launcher-nav {
       flex-wrap: wrap;
       justify-content: center;
@@ -1415,6 +1526,10 @@ for (let i = 0; i < 30; i++) {
     <span class="gbux-icon">&#129689;</span>
     <span class="gbux-amount" id="gbux-amount">0</span>
     <span class="gbux-label">G BUX</span>
+  </div>
+  <div class="account-bar">
+    <span class="gamer-name-display" id="gamer-name-display"></span>
+    <button class="account-btn" id="account-btn" onclick="openAuthModal()">SIGN IN</button>
   </div>
   <div class="school-badge" id="school-badge">SCHOOL MODE ACTIVE</div>
   <div class="divider"></div>
@@ -1892,14 +2007,10 @@ for (let i = 0; i < 30; i++) {
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="gg-supabase.js"></script>
 <script>
-// ═══ G BUX SYSTEM ═══
-const GG_KEY = 'graham-games-data';
-function ggLoad() {
-  try { return JSON.parse(localStorage.getItem(GG_KEY)) || { gBux: 0, achievements: {}, shopPurchases: {} }; }
-  catch(e) { return { gBux: 0, achievements: {}, shopPurchases: {} }; }
-}
-function ggSave(data) { localStorage.setItem(GG_KEY, JSON.stringify(data)); }
+// ggLoad, ggSave, ggUnlockAchievement, showAchievementToast are now provided by gg-supabase.js
 
 // ═══ ACHIEVEMENT DATA ═══
 const ALL_ACHIEVEMENTS = [
@@ -2679,6 +2790,141 @@ document.addEventListener('keydown', e => {
     });
   });
 })();
+</script>
+
+<!-- Auth Modal -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-panel" id="auth-panel-login">
+    <h2>SIGN IN</h2>
+    <div class="auth-error" id="auth-login-error"></div>
+    <input type="text" id="auth-login-name" placeholder="Gamer Name" autocomplete="off" spellcheck="false">
+    <input type="password" id="auth-login-pass" placeholder="Password">
+    <button class="auth-btn" onclick="doLogin()">SIGN IN</button>
+    <button class="auth-btn secondary" onclick="showSignUp()">CREATE ACCOUNT</button>
+    <button class="auth-btn secondary" onclick="closeAuthModal()">CANCEL</button>
+  </div>
+  <div class="auth-panel" id="auth-panel-signup" style="display:none">
+    <h2>CREATE ACCOUNT</h2>
+    <div class="auth-error" id="auth-signup-error"></div>
+    <input type="text" id="auth-signup-name" placeholder="Choose a gamer name" autocomplete="off" spellcheck="false" maxlength="24">
+    <input type="password" id="auth-signup-pass" placeholder="Choose a password (6+ chars)">
+    <input type="password" id="auth-signup-pass2" placeholder="Confirm password">
+    <button class="auth-btn" onclick="doSignUp()">CREATE ACCOUNT</button>
+    <button class="auth-btn secondary" onclick="showLogin()">BACK TO SIGN IN</button>
+    <button class="auth-btn secondary" onclick="closeAuthModal()">CANCEL</button>
+  </div>
+  <div class="auth-panel" id="auth-panel-account" style="display:none">
+    <h2>ACCOUNT</h2>
+    <div style="text-align:center;margin-bottom:12px;">
+      <div style="color:#888;font-size:0.8rem;">Signed in as</div>
+      <div style="color:#c9a84c;font-size:1.1rem;font-weight:700;font-family:Cinzel,serif;" id="auth-account-name"></div>
+    </div>
+    <div style="text-align:center;color:#4caf50;font-size:0.85rem;margin-bottom:16px;">&#9989; Cloud saves active</div>
+    <button class="auth-btn secondary" onclick="doLogout()">SIGN OUT</button>
+    <button class="auth-btn secondary" onclick="closeAuthModal()">CLOSE</button>
+  </div>
+</div>
+
+<script>
+// ═══ AUTH UI ═══
+function openAuthModal() {
+  const overlay = document.getElementById('auth-overlay');
+  if (ggIsLoggedIn()) {
+    showAccountPanel();
+  } else {
+    showLogin();
+  }
+  overlay.classList.add('visible');
+}
+
+function closeAuthModal() {
+  document.getElementById('auth-overlay').classList.remove('visible');
+}
+
+function showLogin() {
+  document.getElementById('auth-panel-login').style.display = '';
+  document.getElementById('auth-panel-signup').style.display = 'none';
+  document.getElementById('auth-panel-account').style.display = 'none';
+  document.getElementById('auth-login-error').textContent = '';
+}
+
+function showSignUp() {
+  document.getElementById('auth-panel-login').style.display = 'none';
+  document.getElementById('auth-panel-signup').style.display = '';
+  document.getElementById('auth-panel-account').style.display = 'none';
+  document.getElementById('auth-signup-error').textContent = '';
+  document.getElementById('auth-signup-name').value = '';
+}
+
+function showAccountPanel() {
+  document.getElementById('auth-panel-login').style.display = 'none';
+  document.getElementById('auth-panel-signup').style.display = 'none';
+  document.getElementById('auth-panel-account').style.display = '';
+  const user = ggGetUser();
+  document.getElementById('auth-account-name').textContent = user ? user.gamerName : '';
+}
+
+async function doLogin() {
+  const name = document.getElementById('auth-login-name').value.trim();
+  const pass = document.getElementById('auth-login-pass').value;
+  const errEl = document.getElementById('auth-login-error');
+  if (!name || !pass) { errEl.textContent = 'Enter your gamer name and password.'; return; }
+  errEl.textContent = 'Signing in...';
+  const result = await ggLogin(name, pass);
+  if (result.error) { errEl.textContent = result.error; return; }
+  if (result.localUploaded) {
+    errEl.style.color = '#4caf50';
+    errEl.textContent = 'Local saves synced to cloud!';
+    setTimeout(() => { errEl.style.color = ''; closeAuthModal(); }, 1500);
+  } else {
+    errEl.textContent = '';
+    closeAuthModal();
+  }
+  updateAccountUI();
+  refreshGBux();
+}
+
+async function doSignUp() {
+  const name = document.getElementById('auth-signup-name').value.trim();
+  const pass = document.getElementById('auth-signup-pass').value;
+  const pass2 = document.getElementById('auth-signup-pass2').value;
+  const errEl = document.getElementById('auth-signup-error');
+  if (!name || name.length < 3) { errEl.textContent = 'Name must be at least 3 characters.'; return; }
+  if (name.length > 24) { errEl.textContent = 'Name must be 24 characters or less.'; return; }
+  if (!/^[a-zA-Z0-9 _-]+$/.test(name)) { errEl.textContent = 'Letters, numbers, spaces, hyphens, underscores only.'; return; }
+  if (!pass || pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (pass !== pass2) { errEl.textContent = 'Passwords do not match.'; return; }
+  errEl.textContent = 'Creating account...';
+  const result = await ggSignUp(name, pass);
+  if (result.error) { errEl.textContent = result.error; return; }
+  errEl.style.color = '#4caf50';
+  errEl.textContent = 'Account created! Local saves uploaded to cloud.';
+  setTimeout(() => { errEl.style.color = ''; closeAuthModal(); }, 1500);
+  updateAccountUI();
+  refreshGBux();
+}
+
+async function doLogout() {
+  await ggLogout();
+  closeAuthModal();
+  updateAccountUI();
+}
+
+function updateAccountUI() {
+  const nameEl = document.getElementById('gamer-name-display');
+  const btnEl = document.getElementById('account-btn');
+  if (ggIsLoggedIn()) {
+    const user = ggGetUser();
+    nameEl.textContent = user.gamerName;
+    btnEl.textContent = 'ACCOUNT';
+  } else {
+    nameEl.textContent = '';
+    btnEl.textContent = 'SIGN IN';
+  }
+}
+
+// On load: wait for session restore then update UI
+setTimeout(() => { updateAccountUI(); refreshGBux(); }, 500);
 </script>
 
 </body>

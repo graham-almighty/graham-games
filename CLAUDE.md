@@ -45,6 +45,9 @@
   super-soccer/index.html      — 2D soccer simulation (Canvas, early access)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
+  gg-supabase.js               — Shared Supabase cloud save script (auth, sync, toasts)
+  supabase-schema.sql          — Database schema for Supabase (tables + RLS)
+  .gitignore                   — Protects tokens, node_modules, temp files
   CLAUDE.md                    — This file (cross-game overview)
   README.md                    — GitHub documentation
 ```
@@ -52,6 +55,14 @@
 All games are standalone single-file HTML. External games (Flying Ace, Combat) use iframe wrappers with a shared toolbar (GG logo, title, EXIT TO LAUNCHER button).
 
 **Game-specific docs** live in each game's subdirectory as `CLAUDE.md` — read those for detailed mechanics, constants, and patterns.
+
+### Cloud Save System (Supabase — in progress)
+- **Supabase project:** `Graham Games` (ref: ibfjkctnklcgyfmjjivv, West US/Oregon)
+- **`gg-supabase.js`** replaces duplicated ggLoad/ggSave/ggUnlockAchievement in every game
+- Auth uses gamer names (e.g. "fried potato153763") mapped to fake emails internally
+- localStorage-first reads, async Supabase sync on writes
+- localStorage monkey-patch auto-syncs 29 game save keys
+- **Status:** Schema deployed, shared script built. Next: auth UI in launcher, wire into all games.
 
 ---
 
