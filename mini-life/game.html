@@ -21,7 +21,7 @@
     position: fixed;
     top: 12px;
     left: 12px;
-    z-index: 10;
+    z-index: 30;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1223,7 +1223,7 @@
 <div class="controls-hint">
   <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp; <kbd>SPACE</kbd> Jump &nbsp; Mouse: Look<br>
   <kbd>Click</kbd> Interact &nbsp; <kbd>ESC</kbd> Release cursor<br>
-  <kbd>P</kbd> Shop &nbsp; <kbd>T</kbd> Pet
+  <kbd>P</kbd> Shop &nbsp; <kbd>T</kbd> Pet &nbsp; <kbd>N</kbd> Save
 </div>
 
 <!-- Back to launcher -->
@@ -18100,45 +18100,80 @@ function buildCharacter(opts) {
   const dressMat = dressDef ? new THREE.MeshLambertMaterial({ color: dressDef.color }) : null;
 
   if (wearingDress) {
-    // Modern dress: fitted top + flared A-line skirt
-    const dressAccent = new THREE.MeshLambertMaterial({ color: dressDef.color * 0.8 | 0 });
-    // Fitted bodice (crop-top style, snug)
-    const bodice = new THREE.Mesh(new THREE.BoxGeometry(bodyW - 0.02, 0.45, 0.28), dressMat);
-    bodice.position.set(0, 0.85, 0);
-    bodice.castShadow = true;
-    group.add(bodice);
-    // Neckline detail (V-shape accent)
-    const neckline = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), dressAccent);
-    neckline.position.set(0, 1.05, 0.14);
-    group.add(neckline);
-    // Waistband (defined belt)
-    const belt = new THREE.Mesh(new THREE.CylinderGeometry(bodyW / 2 + 0.01, bodyW / 2 + 0.01, 0.06, 10), dressAccent);
-    belt.position.set(0, 0.62, 0);
-    group.add(belt);
-    // Flared A-line skirt (cylinder, narrow top, wide bottom)
-    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(bodyW / 2 + 0.02, 0.32, 0.45, 12), dressMat);
-    skirt.position.set(0, 0.38, 0);
+    // Modern casual dress — straight/bodycon silhouette, short, clean lines
+    const dc = dressDef.color;
+    const darkerColor = ((dc >> 16 & 0xff) * 0.65 | 0) << 16 | ((dc >> 8 & 0xff) * 0.65 | 0) << 8 | ((dc & 0xff) * 0.65 | 0);
+    const dressAccent = new THREE.MeshLambertMaterial({ color: darkerColor });
+
+    // Upper body — one-piece straight dress from shoulders to above knee
+    const dressBody = new THREE.Mesh(new THREE.BoxGeometry(bodyW, 0.75, 0.28), dressMat);
+    dressBody.position.set(0, 0.72, 0);
+    dressBody.castShadow = true;
+    group.add(dressBody);
+
+    // Short sleeves (cap sleeves — small colored blocks on shoulders)
+    const sleeveL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.22), dressMat);
+    sleeveL.position.set(-(bodyW / 2 + 0.04), 0.98, 0);
+    group.add(sleeveL);
+    const sleeveR = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 0.22), dressMat);
+    sleeveR.position.set(bodyW / 2 + 0.04, 0.98, 0);
+    group.add(sleeveR);
+
+    // Round neckline (small skin-colored notch at top center)
+    const neckNotch = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, 0.04), skinMat);
+    neckNotch.position.set(0, 1.08, 0.13);
+    group.add(neckNotch);
+
+    // Lower dress — straight skirt portion (same width, not flared)
+    const skirt = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.02, 0.3, 0.3), dressMat);
+    skirt.position.set(0, 0.2, 0);
     skirt.castShadow = true;
     group.add(skirt);
-    // Hem ring at skirt bottom
-    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.025, 12), dressAccent);
-    hem.position.set(0, 0.155, 0);
-    group.add(hem);
-    // Legs below skirt (skin, longer visible portion)
-    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
-    legL.position.set(-0.1, 0.07, 0);
+
+    // Simple seam line at waist (thin darker stripe)
+    const seam = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.01, 0.02, 0.29), dressAccent);
+    seam.position.set(0, 0.58, 0);
+    group.add(seam);
+
+    // Bare arms below cap sleeves (skin)
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.1), skinMat);
+    armL.position.set(-armX * 0.01 - 0.03, 0.76, 0);
+    group.add(armL);
+    const armR = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.35, 0.1), skinMat);
+    armR.position.set(armX * 0.01 + 0.03, 0.76, 0);
+    group.add(armR);
+    // Hands
+    const handL = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), skinMat);
+    handL.position.set(-armX * 0.01 - 0.03, 0.54, 0);
+    group.add(handL);
+    const handR = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.09, 0.09), skinMat);
+    handR.position.set(armX * 0.01 + 0.03, 0.54, 0);
+    group.add(handR);
+
+    // Legs below dress (skin, visible from above knee down)
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.12), skinMat);
+    legL.position.set(-0.09, 0.04, 0);
     group.add(legL);
-    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
-    legR.position.set(0.1, 0.07, 0);
+    const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.12), skinMat);
+    legR.position.set(0.09, 0.04, 0);
     group.add(legR);
-    // Shoes (small dark blocks)
-    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-    const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.16), shoeMat);
-    shoeL.position.set(-0.1, 0.01, 0.02);
+
+    // Sneakers (white with colored accent — modern casual)
+    const sneakerMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+    const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.05, 0.16), sneakerMat);
+    shoeL.position.set(-0.09, -0.01, 0.02);
     group.add(shoeL);
-    const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.16), shoeMat);
-    shoeR.position.set(0.1, 0.01, 0.02);
+    const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.05, 0.16), sneakerMat);
+    shoeR.position.set(0.09, -0.01, 0.02);
     group.add(shoeR);
+    // Colored sole accent
+    const soleMat = new THREE.MeshLambertMaterial({ color: dc });
+    const soleL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.02, 0.16), soleMat);
+    soleL.position.set(-0.09, -0.03, 0.02);
+    group.add(soleL);
+    const soleR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.02, 0.16), soleMat);
+    soleR.position.set(0.09, -0.03, 0.02);
+    group.add(soleR);
   } else {
     // Regular outfit: separate shirt + pants
     // Legs
@@ -21598,6 +21633,14 @@ function update() {
     if (Math.floor(money) >= 500) mlTry('ml_high_roller');
     // Daily Mystery Box (once per real-world day)
     checkMysteryBoxFriday();
+  }
+
+  // Auto-save every 60 seconds
+  if (!window._autoSaveTimer) window._autoSaveTimer = 0;
+  window._autoSaveTimer += dt;
+  if (window._autoSaveTimer >= 60 && currentSlot >= 0 && currentSlotName && !pepperMissionActive && !jobMiniGameRunning) {
+    window._autoSaveTimer = 0;
+    writeSaveToSlot(currentSlot, currentSlotName);
   }
 
   // Decay needs
