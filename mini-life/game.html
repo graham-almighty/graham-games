@@ -1361,6 +1361,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ═══ G BUX SYSTEM ═══
 const GG_KEY = 'graham-games-data';
@@ -4062,6 +4063,14 @@ function rebuildPlayerCharacter() {
   character.rotation.y = rot;
   character.visible = vis;
   scene.add(character);
+  // Update multiplayer appearance
+  if (mpChannel) {
+    mpChannel.track({
+      id: mpPlayerId, name: mpGamerName,
+      charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
+        hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
+    });
+  }
 }
 
 function openJokeBook() {
@@ -10006,6 +10015,8 @@ function performTeleport(destination) {
     if (petBeaver) petBeaver.visible = activePet === 'beaver';
   }
   updatePlayerY();
+  // Switch multiplayer channel to new location
+  mpJoinLocation(mpGetLocationKey());
 }
 
 function hideDriveOverlay() {
@@ -19106,10 +19117,175 @@ ACCESSORIES.forEach((acc, i) => {
   accContainer.appendChild(btn);
 });
 
+// ═══ REAL-TIME MULTIPLAYER (Supabase Realtime) ═══
+const MP_URL = 'https://ibfjkctnklcgyfmjjivv.supabase.co';
+const MP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZmprY3Rua2xjZ3lmbWpqaXZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTM0MjYsImV4cCI6MjA5MDM4OTQyNn0.ZSaIOTJ_io3BJ0ra8r0g8EaQ_zFLD-K9fFVDhR9SRJQ';
+let mpClient = null;
+let mpChannel = null;
+let mpSendTimer = 0;
+const mpPlayerId = crypto.randomUUID();
+let mpGamerName = 'Player ' + Math.floor(Math.random() * 9000 + 1000);
+const remotePlayers = new Map();
+
+function mpInit() {
+  if (mpClient) return;
+  try {
+    if (typeof supabase !== 'undefined') {
+      mpClient = supabase.createClient(MP_URL, MP_KEY);
+      // Use gamer name from auth if available
+      const authData = localStorage.getItem('gg-auth-session');
+      if (authData) {
+        try { const a = JSON.parse(authData); if (a.gamerName) mpGamerName = a.gamerName; } catch(e) {}
+      }
+    }
+  } catch(e) { console.warn('Multiplayer init failed:', e); }
+}
+
+function mpGetLocationKey() {
+  if (inTown) return 'town';
+  if (inMansion) return 'mansion';
+  if (inGrahamDimension) return 'grahamdim';
+  return 'home';
+}
+
+function mpJoinLocation(locKey) {
+  if (!mpClient) return;
+  mpLeaveLocation();
+  mpChannel = mpClient.channel('minilife:' + locKey, { config: { presence: { key: mpPlayerId } } });
+
+  // Presence: players joining/leaving
+  mpChannel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+    newPresences.forEach(p => { if (p.id !== mpPlayerId) mpAddPlayer(p); });
+  });
+  mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
+    leftPresences.forEach(p => mpRemovePlayer(p.id));
+  });
+  mpChannel.on('presence', { event: 'sync' }, () => {
+    const state = mpChannel.presenceState();
+    // Add any players we don't have yet
+    Object.values(state).forEach(arr => {
+      arr.forEach(p => { if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p); });
+    });
+  });
+
+  // Broadcast: position updates
+  mpChannel.on('broadcast', { event: 'move' }, ({ payload }) => {
+    if (!payload || payload.id === mpPlayerId) return;
+    const rp = remotePlayers.get(payload.id);
+    if (rp) {
+      rp.targetPos.set(payload.x, payload.y, payload.z);
+      rp.targetYaw = payload.yaw;
+      rp.lastUpdate = performance.now();
+    }
+  });
+
+  mpChannel.subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await mpChannel.track({
+        id: mpPlayerId,
+        name: mpGamerName,
+        charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
+          hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
+      });
+    }
+  });
+}
+
+function mpLeaveLocation() {
+  if (mpChannel) {
+    mpChannel.untrack();
+    mpClient.removeChannel(mpChannel);
+    mpChannel = null;
+  }
+  // Remove all remote player meshes
+  remotePlayers.forEach((rp, id) => mpRemovePlayer(id));
+  remotePlayers.clear();
+}
+
+function mpAddPlayer(state) {
+  if (!state || state.id === mpPlayerId || remotePlayers.has(state.id)) return;
+  const opts = state.charOpts || { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 0, outfit: 0, accessory: 0, dress: -1 };
+  const group = buildCharacter(opts);
+  group.visible = true;
+  scene.add(group);
+
+  // Name tag
+  const tagCvs = document.createElement('canvas');
+  tagCvs.width = 256; tagCvs.height = 48;
+  const ctx = tagCvs.getContext('2d');
+  ctx.fillStyle = '#c9a84c';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(state.name || 'Player', 128, 32);
+  const tagTex = new THREE.CanvasTexture(tagCvs);
+  const tag = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.35),
+    new THREE.MeshBasicMaterial({ map: tagTex, transparent: true, side: THREE.DoubleSide, depthWrite: false }));
+  tag.position.set(0, 2.2, 0);
+  group.add(tag);
+
+  remotePlayers.set(state.id, {
+    group, nameTag: tag,
+    targetPos: new THREE.Vector3(0, 0.15, 0),
+    targetYaw: 0,
+    lastUpdate: performance.now()
+  });
+}
+
+function mpRemovePlayer(id) {
+  const rp = remotePlayers.get(id);
+  if (!rp) return;
+  scene.remove(rp.group);
+  rp.group.traverse(child => {
+    if (child.isMesh) {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (child.material.map) child.material.map.dispose();
+        child.material.dispose();
+      }
+    }
+  });
+  remotePlayers.delete(id);
+}
+
+function mpBroadcastPosition() {
+  if (!mpChannel) return;
+  mpChannel.send({
+    type: 'broadcast',
+    event: 'move',
+    payload: {
+      id: mpPlayerId,
+      x: character.position.x,
+      y: character.position.y,
+      z: character.position.z,
+      yaw: yaw,
+      floor: currentFloor
+    }
+  });
+}
+
+function mpUpdateRemotePlayers(dt) {
+  const lerpSpeed = 8;
+  const now = performance.now();
+  remotePlayers.forEach((rp, id) => {
+    // Smooth position interpolation
+    rp.group.position.lerp(rp.targetPos, Math.min(1, lerpSpeed * dt));
+    // Smooth yaw interpolation
+    let yawDiff = rp.targetYaw - rp.group.rotation.y;
+    while (yawDiff > Math.PI) yawDiff -= 2 * Math.PI;
+    while (yawDiff < -Math.PI) yawDiff += 2 * Math.PI;
+    rp.group.rotation.y += yawDiff * Math.min(1, lerpSpeed * dt);
+    // Billboard name tag toward camera
+    if (rp.nameTag) rp.nameTag.lookAt(camera.position);
+    // Remove stale players (no update in 8 seconds)
+    if (now - rp.lastUpdate > 8000) mpRemovePlayer(id);
+  });
+}
+
 let gameStarted = false;
 
 function startGame() {
   SFX.init();
+  mpInit();
   SFX.startMusic();
   // Rebuild the game character with chosen options
   scene.remove(character);
@@ -19125,6 +19301,8 @@ function startGame() {
   setTimeout(() => checkMysteryBoxFriday(), 1000);
   mlTry('ml_new_home');
   mlLoadGBuxContent();
+  // Join multiplayer for current location
+  setTimeout(() => mpJoinLocation(mpGetLocationKey()), 500);
 }
 
 // ═══ GAME STATE ═══
@@ -21956,6 +22134,14 @@ function update() {
   // Pepper sabotage mission
   if (pepperMissionActive) updatePepperMission(dt);
 
+  // Multiplayer: update remote players and broadcast position
+  mpUpdateRemotePlayers(dt);
+  mpSendTimer += dt;
+  if (mpSendTimer >= 0.1 && gameStarted && !gameOver) {
+    mpSendTimer = 0;
+    mpBroadcastPosition();
+  }
+
   updateHUD();
 }
 
@@ -22264,6 +22450,7 @@ function restartGame() {
   currentSlot = -1;
   currentSlotName = '';
   npcDialogueOpen = false;
+  mpLeaveLocation();
   currentNPCId = null;
   // Reset Pepper Mission state
   if (pepperMissionActive) endPepperMission();
