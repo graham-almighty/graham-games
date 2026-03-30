@@ -1131,6 +1131,15 @@
   #pepper-mission-hud .pm-msg { position:absolute; bottom:60px; left:0; width:100%; text-align:center; color:#ff8844; font-size:0.9rem; font-weight:bold; text-shadow:0 0 8px #ff4400; transition:opacity 0.3s; }
   #pepper-mission-hud .pm-hint { position:absolute; bottom:20px; left:0; width:100%; text-align:center; color:#888; font-size:0.7rem; }
   #pepper-vignette { position:fixed; inset:0; z-index:9; pointer-events:none; background:radial-gradient(ellipse at center, transparent 50%, rgba(255,0,0,0.3)); opacity:0; transition:opacity 0.15s; }
+  /* Mobile touch controls */
+  #touch-controls { display:none; position:fixed; inset:0; z-index:25; pointer-events:none; }
+  #touch-controls.active { display:block; }
+  #touch-joystick { position:absolute; bottom:30px; left:30px; width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,0.12); border:2px solid rgba(255,255,255,0.25); pointer-events:auto; touch-action:none; }
+  #touch-joystick-knob { position:absolute; width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,0.35); top:35px; left:35px; pointer-events:none; transition:none; }
+  #touch-btn-action { position:absolute; bottom:40px; right:30px; width:70px; height:70px; border-radius:50%; background:rgba(201,168,76,0.4); border:2px solid rgba(201,168,76,0.6); pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; color:#c9a84c; font-size:0.7rem; font-weight:bold; font-family:sans-serif; text-shadow:0 0 4px #000; }
+  #touch-btn-jump { position:absolute; bottom:120px; right:35px; width:55px; height:55px; border-radius:50%; background:rgba(100,180,255,0.3); border:2px solid rgba(100,180,255,0.5); pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; color:#88ccff; font-size:0.6rem; font-weight:bold; font-family:sans-serif; text-shadow:0 0 4px #000; }
+  #touch-btn-shop { position:absolute; top:60px; right:10px; width:44px; height:44px; border-radius:8px; background:rgba(201,168,76,0.3); border:1px solid rgba(201,168,76,0.5); pointer-events:auto; touch-action:none; display:flex; align-items:center; justify-content:center; color:#c9a84c; font-size:0.6rem; font-weight:bold; font-family:sans-serif; }
+  #touch-look-area { position:absolute; top:0; right:0; width:55%; height:100%; pointer-events:auto; touch-action:none; }
 </style>
 </head>
 <body>
@@ -1200,6 +1209,15 @@
 
 <!-- Crosshair -->
 <div class="crosshair" id="crosshair"></div>
+
+<!-- Mobile touch controls -->
+<div id="touch-controls">
+  <div id="touch-look-area"></div>
+  <div id="touch-joystick"><div id="touch-joystick-knob"></div></div>
+  <div id="touch-btn-action">USE</div>
+  <div id="touch-btn-jump">JUMP</div>
+  <div id="touch-btn-shop">SHOP</div>
+</div>
 
 <!-- Controls hint -->
 <div class="controls-hint">
@@ -9311,9 +9329,11 @@ function buildPresHouse(parentGroup) {
   addMesh(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 6), new THREE.MeshLambertMaterial({ color: 0x1a1a1a }), PX + 0.2, 0.83, PZ + 0.2);
   deskMesh.userData = { type: 'interactable', iType: 'presDesk' };
 
-  // Chair behind desk
-  addMesh(new THREE.BoxGeometry(0.7, 0.5, 0.7), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.25, PZ - 0.8);
-  addMesh(new THREE.BoxGeometry(0.7, 0.7, 0.1), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.65, PZ - 1.1);
+  // Chair behind desk (skip if pizza throne replaces it)
+  if (!gdPresThrone) {
+    addMesh(new THREE.BoxGeometry(0.7, 0.5, 0.7), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.25, PZ - 0.8);
+    addMesh(new THREE.BoxGeometry(0.7, 0.7, 0.1), new THREE.MeshLambertMaterial({ color: 0x6a1b9a }), PX, 0.65, PZ - 1.1);
+  }
 
   // Rug
   addMesh(new THREE.BoxGeometry(3, 0.02, 2), new THREE.MeshLambertMaterial({ color: 0x9b59b6 }), PX, 0.11, PZ + 1);
@@ -9410,18 +9430,18 @@ function buildPresHouse(parentGroup) {
     actionConfig.presPool = { label: 'Presidential swim...', duration: 6, restore: 40, cost: 0, hygieneBonus: 25 };
   }
 
-  // BOOKSHELF (if player has second floor — comes with bookshelf at home)
+  // BOOKSHELF (if player has second floor — front-left area near fridge)
   if (hasSecondFloor) {
-    const bshelf = addMesh(new THREE.BoxGeometry(0.8, 1.4, 0.35), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX - 0.8, 0.7, PZ - 2.6);
+    const bshelf = addMesh(new THREE.BoxGeometry(0.8, 1.4, 0.35), new THREE.MeshLambertMaterial({ color: 0x4a2a1a }), PX - 2, 0.7, PZ + 2.5);
     const bkColors = [0xcc2222, 0x2255cc, 0x22aa44, 0xdd8800, 0x8833aa];
     for (let row = 0; row < 2; row++) {
       for (let b = 0; b < 3; b++) {
         addMesh(new THREE.BoxGeometry(0.15, 0.3, 0.2),
           new THREE.MeshLambertMaterial({ color: bkColors[(row * 3 + b) % bkColors.length] }),
-          PX - 1.05 + b * 0.22, 0.3 + row * 0.55, PZ - 2.5);
+          PX - 2.25 + b * 0.22, 0.3 + row * 0.55, PZ + 2.6);
       }
     }
-    interactables.push({ mesh: bshelf, group: parentGroup, type: 'presBookshelf', label: 'Presidential Library', need: 'fun', usePos: new THREE.Vector3(PX - 0.8, 0.15, PZ - 1.8), floor: 0 });
+    interactables.push({ mesh: bshelf, group: parentGroup, type: 'presBookshelf', label: 'Presidential Library', need: 'fun', usePos: new THREE.Vector3(PX - 2, 0.15, PZ + 1.8), floor: 0 });
     actionConfig.presBookshelf = { label: 'Presidential reading...', duration: 4, restore: 45, cost: 0 };
   }
 
@@ -9522,16 +9542,16 @@ function buildPresHouse(parentGroup) {
       usePos: new THREE.Vector3(PX + 1, UPPER_Y, PZ), floor: 1 });
     actionConfig.presKingBed = { label: 'Presidential slumber...', duration: 7, restore: 85, cost: 0 };
 
-    // === PRESIDENTIAL MIRROR (upper floor, right wall) ===
-    const umFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX + 3.8, UPPER_Y + 1.6, PZ + 1);
+    // === PRESIDENTIAL MIRROR (upper floor, right wall — front corner near glow lamp) ===
+    const umFrame = addMesh(new THREE.BoxGeometry(0.08, 1.4, 0.8), goldTrimMat, PX + 3.8, UPPER_Y + 1.6, PZ + 1.5);
     const umGlass = addMesh(new THREE.BoxGeometry(0.04, 1.2, 0.6),
       new THREE.MeshLambertMaterial({ color: 0xaaccee, emissive: 0x334455, emissiveIntensity: 0.3 }),
-      PX + 3.78, UPPER_Y + 1.6, PZ + 1);
+      PX + 3.78, UPPER_Y + 1.6, PZ + 1.5);
     addMesh(new THREE.BoxGeometry(0.01, 0.9, 0.12),
       new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15 }),
-      PX + 3.76, UPPER_Y + 1.7, PZ + 0.85);
+      PX + 3.76, UPPER_Y + 1.7, PZ + 1.35);
     interactables.push({ mesh: umGlass, group: parentGroup, type: 'presMirror', label: 'Presidential Mirror', need: null,
-      usePos: new THREE.Vector3(PX + 3, UPPER_Y, PZ + 1), floor: 1 });
+      usePos: new THREE.Vector3(PX + 3, UPPER_Y, PZ + 1.5), floor: 1 });
 
     // === PLANT (decorative, upper floor front-left) ===
     const plantLeafMat = new THREE.MeshLambertMaterial({ color: 0x33aa44 });
@@ -9600,17 +9620,17 @@ function buildPresHouse(parentGroup) {
       if (!actionConfig.phone_gameConsole) actionConfig.phone_gameConsole = { label: 'Playing console...', duration: 5, restore: 40, cost: 0 };
     }
 
-    // GLOW LAMP EXTREME (if ordered via phone)
+    // GLOW LAMP EXTREME (if ordered via phone) — front-right corner with mirror
     if (phoneOrders.includes('glowLamp')) {
       const glGlass = addMesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 12),
         new THREE.MeshLambertMaterial({ color: 0xe040fb, emissive: 0xe040fb, emissiveIntensity: 0.3, transparent: true, opacity: 0.7 }),
-        PX - 3.5, UPPER_Y + 0.85, PZ - 1);
+        PX + 3.2, UPPER_Y + 0.85, PZ + 2.2);
       addMesh(new THREE.CylinderGeometry(0.25, 0.3, 0.25, 12), new THREE.MeshLambertMaterial({ color: 0x999999 }),
-        PX - 3.5, UPPER_Y + 0.125, PZ - 1);
+        PX + 3.2, UPPER_Y + 0.125, PZ + 2.2);
       const glGlow = new THREE.PointLight(0xe040fb, 0.3, 4);
-      glGlow.position.set(PX - 3.5, UPPER_Y + 0.9, PZ - 1); g.add(glGlow);
+      glGlow.position.set(PX + 3.2, UPPER_Y + 0.9, PZ + 2.2); g.add(glGlow);
       interactables.push({ mesh: glGlass, group: parentGroup, type: 'phone_glowLamp', label: 'Glow Lamp EXTREME', need: 'fun',
-        usePos: new THREE.Vector3(PX - 3, UPPER_Y, PZ - 1), floor: 1 });
+        usePos: new THREE.Vector3(PX + 2.5, UPPER_Y, PZ + 2.2), floor: 1 });
       if (!actionConfig.phone_glowLamp) actionConfig.phone_glowLamp = { label: 'Staring at Glow Lamp...', duration: 3, restore: 30, cost: 0 };
     }
 
@@ -9639,6 +9659,10 @@ function buildPresHouse(parentGroup) {
     // Right wall — split for stair opening (Z 14-16)
     addMesh(new THREE.BoxGeometry(0.15, 3.5, 2), bWallMat, PX + 4, BY + 1.75, PZ - 2);   // Right-back (Z 12-14)
     addMesh(new THREE.BoxGeometry(0.15, 3.5, 1), bWallMat, PX + 4, BY + 1.75, PZ + 2.5); // Right-front (Z 16-18)
+
+    // Wall above basement stairwell opening (close the draft — leave 2.5 unit doorway at bottom)
+    addMesh(new THREE.BoxGeometry(0.3, 1, PRES_BSTAIR.zMax - PRES_BSTAIR.zMin), purpleMat,
+      PX + 4, 3, (PRES_BSTAIR.zMin + PRES_BSTAIR.zMax) / 2);
 
     // Basement light
     const bLight = new THREE.PointLight(0xffcc88, 0.5, 10);
@@ -11821,6 +11845,209 @@ function buildGrahamDimension() {
   pqTag.rotation.y = Math.PI;
   g.add(pqTag);
 
+  // === GRAHAM BURGER (fast food restaurant, south-west of intersection) ===
+  const gbX = OX - 15, gbZ = OZ - 15;
+  const gbRedMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const gbYellowMat = new THREE.MeshLambertMaterial({ color: 0xddaa22 });
+  const gbFloorMat = new THREE.MeshLambertMaterial({ color: 0xcc8833 });
+  const gbTileMat = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+  const gbCounterMat = new THREE.MeshLambertMaterial({ color: 0xcccccc });
+  const gbDarkMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+  // Walls (8x6 building, 3.5 tall, door gap on north face facing intersection)
+  makeWall(8.3, 3.5, 0.3, gbRedMat, gbX, 1.75, gbZ - 3);        // Back (south)
+  makeWall(0.3, 3.5, 6, gbRedMat, gbX - 4, 1.75, gbZ);            // Left (west)
+  makeWall(0.3, 3.5, 6, gbRedMat, gbX + 4, 1.75, gbZ);            // Right (east)
+  makeWall(2.5, 3.5, 0.3, gbRedMat, gbX - 2.75, 1.75, gbZ + 3);  // Front-left
+  makeWall(2.5, 3.5, 0.3, gbRedMat, gbX + 2.75, 1.75, gbZ + 3);  // Front-right
+  makeWall(2, 1, 0.3, gbRedMat, gbX, 3, gbZ + 3);                  // Above door
+  // Yellow trim
+  makeWall(8.5, 0.2, 0.35, gbYellowMat, gbX, 3.45, gbZ - 3);
+  makeWall(8.5, 0.2, 0.35, gbYellowMat, gbX, 3.45, gbZ + 3);
+  makeWall(0.35, 0.2, 6, gbYellowMat, gbX - 4, 3.45, gbZ);
+  makeWall(0.35, 0.2, 6, gbYellowMat, gbX + 4, 3.45, gbZ);
+  // Roof
+  makeWall(9, 0.25, 7, gbYellowMat, gbX, 3.62, gbZ);
+  // Floor (checkerboard tiles)
+  const gbFloor = new THREE.Mesh(new THREE.BoxGeometry(8, 0.08, 6), gbFloorMat);
+  gbFloor.position.set(gbX, 0.04, gbZ); gbFloor.receiveShadow = true; g.add(gbFloor);
+  for (let tx = -3; tx <= 3; tx += 2) {
+    for (let tz = -2; tz <= 2; tz += 2) {
+      const tile = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.01, 0.9), gbTileMat);
+      tile.position.set(gbX + tx, 0.09, gbZ + tz); g.add(tile);
+    }
+  }
+  // Windows
+  const gbWinMat = new THREE.MeshLambertMaterial({ color: 0x88ccee, emissive: 0x446688, emissiveIntensity: 0.3 });
+  makeWall(1.5, 1, 0.05, gbWinMat, gbX - 2.5, 2, gbZ + 3.05);
+  makeWall(1.5, 1, 0.05, gbWinMat, gbX + 2.5, 2, gbZ + 3.05);
+  makeWall(1.5, 1, 0.05, gbWinMat, gbX, 2, gbZ - 2.85);
+  // Interior lights (warm fast-food glow)
+  const gbLight1 = new THREE.PointLight(0xffcc66, 0.6, 10);
+  gbLight1.position.set(gbX - 1.5, 3, gbZ); g.add(gbLight1);
+  const gbLight2 = new THREE.PointLight(0xffcc66, 0.6, 10);
+  gbLight2.position.set(gbX + 1.5, 3, gbZ); g.add(gbLight2);
+
+  // "GRAHAM BURGER" sign (canvas texture on front)
+  const gbSignCvs = document.createElement('canvas');
+  gbSignCvs.width = 256; gbSignCvs.height = 64;
+  const gbSCtx = gbSignCvs.getContext('2d');
+  gbSCtx.fillStyle = '#cc2222'; gbSCtx.fillRect(0, 0, 256, 64);
+  gbSCtx.strokeStyle = '#ddaa22'; gbSCtx.lineWidth = 4; gbSCtx.strokeRect(4, 4, 248, 56);
+  gbSCtx.fillStyle = '#ddaa22'; gbSCtx.font = 'bold 28px sans-serif'; gbSCtx.textAlign = 'center';
+  gbSCtx.fillText('GRAHAM BURGER', 128, 42);
+  const gbSignTex = new THREE.CanvasTexture(gbSignCvs);
+  const gbSignMesh = new THREE.Mesh(new THREE.BoxGeometry(3, 0.7, 0.08),
+    new THREE.MeshLambertMaterial({ map: gbSignTex, emissive: 0x661111, emissiveIntensity: 0.3 }));
+  gbSignMesh.position.set(gbX, 3.2, gbZ + 3.18); g.add(gbSignMesh);
+  // Door light
+  const gbDoorLight = new THREE.PointLight(0xffaa44, 0.3, 5);
+  gbDoorLight.position.set(gbX, 3, gbZ + 3.3); g.add(gbDoorLight);
+
+  // === INTERIOR: COUNTER (back wall, runs east-west) ===
+  const gbCounter = makeWall(5, 1, 0.8, gbCounterMat, gbX, 0.5, gbZ - 1.5);
+  // Counter top (red)
+  makeWall(5.2, 0.06, 1, gbRedMat, gbX, 1.03, gbZ - 1.5);
+  // Cash register
+  makeWall(0.35, 0.3, 0.25, gbDarkMat, gbX + 0.5, 1.2, gbZ - 1.5);
+  makeWall(0.3, 0.2, 0.02, new THREE.MeshLambertMaterial({ color: 0x44ff44, emissive: 0x22aa22, emissiveIntensity: 0.3 }),
+    gbX + 0.5, 1.45, gbZ - 1.36);
+  // Menu board (back wall, canvas)
+  const gbMenuCvs = document.createElement('canvas');
+  gbMenuCvs.width = 256; gbMenuCvs.height = 128;
+  const gbMCtx = gbMenuCvs.getContext('2d');
+  gbMCtx.fillStyle = '#1a1a1a'; gbMCtx.fillRect(0, 0, 256, 128);
+  gbMCtx.fillStyle = '#ddaa22'; gbMCtx.font = 'bold 18px sans-serif'; gbMCtx.textAlign = 'center';
+  gbMCtx.fillText('~ MENU ~', 128, 24);
+  gbMCtx.font = '12px sans-serif'; gbMCtx.fillStyle = '#ffffff'; gbMCtx.textAlign = 'left';
+  gbMCtx.fillText('Graham Classic .......... $5', 20, 48);
+  gbMCtx.fillText('Double Graham ........... $8', 20, 66);
+  gbMCtx.fillText('The Big G .............. $12', 20, 84);
+  gbMCtx.fillText('Graham Fries ............ $3', 20, 102);
+  gbMCtx.textAlign = 'right';
+  gbMCtx.fillStyle = '#ff6644';
+  gbMCtx.fillText('* All burgers are 100% Graham *', 240, 122);
+  const gbMenuTex = new THREE.CanvasTexture(gbMenuCvs);
+  const gbMenuBoard = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 1.2),
+    new THREE.MeshLambertMaterial({ map: gbMenuTex, emissive: 0x111111, emissiveIntensity: 0.2 }));
+  gbMenuBoard.position.set(gbX, 2.4, gbZ - 2.82); g.add(gbMenuBoard);
+
+  // Kitchen grill (behind counter, back-left)
+  makeWall(1.5, 0.8, 0.8, new THREE.MeshLambertMaterial({ color: 0x555555 }), gbX - 2.5, 0.4, gbZ - 2.2);
+  // Grill grate
+  makeWall(1.3, 0.02, 0.6, new THREE.MeshLambertMaterial({ color: 0x333333 }), gbX - 2.5, 0.82, gbZ - 2.2);
+  // Glow from grill
+  const grillGlow = new THREE.PointLight(0xff6622, 0.2, 2);
+  grillGlow.position.set(gbX - 2.5, 1, gbZ - 2.2); g.add(grillGlow);
+
+  // Fry station (behind counter, back-right)
+  makeWall(1, 0.7, 0.6, new THREE.MeshLambertMaterial({ color: 0x666666 }), gbX + 2.5, 0.35, gbZ - 2.2);
+  makeWall(0.6, 0.3, 0.35, new THREE.MeshLambertMaterial({ color: 0xddaa22, transparent: true, opacity: 0.3 }),
+    gbX + 2.5, 0.55, gbZ - 2.2); // Oil
+
+  // === SEATING AREA (front half) ===
+  // Table + stools (left booth)
+  const gbTableMat = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+  const gbSeatMat = new THREE.MeshLambertMaterial({ color: 0xddaa22 });
+  makeWall(1.2, 0.06, 0.8, gbTableMat, gbX - 2.5, 0.75, gbZ + 1.5);
+  makeWall(0.06, 0.75, 0.06, gbDarkMat, gbX - 2.5, 0.37, gbZ + 1.5); // table leg
+  [-0.5, 0.5].forEach(dz => {
+    const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 8), gbSeatMat);
+    stool.position.set(gbX - 2.5, 0.45, gbZ + 1.5 + dz); g.add(stool);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 6), gbDarkMat);
+    leg.position.set(gbX - 2.5, 0.21, gbZ + 1.5 + dz); g.add(leg);
+  });
+  // Table + stools (right booth)
+  makeWall(1.2, 0.06, 0.8, gbTableMat, gbX + 2.5, 0.75, gbZ + 1.5);
+  makeWall(0.06, 0.75, 0.06, gbDarkMat, gbX + 2.5, 0.37, gbZ + 1.5);
+  [-0.5, 0.5].forEach(dz => {
+    const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 8), gbSeatMat);
+    stool.position.set(gbX + 2.5, 0.45, gbZ + 1.5 + dz); g.add(stool);
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.42, 6), gbDarkMat);
+    leg.position.set(gbX + 2.5, 0.21, gbZ + 1.5 + dz); g.add(leg);
+  });
+
+  // Funny burger decorations
+  // Giant burger model on roof
+  {
+    const bMat1 = new THREE.MeshLambertMaterial({ color: 0xd4a854 });
+    const bMat2 = new THREE.MeshLambertMaterial({ color: 0xc4983a });
+    const bMat3 = new THREE.MeshLambertMaterial({ color: 0x5a3a1a });
+    const bMat4 = new THREE.MeshLambertMaterial({ color: 0x44aa22 });
+    const bMat5 = new THREE.MeshLambertMaterial({ color: 0xffcc00 });
+    const bMat6 = new THREE.MeshLambertMaterial({ color: 0xcc2222 });
+    const bMat7 = new THREE.MeshLambertMaterial({ color: 0xf5e6c8 });
+    // Bottom bun
+    const bb = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1, 0.3, 12), bMat2);
+    bb.position.set(gbX, 4.05, gbZ); g.add(bb);
+    // Patty
+    const bp = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.2, 12), bMat3);
+    bp.position.set(gbX, 4.3, gbZ); g.add(bp);
+    // Lettuce
+    const bl = new THREE.Mesh(new THREE.CylinderGeometry(1, 0.95, 0.08, 12), bMat4);
+    bl.position.set(gbX, 4.44, gbZ); g.add(bl);
+    // Cheese (slightly tilted square)
+    const bc = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 1.4), bMat5);
+    bc.position.set(gbX, 4.52, gbZ); bc.rotation.y = 0.3; g.add(bc);
+    // Tomato slice
+    const bt = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.08, 8), bMat6);
+    bt.position.set(gbX + 0.2, 4.58, gbZ - 0.1); g.add(bt);
+    // Top bun (dome)
+    const btop = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), bMat1);
+    btop.position.set(gbX, 4.62, gbZ); g.add(btop);
+    // Sesame seeds
+    [[0.3, 0.15], [-0.2, 0.3], [0.1, -0.25], [-0.35, -0.1], [0.4, -0.2]].forEach(([dx, dz]) => {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(0.06, 4, 3), bMat7);
+      s.position.set(gbX + dx, 5.1, gbZ + dz); g.add(s);
+    });
+  }
+
+  // === BURGER GRAHAM NPC (behind counter) ===
+  const burgerGrahamOpts = { skinTone: 2, gender: 'male', hairStyle: 'curly', hairColor: 2, outfit: GG_MERCH_IDX, accessory: 0, dress: -1 };
+  const burgerGraham = buildCharacter(burgerGrahamOpts);
+  burgerGraham.position.set(gbX, 0.15, gbZ - 2);
+  burgerGraham.rotation.y = Math.PI; // Face counter (north)
+  g.add(burgerGraham);
+  burgerGraham.traverse(child => {
+    if (child.isMesh) {
+      child.userData = { type: 'npc', npcId: 'burger_graham' };
+      gdNpcBodyMeshes.push(child);
+    }
+  });
+  // Chef hat (white cylinder + dome on head)
+  const hatBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.35, 8),
+    new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  hatBase.position.set(gbX, 1.85, gbZ - 2); g.add(hatBase);
+  const hatTop = new THREE.Mesh(new THREE.SphereGeometry(0.25, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2),
+    new THREE.MeshLambertMaterial({ color: 0xffffff }));
+  hatTop.position.set(gbX, 2.02, gbZ - 2); g.add(hatTop);
+  // Name tag
+  const bgTagCvs = document.createElement('canvas');
+  bgTagCvs.width = 256; bgTagCvs.height = 32;
+  const bgTagCtx = bgTagCvs.getContext('2d');
+  bgTagCtx.fillStyle = '#ddaa22'; bgTagCtx.font = 'bold 14px sans-serif'; bgTagCtx.textAlign = 'center';
+  bgTagCtx.fillText('Burger Graham', 128, 22);
+  const bgTagTex = new THREE.CanvasTexture(bgTagCvs);
+  const bgTag = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 0.35),
+    new THREE.MeshBasicMaterial({ map: bgTagTex, transparent: true, side: THREE.DoubleSide }));
+  bgTag.position.set(gbX, 2.3, gbZ - 2); bgTag.rotation.y = Math.PI; g.add(bgTag);
+
+  // Counter interactable (triggers burger job)
+  interactables.push({
+    mesh: gbCounter, group: g, type: 'grahamBurgerCounter',
+    label: 'Order at Graham Burger', need: null,
+    usePos: new THREE.Vector3(gbX, 0.15, gbZ - 0.5), floor: 0
+  });
+
+  // Collision walls
+  GRAHAM_DIM_COLLISIONS.push(
+    { xMin: gbX - 4.15, xMax: gbX + 4.15, zMin: gbZ - 3.15, zMax: gbZ - 2.85 },  // Back
+    { xMin: gbX - 4.15, xMax: gbX - 3.85, zMin: gbZ - 3.15, zMax: gbZ + 3.15 },  // Left
+    { xMin: gbX + 3.85, xMax: gbX + 4.15, zMin: gbZ - 3.15, zMax: gbZ + 3.15 },  // Right
+    { xMin: gbX - 4.15, xMax: gbX - 1, zMin: gbZ + 2.85, zMax: gbZ + 3.15 },     // Front-left
+    { xMin: gbX + 1, xMax: gbX + 4.15, zMin: gbZ + 2.85, zMax: gbZ + 3.15 },     // Front-right
+    { xMin: gbX - 2.6, xMax: gbX + 2.6, zMin: gbZ - 2, zMax: gbZ - 1 },          // Counter (can't walk behind)
+  );
+
   // === ROAD TO ARENA (south) ===
   // Torches along the south road to the arena
   [-3.5, 3.5].forEach(dx => {
@@ -12915,8 +13142,8 @@ function buildMansion() {
   mWall(3.5, wh, 0.15, 276.75, wy, -3);
   mWall(3.5, wh, 0.15, 283.25, wy, -3);
   mWall(3, 1.2, 0.15, 280, wh - 0.5, -3);
-  // Horizontal divider for stair area (Z=3, X=285 to 305) — doorway at X=293 to 297
-  mWall(8, wh, 0.15, 289, wy, 3);
+  // Horizontal divider for stair area (Z=3, X=288 to 305) — doorway at X=293 to 297
+  mWall(5, wh, 0.15, 290.5, wy, 3);
   mWall(8, wh, 0.15, 301, wy, 3);
   mWall(4, 1.2, 0.15, 295, wh - 0.5, 3);
 
@@ -13427,6 +13654,34 @@ function openNPCDialogue(npcId) {
     overlay.classList.add('visible');
     return;
   }
+  // === BURGER GRAHAM — fast food cook at Graham Burger ===
+  if (npcId === 'burger_graham') {
+    nameEl.textContent = 'Burger Graham';
+    const burgerLines = [
+      "Welcome to Graham Burger, home of the Graham Classic! Every patty is made from 100% Grade-A... enthusiasm. What can I get ya?",
+      "Our secret sauce? It's just ketchup. But I put it on with PASSION. That's the Graham difference!",
+      "Fun fact: I'm the chef, the cashier, the manager, AND employee of the month. Every month. Because I'm the only employee.",
+      "You want fries with that? Trick question — EVERYONE wants fries with that. Even the fries want fries.",
+      "I flipped 847 burgers today. That's a personal best! My previous best was 3. I've improved dramatically.",
+      "The health inspector gave us a B+. He said he'd give us an A but he couldn't find the kitchen. It's right behind me!",
+    ];
+    if (!window._burgerDialogIdx) window._burgerDialogIdx = 0;
+    textEl.textContent = burgerLines[window._burgerDialogIdx % burgerLines.length];
+    window._burgerDialogIdx++;
+    if (gdJobLastDay['burger_graham'] === day) {
+      const disBtn = document.createElement('button');
+      disBtn.textContent = 'Kitchen closed (already worked today)';
+      disBtn.className = 'npc-btn-close';
+      disBtn.disabled = true;
+      disBtn.style.opacity = '0.5';
+      btnsEl.appendChild(disBtn);
+    } else {
+      addDialogueBtn(btnsEl, 'Work: Burger Flipper ($15+)', 'npc-btn-accept', () => startGrahamDimJob('burger_graham'));
+    }
+    addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
+    overlay.classList.add('visible');
+    return;
+  }
   // === SERGEANT SHLOPBOP — pepper sabotage quest giver ===
   if (npcId === 'pepper_quest') {
     nameEl.textContent = 'Sergeant Shlopbop';
@@ -13444,7 +13699,7 @@ function openNPCDialogue(npcId) {
       if (!window._shlopDialogIdx) window._shlopDialogIdx = 0;
       textEl.textContent = shlopLines[window._shlopDialogIdx % shlopLines.length];
       window._shlopDialogIdx++;
-      addDialogueBtn(btnsEl, 'Start Pepper Sabotage ($25 + $10/pepper)', 'npc-btn-accept', () => { closeNPCDialogue(); startPepperMission(); });
+      addDialogueBtn(btnsEl, 'Start Pepper Sabotage ($25 + $10/pepper)', 'npc-btn-accept', () => startPepperMission());
       addDialogueBtn(btnsEl, 'Close', 'npc-btn-close', closeNPCDialogue);
     }
     overlay.classList.add('visible');
@@ -14766,6 +15021,7 @@ function startGrahamDimJob(bossId) {
   if (bossId === 'graham_boss_1') hintHtml = '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> Repeat the sequence';
   else if (bossId === 'graham_boss_2') hintHtml = '<kbd>A</kbd> Approve fan mail  <kbd>D</kbd> Reject hate mail';
   else if (bossId === 'graham_hr') hintHtml = '<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> File papers into the correct cabinet!';
+  else if (bossId === 'burger_graham') hintHtml = 'Build burgers! (mini-game coming soon)';
 
   const { canvas, ctx } = setupFullscreenGame(overlay, 640, 360, hintHtml);
   overlay.classList.add('visible');
@@ -14776,6 +15032,8 @@ function startGrahamDimJob(bossId) {
     runFanMailSorter(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   } else if (bossId === 'graham_hr') {
     runPaperworkFiling(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
+  } else if (bossId === 'burger_graham') {
+    runBurgerFlipper(canvas, ctx, (score) => finishGrahamDimJob(bossId, score));
   }
 }
 
@@ -14788,6 +15046,8 @@ function finishGrahamDimJob(bossId, score) {
     pay = 20 + Math.floor(finalScore * 3);
   } else if (bossId === 'graham_hr') {
     pay = 18 + Math.floor(finalScore / 2);
+  } else if (bossId === 'burger_graham') {
+    pay = 15 + Math.floor(finalScore / 2);
   } else if (bossId === 'graham_hr_mission') {
     pay = 25; // flat $25 base — player already earned $10/pepper live
   } else {
@@ -15257,18 +15517,81 @@ function runPaperworkFiling(canvas, ctx, onFinish) {
   requestAnimationFrame(draw);
 }
 
+// === Graham Burger — Burger Flipper Mini-Game (placeholder for user) ===
+function runBurgerFlipper(canvas, ctx, onFinish) {
+  // TODO: User will implement the burger-making mini-game
+  // Placeholder: simple timer that awards score based on time
+  let score = 0;
+  let timer = 30;
+  let lastTime = performance.now();
+  const keys = {};
+
+  document.addEventListener('keydown', onKey);
+  document.addEventListener('keyup', offKey);
+  function onKey(e) { keys[e.code] = true; }
+  function offKey(e) { keys[e.code] = false; }
+
+  function draw(now) {
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+    timer -= dt;
+
+    ctx.fillStyle = '#cc2222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Title
+    ctx.fillStyle = '#ddaa22';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GRAHAM BURGER', canvas.width / 2, 50);
+
+    // Placeholder message
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '18px sans-serif';
+    ctx.fillText('Burger mini-game coming soon!', canvas.width / 2, 120);
+    ctx.fillText('Press SPACE to flip burgers for now...', canvas.width / 2, 150);
+
+    // Timer
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = '#ddaa22';
+    ctx.fillText('Time: ' + Math.ceil(Math.max(0, timer)) + 's', canvas.width / 2, 200);
+    ctx.fillText('Burgers: ' + score, canvas.width / 2, 240);
+
+    // Space to flip
+    if (keys['Space']) {
+      keys['Space'] = false;
+      score++;
+    }
+
+    if (timer <= 0) {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keyup', offKey);
+      ctx.fillStyle = '#000000aa';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#ddaa22';
+      ctx.font = 'bold 36px sans-serif';
+      ctx.fillText('SHIFT OVER!', canvas.width / 2, 160);
+      ctx.font = '20px sans-serif';
+      ctx.fillText('Burgers flipped: ' + score, canvas.width / 2, 200);
+      setTimeout(() => onFinish(score), 1500);
+      return;
+    }
+
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+}
+
 // === Pepper Sabotage Mission (In-World) ===
 function startPepperMission() {
-  const wasDialogue = npcDialogueOpen;
   closeNPCDialogue();
+  closeCourtOverlay();
 
   // Instant transition
   performPepperTeleport();
 
-  // Re-lock pointer if we came from dialogue (which exits lock), otherwise it's already locked
-  if (wasDialogue || !document.pointerLockElement) {
-    renderer.domElement.requestPointerLock();
-  }
+  // Always re-lock pointer after mission start
+  renderer.domElement.requestPointerLock();
 }
 
 function performPepperTeleport() {
@@ -17777,34 +18100,45 @@ function buildCharacter(opts) {
   const dressMat = dressDef ? new THREE.MeshLambertMaterial({ color: dressDef.color }) : null;
 
   if (wearingDress) {
-    // Dress: single piece from shoulders to below knees
-    // Upper bodice
-    const bodice = new THREE.Mesh(new THREE.BoxGeometry(bodyW, 0.55, 0.3), dressMat);
-    bodice.position.set(0, 0.82, 0);
+    // Modern dress: fitted top + flared A-line skirt
+    const dressAccent = new THREE.MeshLambertMaterial({ color: dressDef.color * 0.8 | 0 });
+    // Fitted bodice (crop-top style, snug)
+    const bodice = new THREE.Mesh(new THREE.BoxGeometry(bodyW - 0.02, 0.45, 0.28), dressMat);
+    bodice.position.set(0, 0.85, 0);
     bodice.castShadow = true;
     group.add(bodice);
-    // Skirt — wider, flares out
-    const skirtW = bodyW + 0.2;
-    const skirt = new THREE.Mesh(new THREE.BoxGeometry(skirtW, 0.45, 0.35), dressMat);
+    // Neckline detail (V-shape accent)
+    const neckline = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.02), dressAccent);
+    neckline.position.set(0, 1.05, 0.14);
+    group.add(neckline);
+    // Waistband (defined belt)
+    const belt = new THREE.Mesh(new THREE.CylinderGeometry(bodyW / 2 + 0.01, bodyW / 2 + 0.01, 0.06, 10), dressAccent);
+    belt.position.set(0, 0.62, 0);
+    group.add(belt);
+    // Flared A-line skirt (cylinder, narrow top, wide bottom)
+    const skirt = new THREE.Mesh(new THREE.CylinderGeometry(bodyW / 2 + 0.02, 0.32, 0.45, 12), dressMat);
     skirt.position.set(0, 0.38, 0);
     skirt.castShadow = true;
     group.add(skirt);
-    // Waist seam / belt line
-    const seamMat = new THREE.MeshLambertMaterial({ color: dressDef.color * 0.7 | 0 });
-    const seam = new THREE.Mesh(new THREE.BoxGeometry(bodyW + 0.02, 0.03, 0.31), seamMat);
-    seam.position.set(0, 0.58, 0);
-    group.add(seam);
-    // Hem at bottom of skirt
-    const hem = new THREE.Mesh(new THREE.BoxGeometry(skirtW + 0.02, 0.025, 0.36), seamMat);
+    // Hem ring at skirt bottom
+    const hem = new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.33, 0.025, 12), dressAccent);
     hem.position.set(0, 0.155, 0);
     group.add(hem);
-    // Legs peeking out below (skin colored, thinner)
+    // Legs below skirt (skin, longer visible portion)
     const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
-    legL.position.set(-0.1, 0.08, 0);
+    legL.position.set(-0.1, 0.07, 0);
     group.add(legL);
     const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.12), skinMat);
-    legR.position.set(0.1, 0.08, 0);
+    legR.position.set(0.1, 0.07, 0);
     group.add(legR);
+    // Shoes (small dark blocks)
+    const shoeMat = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    const shoeL = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.16), shoeMat);
+    shoeL.position.set(-0.1, 0.01, 0.02);
+    group.add(shoeL);
+    const shoeR = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.04, 0.16), shoeMat);
+    shoeR.position.set(0.1, 0.01, 0.02);
+    group.add(shoeR);
   } else {
     // Regular outfit: separate shirt + pants
     // Legs
@@ -18804,7 +19138,7 @@ renderer.domElement.addEventListener('click', (e) => {
 });
 
 document.addEventListener('pointerlockchange', () => {
-  pointerLocked = document.pointerLockElement === renderer.domElement;
+  if (!isTouchDevice) pointerLocked = document.pointerLockElement === renderer.domElement;
 });
 
 document.addEventListener('mousemove', (e) => {
@@ -18841,12 +19175,135 @@ document.addEventListener('keydown', (e) => {
     petStay = !petStay;
     showTip(petStay ? 'Stay!' : 'Come!');
   }
+  if (e.code === 'KeyN' && gameStarted && !gameOver && !currentAction) saveGame();
   if (mirrorOpen) { closeMirror(); return; }
 });
 document.addEventListener('keyup', (e) => {
   keys[e.code] = false;
   if (e.code === 'KeyF' && pepperMissionState) pepperMissionState.aiming = false;
 });
+
+// ═══ MOBILE TOUCH CONTROLS ═══
+const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+const touchState = { moveX: 0, moveZ: 0, lookDx: 0, lookDy: 0, lookId: null, joyId: null };
+
+if (isTouchDevice) {
+  document.getElementById('touch-controls').classList.add('active');
+  // Hide crosshair on mobile (finger replaces it)
+  document.getElementById('crosshair').style.display = 'none';
+
+  // On touch, act as if pointer is locked (skip actual pointer lock which doesn't work on mobile)
+  pointerLocked = true;
+
+  // === VIRTUAL JOYSTICK (left side — movement) ===
+  const joyEl = document.getElementById('touch-joystick');
+  const knobEl = document.getElementById('touch-joystick-knob');
+  const joyR = 35; // max knob displacement
+
+  joyEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    touchState.joyId = t.identifier;
+    updateJoy(t);
+  }, { passive: false });
+
+  joyEl.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.joyId) updateJoy(t);
+    }
+  }, { passive: false });
+
+  joyEl.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.joyId) {
+        touchState.joyId = null;
+        touchState.moveX = 0; touchState.moveZ = 0;
+        knobEl.style.transform = 'translate(0px, 0px)';
+      }
+    }
+  });
+
+  function updateJoy(t) {
+    const rect = joyEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    let dx = t.clientX - cx, dy = t.clientY - cy;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > joyR) { dx = dx / dist * joyR; dy = dy / dist * joyR; }
+    knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    touchState.moveX = dx / joyR; // -1 to 1
+    touchState.moveZ = dy / joyR; // -1 to 1 (positive = forward on screen = forward in game)
+  }
+
+  // === LOOK AREA (right side — camera rotation) ===
+  const lookEl = document.getElementById('touch-look-area');
+  const TOUCH_LOOK_SENS = 0.004;
+
+  lookEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    SFX.init();
+    // If not started/in menu, treat as click (start game, etc.)
+    if (!gameStarted || gameOver) return;
+    const t = e.changedTouches[0];
+    touchState.lookId = t.identifier;
+    touchState._lastLookX = t.clientX;
+    touchState._lastLookY = t.clientY;
+  }, { passive: false });
+
+  lookEl.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.lookId) {
+        const dx = t.clientX - touchState._lastLookX;
+        const dy = t.clientY - touchState._lastLookY;
+        yaw -= dx * TOUCH_LOOK_SENS;
+        pitch -= dy * TOUCH_LOOK_SENS;
+        pitch = Math.max(-Math.PI / 2.5, Math.min(Math.PI / 2.5, pitch));
+        touchState._lastLookX = t.clientX;
+        touchState._lastLookY = t.clientY;
+      }
+    }
+  }, { passive: false });
+
+  lookEl.addEventListener('touchend', (e) => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchState.lookId) touchState.lookId = null;
+    }
+  });
+
+  // Tap on look area = interact (click on whatever crosshair would be on)
+  lookEl.addEventListener('touchstart', (e) => {
+    if (!gameStarted || gameOver || currentAction) return;
+    // Trigger interaction with hovered object on tap
+    if (hoveredObj) {
+      startAction(hoveredObj);
+    }
+  });
+
+  // === ACTION BUTTON (USE — interact with hovered) ===
+  document.getElementById('touch-btn-action').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (!gameStarted || gameOver || currentAction) return;
+    if (hoveredObj) startAction(hoveredObj);
+    // Also fire foam ball if mega blaster owned
+    if (phoneOrders.includes('megaBlaster')) firefoamBall();
+  }, { passive: false });
+
+  // === JUMP BUTTON ===
+  document.getElementById('touch-btn-jump').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameStarted && !gameOver && jumpOffset === 0 && !currentAction && ragdollTimer <= 0) {
+      jumpVel = JUMP_SPEED;
+    }
+  }, { passive: false });
+
+  // === SHOP BUTTON ===
+  document.getElementById('touch-btn-shop').addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (gameStarted && !gameOver && !currentAction) toggleShop();
+  }, { passive: false });
+}
 
 // ═══ RAYCASTING ═══
 const raycaster = new THREE.Raycaster();
@@ -18879,7 +19336,7 @@ function updateCrosshairRaycast() {
       const npcDef = TOWN_NPC_DEFS.find(d => d.id === hitObj.userData.npcId);
       const nid = hitObj.userData.npcId;
       hoveredObj = { type: 'npc', npcId: nid };
-      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'bodhi' ? 'Bodhi' : nid === 'graham_33' ? 'Graham 33' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
+      const gdName = nid === 'henry' ? 'Henry' : nid === 'pepper_quest' ? 'Sergeant Shlopbop' : nid === 'bodhi' ? 'Bodhi' : nid === 'graham_33' ? 'Graham 33' : nid === 'burger_graham' ? 'Burger Graham' : nid === 'graham_boss_1' ? 'Boss Graham #1' : nid === 'graham_boss_2' ? 'Boss Graham #2' : nid === 'graham_boss_3' ? 'Boss Graham #3' : nid === 'graham_hr' ? 'HR Graham' : nid.startsWith('baby_graham_') ? 'Baby Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : nid.startsWith('graham_clone') ? 'Graham Clone #' + (parseInt(nid.split('_')[2]) + 1) : null;
       tip.textContent = 'Click: Talk to ' + (gdName || (npcDef ? npcDef.name : 'NPC'));
       tip.classList.add('visible');
       crosshair.classList.add('active');
@@ -19115,6 +19572,12 @@ function startAction(obj) {
   // Graham Industries — interview or jobs (open dialogue with HR Graham)
   if (obj.type === 'grahamInterview') {
     openNPCDialogue('graham_hr');
+    return;
+  }
+
+  // Graham Burger counter — talk to Burger Graham
+  if (obj.type === 'grahamBurgerCounter') {
+    openNPCDialogue('burger_graham');
     return;
   }
 
@@ -20267,7 +20730,8 @@ function renderShopItems() {
   container.appendChild(outfitLabel);
 
   OUTFITS.forEach((fit, i) => {
-    if (i === 0 || i === GG_MERCH_IDX) return; // skip default + GG Merch (sold at merch store)
+    if (i === 0) return; // skip default (always free/equipped)
+    if (i === GG_MERCH_IDX && !ownedOutfits.has(i)) return; // GG Merch only shows once bought at merch store
     if (MYSTERY_OUTFIT_IDXS.includes(i) && !ownedOutfits.has(i)) return; // mystery box exclusives only show once owned
     const owned = ownedOutfits.has(i);
     const equipped = charOpts.outfit === i && charOpts.dress < 0;
@@ -21023,8 +21487,8 @@ function updatePlayerY() {
     return;
   }
 
-  // Basement stairs check (in yard — must come before yard ground check)
-  if (basementLoaded) {
+  // Basement stairs check (in yard — must come before yard ground check, skip in Graham Dimension)
+  if (basementLoaded && !inGrahamDimension) {
     const onBStairs = x >= BSTAIR.xMin && x <= BSTAIR.xMax && z >= BSTAIR.zMin && z <= BSTAIR.zMax;
     if (onBStairs && (currentFloor === 0 || currentFloor === -1)) {
       const t = (BSTAIR.xMax - x) / (BSTAIR.xMax - BSTAIR.xMin);
@@ -21202,7 +21666,7 @@ function update() {
       showTip("You got back up. Somehow.");
     }
   } else if (!currentAction || currentAction.phase !== 'doing') {
-    // WASD movement
+    // WASD movement + touch joystick
     const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
     const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
     const move = new THREE.Vector3();
@@ -21210,6 +21674,11 @@ function update() {
     if (keys['KeyS'] || keys['ArrowDown']) move.sub(forward);
     if (keys['KeyA'] || keys['ArrowLeft']) move.sub(right);
     if (keys['KeyD'] || keys['ArrowRight']) move.add(right);
+    // Touch joystick input (moveZ negative = forward on screen)
+    if (touchState.moveZ !== 0 || touchState.moveX !== 0) {
+      move.addScaledVector(forward, -touchState.moveZ);
+      move.addScaledVector(right, touchState.moveX);
+    }
     if (move.lengthSq() > 0) {
       move.normalize().multiplyScalar(curSpeed * dt);
       character.position.add(move);
@@ -21357,7 +21826,7 @@ function update() {
 
   // Active pet follow (only at home, only when player moves, not when staying)
   if (!inTown && !inMansion) {
-    const playerMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || moveTarget;
+    const playerMoving = keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || touchState.moveX !== 0 || touchState.moveZ !== 0 || moveTarget;
     if (petDog && activePet === 'dog') {
       if (playerMoving && !petStay) {
         const target = character.position.clone();
@@ -21404,7 +21873,7 @@ function update() {
   }
 
   // First-person camera
-  let bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD']) ? Math.sin(walkAnim) * 0.04 : 0;
+  let bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || touchState.moveX !== 0 || touchState.moveZ !== 0) ? Math.sin(walkAnim) * 0.04 : 0;
   let shakeX = 0, shakeY = 0;
   // Screen shake (tissue honk etc)
   if (window._screenShake > 0) {
@@ -21859,6 +22328,7 @@ function renderSlotList() {
 }
 
 function promptSaveName(callback) {
+  if (document.pointerLockElement) document.exitPointerLock();
   const overlay = document.getElementById('name-prompt-overlay');
   const input = document.getElementById('name-prompt-input');
   const btn = document.getElementById('name-prompt-ok');
@@ -21951,10 +22421,12 @@ function writeSaveToSlot(slotIndex, name) {
 function saveGame() {
   if (!gameStarted || gameOver || pepperMissionActive) return;
   if (currentSlot >= 0 && currentSlotName) {
-    // Already have a slot — just save
+    // Already have a slot — just save directly (no prompt needed)
     writeSaveToSlot(currentSlot, currentSlotName);
     return;
   }
+  // Exit pointer lock so user can type a name
+  if (document.pointerLockElement) document.exitPointerLock();
   // Need to pick a slot and name
   const slots = getSlotsMetadata();
   const emptyIdx = slots.findIndex(s => s === null);
@@ -22198,6 +22670,9 @@ function loadSlot(index) {
   if (save.inGrahamDimension) mlTry('ml_graham_dimension');
   if (grahamDimQuestsCompleted >= 3) mlTry('ml_graham_master');
   mlCheckLivingLarge();
+
+  // Daily Mystery Box — check after all state is restored
+  setTimeout(() => checkMysteryBoxFriday(), 1500);
 }
 
 function deleteSlot(index) {

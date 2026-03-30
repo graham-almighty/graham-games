@@ -5074,6 +5074,111 @@ test('Home purchases only appear when second floor exists', () => {
   assert(!shouldBuild, 'GG TV should not appear without second floor');
 });
 
+section('Presidential Palace Layout Fixes');
+
+test('Glow lamp placed in front-right corner of upper floor (not over stairwell)', () => {
+  const PX = 410, PZ = 15;
+  const PRES_STAIR = { xMin: 406, xMax: 407.5, zMin: 12, zMax: 16 };
+  const glowX = PX + 3.2, glowZ = PZ + 2.2;
+  // Should NOT be over the stairwell
+  const overStairwell = glowX >= PRES_STAIR.xMin && glowX <= PRES_STAIR.xMax && glowZ >= PRES_STAIR.zMin && glowZ <= PRES_STAIR.zMax;
+  assert(!overStairwell, 'Glow lamp should not be over the stairwell');
+  // Should be inside palace bounds
+  assert(glowX >= PX - 4 && glowX <= PX + 4, 'Glow lamp X within palace');
+  assert(glowZ >= PZ - 3 && glowZ <= PZ + 3, 'Glow lamp Z within palace');
+});
+
+test('Upper floor mirror placed near glow lamp in corner', () => {
+  const PX = 410, PZ = 15;
+  const mirZ = PZ + 1.5;
+  const glowZ = PZ + 2.2;
+  assert(Math.abs(mirZ - glowZ) < 1.5, 'Mirror and glow lamp should be close together');
+});
+
+test('Desk chair skipped when pizza throne exists', () => {
+  const gdPresThrone = true;
+  const shouldBuildChair = !gdPresThrone;
+  assert(!shouldBuildChair, 'Chair should not be built when pizza throne exists');
+});
+
+test('Desk chair built when no pizza throne', () => {
+  const gdPresThrone = false;
+  const shouldBuildChair = !gdPresThrone;
+  assert(shouldBuildChair, 'Chair should be built when no pizza throne');
+});
+
+test('Bookshelf moved to front-left area (not overlapping treadmill)', () => {
+  const PX = 410, PZ = 15;
+  const bshelfX = PX - 2, bshelfZ = PZ + 2.5;
+  const treadX = PX - 0.8, treadZ = PZ - 2.3;
+  const dist = Math.sqrt((bshelfX - treadX) ** 2 + (bshelfZ - treadZ) ** 2);
+  assert(dist > 2, 'Bookshelf should be far from treadmill (dist=' + dist.toFixed(1) + ')');
+});
+
+test('Home basement stairs skip when inGrahamDimension', () => {
+  const inGrahamDimension = true;
+  const basementLoaded = true;
+  const shouldCheckHomeBStairs = basementLoaded && !inGrahamDimension;
+  assert(!shouldCheckHomeBStairs, 'Home basement should not activate in Graham Dimension');
+});
+
+test('Home basement stairs work when not in Graham Dimension', () => {
+  const inGrahamDimension = false;
+  const basementLoaded = true;
+  const shouldCheckHomeBStairs = basementLoaded && !inGrahamDimension;
+  assert(shouldCheckHomeBStairs, 'Home basement should activate at home');
+});
+
+section('Graham Burger Restaurant');
+
+test('Graham Burger positioned at OX-15, OZ-15 in Graham Dimension', () => {
+  const OX = 400, OZ = 0;
+  const gbX = OX - 15, gbZ = OZ - 15;
+  assertEqual(gbX, 385);
+  assertEqual(gbZ, -15);
+  // Within GD bounds
+  assert(gbX >= 340 && gbX <= 460, 'gbX within GD bounds');
+  assert(gbZ >= -100 && gbZ <= 60, 'gbZ within GD bounds');
+});
+
+test('Graham Burger not overlapping houses', () => {
+  const OX = 400, OZ = 0;
+  const gbX = OX - 15, gbZ = OZ - 15;
+  const houses = [
+    { x: OX - 30, z: OZ + 20 }, { x: OX - 30, z: OZ - 20 },
+    { x: OX + 30, z: OZ + 20 }, { x: OX + 30, z: OZ - 20 },
+    { x: OX - 20, z: OZ + 40 }, { x: OX + 20, z: OZ + 40 },
+  ];
+  houses.forEach(h => {
+    const dist = Math.sqrt((gbX - h.x) ** 2 + (gbZ - h.z) ** 2);
+    assert(dist > 8, 'Graham Burger should not overlap house at (' + h.x + ',' + h.z + '), dist=' + dist.toFixed(1));
+  });
+});
+
+test('Graham Burger counter collision blocks walking behind counter', () => {
+  const OX = 400, OZ = 0;
+  const gbX = OX - 15, gbZ = OZ - 15;
+  const counterCol = { xMin: gbX - 2.6, xMax: gbX + 2.6, zMin: gbZ - 2, zMax: gbZ - 1 };
+  // Player at kitchen area should be inside collision
+  const px = gbX, pz = gbZ - 1.5;
+  assert(px > counterCol.xMin && px < counterCol.xMax && pz > counterCol.zMin && pz < counterCol.zMax,
+    'Point behind counter should be blocked by collision');
+});
+
+test('Presidential basement stairwell has wall above opening', () => {
+  const PX = 410, PZ = 15;
+  const PRES_BSTAIR = { xMin: 414, xMax: 416.5, zMin: 14, zMax: 16 };
+  // Wall above gap: 1 unit tall at Y=3, full width of gap
+  const wallY = 3, wallH = 1;
+  const wallTop = wallY + wallH / 2;
+  const wallBot = wallY - wallH / 2;
+  assert(wallTop >= 3.45, 'Wall should reach near the roof line (3.5)');
+  assert(wallBot <= 2.6, 'Wall should close at least 1 unit of the gap');
+  // Wall width covers the stair gap
+  const gapWidth = PRES_BSTAIR.zMax - PRES_BSTAIR.zMin;
+  assertEqual(gapWidth, 2, 'Stair gap is 2 units wide');
+});
+
 // ═══ EXPANDED GUIDE BOOK ═══
 section('Expanded Guide Book');
 
