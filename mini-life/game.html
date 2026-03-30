@@ -1267,7 +1267,7 @@
   <div class="hud-pill"><span>Day</span> <span id="day-val">1</span></div>
   <div class="hud-pill shop-btn" onclick="toggleShop()">&#128241; SHOP</div>
   <div class="hud-pill shop-btn" id="pet-menu-btn" style="display:none;" onclick="togglePetMenu()">&#128062; PET</div>
-  <div class="hud-pill shop-btn" onclick="saveGame()">&#128190; SAVE</div>
+  <div class="hud-pill shop-btn" id="save-btn" onclick="saveGame()">&#128190; SAVE</div>
   <div class="hud-pill shop-btn" onclick="renameSave()">&#9998; NAME</div>
   <div class="hud-pill shop-btn" onclick="toggleLeaderboard()">&#127942; TOP $</div>
 </div>
@@ -21635,14 +21635,6 @@ function update() {
     checkMysteryBoxFriday();
   }
 
-  // Auto-save every 60 seconds
-  if (!window._autoSaveTimer) window._autoSaveTimer = 0;
-  window._autoSaveTimer += dt;
-  if (window._autoSaveTimer >= 60 && currentSlot >= 0 && currentSlotName && !pepperMissionActive && !jobMiniGameRunning) {
-    window._autoSaveTimer = 0;
-    writeSaveToSlot(currentSlot, currentSlotName);
-  }
-
   // Decay needs
   for (const key in needs) {
     needs[key] -= decayRates[key] * GAME_SPEED * dt;
@@ -22447,40 +22439,42 @@ function buildSaveData() {
 }
 
 function writeSaveToSlot(slotIndex, name) {
-  const save = buildSaveData();
-  localStorage.setItem('minilife-slot-' + slotIndex, JSON.stringify(save));
-  const slots = getSlotsMetadata();
-  slots[slotIndex] = { name, day: save.day, money: save.money };
-  setSlotsMetadata(slots);
-  currentSlot = slotIndex;
-  currentSlotName = name;
-  updateLeaderboard(name, save.money, save.day);
-  SFX.kaChing();
-  const toast = document.getElementById('save-toast');
-  toast.classList.add('visible');
-  setTimeout(() => toast.classList.remove('visible'), 1500);
+  try {
+    const save = buildSaveData();
+    const json = JSON.stringify(save);
+    localStorage.setItem('minilife-slot-' + slotIndex, json);
+    const slots = getSlotsMetadata();
+    slots[slotIndex] = { name, day: save.day, money: save.money };
+    setSlotsMetadata(slots);
+    currentSlot = slotIndex;
+    currentSlotName = name;
+    updateLeaderboard(name, save.money, save.day);
+    SFX.kaChing();
+    const toast = document.getElementById('save-toast');
+    toast.textContent = 'Saved! (Day ' + save.day + ', $' + Math.floor(save.money) + ')';
+    toast.classList.add('visible');
+    setTimeout(() => toast.classList.remove('visible'), 2000);
+  } catch (e) {
+    showTip('SAVE FAILED: ' + e.message);
+    console.error('Save failed:', e);
+  }
 }
 
 function saveGame() {
   if (!gameStarted || gameOver || pepperMissionActive) return;
   if (currentSlot >= 0 && currentSlotName) {
-    // Already have a slot — just save directly (no prompt needed)
+    // Already have a slot — just save directly
     writeSaveToSlot(currentSlot, currentSlotName);
     return;
   }
-  // Exit pointer lock so user can type a name
-  if (document.pointerLockElement) document.exitPointerLock();
-  // Need to pick a slot and name
+  // No slot yet — auto-assign one with a default name (no prompt needed)
   const slots = getSlotsMetadata();
   const emptyIdx = slots.findIndex(s => s === null);
-  if (emptyIdx >= 0) {
-    currentSlot = emptyIdx;
-    promptSaveName(name => writeSaveToSlot(emptyIdx, name));
-  } else {
-    // All full — overwrite slot 2 (last)
-    currentSlot = 2;
-    promptSaveName(name => writeSaveToSlot(2, name));
-  }
+  const slotIdx = emptyIdx >= 0 ? emptyIdx : 0; // use first empty, or overwrite slot 0
+  const autoName = 'Save ' + (slotIdx + 1);
+  currentSlot = slotIdx;
+  currentSlotName = autoName;
+  writeSaveToSlot(slotIdx, autoName);
 }
 
 function renameSave() {
