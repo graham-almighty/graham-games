@@ -19214,7 +19214,11 @@ function mpJoinLocation(locKey) {
 
   // Presence: players joining/leaving
   mpChannel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
-    newPresences.forEach(p => { if (p.id !== mpPlayerId) mpAddPlayer(p); });
+    newPresences.forEach(p => {
+      if (p.id === mpPlayerId) return;
+      if (remotePlayers.has(p.id)) { mpUpdatePlayerAppearance(p); return; }
+      mpAddPlayer(p);
+    });
     mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
@@ -19369,10 +19373,44 @@ function mpAddPlayer(state) {
   remotePlayers.set(state.id, {
     group, nameTag: tag,
     playerName: state.name || 'Player',
+    charOpts: opts,
     targetPos: new THREE.Vector3(0, 0.15, 0),
     targetYaw: 0,
     lastUpdate: performance.now()
   });
+}
+
+function mpUpdatePlayerAppearance(state) {
+  const rp = remotePlayers.get(state.id);
+  if (!rp) return;
+  const newOpts = state.charOpts || {};
+  // Check if appearance actually changed
+  if (rp.charOpts && rp.charOpts.outfit === newOpts.outfit && rp.charOpts.dress === newOpts.dress &&
+      rp.charOpts.skinTone === newOpts.skinTone && rp.charOpts.hairStyle === newOpts.hairStyle &&
+      rp.charOpts.hairColor === newOpts.hairColor && rp.charOpts.accessory === newOpts.accessory &&
+      rp.charOpts.gender === newOpts.gender) return;
+  // Rebuild character with new appearance
+  const pos = rp.group.position.clone();
+  const rot = rp.group.rotation.y;
+  const tag = rp.nameTag;
+  rp.group.remove(tag);
+  scene.remove(rp.group);
+  rp.group.traverse(child => {
+    if (child.isMesh) {
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) { if (child.material.map) child.material.map.dispose(); child.material.dispose(); }
+    }
+  });
+  const newGroup = buildCharacter(newOpts);
+  newGroup.visible = true;
+  newGroup.position.copy(pos);
+  newGroup.rotation.y = rot;
+  tag.position.set(0, 2.2, 0);
+  newGroup.add(tag);
+  scene.add(newGroup);
+  rp.group = newGroup;
+  rp.charOpts = newOpts;
+  rp.lastUpdate = performance.now();
 }
 
 function mpRemovePlayer(id) {
@@ -19502,6 +19540,9 @@ document.addEventListener('mousemove', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
+  // Skip game hotkeys when typing in an input field
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   keys[e.code] = true;
   // Pepper mission input
   if (pepperMissionActive) {
@@ -19533,20 +19574,10 @@ document.addEventListener('keydown', (e) => {
   if (mirrorOpen) { closeMirror(); return; }
 });
 document.addEventListener('keyup', (e) => {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
   keys[e.code] = false;
   if (e.code === 'KeyF' && pepperMissionState) pepperMissionState.aiming = false;
-});
-
-// ═══ AUTO-SAVE ON CLOSE ═══
-window.addEventListener('beforeunload', () => {
-  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) {
-    writeSaveToSlot(currentSlot, currentSlotName);
-  }
-});
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) {
-    writeSaveToSlot(currentSlot, currentSlotName);
-  }
 });
 
 // ═══ MOBILE TOUCH CONTROLS ═══
@@ -21191,13 +21222,7 @@ function buyDress(idx) {
 
 function equipDress(idx) {
   charOpts.dress = idx;
-  const pos = character.position.clone();
-  const vis = character.visible;
-  scene.remove(character);
-  character = buildCharacter(charOpts);
-  character.position.copy(pos);
-  character.visible = vis;
-  scene.add(character);
+  rebuildPlayerCharacter();
   showTip('Wearing: ' + DRESSES[idx].name);
 }
 
@@ -21215,13 +21240,7 @@ function buyOutfit(idx) {
 function equipOutfit(idx) {
   charOpts.outfit = idx;
   charOpts.dress = -1; // take off dress when equipping outfit
-  const pos = character.position.clone();
-  const vis = character.visible;
-  scene.remove(character);
-  character = buildCharacter(charOpts);
-  character.position.copy(pos);
-  character.visible = vis;
-  scene.add(character);
+  rebuildPlayerCharacter();
   showTip('Wearing: ' + OUTFITS[idx].name);
 }
 
@@ -22781,6 +22800,7 @@ function buildSaveData() {
     gdPresImpeached,
     gdPresThrone,
     lastMysteryBoxDate,
+    savedAt: Date.now(),
   };
 }
 
@@ -22788,9 +22808,17 @@ function writeSaveToSlot(slotIndex, name) {
   try {
     const save = buildSaveData();
     const json = JSON.stringify(save);
-    localStorage.setItem('minilife-slot-' + slotIndex, json);
+    const slotKey = 'minilife-slot-' + slotIndex;
+    localStorage.setItem(slotKey, json);
+    // Read-back verification — confirm data actually persisted
+    const readBack = localStorage.getItem(slotKey);
+    if (!readBack) throw new Error('Write verification failed — data not found after save');
+    const verify = JSON.parse(readBack);
+    if (verify.day !== save.day || verify.money !== save.money || verify.savedAt !== save.savedAt) {
+      throw new Error('Write verification failed — data mismatch after save');
+    }
     const slots = getSlotsMetadata();
-    slots[slotIndex] = { name, day: save.day, money: save.money };
+    slots[slotIndex] = { name, day: save.day, money: save.money, savedAt: save.savedAt };
     setSlotsMetadata(slots);
     currentSlot = slotIndex;
     currentSlotName = name;
@@ -22850,8 +22878,24 @@ function renameSave() {
 
 function loadSlot(index) {
   const raw = localStorage.getItem('minilife-slot-' + index);
-  if (!raw) return;
-  const save = JSON.parse(raw);
+  if (!raw) {
+    showTip('Save data missing! Slot may be corrupted.');
+    // Clean up stale metadata
+    const slots = getSlotsMetadata();
+    slots[index] = null;
+    setSlotsMetadata(slots);
+    renderSlotList();
+    return;
+  }
+  let save;
+  try { save = JSON.parse(raw); } catch(e) {
+    showTip('Save data corrupted!');
+    return;
+  }
+  if (!save || !save.needs || !save.charOpts) {
+    showTip('Save data incomplete!');
+    return;
+  }
   const slots = getSlotsMetadata();
   currentSlot = index;
   currentSlotName = slots[index] ? slots[index].name : ('Save ' + (index + 1));

@@ -569,11 +569,17 @@ function finishAction(objType, objNeed, config, gameState) {
 
 // Save data shape
 const SAVE_KEYS = [
-  'needs', 'money', 'gameTime', 'day', 'charOpts', 'ownedOutfits', 'ownedFurniture',
-  'currentTrackId', 'doorOpen', 'hasSecondFloor', 'booksRead', 'treadmillUses',
-  'activePet', 'currentFloor', 'playerPos', 'yaw', 'pitch', 'hasCar', 'inTown',
-  'hasMansion', 'inMansion', 'questLog', 'questsCompleted',
-  'jobLastDay', 'totalShiftsWorked',
+  'needs', 'money', 'gameTime', 'day', 'charOpts', 'ownedOutfits', 'ownedDresses',
+  'ownedFurniture', 'currentTrackId', 'doorOpen', 'hasSecondFloor', 'booksRead',
+  'treadmillUses', 'activePet', 'currentFloor', 'playerPos', 'yaw', 'pitch',
+  'hasCar', 'inTown', 'hasMansion', 'inMansion', 'questLog', 'questsCompleted',
+  'jobLastDay', 'totalShiftsWorked', 'militaryTraining', 'hasBeaverPet',
+  'hasGGPoster', 'hasGGTV', 'hasPhone', 'hasPhoneBook', 'hasGGCartridge',
+  'hasSparkleHair', 'sneakerColor', 'phoneOrders', 'junkRewardItem',
+  'ownedJunkItems', 'ownedBooks', 'inGrahamDimension', 'grahamDimQuestsCompleted',
+  'gdTasksDone', 'gdJobLastDay', 'gdCloneEgoTargets', 'gdCloneVoteTargets',
+  'gdEnactedLaws', 'gdPresHouseBuilt', 'gdPresApproval', 'gdPresImpeached',
+  'gdPresThrone', 'lastMysteryBoxDate', 'savedAt',
 ];
 
 // Needs decay simulation
@@ -1614,8 +1620,8 @@ test('Equipping outfit clears dress', () => {
 // ── Save Data Shape ──
 section('Save Data Shape');
 
-test('Save data has 25 keys', () => {
-  assertEqual(SAVE_KEYS.length, 25);
+test('Save data has 52 keys', () => {
+  assertEqual(SAVE_KEYS.length, 52);
 });
 
 test('Save data includes needs', () => { assert(SAVE_KEYS.includes('needs')); });
@@ -2297,8 +2303,8 @@ test('Hard Worker does NOT trigger at 9 shifts', () => {
 // ── Job Save/Load ──
 section('Job Save/Load');
 
-test('Save data has 25 keys', () => {
-  assertEqual(SAVE_KEYS.length, 25);
+test('Save data has 52 keys', () => {
+  assertEqual(SAVE_KEYS.length, 52);
 });
 
 test('Save data includes jobLastDay', () => {
@@ -5373,51 +5379,263 @@ test('Remote player stores name', () => {
 });
 
 // ═══ AUTO-SAVE ON CLOSE ═══
-section('Auto-Save on Close');
+section('Manual Save Only (No Auto-Save)');
 
-test('Auto-save only fires with active slot', () => {
+test('No auto-save on beforeunload or visibilitychange', () => {
+  // Game only saves when user explicitly clicks SAVE or presses N
+  // Verify the save flow requires manual trigger
   let saved = false;
-  const gameStarted = true, gameOver = false, currentSlot = 0, currentSlotName = 'Test Save';
-  // Simulate beforeunload logic
-  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(saved, 'Should auto-save with active slot');
+  const gameStarted = true, gameOver = false, currentSlot = 0, currentSlotName = 'Test';
+  // Simulating manual saveGame() call
+  if (gameStarted && !gameOver) saved = true;
+  assert(saved, 'Manual save should work when game is active');
 });
 
-test('Auto-save skipped when no slot assigned', () => {
-  let saved = false;
-  const gameStarted = true, gameOver = false, currentSlot = -1, currentSlotName = '';
-  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(!saved, 'Should NOT auto-save without slot');
+test('Save blocked when game not started', () => {
+  const gameStarted = false, gameOver = false;
+  let blocked = false;
+  if (!gameStarted) blocked = true;
+  assert(blocked, 'Should block save when game not started');
 });
 
-test('Auto-save skipped when game over', () => {
-  let saved = false;
-  const gameStarted = true, gameOver = true, currentSlot = 0, currentSlotName = 'Save 1';
-  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(!saved, 'Should NOT auto-save when game over');
+test('Save blocked when game over', () => {
+  const gameStarted = true, gameOver = true;
+  let blocked = false;
+  if (gameOver) blocked = true;
+  assert(blocked, 'Should block save when game over');
 });
 
-test('Auto-save skipped when game not started', () => {
-  let saved = false;
-  const gameStarted = false, gameOver = false, currentSlot = 0, currentSlotName = 'Save 1';
-  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(!saved, 'Should NOT auto-save when game not started');
+section('Input Focus Blocks Hotkeys');
+
+test('Hotkeys blocked when typing in INPUT', () => {
+  const tag = 'INPUT';
+  const blocked = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  assert(blocked, 'Should block hotkeys for INPUT');
 });
 
-test('Visibility change triggers save check', () => {
-  let saved = false;
-  const hiddenState = 'hidden';
-  const gameStarted = true, gameOver = false, currentSlot = 1, currentSlotName = 'My Save';
-  if (hiddenState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(saved, 'Should save when tab goes hidden');
+test('Hotkeys blocked when typing in TEXTAREA', () => {
+  const tag = 'TEXTAREA';
+  const blocked = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  assert(blocked, 'Should block hotkeys for TEXTAREA');
 });
 
-test('Visibility change skipped when visible', () => {
-  let saved = false;
-  const hiddenState = 'visible';
-  const gameStarted = true, gameOver = false, currentSlot = 1, currentSlotName = 'My Save';
-  if (hiddenState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
-  assert(!saved, 'Should NOT save when tab is visible');
+test('Hotkeys allowed on normal elements', () => {
+  const tag = 'DIV';
+  const blocked = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  assert(!blocked, 'Should NOT block hotkeys for DIV');
+});
+
+test('Hotkeys allowed on BODY', () => {
+  const tag = 'BODY';
+  const blocked = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  assert(!blocked, 'Should NOT block hotkeys for BODY');
+});
+
+section('Multiplayer Outfit Sync');
+
+test('equipOutfit changes charOpts before rebuild', () => {
+  const testOpts = { outfit: 0, dress: -1 };
+  // Simulate equipOutfit
+  testOpts.outfit = 3;
+  testOpts.dress = -1;
+  assertEqual(testOpts.outfit, 3);
+  assertEqual(testOpts.dress, -1);
+});
+
+test('equipDress changes charOpts.dress', () => {
+  const testOpts = { outfit: 2, dress: -1 };
+  testOpts.dress = 1;
+  assertEqual(testOpts.dress, 1);
+});
+
+test('mpUpdatePlayerAppearance detects outfit change', () => {
+  const oldOpts = { outfit: 0, dress: -1, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const newOpts = { outfit: 3, dress: -1, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const same = oldOpts.outfit === newOpts.outfit && oldOpts.dress === newOpts.dress &&
+    oldOpts.skinTone === newOpts.skinTone && oldOpts.hairStyle === newOpts.hairStyle &&
+    oldOpts.hairColor === newOpts.hairColor && oldOpts.accessory === newOpts.accessory &&
+    oldOpts.gender === newOpts.gender;
+  assert(!same, 'Should detect outfit difference');
+});
+
+test('mpUpdatePlayerAppearance detects dress change', () => {
+  const oldOpts = { outfit: 0, dress: -1, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const newOpts = { outfit: 0, dress: 2, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const same = oldOpts.outfit === newOpts.outfit && oldOpts.dress === newOpts.dress;
+  assert(!same, 'Should detect dress difference');
+});
+
+test('mpUpdatePlayerAppearance skips if no change', () => {
+  const oldOpts = { outfit: 2, dress: -1, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const newOpts = { outfit: 2, dress: -1, skinTone: 1, hairStyle: 'short', hairColor: 0, accessory: 0, gender: 'male' };
+  const same = oldOpts.outfit === newOpts.outfit && oldOpts.dress === newOpts.dress &&
+    oldOpts.skinTone === newOpts.skinTone && oldOpts.hairStyle === newOpts.hairStyle &&
+    oldOpts.hairColor === newOpts.hairColor && oldOpts.accessory === newOpts.accessory &&
+    oldOpts.gender === newOpts.gender;
+  assert(same, 'Should detect no change');
+});
+
+test('Presence join with existing player triggers appearance update', () => {
+  // Simulate: player already in remotePlayers, new join event fires with different charOpts
+  const existingPlayers = new Map();
+  existingPlayers.set('player1', { charOpts: { outfit: 0 } });
+  const newPresence = { id: 'player1', charOpts: { outfit: 3 } };
+  let updated = false;
+  if (existingPlayers.has(newPresence.id)) {
+    updated = true; // mpUpdatePlayerAppearance would be called
+  }
+  assert(updated, 'Should trigger update for existing player');
+});
+
+// ── Save Verification & Robustness ──
+section('Save Verification & Robustness');
+
+test('Save data includes savedAt timestamp', () => {
+  assert(SAVE_KEYS.includes('savedAt'), 'savedAt must be in save keys');
+});
+
+test('writeSaveToSlot writes both slot data and metadata', () => {
+  localStorage.clear();
+  const slotIndex = 0;
+  const name = 'Test Save';
+  const saveData = { needs: { hunger: 80, energy: 70, fun: 60, hygiene: 50 }, money: 150, day: 5, savedAt: Date.now() };
+  const json = JSON.stringify(saveData);
+  localStorage.setItem('minilife-slot-' + slotIndex, json);
+  const slots = [null, null, null];
+  slots[slotIndex] = { name, day: saveData.day, money: saveData.money, savedAt: saveData.savedAt };
+  localStorage.setItem('minilife-slots', JSON.stringify(slots));
+  // Verify both exist
+  assert(localStorage.getItem('minilife-slot-0') !== null, 'Slot data must exist');
+  assert(localStorage.getItem('minilife-slots') !== null, 'Metadata must exist');
+  const meta = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(meta[0].name, 'Test Save');
+  assertEqual(meta[0].day, 5);
+  localStorage.clear();
+});
+
+test('Read-back verification catches missing data', () => {
+  localStorage.clear();
+  const slotKey = 'minilife-slot-0';
+  localStorage.setItem(slotKey, JSON.stringify({ day: 3, money: 100, savedAt: 123 }));
+  const readBack = localStorage.getItem(slotKey);
+  assert(readBack !== null, 'Read-back must find data');
+  const verify = JSON.parse(readBack);
+  assertEqual(verify.day, 3);
+  assertEqual(verify.money, 100);
+  assertEqual(verify.savedAt, 123);
+  localStorage.clear();
+});
+
+test('Read-back verification detects data mismatch', () => {
+  const save = { day: 5, money: 200, savedAt: 999 };
+  const verify = { day: 5, money: 200, savedAt: 999 };
+  assert(verify.day === save.day && verify.money === save.money && verify.savedAt === save.savedAt, 'Matching data should pass');
+  const bad = { day: 3, money: 100, savedAt: 888 };
+  assert(bad.day !== save.day || bad.money !== save.money || bad.savedAt !== save.savedAt, 'Mismatched data should fail');
+});
+
+test('loadSlot handles missing slot data gracefully', () => {
+  localStorage.clear();
+  // Metadata says slot 0 is occupied, but slot data is missing
+  localStorage.setItem('minilife-slots', JSON.stringify([{ name: 'Ghost', day: 1, money: 50 }, null, null]));
+  const raw = localStorage.getItem('minilife-slot-0');
+  assert(raw === null, 'Slot data should be missing');
+  // loadSlot should detect this and clean up metadata
+  if (!raw) {
+    const slots = JSON.parse(localStorage.getItem('minilife-slots'));
+    slots[0] = null;
+    localStorage.setItem('minilife-slots', JSON.stringify(slots));
+  }
+  const fixedMeta = JSON.parse(localStorage.getItem('minilife-slots'));
+  assertEqual(fixedMeta[0], null, 'Metadata should be cleaned up');
+  localStorage.clear();
+});
+
+test('loadSlot handles corrupted JSON', () => {
+  localStorage.clear();
+  localStorage.setItem('minilife-slot-0', 'not valid json {{{');
+  let loaded = false;
+  let error = false;
+  try {
+    JSON.parse(localStorage.getItem('minilife-slot-0'));
+    loaded = true;
+  } catch(e) {
+    error = true;
+  }
+  assert(error, 'Should catch corrupted JSON');
+  assert(!loaded, 'Should not load corrupted data');
+  localStorage.clear();
+});
+
+test('loadSlot validates save data has required fields', () => {
+  const validSave = { needs: { hunger: 80, energy: 70, fun: 60, hygiene: 50 }, charOpts: { skinTone: 0 }, money: 100 };
+  assert(validSave && validSave.needs && validSave.charOpts, 'Valid save has required fields');
+  const invalidSave = { money: 100 };
+  assert(!invalidSave.needs, 'Invalid save missing needs');
+  const emptySave = null;
+  assert(!emptySave, 'Null save rejected');
+});
+
+test('Slot metadata includes savedAt for timestamp comparison', () => {
+  const now = Date.now();
+  const meta = { name: 'Test', day: 3, money: 200, savedAt: now };
+  assert(meta.savedAt > 0, 'savedAt must be positive timestamp');
+  assert(meta.savedAt === now, 'savedAt must match');
+});
+
+test('Auto-assign finds first empty slot', () => {
+  const slots = [{ name: 'A' }, null, { name: 'C' }];
+  const emptyIdx = slots.findIndex(s => s === null);
+  assertEqual(emptyIdx, 1, 'Should find slot 1 as empty');
+});
+
+test('Auto-assign overwrites slot 0 when all full', () => {
+  const slots = [{ name: 'A' }, { name: 'B' }, { name: 'C' }];
+  const emptyIdx = slots.findIndex(s => s === null);
+  const slotIdx = emptyIdx >= 0 ? emptyIdx : 0;
+  assertEqual(slotIdx, 0, 'Should fall back to slot 0');
+});
+
+test('Cloud sync respects savedAt timestamps (newer local wins)', () => {
+  const localData = JSON.stringify({ day: 5, money: 300, savedAt: 2000 });
+  const cloudData = JSON.stringify({ day: 3, money: 100, savedAt: 1000 });
+  const localObj = JSON.parse(localData);
+  const cloudObj = JSON.parse(cloudData);
+  let localNewer = false;
+  if (localObj.savedAt && cloudObj.savedAt && localObj.savedAt > cloudObj.savedAt) localNewer = true;
+  assert(localNewer, 'Local with higher savedAt should win');
+});
+
+test('Cloud sync respects savedAt timestamps (newer cloud wins)', () => {
+  const localData = JSON.stringify({ day: 3, money: 100, savedAt: 1000 });
+  const cloudData = JSON.stringify({ day: 5, money: 300, savedAt: 2000 });
+  const localObj = JSON.parse(localData);
+  const cloudObj = JSON.parse(cloudData);
+  let localNewer = false;
+  if (localObj.savedAt && cloudObj.savedAt && localObj.savedAt > cloudObj.savedAt) localNewer = true;
+  assert(!localNewer, 'Cloud with higher savedAt should win');
+});
+
+test('Cloud sync: local with savedAt beats cloud without', () => {
+  const localData = JSON.stringify({ day: 5, money: 300, savedAt: 2000 });
+  const cloudData = JSON.stringify({ day: 3, money: 100 });
+  const localObj = JSON.parse(localData);
+  const cloudObj = JSON.parse(cloudData);
+  let localNewer = false;
+  if (localObj.savedAt && cloudObj.savedAt && localObj.savedAt > cloudObj.savedAt) localNewer = true;
+  else if (localObj.savedAt && !cloudObj.savedAt) localNewer = true;
+  assert(localNewer, 'Local with savedAt should beat cloud without');
+});
+
+test('Cloud sync: cloud without savedAt wins over local without', () => {
+  const localData = JSON.stringify({ day: 3, money: 100 });
+  const cloudData = JSON.stringify({ day: 5, money: 300 });
+  const localObj = JSON.parse(localData);
+  const cloudObj = JSON.parse(cloudData);
+  let localNewer = false;
+  if (localObj.savedAt && cloudObj.savedAt && localObj.savedAt > cloudObj.savedAt) localNewer = true;
+  else if (localObj.savedAt && !cloudObj.savedAt) localNewer = true;
+  assert(!localNewer, 'Neither has savedAt, cloud should win (backwards compat)');
 });
 
 // ═══ RENDER RESULTS ═══

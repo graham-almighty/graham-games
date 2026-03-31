@@ -274,14 +274,30 @@ async function _pullCloudData(userId) {
     }).eq('user_id', userId);
   }
 
-  // Merge game saves: cloud wins for keys that exist on cloud,
-  // local keys not on cloud get uploaded
+  // Merge game saves: compare timestamps, newest wins
   const { data: cloudSaves } = await sb.from('game_saves').select('save_key, data').eq('user_id', userId);
   const cloudSaveMap = {};
+  const uploadRows = [];
   if (cloudSaves) {
     for (const s of cloudSaves) {
       cloudSaveMap[s.save_key] = s.data;
-      _origSetItem(s.save_key, s.data);
+      const localVal = localStorage.getItem(s.save_key);
+      // Compare savedAt timestamps if available — newest wins
+      let localNewer = false;
+      if (localVal) {
+        try {
+          const localObj = JSON.parse(localVal);
+          const cloudObj = JSON.parse(s.data);
+          if (localObj.savedAt && cloudObj.savedAt && localObj.savedAt > cloudObj.savedAt) localNewer = true;
+          else if (localObj.savedAt && !cloudObj.savedAt) localNewer = true;
+        } catch(e) {}
+      }
+      if (localNewer) {
+        // Local is newer — upload to cloud instead of overwriting
+        uploadRows.push({ user_id: userId, save_key: s.save_key, data: localVal });
+      } else {
+        _origSetItem(s.save_key, s.data);
+      }
     }
   }
 
@@ -293,8 +309,9 @@ async function _pullCloudData(userId) {
       localOnlyRows.push({ user_id: userId, save_key: key, data: localVal });
     }
   }
-  if (localOnlyRows.length > 0) {
-    await sb.from('game_saves').upsert(localOnlyRows, { onConflict: 'user_id,save_key' });
+  const allUploads = [...localOnlyRows, ...uploadRows];
+  if (allUploads.length > 0) {
+    await sb.from('game_saves').upsert(allUploads, { onConflict: 'user_id,save_key' });
   }
 
   return { localUploaded: localOnlyRows.length > 0 || localAddedAch || localAddedShop };
