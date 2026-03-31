@@ -419,7 +419,7 @@
     position: fixed;
     top: 12px;
     right: 12px;
-    z-index: 10;
+    z-index: 30;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -1270,9 +1270,39 @@
   <div class="hud-pill shop-btn" id="save-btn" onclick="saveGame()">&#128190; SAVE</div>
   <div class="hud-pill shop-btn" onclick="renameSave()">&#9998; NAME</div>
   <div class="hud-pill shop-btn" onclick="toggleLeaderboard()">&#127942; TOP $</div>
+  <div class="hud-pill shop-btn" onclick="toggleMultiplayerPanel()">&#127760; ONLINE</div>
 </div>
 
 <div class="save-toast" id="save-toast">Game saved!</div>
+
+<!-- Multiplayer Panel -->
+<div id="mp-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:400;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="background:#1a1a2e;border:2px solid #c9a84c;border-radius:12px;padding:24px 32px;min-width:340px;max-width:420px;color:#eee;font-family:'Segoe UI',sans-serif;text-align:center;">
+    <h2 style="color:#c9a84c;margin:0 0 16px;font-size:22px;">&#127760; Multiplayer</h2>
+    <div id="mp-status" style="margin-bottom:12px;font-size:14px;color:#aaa;">Hosting your own server</div>
+    <div style="background:#0a0a1a;border-radius:8px;padding:12px;margin-bottom:16px;">
+      <div style="font-size:12px;color:#888;margin-bottom:4px;">YOUR SERVER CODE</div>
+      <div id="mp-room-code" style="font-size:32px;font-weight:bold;letter-spacing:6px;color:#c9a84c;font-family:monospace;"></div>
+      <button onclick="mpCopyCode()" style="margin-top:8px;background:#c9a84c;color:#0a0a0f;border:none;border-radius:6px;padding:6px 16px;cursor:pointer;font-weight:bold;font-size:13px;">COPY CODE</button>
+    </div>
+    <div style="margin-bottom:16px;">
+      <div style="font-size:12px;color:#888;margin-bottom:4px;">JOIN A FRIEND'S SERVER</div>
+      <div style="display:flex;gap:8px;justify-content:center;">
+        <input id="mp-join-input" type="text" maxlength="6" placeholder="XXXXXX" style="width:120px;text-align:center;font-size:20px;font-family:monospace;letter-spacing:4px;padding:8px;border:2px solid #333;border-radius:6px;background:#0a0a1a;color:#eee;text-transform:uppercase;">
+        <button onclick="mpJoinByCode()" style="background:#4caf50;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:bold;font-size:14px;">JOIN</button>
+      </div>
+      <div id="mp-join-error" style="color:#ff5555;font-size:12px;margin-top:4px;min-height:16px;"></div>
+    </div>
+    <div id="mp-players-section" style="margin-bottom:16px;text-align:left;">
+      <div style="font-size:12px;color:#888;margin-bottom:6px;">PLAYERS IN SERVER</div>
+      <div id="mp-player-list" style="background:#0a0a1a;border-radius:6px;padding:8px;min-height:30px;max-height:120px;overflow-y:auto;"></div>
+    </div>
+    <div id="mp-visit-controls" style="display:none;margin-bottom:12px;">
+      <button onclick="mpLeaveVisit()" style="background:#ff5555;color:#fff;border:none;border-radius:6px;padding:8px 20px;cursor:pointer;font-weight:bold;font-size:14px;">&#x1F3E0; BACK TO MY SERVER</button>
+    </div>
+    <button onclick="toggleMultiplayerPanel()" style="background:#333;color:#eee;border:none;border-radius:6px;padding:8px 24px;cursor:pointer;font-size:14px;">CLOSE</button>
+  </div>
+</div>
 
 <div class="name-prompt-overlay" id="name-prompt-overlay">
   <div class="name-prompt-panel">
@@ -4072,7 +4102,7 @@ function rebuildPlayerCharacter() {
   // Update multiplayer appearance
   if (mpChannel) {
     mpChannel.track({
-      id: mpPlayerId, name: mpGamerName,
+      id: mpPlayerId, name: mpGamerName, room: mpMyRoomCode,
       charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
         hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
     });
@@ -19123,7 +19153,7 @@ ACCESSORIES.forEach((acc, i) => {
   accContainer.appendChild(btn);
 });
 
-// ═══ REAL-TIME MULTIPLAYER (Supabase Realtime) ═══
+// ═══ REAL-TIME MULTIPLAYER (Private Servers + Invites) ═══
 const MP_URL = 'https://ibfjkctnklcgyfmjjivv.supabase.co';
 const MP_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZmprY3Rua2xjZ3lmbWpqaXZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTM0MjYsImV4cCI6MjA5MDM4OTQyNn0.ZSaIOTJ_io3BJ0ra8r0g8EaQ_zFLD-K9fFVDhR9SRJQ';
 let mpClient = null;
@@ -19133,12 +19163,29 @@ const mpPlayerId = crypto.randomUUID();
 let mpGamerName = 'Player ' + Math.floor(Math.random() * 9000 + 1000);
 const remotePlayers = new Map();
 
+// Private server system — each player gets a persistent room code
+function mpGenerateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid confusion
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// Load or create persistent room code
+let mpMyRoomCode = localStorage.getItem('minilife-room-code');
+if (!mpMyRoomCode) {
+  mpMyRoomCode = mpGenerateRoomCode();
+  localStorage.setItem('minilife-room-code', mpMyRoomCode);
+}
+let mpCurrentRoom = mpMyRoomCode; // which room we're in (own or visiting)
+let mpIsVisiting = false;         // true when in someone else's server
+let mpPanelOpen = false;
+
 function mpInit() {
   if (mpClient) return;
   try {
     if (typeof supabase !== 'undefined') {
       mpClient = supabase.createClient(MP_URL, MP_KEY);
-      // Use gamer name from auth if available
       const authData = localStorage.getItem('gg-auth-session');
       if (authData) {
         try { const a = JSON.parse(authData); if (a.gamerName) mpGamerName = a.gamerName; } catch(e) {}
@@ -19154,24 +19201,32 @@ function mpGetLocationKey() {
   return 'home';
 }
 
+// Channel name scoped to room: "minilife:{roomCode}:{location}"
+function mpGetChannelName(locKey) {
+  return 'minilife:' + mpCurrentRoom + ':' + locKey;
+}
+
 function mpJoinLocation(locKey) {
   if (!mpClient) return;
   mpLeaveLocation();
-  mpChannel = mpClient.channel('minilife:' + locKey, { config: { presence: { key: mpPlayerId } } });
+  const channelName = mpGetChannelName(locKey);
+  mpChannel = mpClient.channel(channelName, { config: { presence: { key: mpPlayerId } } });
 
   // Presence: players joining/leaving
   mpChannel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
     newPresences.forEach(p => { if (p.id !== mpPlayerId) mpAddPlayer(p); });
+    mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
     leftPresences.forEach(p => mpRemovePlayer(p.id));
+    mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'sync' }, () => {
     const state = mpChannel.presenceState();
-    // Add any players we don't have yet
     Object.values(state).forEach(arr => {
       arr.forEach(p => { if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p); });
     });
+    mpUpdatePlayerList();
   });
 
   // Broadcast: position updates
@@ -19190,6 +19245,7 @@ function mpJoinLocation(locKey) {
       await mpChannel.track({
         id: mpPlayerId,
         name: mpGamerName,
+        room: mpMyRoomCode,
         charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
           hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
       });
@@ -19203,9 +19259,90 @@ function mpLeaveLocation() {
     mpClient.removeChannel(mpChannel);
     mpChannel = null;
   }
-  // Remove all remote player meshes
   remotePlayers.forEach((rp, id) => mpRemovePlayer(id));
   remotePlayers.clear();
+}
+
+// Join a friend's server by room code
+function mpJoinByCode() {
+  const input = document.getElementById('mp-join-input');
+  const errorEl = document.getElementById('mp-join-error');
+  const code = input.value.trim().toUpperCase();
+  if (!code || code.length !== 6) {
+    errorEl.textContent = 'Enter a 6-character code';
+    return;
+  }
+  if (code === mpMyRoomCode) {
+    errorEl.textContent = "That's your own code!";
+    return;
+  }
+  if (code === mpCurrentRoom) {
+    errorEl.textContent = "You're already in that server!";
+    return;
+  }
+  errorEl.textContent = '';
+  mpCurrentRoom = code;
+  mpIsVisiting = true;
+  mpJoinLocation(mpGetLocationKey());
+  mpUpdatePanelUI();
+  showTip('Joined server ' + code);
+}
+
+// Leave visited server, return to own
+function mpLeaveVisit() {
+  if (!mpIsVisiting) return;
+  mpCurrentRoom = mpMyRoomCode;
+  mpIsVisiting = false;
+  mpJoinLocation(mpGetLocationKey());
+  mpUpdatePanelUI();
+  showTip('Back to your server');
+}
+
+// Copy room code to clipboard
+function mpCopyCode() {
+  navigator.clipboard.writeText(mpMyRoomCode).then(() => showTip('Code copied!')).catch(() => showTip(mpMyRoomCode));
+}
+
+// Toggle multiplayer panel
+function toggleMultiplayerPanel() {
+  mpPanelOpen = !mpPanelOpen;
+  const el = document.getElementById('mp-overlay');
+  if (mpPanelOpen) {
+    el.style.display = 'flex';
+    if (document.pointerLockElement) document.exitPointerLock();
+    mpUpdatePanelUI();
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// Update panel UI state
+function mpUpdatePanelUI() {
+  document.getElementById('mp-room-code').textContent = mpMyRoomCode;
+  const statusEl = document.getElementById('mp-status');
+  const visitEl = document.getElementById('mp-visit-controls');
+  if (mpIsVisiting) {
+    statusEl.textContent = 'Visiting server: ' + mpCurrentRoom;
+    statusEl.style.color = '#4caf50';
+    visitEl.style.display = '';
+  } else {
+    statusEl.textContent = 'Hosting your own server';
+    statusEl.style.color = '#aaa';
+    visitEl.style.display = 'none';
+  }
+  mpUpdatePlayerList();
+}
+
+// Update player list in panel
+function mpUpdatePlayerList() {
+  const listEl = document.getElementById('mp-player-list');
+  if (!listEl) return;
+  let html = '<div style="color:#c9a84c;font-size:13px;padding:2px 4px;">&#128081; ' + mpGamerName + ' (you)</div>';
+  remotePlayers.forEach((rp, id) => {
+    const name = rp.playerName || 'Player';
+    html += '<div style="color:#eee;font-size:13px;padding:2px 4px;">&#128100; ' + name + '</div>';
+  });
+  listEl.innerHTML = html;
 }
 
 function mpAddPlayer(state) {
@@ -19231,6 +19368,7 @@ function mpAddPlayer(state) {
 
   remotePlayers.set(state.id, {
     group, nameTag: tag,
+    playerName: state.name || 'Player',
     targetPos: new THREE.Vector3(0, 0.15, 0),
     targetYaw: 0,
     lastUpdate: performance.now()
@@ -19273,16 +19411,12 @@ function mpUpdateRemotePlayers(dt) {
   const lerpSpeed = 8;
   const now = performance.now();
   remotePlayers.forEach((rp, id) => {
-    // Smooth position interpolation
     rp.group.position.lerp(rp.targetPos, Math.min(1, lerpSpeed * dt));
-    // Smooth yaw interpolation
     let yawDiff = rp.targetYaw - rp.group.rotation.y;
     while (yawDiff > Math.PI) yawDiff -= 2 * Math.PI;
     while (yawDiff < -Math.PI) yawDiff += 2 * Math.PI;
     rp.group.rotation.y += yawDiff * Math.min(1, lerpSpeed * dt);
-    // Billboard name tag toward camera
     if (rp.nameTag) rp.nameTag.lookAt(camera.position);
-    // Remove stale players (no update in 8 seconds)
     if (now - rp.lastUpdate > 8000) mpRemovePlayer(id);
   });
 }
@@ -19394,12 +19528,25 @@ document.addEventListener('keydown', (e) => {
     petStay = !petStay;
     showTip(petStay ? 'Stay!' : 'Come!');
   }
-  if (e.code === 'KeyN' && gameStarted && !gameOver && !currentAction) saveGame();
+  if (e.code === 'KeyN' && gameStarted && !gameOver) saveGame();
+  if (e.code === 'KeyM' && gameStarted && !gameOver && !currentAction) toggleMultiplayerPanel();
   if (mirrorOpen) { closeMirror(); return; }
 });
 document.addEventListener('keyup', (e) => {
   keys[e.code] = false;
   if (e.code === 'KeyF' && pepperMissionState) pepperMissionState.aiming = false;
+});
+
+// ═══ AUTO-SAVE ON CLOSE ═══
+window.addEventListener('beforeunload', () => {
+  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) {
+    writeSaveToSlot(currentSlot, currentSlotName);
+  }
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) {
+    writeSaveToSlot(currentSlot, currentSlotName);
+  }
 });
 
 // ═══ MOBILE TOUCH CONTROLS ═══
@@ -20815,6 +20962,7 @@ function toggleShop() {
   shopOpen = !shopOpen;
   petMenuOpen = false;
   leaderboardOpen = false;
+  if (mpPanelOpen) { mpPanelOpen = false; document.getElementById('mp-overlay').style.display = 'none'; }
   document.getElementById('pet-menu-overlay').classList.remove('visible');
   document.getElementById('leaderboard-overlay').classList.remove('visible');
   const overlay = document.getElementById('shop-overlay');
@@ -22457,6 +22605,10 @@ function restartGame() {
   currentSlotName = '';
   npcDialogueOpen = false;
   mpLeaveLocation();
+  mpCurrentRoom = mpMyRoomCode;
+  mpIsVisiting = false;
+  mpPanelOpen = false;
+  document.getElementById('mp-overlay').style.display = 'none';
   currentNPCId = null;
   // Reset Pepper Mission state
   if (pepperMissionActive) endPepperMission();
@@ -22555,6 +22707,7 @@ function renderSlotList() {
   });
 }
 
+
 function promptSaveName(callback) {
   if (document.pointerLockElement) document.exitPointerLock();
   const overlay = document.getElementById('name-prompt-overlay');
@@ -22642,19 +22795,30 @@ function writeSaveToSlot(slotIndex, name) {
     currentSlot = slotIndex;
     currentSlotName = name;
     updateLeaderboard(name, save.money, save.day);
-    SFX.kaChing();
+    // Show toast BEFORE SFX so a sound error can't block feedback
     const toast = document.getElementById('save-toast');
     toast.textContent = 'Saved! (Day ' + save.day + ', $' + Math.floor(save.money) + ')';
     toast.classList.add('visible');
     setTimeout(() => toast.classList.remove('visible'), 2000);
+    try { SFX.kaChing(); } catch(sfxErr) {}
   } catch (e) {
-    showTip('SAVE FAILED: ' + e.message);
+    // Show error via both methods in case one fails
+    try { showTip('SAVE FAILED: ' + e.message); } catch(tipErr) {}
+    const toast = document.getElementById('save-toast');
+    if (toast) {
+      toast.textContent = 'SAVE FAILED!';
+      toast.style.borderColor = '#ff4444';
+      toast.style.color = '#ff4444';
+      toast.classList.add('visible');
+      setTimeout(() => { toast.classList.remove('visible'); toast.style.borderColor = ''; toast.style.color = ''; }, 3000);
+    }
     console.error('Save failed:', e);
   }
 }
 
 function saveGame() {
-  if (!gameStarted || gameOver || pepperMissionActive) return;
+  if (!gameStarted) { showTip('Start a game first!'); return; }
+  if (gameOver) { showTip('Cannot save — game over'); return; }
   if (currentSlot >= 0 && currentSlotName) {
     // Already have a slot — just save directly
     writeSaveToSlot(currentSlot, currentSlotName);

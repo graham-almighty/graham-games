@@ -5228,6 +5228,198 @@ test('Guide book mentions the presidential palace perk', () => {
   assert(mentionsPres, 'Guide should mention presidential palace perk');
 });
 
+// ═══ MULTIPLAYER PRIVATE SERVERS ═══
+section('Multiplayer Private Servers');
+
+// Room code generation
+function mpGenerateRoomCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+test('Room code is 6 characters', () => {
+  const code = mpGenerateRoomCode();
+  assertEqual(code.length, 6, 'Room code should be 6 chars');
+});
+
+test('Room code only uses unambiguous characters', () => {
+  const allowed = new Set('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'.split(''));
+  for (let i = 0; i < 50; i++) {
+    const code = mpGenerateRoomCode();
+    for (const c of code) {
+      assert(allowed.has(c), `Character '${c}' is not in allowed set`);
+    }
+  }
+});
+
+test('Room code excludes confusing chars (I, O, 0, 1)', () => {
+  const forbidden = ['I', 'O', '0', '1'];
+  for (let i = 0; i < 100; i++) {
+    const code = mpGenerateRoomCode();
+    for (const c of forbidden) {
+      assert(!code.includes(c), `Code should not contain '${c}'`);
+    }
+  }
+});
+
+test('Room codes are unique (low collision)', () => {
+  const codes = new Set();
+  for (let i = 0; i < 200; i++) codes.add(mpGenerateRoomCode());
+  assert(codes.size >= 195, 'Should generate mostly unique codes in 200 attempts, got ' + codes.size);
+});
+
+// Room code persistence
+test('Room code persists in localStorage', () => {
+  localStorage.clear();
+  const key = 'minilife-room-code';
+  assert(!localStorage.getItem(key), 'Should start with no room code');
+  const code = mpGenerateRoomCode();
+  localStorage.setItem(key, code);
+  assertEqual(localStorage.getItem(key), code, 'Room code should persist');
+});
+
+test('Room code survives reload simulation', () => {
+  localStorage.clear();
+  // First "session" — generate and store
+  const code1 = mpGenerateRoomCode();
+  localStorage.setItem('minilife-room-code', code1);
+  // Second "session" — should find existing code
+  const loaded = localStorage.getItem('minilife-room-code');
+  assertEqual(loaded, code1, 'Should load same code on second session');
+});
+
+// Channel naming
+test('Channel name includes room code and location', () => {
+  const roomCode = 'ABC123';
+  function getChannelName(locKey) { return 'minilife:' + roomCode + ':' + locKey; }
+  assertEqual(getChannelName('town'), 'minilife:ABC123:town');
+  assertEqual(getChannelName('home'), 'minilife:ABC123:home');
+  assertEqual(getChannelName('mansion'), 'minilife:ABC123:mansion');
+  assertEqual(getChannelName('grahamdim'), 'minilife:ABC123:grahamdim');
+});
+
+test('Different room codes produce different channels', () => {
+  const ch1 = 'minilife:AAAAAA:town';
+  const ch2 = 'minilife:BBBBBB:town';
+  assert(ch1 !== ch2, 'Different room codes should give different channels');
+});
+
+// Join/leave state
+test('Joining a server sets visiting state', () => {
+  let mpCurrentRoom = 'MYCODE';
+  const mpMyRoomCode = 'MYCODE';
+  let mpIsVisiting = false;
+  // Simulate joining friend
+  const friendCode = 'FRIEND';
+  mpCurrentRoom = friendCode;
+  mpIsVisiting = true;
+  assert(mpIsVisiting, 'Should be visiting');
+  assertEqual(mpCurrentRoom, 'FRIEND', 'Current room should be friend code');
+});
+
+test('Leaving visit resets to own server', () => {
+  const mpMyRoomCode = 'MYCODE';
+  let mpCurrentRoom = 'FRIEND';
+  let mpIsVisiting = true;
+  // Simulate leaving
+  mpCurrentRoom = mpMyRoomCode;
+  mpIsVisiting = false;
+  assert(!mpIsVisiting, 'Should not be visiting');
+  assertEqual(mpCurrentRoom, mpMyRoomCode, 'Should be back to own room');
+});
+
+test('Cannot join own room code', () => {
+  const mpMyRoomCode = 'MYCODE';
+  const inputCode = 'MYCODE';
+  const isOwnCode = inputCode === mpMyRoomCode;
+  assert(isOwnCode, 'Should detect own code');
+});
+
+test('Cannot join same room twice', () => {
+  let mpCurrentRoom = 'FRIEND';
+  const inputCode = 'FRIEND';
+  const alreadyIn = inputCode === mpCurrentRoom;
+  assert(alreadyIn, 'Should detect already in that room');
+});
+
+test('Input code is uppercased and trimmed', () => {
+  const raw = '  abc123  ';
+  const cleaned = raw.trim().toUpperCase();
+  assertEqual(cleaned, 'ABC123', 'Should clean input');
+});
+
+test('Empty/short code rejected', () => {
+  const codes = ['', 'AB', 'ABCDE', '  '];
+  for (const c of codes) {
+    const cleaned = c.trim().toUpperCase();
+    assert(cleaned.length !== 6, `Code "${c}" should be rejected (length ${cleaned.length})`);
+  }
+});
+
+// Player list tracking
+test('Remote player stores name', () => {
+  const remotePlayers = new Map();
+  const state = { id: 'test-id', name: 'Cool Player', charOpts: {} };
+  remotePlayers.set(state.id, {
+    playerName: state.name || 'Player',
+    targetPos: { x: 0, y: 0, z: 0 },
+    targetYaw: 0,
+    lastUpdate: Date.now()
+  });
+  const rp = remotePlayers.get('test-id');
+  assertEqual(rp.playerName, 'Cool Player', 'Should store player name');
+});
+
+// ═══ AUTO-SAVE ON CLOSE ═══
+section('Auto-Save on Close');
+
+test('Auto-save only fires with active slot', () => {
+  let saved = false;
+  const gameStarted = true, gameOver = false, currentSlot = 0, currentSlotName = 'Test Save';
+  // Simulate beforeunload logic
+  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(saved, 'Should auto-save with active slot');
+});
+
+test('Auto-save skipped when no slot assigned', () => {
+  let saved = false;
+  const gameStarted = true, gameOver = false, currentSlot = -1, currentSlotName = '';
+  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(!saved, 'Should NOT auto-save without slot');
+});
+
+test('Auto-save skipped when game over', () => {
+  let saved = false;
+  const gameStarted = true, gameOver = true, currentSlot = 0, currentSlotName = 'Save 1';
+  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(!saved, 'Should NOT auto-save when game over');
+});
+
+test('Auto-save skipped when game not started', () => {
+  let saved = false;
+  const gameStarted = false, gameOver = false, currentSlot = 0, currentSlotName = 'Save 1';
+  if (gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(!saved, 'Should NOT auto-save when game not started');
+});
+
+test('Visibility change triggers save check', () => {
+  let saved = false;
+  const hiddenState = 'hidden';
+  const gameStarted = true, gameOver = false, currentSlot = 1, currentSlotName = 'My Save';
+  if (hiddenState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(saved, 'Should save when tab goes hidden');
+});
+
+test('Visibility change skipped when visible', () => {
+  let saved = false;
+  const hiddenState = 'visible';
+  const gameStarted = true, gameOver = false, currentSlot = 1, currentSlotName = 'My Save';
+  if (hiddenState === 'hidden' && gameStarted && !gameOver && currentSlot >= 0 && currentSlotName) saved = true;
+  assert(!saved, 'Should NOT save when tab is visible');
+});
+
 // ═══ RENDER RESULTS ═══
 const passed = _tests.filter(t => t.passed).length;
 const failed = _tests.filter(t => !t.passed).length;

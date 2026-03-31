@@ -154,23 +154,28 @@
   }
   #category-tabs {
     display: flex;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px;
     padding: 8px;
     border-bottom: 1px solid #ff69b444;
   }
   .cat-tab {
-    flex: 1;
-    padding: 10px 4px;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 2px;
     background: #ffffff08;
     border: 1px solid #555;
     border-radius: 4px;
     color: #888;
     font-family: 'Cinzel', serif;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     cursor: pointer;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     transition: all 0.2s;
     text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .cat-tab:hover { color: #ff69b4; border-color: #ff69b4; }
   .cat-tab.active {
@@ -1127,8 +1132,8 @@ const CATEGORIES = [
   { key: 'hat',       name: 'Hats',        items: HATS },
   { key: 'top',       name: 'Tops',        items: TOPS },
   { key: 'bottom',    name: 'Bottoms',     items: BOTTOMS },
-  { key: 'shoes',     name: 'Shoes',       items: SHOES },
-  { key: 'accessory', name: 'Accessories', items: ACCESSORIES },
+  { key: 'shoes',     name: 'Shoes',  items: SHOES },
+  { key: 'accessory', name: 'Accs',   items: ACCESSORIES },
 ];
 
 // ═══════════════════════════════════════════
