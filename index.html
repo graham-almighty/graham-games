@@ -807,6 +807,9 @@
     text-transform: uppercase;
   }
   .school-badge.visible { display: block; }
+  .school-timer { font-family: monospace; margin-left: 8px; font-weight: bold; }
+  .school-timer.warning { color: #ff9800; }
+  .school-timer.danger { color: #ef5350; }
 
   /* New game drop banner */
   .drop-banner {
@@ -1417,6 +1420,18 @@ for (let i = 0; i < 30; i++) {
       btn.textContent = 'MUSIC: ON';
     }
   });
+
+  // Expose pause/resume for game player
+  window.pauseLauncherMusic = function() {
+    if (musicPlaying && musicCtx) {
+      musicCtx.suspend();
+    }
+  };
+  window.resumeLauncherMusic = function() {
+    if (musicPlaying && musicCtx) {
+      musicCtx.resume();
+    }
+  };
 })();
 </script>
 
@@ -1531,7 +1546,7 @@ for (let i = 0; i < 30; i++) {
     <span class="gamer-name-display" id="gamer-name-display"></span>
     <button class="account-btn" id="account-btn" onclick="openAuthModal()">SIGN IN</button>
   </div>
-  <div class="school-badge" id="school-badge">SCHOOL MODE ACTIVE</div>
+  <div class="school-badge" id="school-badge">SCHOOL MODE ACTIVE <span class="school-timer" id="school-timer"></span></div>
   <div class="divider"></div>
   <div class="launcher-nav">
     <button class="nav-btn" onclick="openAchievements()">&#127942; ACHIEVEMENTS</button>
@@ -2461,6 +2476,13 @@ function applySchoolMode() {
       card.appendChild(tag);
     }
   });
+  // Start or stop global quiz timer
+  if (sm && sm.enabled) {
+    if (!quizTimerInterval) startQuizTimer();
+  } else {
+    stopQuizTimer();
+    hideQuiz();
+  }
 }
 
 // ═══ GAME CARD INTERCEPTION (School Mode) ═══
@@ -2486,31 +2508,30 @@ function openGamePlayer(href, title) {
   document.getElementById('gp-title').textContent = title;
   document.getElementById('gp-iframe').src = href;
   document.getElementById('game-player').classList.add('visible');
-  quizActive = false;
-  quizTimeLeft = getQuizInterval();
-  updateTimerDisplay();
-  startQuizTimer();
+  if (window.pauseLauncherMusic) window.pauseLauncherMusic();
 }
 
 function exitGamePlayer() {
   if (quizActive) return;
-  stopQuizTimer();
   document.getElementById('game-player').classList.remove('visible');
   document.getElementById('gp-iframe').src = '';
   hideQuiz();
+  if (window.resumeLauncherMusic) window.resumeLauncherMusic();
 }
 
 function startQuizTimer() {
   stopQuizTimer();
+  quizTimeLeft = getQuizInterval();
   quizTimerInterval = setInterval(function() {
     if (quizActive) return;
     quizTimeLeft--;
     updateTimerDisplay();
     if (quizTimeLeft <= 0) {
-      stopQuizTimer();
       showQuiz();
+      // Don't stop timer — it pauses via quizActive flag, restarts after answer
     }
   }, 1000);
+  updateTimerDisplay();
 }
 
 function stopQuizTimer() {
@@ -2518,13 +2539,23 @@ function stopQuizTimer() {
 }
 
 function updateTimerDisplay() {
-  const el = document.getElementById('gp-timer');
+  // Update game player timer
+  const gpEl = document.getElementById('gp-timer');
   const m = Math.floor(quizTimeLeft / 60);
   const s = quizTimeLeft % 60;
-  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
-  el.classList.remove('warning', 'danger');
-  if (quizTimeLeft <= 15) el.classList.add('danger');
-  else if (quizTimeLeft <= 30) el.classList.add('warning');
+  const timeStr = m + ':' + (s < 10 ? '0' : '') + s;
+  gpEl.textContent = timeStr;
+  gpEl.classList.remove('warning', 'danger');
+  if (quizTimeLeft <= 15) gpEl.classList.add('danger');
+  else if (quizTimeLeft <= 30) gpEl.classList.add('warning');
+  // Update launcher badge timer
+  const badgeTimer = document.getElementById('school-timer');
+  if (badgeTimer) {
+    badgeTimer.textContent = '— Next quiz: ' + timeStr;
+    badgeTimer.classList.remove('warning', 'danger');
+    if (quizTimeLeft <= 15) badgeTimer.classList.add('danger');
+    else if (quizTimeLeft <= 30) badgeTimer.classList.add('warning');
+  }
 }
 
 // ═══ QUESTION BANKS ═══
@@ -2715,7 +2746,7 @@ function answerQuiz(index) {
       hideQuiz();
       quizTimeLeft = getQuizInterval();
       updateTimerDisplay();
-      startQuizTimer();
+      // Timer interval is still running — hideQuiz sets quizActive=false so it resumes
     }, 1200);
   } else {
     fb.textContent = 'Not quite! The answer is: ' + currentQuizData.correct;
