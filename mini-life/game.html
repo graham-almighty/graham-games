@@ -19237,25 +19237,37 @@ function mpJoinLocation(locKey) {
     mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-    const currentState = mpChannel.presenceState();
-    leftPresences.forEach(p => {
-      // Skip removal if player is still present (outfit update, not disconnect)
-      const stillPresent = Object.values(currentState).some(arr => arr.some(s => s.id === p.id));
-      if (!stillPresent) mpRemovePlayer(p.id);
-    });
-    mpUpdatePlayerList();
-  });
-  mpChannel.on('presence', { event: 'sync' }, () => {
-    const state = mpChannel.presenceState();
-    const allPresences = [];
-    Object.values(state).forEach(arr => {
-      arr.forEach(p => {
-        allPresences.push(p);
-        if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p);
+    // Defer removal so join events (outfit updates) process first
+    setTimeout(() => {
+      if (!mpChannel) return;
+      const currentIds = new Set();
+      try {
+        const currentState = mpChannel.presenceState();
+        Object.values(currentState).forEach(arr => arr.forEach(s => currentIds.add(s.id)));
+      } catch(e) {}
+      leftPresences.forEach(p => {
+        if (!currentIds.has(p.id)) mpRemovePlayer(p.id);
       });
-    });
-    mpCaptureHostWorldState(allPresences);
-    mpUpdatePlayerList();
+      mpUpdatePlayerList();
+    }, 200);
+  });
+  let _syncDebounce = null;
+  mpChannel.on('presence', { event: 'sync' }, () => {
+    // Debounce rapid sync events to prevent cascading rebuilds
+    if (_syncDebounce) clearTimeout(_syncDebounce);
+    _syncDebounce = setTimeout(() => {
+      _syncDebounce = null;
+      const state = mpChannel.presenceState();
+      const allPresences = [];
+      Object.values(state).forEach(arr => {
+        arr.forEach(p => {
+          allPresences.push(p);
+          if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p);
+        });
+      });
+      mpCaptureHostWorldState(allPresences);
+      mpUpdatePlayerList();
+    }, 100);
   });
 
   // Broadcast: position updates
@@ -19526,16 +19538,23 @@ function mpRemovePlayer(id) {
   remotePlayers.delete(id);
 }
 
+let _lastBroadcastX = 0, _lastBroadcastZ = 0, _lastBroadcastYaw = 0;
 function mpBroadcastPosition() {
   if (!mpChannel) return;
+  const cx = character.position.x, cz = character.position.z;
+  // Skip broadcast if player hasn't moved or rotated
+  const dx = cx - _lastBroadcastX, dz = cz - _lastBroadcastZ;
+  const moved = dx * dx + dz * dz > 0.001 || Math.abs(yaw - _lastBroadcastYaw) > 0.01;
+  if (!moved) return;
+  _lastBroadcastX = cx; _lastBroadcastZ = cz; _lastBroadcastYaw = yaw;
   mpChannel.send({
     type: 'broadcast',
     event: 'move',
     payload: {
       id: mpPlayerId,
-      x: character.position.x,
+      x: cx,
       y: character.position.y,
-      z: character.position.z,
+      z: cz,
       yaw: yaw,
       floor: currentFloor
     }
@@ -19816,13 +19835,25 @@ let interactMeshes = interactables.map(i => i.mesh);
 function rebuildInteractMeshes() { interactMeshes = interactables.map(i => i.mesh); }
 
 // Raycast from center of screen (crosshair) each frame
+// Cached raycast target array — rebuilt only when location changes
+let _raycastTargets = null;
+let _raycastLocation = '';
+function getRaycastTargets() {
+  const loc = inTown ? 't' : inMansion ? 'm' : inGrahamDimension ? 'g' : 'h';
+  if (_raycastTargets && _raycastLocation === loc) return _raycastTargets;
+  _raycastLocation = loc;
+  _raycastTargets = interactMeshes.concat(petBodyMeshes).concat(inTown ? npcBodyMeshes : []).concat(inGrahamDimension ? gdNpcBodyMeshes : []);
+  return _raycastTargets;
+}
+// Invalidate cache when interactables change
+const _origRebuildInteract = rebuildInteractMeshes;
+rebuildInteractMeshes = function() { _origRebuildInteract(); _raycastTargets = null; };
+
 function updateCrosshairRaycast() {
   if (gameOver) return;
-  // Cast from camera center
   raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
-  const allTargets = interactMeshes.concat(petBodyMeshes).concat(inTown ? npcBodyMeshes : []).concat(inGrahamDimension ? gdNpcBodyMeshes : []);
-  const hits = raycaster.intersectObjects(allTargets, true);
+  const hits = raycaster.intersectObjects(getRaycastTargets(), true);
   const tip = document.getElementById('action-tip');
   const crosshair = document.getElementById('crosshair');
 
@@ -22383,6 +22414,9 @@ function update() {
     if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; }
   }
 
+  // Sync character facing to yaw (visible to remote players and mirror)
+  character.rotation.y = yaw;
+
   // First-person camera
   let bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || touchState.moveX !== 0 || touchState.moveZ !== 0) ? Math.sin(walkAnim) * 0.04 : 0;
   let shakeX = 0, shakeY = 0;
@@ -22422,8 +22456,8 @@ function update() {
   }
   camera.lookAt(camera.position.clone().add(lookDir));
 
-  // Crosshair raycast
-  updateCrosshairRaycast();
+  // Crosshair raycast (every other frame to reduce overhead)
+  if (Math.round(performance.now()) % 2 === 0) updateCrosshairRaycast();
 
   // Foam balls
   if (foamBalls.length) updateFoamBalls(dt);
