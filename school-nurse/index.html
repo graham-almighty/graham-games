@@ -2651,6 +2651,8 @@ function init() {
 }
 
 window.onload = init;
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { try { saveProgress(); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

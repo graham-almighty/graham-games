@@ -1665,6 +1665,8 @@ function toggleFullscreen() {
 resizeCanvas();
 refreshBuxDisplays();
 document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState());
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { if (typeof gameRunning !== 'undefined' && gameRunning && typeof grid !== 'undefined' && grid) { try { saveGameState(); } catch(ex) {} } mioSave(mioLoad()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

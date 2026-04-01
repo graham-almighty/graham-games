@@ -5727,6 +5727,8 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
   }
 });
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { savePlayerData(loadPlayerData()); saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

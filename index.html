@@ -6,12 +6,25 @@
 <title>GRAHAM GAMES</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230a0a0f'/><text x='16' y='22' text-anchor='middle' font-family='serif' font-weight='bold' font-size='16' fill='%23c9a84c'>GG</text></svg>">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700;900&family=Cinzel:wght@700&family=Press+Start+2P&display=swap');
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  :root {
+    --gg-bg: #0a0a0f;
+    --gg-accent: #c9a84c;
+    --gg-accent15: #c9a84c15;
+    --gg-accent22: #c9a84c22;
+    --gg-accent44: #c9a84c44;
+    --gg-card-bg: linear-gradient(135deg, #141418, #1a1a22);
+    --gg-card-border: #333;
+    --gg-vignette: radial-gradient(ellipse at center, transparent 40%, #000000aa 100%);
+    --gg-texture1: #1a0f2a22;
+    --gg-texture2: #0f1a1a22;
+  }
+
   body {
-    background: #0a0a0f;
+    background: var(--gg-bg);
     color: #ddd;
     font-family: 'Cinzel', serif;
     height: 100vh;
@@ -28,8 +41,8 @@
     position: fixed;
     inset: 0;
     background:
-      radial-gradient(ellipse at 30% 20%, #1a0f2a22 0%, transparent 50%),
-      radial-gradient(ellipse at 70% 80%, #0f1a1a22 0%, transparent 50%),
+      radial-gradient(ellipse at 30% 20%, var(--gg-texture1) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, var(--gg-texture2) 0%, transparent 50%),
       repeating-conic-gradient(#ffffff02 0deg, transparent 1deg, transparent 3deg);
     pointer-events: none;
   }
@@ -39,7 +52,7 @@
     content: '';
     position: fixed;
     inset: 0;
-    background: radial-gradient(ellipse at center, transparent 40%, #000000aa 100%);
+    background: var(--gg-vignette);
     pointer-events: none;
   }
 
@@ -75,10 +88,10 @@
     font-family: 'Cinzel Decorative', serif;
     font-size: 3.2rem;
     font-weight: 900;
-    color: #c9a84c;
+    color: var(--gg-accent);
     text-shadow:
-      0 0 20px #c9a84c44,
-      0 0 40px #c9a84c22,
+      0 0 20px var(--gg-accent44),
+      0 0 40px var(--gg-accent22),
       2px 2px 0 #1a1200;
     letter-spacing: 0.12em;
     margin-bottom: 0.1em;
@@ -88,7 +101,7 @@
   .divider {
     width: 300px;
     height: 2px;
-    background: linear-gradient(90deg, transparent, #c9a84c66, #c9a84c, #c9a84c66, transparent);
+    background: linear-gradient(90deg, transparent, var(--gg-accent44), var(--gg-accent), var(--gg-accent44), transparent);
     margin: 10px 0 30px;
   }
 
@@ -108,7 +121,7 @@
     background: #00000088;
     padding: 6px 18px;
     border-radius: 20px;
-    border: 1px solid #c9a84c44;
+    border: 1px solid var(--gg-accent44);
     backdrop-filter: blur(4px);
     margin-bottom: 8px;
   }
@@ -116,7 +129,7 @@
   .gbux-amount {
     font-family: 'Cinzel Decorative', serif;
     font-size: 1.3rem;
-    color: #c9a84c;
+    color: var(--gg-accent);
     font-weight: 700;
   }
   .gbux-label {
@@ -133,9 +146,9 @@
     margin-bottom: 8px;
   }
   .account-btn {
-    background: #c9a84c22;
-    border: 1px solid #c9a84c44;
-    color: #c9a84c;
+    background: var(--gg-accent22);
+    border: 1px solid var(--gg-accent44);
+    color: var(--gg-accent);
     padding: 5px 14px;
     border-radius: 16px;
     font-family: 'Cinzel', serif;
@@ -144,9 +157,9 @@
     letter-spacing: 0.05em;
     transition: all 0.2s;
   }
-  .account-btn:hover { background: #c9a84c44; border-color: #c9a84c88; }
+  .account-btn:hover { background: var(--gg-accent44); border-color: var(--gg-accent); }
   .gamer-name-display {
-    color: #c9a84c;
+    color: var(--gg-accent);
     font-family: 'Cinzel', serif;
     font-size: 0.8rem;
     font-weight: 700;
@@ -242,17 +255,17 @@
     font-family: 'Cinzel', serif;
     font-size: 0.7rem;
     background: transparent;
-    color: #c9a84c;
-    border: 1px solid #c9a84c44;
+    color: var(--gg-accent);
+    border: 1px solid var(--gg-accent44);
     padding: 7px 16px;
     cursor: pointer;
     letter-spacing: 0.08em;
     transition: all 0.2s;
   }
   .nav-btn:hover {
-    background: #c9a84c15;
-    border-color: #c9a84c;
-    box-shadow: 0 0 20px #c9a84c22;
+    background: var(--gg-accent15);
+    border-color: var(--gg-accent);
+    box-shadow: 0 0 20px var(--gg-accent22);
   }
 
   /* ═══ OVERLAYS ═══ */
@@ -272,23 +285,26 @@
   .gg-overlay.visible { opacity: 1; pointer-events: all; }
   .gg-panel {
     background: linear-gradient(135deg, #141418, #1a1a22);
-    border: 1px solid #c9a84c44;
+    border: 1px solid var(--gg-accent44);
     border-radius: 12px;
     padding: 28px;
     max-width: 520px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
-    box-shadow: 0 0 60px #c9a84c15;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 0 60px var(--gg-accent15);
+    scrollbar-width: thin;
+    scrollbar-color: var(--gg-accent44) transparent;
   }
   .gg-panel::-webkit-scrollbar { width: 6px; }
-  .gg-panel::-webkit-scrollbar-thumb { background: #c9a84c44; border-radius: 3px; }
+  .gg-panel::-webkit-scrollbar-thumb { background: var(--gg-accent44); border-radius: 3px; }
   .gg-panel h2 {
     font-family: 'Cinzel Decorative', serif;
-    color: #c9a84c;
+    color: var(--gg-accent);
     font-size: 1.3rem;
     margin-bottom: 4px;
-    text-shadow: 0 0 20px #c9a84c33;
+    text-shadow: 0 0 20px var(--gg-accent22);
   }
   .gg-panel-sub { color: #888; font-size: 0.75rem; margin-bottom: 18px; letter-spacing: 0.08em; }
   .gg-close {
@@ -304,7 +320,7 @@
     letter-spacing: 0.08em;
     transition: all 0.15s;
   }
-  .gg-close:hover { color: #c9a84c; border-color: #c9a84c; }
+  .gg-close:hover { color: var(--gg-accent); border-color: var(--gg-accent); }
 
   /* Achievement items */
   .ach-group { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; margin: 14px 0 6px; border-bottom: 1px solid #333; padding-bottom: 3px; }
@@ -313,26 +329,26 @@
     padding: 8px 10px; border-radius: 5px; margin-bottom: 3px;
   }
   .ach-item.locked { opacity: 0.35; }
-  .ach-item.earned { background: #c9a84c08; }
+  .ach-item.earned { background: var(--gg-accent15); }
   .ach-icon {
     width: 32px; height: 32px; border-radius: 50%;
     border: 2px solid #444; display: flex; align-items: center;
     justify-content: center; font-size: 1rem; flex-shrink: 0;
   }
-  .ach-item.earned .ach-icon { border-color: #c9a84c; background: #c9a84c22; }
+  .ach-item.earned .ach-icon { border-color: var(--gg-accent); background: var(--gg-accent22); }
   .ach-info { flex: 1; }
   .ach-name { font-family: 'Cinzel', serif; font-size: 0.8rem; color: #ddd; }
   .ach-desc { font-size: 0.65rem; color: #777; }
-  .ach-reward { font-family: 'Cinzel', serif; font-size: 0.75rem; color: #c9a84c; white-space: nowrap; }
+  .ach-reward { font-family: 'Cinzel', serif; font-size: 0.75rem; color: var(--gg-accent); white-space: nowrap; }
 
   /* Shop items */
-  .shop-bal { color: #c9a84c; font-size: 0.85rem; margin-bottom: 14px; }
+  .shop-bal { color: var(--gg-accent); font-size: 0.85rem; margin-bottom: 14px; }
   .shop-item {
     display: flex; align-items: center; gap: 12px;
     padding: 12px; border-radius: 7px; border: 1px solid #333;
     margin-bottom: 6px; transition: border-color 0.15s;
   }
-  .shop-item:hover { border-color: #c9a84c44; }
+  .shop-item:hover { border-color: var(--gg-accent44); }
   .shop-item-icon { font-size: 1.8rem; width: 44px; text-align: center; }
   .shop-item-info { flex: 1; }
   .shop-item-name { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; }
@@ -340,11 +356,11 @@
   .shop-item-game { font-size: 0.55rem; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 2px; }
   .shop-buy {
     font-family: 'Cinzel', serif; padding: 5px 14px;
-    border: 1px solid #c9a84c; background: #c9a84c22;
-    color: #c9a84c; cursor: pointer; font-size: 0.75rem;
+    border: 1px solid var(--gg-accent); background: var(--gg-accent22);
+    color: var(--gg-accent); cursor: pointer; font-size: 0.75rem;
     border-radius: 4px; transition: all 0.15s; white-space: nowrap;
   }
-  .shop-buy:hover { background: #c9a84c33; box-shadow: 0 0 15px #c9a84c22; }
+  .shop-buy:hover { background: var(--gg-accent44); box-shadow: 0 0 15px var(--gg-accent22); }
   .shop-buy.owned { border-color: #555; color: #555; background: transparent; cursor: default; }
   .shop-buy.locked { border-color: #444; color: #444; background: transparent; cursor: default; }
 
@@ -356,7 +372,7 @@
     margin-bottom: 6px;
     transition: border-color 0.15s;
   }
-  .news-entry:hover { border-color: #c9a84c44; }
+  .news-entry:hover { border-color: var(--gg-accent44); }
   .news-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
   .news-date { font-size: 0.55rem; color: #555; letter-spacing: 0.05em; flex-shrink: 0; }
   .news-title { font-family: 'Cinzel', serif; color: #eee; font-size: 0.85rem; }
@@ -370,6 +386,56 @@
     text-transform: uppercase;
     flex-shrink: 0;
     margin-left: auto;
+  }
+
+  /* ═══ SORT BAR ═══ */
+  .sort-bar {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .sort-btn {
+    flex: 1;
+    font-family: 'Cinzel', serif;
+    font-size: 0.6rem;
+    padding: 6px 4px;
+    background: transparent;
+    color: #777;
+    border: 1px solid #333;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .sort-btn:hover { color: var(--gg-accent); border-color: var(--gg-accent44); }
+  .sort-btn.active {
+    color: var(--gg-accent);
+    border-color: var(--gg-accent);
+    background: var(--gg-accent15);
+    text-shadow: 0 0 8px var(--gg-accent44);
+  }
+
+  .rank-badge {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    font-family: 'Cinzel Decorative', serif;
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: var(--gg-accent);
+    background: var(--gg-accent15);
+    border: 1px solid var(--gg-accent44);
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
   }
 
   /* ═══ GAME LIST ═══ */
@@ -397,9 +463,9 @@
     width: 100%;
     flex-shrink: 0;
     padding: 20px 30px;
-    background: linear-gradient(135deg, #141418 0%, #1a1a22 50%, #141418 100%);
-    border: 1px solid #333;
-    border-left: 4px solid #c9a84c;
+    background: var(--gg-card-bg);
+    border: 1px solid var(--gg-card-border);
+    border-left: 4px solid var(--gg-accent);
     display: flex;
     align-items: center;
     gap: 20px;
@@ -414,15 +480,65 @@
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, #c9a84c08 0%, transparent 50%);
+    background: linear-gradient(90deg, var(--gg-accent22) 0%, transparent 50%);
     opacity: 0;
     transition: opacity 0.2s;
   }
   .game-card:hover {
-    border-color: #c9a84c;
+    border-color: var(--gg-accent);
     transform: translateX(5px);
-    box-shadow: 0 0 30px #c9a84c15, -5px 0 20px #c9a84c10;
+    box-shadow: 0 0 30px var(--gg-accent15), -5px 0 20px var(--gg-accent15);
   }
+  /* Card style: Glass */
+  .cs-glass .game-card {
+    background: #ffffff06;
+    backdrop-filter: blur(12px);
+    border: 1px solid #ffffff15;
+    border-left: 4px solid var(--gg-accent);
+    box-shadow: 0 2px 20px #00000044;
+  }
+  .cs-glass .game-card:hover { border-color: #ffffff33; box-shadow: 0 4px 30px #00000066, 0 0 20px var(--gg-accent22); }
+  /* Card style: Neon */
+  .cs-neon .game-card {
+    background: #05050a;
+    border: 2px solid var(--gg-accent);
+    border-left: 5px solid var(--gg-accent);
+    box-shadow: 0 0 10px var(--gg-accent44), inset 0 0 20px var(--gg-accent15);
+  }
+  .cs-neon .game-card:hover { box-shadow: 0 0 25px var(--gg-accent), 0 0 50px var(--gg-accent44), inset 0 0 25px var(--gg-accent22); transform: translateX(5px) scale(1.01); }
+  /* Card style: Holographic */
+  .cs-holo .game-card {
+    background: linear-gradient(135deg, #1a1a2e, #1e1030, #102030, #1a1a2e);
+    border: 2px solid transparent;
+    border-image: linear-gradient(135deg, #ff66aa, #66aaff, #66ffaa, #ffaa66) 1;
+    border-left: 4px solid;
+    border-image: linear-gradient(180deg, #ff66aa, #66aaff, #66ffaa, #ffaa66) 1;
+    box-shadow: 0 0 12px #ff66aa22, 0 0 12px #66aaff22;
+  }
+  .cs-holo .game-card:hover { box-shadow: 0 0 20px #ff66aa44, 0 0 20px #66aaff44, 0 0 20px #66ffaa44; transform: translateX(5px) scale(1.02); }
+  /* Card style: Retro Arcade */
+  .cs-retro .game-card {
+    background: #0a0a0a;
+    border: 3px solid var(--gg-accent);
+    border-radius: 0;
+    box-shadow: 4px 4px 0 var(--gg-accent44), inset 0 0 0 2px #222;
+    image-rendering: pixelated;
+  }
+  .cs-retro .game-card:hover { box-shadow: 6px 6px 0 var(--gg-accent), inset 0 0 0 2px var(--gg-accent44); transform: translate(-2px, -2px); }
+  .cs-retro .game-icon { image-rendering: pixelated; overflow: hidden; }
+  .cs-retro .game-icon svg { image-rendering: pixelated; filter: contrast(1.5); }
+  .cs-retro .game-info .game-title { font-family: 'Press Start 2P', 'Courier New', monospace; font-size: 0.7rem; letter-spacing: 0; }
+  .cs-retro .game-info .game-desc { font-family: 'Courier New', monospace; font-size: 0.7rem; }
+  /* Card style: Cyberpunk */
+  .cs-cyber .game-card {
+    background: linear-gradient(135deg, #0a0014 0%, #0f0020 100%);
+    border: 1px solid #ff004488;
+    border-left: 4px solid #ff0044;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+    box-shadow: 0 0 15px #ff004422, inset 0 0 30px #ff004408;
+  }
+  .cs-cyber .game-card:hover { box-shadow: 0 0 25px #ff004466, 0 0 50px #00ffff22, inset 0 0 30px #ff004415; border-color: #ff0044; transform: translateX(5px); }
+  .cs-cyber .game-card::before { background: linear-gradient(90deg, #ff004415 0%, transparent 50%); }
   .game-card:hover::before {
     opacity: 1;
   }
@@ -995,6 +1111,19 @@
     transition: all 0.15s;
   }
   .gp-exit:hover { color: #c9a84c; border-color: #c9a84c; }
+  .gp-save {
+    font-family: 'Cinzel', serif;
+    font-size: 0.65rem;
+    background: transparent;
+    color: #4caf50;
+    border: 1px solid #4caf5066;
+    padding: 5px 12px;
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.15s;
+  }
+  .gp-save:hover { background: #4caf5015; border-color: #4caf50; box-shadow: 0 0 10px #4caf5022; }
+  .gp-save.saved { color: #c9a84c; border-color: #c9a84c66; }
   .gp-iframe {
     flex: 1;
     border: none;
@@ -1145,6 +1274,18 @@
       font-size: 0.6rem;
       padding: 6px 10px;
     }
+    .sort-bar {
+      max-width: 100%;
+      gap: 4px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      flex-wrap: nowrap;
+    }
+    .sort-btn {
+      font-size: 0.5rem;
+      padding: 5px 3px;
+      flex-shrink: 0;
+    }
     .game-list {
       max-width: 100%;
       flex: none;
@@ -1206,6 +1347,7 @@
     }
     .gp-title { font-size: 0.7rem; }
     .gp-exit { font-size: 0.6rem; padding: 4px 8px; }
+    .gp-save { font-size: 0.6rem; padding: 4px 8px; }
     .gp-timer { font-size: 0.75rem; }
     #preview-popup { display: none !important; }
   }
@@ -1564,9 +1706,16 @@ for (let i = 0; i < 30; i++) {
     <span class="drop-sparkle">&#10024;</span>
   </div>
 
+  <div class="sort-bar">
+    <button class="sort-btn active" data-sort="launch">&#128197; Launch Date</button>
+    <button class="sort-btn" data-sort="alpha">&#128289; A-Z</button>
+    <button class="sort-btn" data-sort="popular">&#128293; Most Played by Public</button>
+    <button class="sort-btn" data-sort="recommended">&#11088; You May Like</button>
+  </div>
+
   <div class="game-list">
     <!-- HURGVIBBIT -->
-    <a href="hurgvibbit/index.html" class="game-card hurgvibbit" data-preview="previews/hurgvibbit.mp4">
+    <a href="hurgvibbit/index.html" class="game-card hurgvibbit" data-preview="previews/hurgvibbit.mp4" data-title="HURGVIBBIT" data-launch="1" data-popular="8" data-recommended="7">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0808" stroke="#ff1744" stroke-width="2"/>
@@ -1585,7 +1734,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- FLYING ACE -->
-    <a href="flying-ace/index.html" class="game-card flying-ace" data-preview="previews/flying-ace.mp4">
+    <a href="flying-ace/index.html" class="game-card flying-ace" data-preview="previews/flying-ace.mp4" data-title="FLYING ACE" data-launch="2" data-popular="11" data-recommended="10">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1628" stroke="#4a9eff" stroke-width="2"/>
@@ -1621,7 +1770,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- COMBAT -->
-    <a href="combat/index.html" class="game-card combat" data-preview="previews/combat.mp4">
+    <a href="combat/index.html" class="game-card combat" data-preview="previews/combat.mp4" data-title="COMBAT" data-launch="3" data-popular="9" data-recommended="9">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0f08" stroke="#ff6d00" stroke-width="2"/>
@@ -1647,7 +1796,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- MINI LIFE -->
-    <a href="mini-life/game.html" class="game-card mini-life" data-preview="previews/mini-life.mp4">
+    <a href="mini-life/game.html" class="game-card mini-life" data-preview="previews/mini-life.mp4" data-title="MINI LIFE" data-launch="4" data-popular="1" data-recommended="1">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#082a08" stroke="#4caf50" stroke-width="2"/>
@@ -1673,7 +1822,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- TOWER DEFENSE -->
-    <a href="tower-defense/index.html" class="game-card tower-defense" data-preview="previews/tower-defense.mp4">
+    <a href="tower-defense/index.html" class="game-card tower-defense" data-preview="previews/tower-defense.mp4" data-title="TOWER DEFENSE" data-launch="5" data-popular="4" data-recommended="4">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#14081a" stroke="#9b59b6" stroke-width="2"/>
@@ -1701,7 +1850,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- ANCIENT WARFARE -->
-    <a href="ancient-warfare/index.html" class="game-card ancient-warfare" data-preview="previews/ancient-warfare.mp4">
+    <a href="ancient-warfare/index.html" class="game-card ancient-warfare" data-preview="previews/ancient-warfare.mp4" data-title="ANCIENT WARFARE" data-launch="6" data-popular="5" data-recommended="6">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <!-- shield shape -->
@@ -1728,7 +1877,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- ROGUE DEPTHS -->
-    <a href="rogue-depths/index.html" class="game-card rogue-depths" data-preview="previews/rogue-depths.mp4">
+    <a href="rogue-depths/index.html" class="game-card rogue-depths" data-preview="previews/rogue-depths.mp4" data-title="ROGUE DEPTHS" data-launch="7" data-popular="6" data-recommended="5">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <!-- dungeon archway -->
@@ -1755,7 +1904,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- DEVIOUS DRIVING -->
-    <a href="devious-driving/index.html" class="game-card devious-driving" data-preview="previews/devious-driving.mp4">
+    <a href="devious-driving/index.html" class="game-card devious-driving" data-preview="previews/devious-driving.mp4" data-title="DEVIOUS DRIVING" data-launch="8" data-popular="3" data-recommended="3">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <!-- car body -->
@@ -1785,7 +1934,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- BRAWL MONSTERS -->
-    <a href="brawl-monsters/index.html" class="game-card brawl-monsters" data-preview="previews/brawl-monsters.mp4">
+    <a href="brawl-monsters/index.html" class="game-card brawl-monsters" data-preview="previews/brawl-monsters.mp4" data-title="BRAWL MONSTERS" data-launch="9" data-popular="2" data-recommended="2">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a081a" stroke="#e040fb" stroke-width="2"/>
@@ -1806,7 +1955,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- BATTLE BROS -->
-    <a href="battle-bros/index.html" class="game-card battle-bros" data-preview="previews/battle-bros.mp4">
+    <a href="battle-bros/index.html" class="game-card battle-bros" data-preview="previews/battle-bros.mp4" data-title="BATTLE BROS" data-launch="10" data-popular="7" data-recommended="8">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#081a1a" stroke="#00e5ff" stroke-width="2"/>
@@ -1831,7 +1980,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- MEGA IO -->
-    <a href="mega-io/index.html" class="game-card mega-io" data-preview="previews/mega-io.mp4">
+    <a href="mega-io/index.html" class="game-card mega-io" data-preview="previews/mega-io.mp4" data-title="MEGA IO" data-launch="11" data-popular="12" data-recommended="12">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1a2a" stroke="#44ddff" stroke-width="2"/>
@@ -1854,7 +2003,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- SIBLING BRAWL -->
-    <a href="sibling-brawl/index.html" class="game-card sibling-brawl" data-preview="previews/sibling-brawl.mp4">
+    <a href="sibling-brawl/index.html" class="game-card sibling-brawl" data-preview="previews/sibling-brawl.mp4" data-title="SIBLING BRAWL" data-launch="12" data-popular="10" data-recommended="11">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a081a" stroke="#ff66aa" stroke-width="2"/>
@@ -1880,7 +2029,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- DRESS TO DEPRESS -->
-    <a href="dress-to-depress/index.html" class="game-card dress-to-depress" data-preview="previews/dress-to-depress.mp4">
+    <a href="dress-to-depress/index.html" class="game-card dress-to-depress" data-preview="previews/dress-to-depress.mp4" data-title="DRESS TO DEPRESS" data-launch="13" data-popular="13" data-recommended="13">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#1a0818" stroke="#ff69b4" stroke-width="2"/>
@@ -1902,7 +2051,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- SCHOOL NURSE SIMULATOR -->
-    <a href="school-nurse/index.html" class="game-card school-nurse">
+    <a href="school-nurse/index.html" class="game-card school-nurse" data-title="SCHOOL NURSE" data-launch="14" data-popular="14" data-recommended="14">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#0a1a0e" stroke="#4caa64" stroke-width="2"/>
@@ -1925,7 +2074,7 @@ for (let i = 0; i < 30; i++) {
     </a>
 
     <!-- SUPER SOCCER -->
-    <a href="super-soccer/index.html" class="game-card super-soccer">
+    <a href="super-soccer/index.html" class="game-card super-soccer" data-title="SUPER SOCCER" data-launch="15" data-popular="15" data-recommended="15">
       <div class="game-icon">
         <svg width="50" height="50" viewBox="0 0 50 50">
           <rect x="5" y="5" width="40" height="40" rx="4" fill="#0e2e12" stroke="#3da349" stroke-width="2"/>
@@ -2006,6 +2155,7 @@ for (let i = 0; i < 30; i++) {
     </svg>
     <div class="gp-title" id="gp-title">GAME</div>
     <div class="gp-timer" id="gp-timer">2:00</div>
+    <button class="gp-save" id="gp-save" onclick="saveCurrentGame()">&#128190; SAVE</button>
     <button class="gp-exit" onclick="exitGamePlayer()">EXIT TO LAUNCHER</button>
   </div>
   <iframe class="gp-iframe" id="gp-iframe" allow="pointer-lock"></iframe>
@@ -2238,6 +2388,63 @@ const SHOP_ITEMS = [
   { id: 'ss_speed_boots',   name: 'Speed Boots',     desc: '+10% team speed in Super Soccer',              cost: 50, icon: '&#128095;', game: 'Super Soccer' },
 ];
 
+// ═══ LAUNCHER CUSTOMIZATIONS ═══
+const GG_CUSTOM_KEY = 'gg-customization';
+const GG_BACKGROUNDS = [
+  { id: 'bg_default',  name: 'Default Dark',      cost: 0,   icon: '&#127761;', desc: 'The classic dark theme' },
+  { id: 'bg_midnight', name: 'Midnight Blue',     cost: 30,  icon: '&#127753;', desc: 'Deep navy with blue glow' },
+  { id: 'bg_crimson',  name: 'Crimson Night',     cost: 30,  icon: '&#127769;', desc: 'Dark red with ember glow' },
+  { id: 'bg_forest',   name: 'Enchanted Forest',  cost: 40,  icon: '&#127795;', desc: 'Deep green mystic haze' },
+  { id: 'bg_galaxy',   name: 'Galaxy',            cost: 60,  icon: '&#127756;', desc: 'Cosmic purple starfield' },
+  { id: 'bg_sunset',   name: 'Sunset',            cost: 50,  icon: '&#127773;', desc: 'Warm orange-pink horizon' },
+];
+const GG_ACCENTS = [
+  { id: 'ac_gold',    name: 'Gold (Default)',  cost: 0,   icon: '<span style="color:#c9a84c;font-size:1.5rem">&#11044;</span>', desc: 'Classic gold accent', color: '#c9a84c' },
+  { id: 'ac_ice',     name: 'Ice Blue',        cost: 25,  icon: '<span style="color:#5cb8ff;font-size:1.5rem">&#11044;</span>', desc: 'Cool icy blue highlights', color: '#5cb8ff' },
+  { id: 'ac_rose',    name: 'Rose Pink',       cost: 25,  icon: '<span style="color:#e8668a;font-size:1.5rem">&#11044;</span>', desc: 'Soft pink highlights', color: '#e8668a' },
+  { id: 'ac_lime',    name: 'Neon Lime',       cost: 25,  icon: '<span style="color:#88dd44;font-size:1.5rem">&#11044;</span>', desc: 'Electric green glow', color: '#88dd44' },
+  { id: 'ac_purple',  name: 'Royal Purple',    cost: 30,  icon: '<span style="color:#aa66dd;font-size:1.5rem">&#11044;</span>', desc: 'Regal purple highlights', color: '#aa66dd' },
+];
+const GG_CARD_STYLES = [
+  { id: 'cs_default', name: 'Default',         cost: 0,   icon: '&#127183;', desc: 'Standard dark cards' },
+  { id: 'cs_glass',   name: 'Glassmorphism',   cost: 35,  icon: '&#128142;', desc: 'Frosted glass with blur' },
+  { id: 'cs_neon',    name: 'Neon Glow',       cost: 40,  icon: '&#128161;', desc: 'Glowing neon borders' },
+  { id: 'cs_holo',    name: 'Holographic',     cost: 50,  icon: '&#127752;', desc: 'Shimmering rainbow gradient' },
+  { id: 'cs_retro',   name: 'Retro Arcade',    cost: 45,  icon: '&#127918;', desc: 'Pixel-style bordered cards' },
+  { id: 'cs_cyber',   name: 'Cyberpunk',       cost: 55,  icon: '&#9889;',   desc: 'Sliced corners, hot glow' },
+];
+
+function loadCustomization() {
+  try { return JSON.parse(localStorage.getItem(GG_CUSTOM_KEY)) || {}; } catch(e) { return {}; }
+}
+function saveCustomization(c) { localStorage.setItem(GG_CUSTOM_KEY, JSON.stringify(c)); }
+
+function applyCustomization() {
+  const c = loadCustomization();
+  const r = document.documentElement.style;
+  // Background
+  const bg = c.bg || 'bg_default';
+  if (bg === 'bg_midnight')     { r.setProperty('--gg-bg','#060a14'); r.setProperty('--gg-texture1','#0a1a3a33'); r.setProperty('--gg-texture2','#0a0f2a22'); r.setProperty('--gg-vignette','radial-gradient(ellipse at center, transparent 30%, #000022cc 100%)'); }
+  else if (bg === 'bg_crimson') { r.setProperty('--gg-bg','#140808'); r.setProperty('--gg-texture1','#3a0a0a33'); r.setProperty('--gg-texture2','#2a0f0a22'); r.setProperty('--gg-vignette','radial-gradient(ellipse at center, transparent 30%, #200000cc 100%)'); }
+  else if (bg === 'bg_forest')  { r.setProperty('--gg-bg','#060f08'); r.setProperty('--gg-texture1','#0a2a1a33'); r.setProperty('--gg-texture2','#0a1f0a22'); r.setProperty('--gg-vignette','radial-gradient(ellipse at center, transparent 30%, #001a00cc 100%)'); }
+  else if (bg === 'bg_galaxy')  { r.setProperty('--gg-bg','#0a0612'); r.setProperty('--gg-texture1','#1a0a3a44'); r.setProperty('--gg-texture2','#2a0a4a33'); r.setProperty('--gg-vignette','radial-gradient(ellipse at center, transparent 35%, #0a0022cc 100%)'); }
+  else if (bg === 'bg_sunset')  { r.setProperty('--gg-bg','#140a06'); r.setProperty('--gg-texture1','#3a1a0a33'); r.setProperty('--gg-texture2','#2a0a1a22'); r.setProperty('--gg-vignette','radial-gradient(ellipse at center, transparent 30%, #1a0500cc 100%)'); }
+  else { r.removeProperty('--gg-bg'); r.removeProperty('--gg-texture1'); r.removeProperty('--gg-texture2'); r.removeProperty('--gg-vignette'); }
+  // Accent color
+  const acDef = GG_ACCENTS.find(a => a.id === (c.accent || 'ac_gold'));
+  if (acDef && acDef.color !== '#c9a84c') {
+    const h = acDef.color;
+    r.setProperty('--gg-accent', h);
+    r.setProperty('--gg-accent15', h + '15');
+    r.setProperty('--gg-accent22', h + '22');
+    r.setProperty('--gg-accent44', h + '44');
+  } else { r.removeProperty('--gg-accent'); r.removeProperty('--gg-accent15'); r.removeProperty('--gg-accent22'); r.removeProperty('--gg-accent44'); }
+  // Card style
+  const cs = c.cardStyle || 'cs_default';
+  document.body.classList.remove('cs-glass','cs-neon','cs-holo','cs-retro','cs-cyber');
+  if (cs !== 'cs_default') document.body.classList.add(cs.replace('_', '-'));
+}
+
 // ═══ ACHIEVEMENTS PANEL ═══
 function openAchievements() {
   const data = ggLoad();
@@ -2270,9 +2477,12 @@ function closeAchievements() { document.getElementById('ach-overlay').classList.
 // ═══ SHOP PANEL ═══
 function openShop() {
   const data = ggLoad();
+  const cust = loadCustomization();
   document.getElementById('shop-balance').textContent = data.gBux;
   const container = document.getElementById('shop-list');
   container.innerHTML = '';
+
+  // Game items
   for (const item of SHOP_ITEMS) {
     const owned = !!data.shopPurchases[item.id];
     const canAfford = data.gBux >= item.cost;
@@ -2293,6 +2503,41 @@ function openShop() {
     div.appendChild(btn);
     container.appendChild(div);
   }
+
+  // Customization sections
+  function addCustomSection(title, items, activeKey, custField) {
+    const header = document.createElement('div');
+    header.className = 'ach-group';
+    header.innerHTML = title;
+    container.appendChild(header);
+    for (const item of items) {
+      const owned = item.cost === 0 || !!data.shopPurchases[item.id];
+      const active = (cust[custField] || items[0].id) === item.id;
+      const canAfford = data.gBux >= item.cost;
+      const div = document.createElement('div');
+      div.className = 'shop-item';
+      div.innerHTML = '<div class="shop-item-icon">' + item.icon + '</div>' +
+        '<div class="shop-item-info"><div class="shop-item-name">' + item.name + '</div>' +
+        '<div class="shop-item-desc">' + item.desc + '</div>' +
+        '<div class="shop-item-game">Launcher</div></div>';
+      const btn = document.createElement('button');
+      if (active && owned) { btn.className = 'shop-buy owned'; btn.textContent = 'EQUIPPED'; }
+      else if (owned) {
+        btn.className = 'shop-buy'; btn.textContent = 'EQUIP';
+        btn.onclick = () => { const c = loadCustomization(); c[custField] = item.id; saveCustomization(c); applyCustomization(); openShop(); };
+      } else if (!canAfford) { btn.className = 'shop-buy locked'; btn.textContent = item.cost + ' G'; }
+      else {
+        btn.className = 'shop-buy'; btn.textContent = item.cost + ' G';
+        btn.onclick = () => { purchaseItem(item.id, item.cost); const c = loadCustomization(); c[custField] = item.id; saveCustomization(c); applyCustomization(); openShop(); };
+      }
+      div.appendChild(btn);
+      container.appendChild(div);
+    }
+  }
+  addCustomSection('&#127912; BACKGROUNDS', GG_BACKGROUNDS, cust.bg, 'bg');
+  addCustomSection('&#127752; ACCENT COLORS', GG_ACCENTS, cust.accent, 'accent');
+  addCustomSection('&#127183; CARD STYLES', GG_CARD_STYLES, cust.cardStyle, 'cardStyle');
+
   document.getElementById('shop-overlay').classList.add('visible');
 }
 function closeShop() { document.getElementById('shop-overlay').classList.remove('visible'); }
@@ -2485,6 +2730,36 @@ function applySchoolMode() {
   }
 }
 
+// ═══ GAME SORT BAR ═══
+document.querySelectorAll('.sort-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const mode = this.dataset.sort;
+    const list = document.querySelector('.game-list');
+    const cards = Array.from(list.querySelectorAll('.game-card'));
+    cards.sort((a, b) => {
+      if (mode === 'alpha') return a.dataset.title.localeCompare(b.dataset.title);
+      if (mode === 'popular') return +a.dataset.popular - +b.dataset.popular;
+      if (mode === 'recommended') return +a.dataset.recommended - +b.dataset.recommended;
+      return +a.dataset.launch - +b.dataset.launch;
+    });
+    cards.forEach(c => list.appendChild(c));
+    // Show/hide rank badges
+    cards.forEach(c => { const old = c.querySelector('.rank-badge'); if (old) old.remove(); });
+    if (mode === 'popular') {
+      const sorted = Array.from(list.querySelectorAll('.game-card'));
+      sorted.forEach((c, i) => {
+        const badge = document.createElement('span');
+        badge.className = 'rank-badge';
+        badge.textContent = String(i + 1);
+        c.appendChild(badge);
+      });
+    }
+    list.scrollTop = 0;
+  });
+});
+
 // ═══ GAME CARD INTERCEPTION (School Mode) ═══
 document.querySelector('.game-list').addEventListener('click', function(e) {
   const sm = getSchoolMode();
@@ -2504,12 +2779,52 @@ let quizTimerInterval = null;
 let quizTimeLeft = 120;
 let quizActive = false;
 
+// ═══ PLAY COUNT TRACKING ═══
+const GG_PLAYS_KEY = 'gg-play-counts';
+function getPlayCounts() { try { return JSON.parse(localStorage.getItem(GG_PLAYS_KEY)) || {}; } catch(e) { return {}; } }
+function trackPlay(href) {
+  const counts = getPlayCounts();
+  counts[href] = (counts[href] || 0) + 1;
+  localStorage.setItem(GG_PLAYS_KEY, JSON.stringify(counts));
+}
+// Update Popular sort to use real play counts
+function updatePopularRanks() {
+  const counts = getPlayCounts();
+  const cards = Array.from(document.querySelectorAll('.game-card'));
+  // Sort by play count descending, assign ranks
+  const sorted = cards.slice().sort((a, b) => (counts[b.getAttribute('href')] || 0) - (counts[a.getAttribute('href')] || 0));
+  sorted.forEach((card, i) => card.dataset.popular = String(i + 1));
+}
+
 function openGamePlayer(href, title) {
   document.getElementById('gp-title').textContent = title;
   document.getElementById('gp-iframe').src = href;
   document.getElementById('game-player').classList.add('visible');
+  document.getElementById('gp-save').textContent = '\uD83D\uDCBE SAVE';
+  document.getElementById('gp-save').classList.remove('saved');
+  trackPlay(href);
+  updatePopularRanks();
   if (window.pauseLauncherMusic) window.pauseLauncherMusic();
 }
+
+// ═══ SAVE BUTTON (sends postMessage to game iframe) ═══
+function saveCurrentGame() {
+  const iframe = document.getElementById('gp-iframe');
+  if (!iframe || !iframe.contentWindow) return;
+  try { iframe.contentWindow.postMessage({ type: 'gg-save' }, '*'); } catch(e) {}
+  const btn = document.getElementById('gp-save');
+  btn.textContent = '\u2705 SAVED!';
+  btn.classList.add('saved');
+  setTimeout(() => { btn.textContent = '\uD83D\uDCBE SAVE'; btn.classList.remove('saved'); }, 2000);
+}
+
+// Listen for save confirmation from games
+window.addEventListener('message', function(e) {
+  if (e.data && e.data.type === 'gg-save-done') {
+    const btn = document.getElementById('gp-save');
+    if (btn) { btn.textContent = '\u2705 SAVED!'; btn.classList.add('saved'); setTimeout(() => { btn.textContent = '\uD83D\uDCBE SAVE'; btn.classList.remove('saved'); }, 2000); }
+  }
+});
 
 function exitGamePlayer() {
   if (quizActive) return;
@@ -2958,6 +3273,8 @@ function updateAccountUI() {
 
 // On load: wait for session restore then update UI
 setTimeout(() => { updateAccountUI(); refreshGBux(); }, 500);
+updatePopularRanks();
+applyCustomization();
 </script>
 
 </body>

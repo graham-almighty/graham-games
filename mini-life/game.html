@@ -4104,7 +4104,8 @@ function rebuildPlayerCharacter() {
     mpChannel.track({
       id: mpPlayerId, name: mpGamerName, room: mpMyRoomCode,
       charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
-        hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
+        hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress },
+      worldState: mpGetWorldState()
     });
   }
 }
@@ -9992,6 +9993,7 @@ function performTeleport(destination) {
     if (petCat) petCat.visible = false;
     if (petBeaver) petBeaver.visible = false;
     mlTry('ml_graham_dimension');
+    if (mpIsVisiting) mpSyncGDWorldState();
   } else if (destination === 'town') {
     if (townGroup) townGroup.visible = true;
     if (mansionGroup) mansionGroup.visible = false;
@@ -12144,17 +12146,15 @@ function buildGrahamDimension() {
     g.add(seg);
   }
 
-  // Tiered seating (3 tiers — smallest radius at bottom, largest at top like a colosseum)
+  // Tiered seating (3 tiers — solid risers, colosseum style)
   for (let tier = 0; tier < 3; tier++) {
-    const tierR = 5 + tier * 2; // Inner ring at 5, middle at 7, outer at 9
+    const tierR = 5 + tier * 2;
     const tierY = 0.5 + tier * 1.2;
     const seatGeo = new THREE.BoxGeometry(2.5, 0.3, 0.6);
     const seatMat2 = tier % 2 === 0 ? arenaStone : arenaDark;
-    // More seats on outer tiers
     const seatCount = 8 + tier * 2;
     for (let s = 0; s < seatCount; s++) {
       const sa = (s / seatCount) * Math.PI * 2;
-      // Skip north entrance area
       if (sa > 1.2 && sa < 1.95) continue;
       const sx = AX + Math.cos(sa) * tierR;
       const sz = AZ + Math.sin(sa) * tierR;
@@ -12164,14 +12164,16 @@ function buildGrahamDimension() {
       seat.castShadow = true; seat.receiveShadow = true;
       g.add(seat);
     }
-    // Tier riser wall (circular step supporting this tier)
-    const riserSegments = seatCount + 2;
-    for (let r = 0; r < riserSegments; r++) {
-      const ra = (r / riserSegments) * Math.PI * 2;
+    // Solid riser wall — dense segments with no gaps
+    const riserSegCount = 40;
+    const riserR = tierR - 0.3;
+    const riserW = (2 * Math.PI * riserR) / riserSegCount + 0.2;
+    for (let r = 0; r < riserSegCount; r++) {
+      const ra = (r / riserSegCount) * Math.PI * 2;
       if (ra > 1.2 && ra < 1.95) continue;
-      const rx = AX + Math.cos(ra) * (tierR - 0.3);
-      const rz = AZ + Math.sin(ra) * (tierR - 0.3);
-      const riser = new THREE.Mesh(new THREE.BoxGeometry(1.5, tierY + 0.15, 0.4), arenaDark);
+      const rx = AX + Math.cos(ra) * riserR;
+      const rz = AZ + Math.sin(ra) * riserR;
+      const riser = new THREE.Mesh(new THREE.BoxGeometry(riserW, tierY + 0.15, 0.6), arenaDark);
       riser.position.set(rx, (tierY + 0.15) / 2, rz);
       riser.rotation.y = -ra + Math.PI / 2;
       riser.receiveShadow = true;
@@ -12250,12 +12252,12 @@ function buildGrahamDimension() {
   arenaMainLight.position.set(AX, 8, AZ);
   g.add(arenaMainLight);
 
-  // Clone audience (8 clones seated on top tier)
+  // Clone audience (8 clones seated on top tier — Y = seat top)
   const audienceAngles = [0, 0.7, 2.2, 2.9, 3.5, 4.2, 5.0, 5.7];
   audienceAngles.forEach(aa => {
     const ar = 9; // Top tier radius
     const ac = buildCharacter(grahamOpts);
-    ac.position.set(AX + Math.cos(aa) * ar, 2.9, AZ + Math.sin(aa) * ar);
+    ac.position.set(AX + Math.cos(aa) * ar, 3.05, AZ + Math.sin(aa) * ar);
     ac.rotation.y = aa + Math.PI; // Face center
     g.add(ac);
   });
@@ -18199,10 +18201,14 @@ function buildCharacter(opts) {
 
     // Legs below dress (skin, visible from above knee down)
     const legL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.12), skinMat);
-    legL.position.set(-0.09, 0.04, 0);
+    legL.geometry.translate(0, -0.05, 0);
+    legL.position.set(-0.09, 0.09, 0);
+    legL.userData.isLeg = 'L';
     group.add(legL);
     const legR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, 0.12), skinMat);
-    legR.position.set(0.09, 0.04, 0);
+    legR.geometry.translate(0, -0.05, 0);
+    legR.position.set(0.09, 0.09, 0);
+    legR.userData.isLeg = 'R';
     group.add(legR);
 
     // Sneakers (white with colored accent — modern casual)
@@ -18223,14 +18229,18 @@ function buildCharacter(opts) {
     group.add(soleR);
   } else {
     // Regular outfit: separate shirt + pants
-    // Legs
+    // Legs (pivot offset to hip for walk animation)
     const legL = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
-    legL.position.set(-0.15, 0.25, 0);
+    legL.geometry.translate(0, -0.25, 0);
+    legL.position.set(-0.15, 0.5, 0);
     legL.castShadow = true;
+    legL.userData.isLeg = 'L';
     group.add(legL);
     const legR = new THREE.Mesh(new THREE.BoxGeometry(hipW, 0.5, 0.25), pantsMat);
-    legR.position.set(0.15, 0.25, 0);
+    legR.geometry.translate(0, -0.25, 0);
+    legR.position.set(0.15, 0.5, 0);
     legR.castShadow = true;
+    legR.userData.isLeg = 'R';
     group.add(legR);
 
     // Body
@@ -19180,6 +19190,9 @@ if (!mpMyRoomCode) {
 let mpCurrentRoom = mpMyRoomCode; // which room we're in (own or visiting)
 let mpIsVisiting = false;         // true when in someone else's server
 let mpPanelOpen = false;
+let mpHostWorldState = null;      // host's world state when visiting
+let mpBuiltHostPresHouse = false; // did we build a pres house for the host?
+let mpBuiltHostThrone = false;    // did we build a throne for the host?
 
 function mpInit() {
   if (mpClient) return;
@@ -19214,6 +19227,7 @@ function mpJoinLocation(locKey) {
 
   // Presence: players joining/leaving
   mpChannel.on('presence', { event: 'join' }, ({ key, newPresences }) => {
+    mpCaptureHostWorldState(newPresences);
     newPresences.forEach(p => {
       if (p.id === mpPlayerId) return;
       if (remotePlayers.has(p.id)) { mpUpdatePlayerAppearance(p); return; }
@@ -19222,14 +19236,24 @@ function mpJoinLocation(locKey) {
     mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-    leftPresences.forEach(p => mpRemovePlayer(p.id));
+    const currentState = mpChannel.presenceState();
+    leftPresences.forEach(p => {
+      // Skip removal if player is still present (outfit update, not disconnect)
+      const stillPresent = Object.values(currentState).some(arr => arr.some(s => s.id === p.id));
+      if (!stillPresent) mpRemovePlayer(p.id);
+    });
     mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'sync' }, () => {
     const state = mpChannel.presenceState();
+    const allPresences = [];
     Object.values(state).forEach(arr => {
-      arr.forEach(p => { if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p); });
+      arr.forEach(p => {
+        allPresences.push(p);
+        if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p);
+      });
     });
+    mpCaptureHostWorldState(allPresences);
     mpUpdatePlayerList();
   });
 
@@ -19251,7 +19275,8 @@ function mpJoinLocation(locKey) {
         name: mpGamerName,
         room: mpMyRoomCode,
         charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
-          hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress }
+          hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress },
+        worldState: mpGetWorldState()
       });
     }
   });
@@ -19297,6 +19322,8 @@ function mpLeaveVisit() {
   if (!mpIsVisiting) return;
   mpCurrentRoom = mpMyRoomCode;
   mpIsVisiting = false;
+  mpHostWorldState = null;
+  if (inGrahamDimension) mpSyncGDWorldState();
   mpJoinLocation(mpGetLocationKey());
   mpUpdatePanelUI();
   showTip('Back to your server');
@@ -19349,6 +19376,61 @@ function mpUpdatePlayerList() {
   listEl.innerHTML = html;
 }
 
+function mpGetWorldState() {
+  return { gdPresHouseBuilt, gdPresThrone, gdEnactedLaws: gdEnactedLaws.length > 0 ? [...gdEnactedLaws] : [], hasSecondFloor, basementLoaded };
+}
+
+function mpCaptureHostWorldState(presences) {
+  if (!mpIsVisiting) return;
+  for (const p of presences) {
+    if (p.id !== mpPlayerId && p.room === mpCurrentRoom && p.worldState) {
+      mpHostWorldState = p.worldState;
+      if (inGrahamDimension) mpSyncGDWorldState();
+      return;
+    }
+  }
+}
+
+function mpSyncGDWorldState() {
+  if (!grahamDimGroup) return;
+  if (mpIsVisiting && mpHostWorldState) {
+    const ws = mpHostWorldState;
+    if (ws.gdPresHouseBuilt) {
+      if (!gdPresHouseGroup) {
+        const sv = { h: hasSecondFloor, b: basementLoaded, t: gdPresThrone };
+        hasSecondFloor = ws.hasSecondFloor || false;
+        basementLoaded = ws.basementLoaded || false;
+        gdPresThrone = ws.gdPresThrone || false;
+        const iBefore = interactables.length;
+        buildPresHouse(grahamDimGroup);
+        interactables.length = iBefore;
+        hasSecondFloor = sv.h; basementLoaded = sv.b; gdPresThrone = sv.t;
+        mpBuiltHostPresHouse = true;
+      }
+      if (gdPresHouseGroup) gdPresHouseGroup.visible = true;
+    } else if (gdPresHouseGroup) { gdPresHouseGroup.visible = false; }
+    if (ws.gdPresThrone) {
+      if (!gdPresThroneGroup) { buildPizzaThrone(grahamDimGroup); mpBuiltHostThrone = true; }
+      if (gdPresThroneGroup) gdPresThroneGroup.visible = true;
+    } else if (gdPresThroneGroup) { gdPresThroneGroup.visible = false; }
+    const savedLaws = gdEnactedLaws;
+    gdEnactedLaws = ws.gdEnactedLaws || [];
+    if (gdEnactedLaws.length > 0 && !gdLawSignGroup) buildLawSign(grahamDimGroup);
+    if (gdLawSignGroup) gdLawSignGroup.visible = gdEnactedLaws.length > 0;
+    updateLawVisuals();
+    gdEnactedLaws = savedLaws;
+    rebuildInteractMeshes();
+  } else {
+    if (mpBuiltHostPresHouse && gdPresHouseGroup) { grahamDimGroup.remove(gdPresHouseGroup); gdPresHouseGroup = null; mpBuiltHostPresHouse = false; }
+    if (mpBuiltHostThrone && gdPresThroneGroup) { grahamDimGroup.remove(gdPresThroneGroup); gdPresThroneGroup = null; mpBuiltHostThrone = false; }
+    if (gdPresHouseGroup) gdPresHouseGroup.visible = gdPresHouseBuilt;
+    if (gdPresThroneGroup) gdPresThroneGroup.visible = gdPresThrone;
+    if (gdLawSignGroup) gdLawSignGroup.visible = gdEnactedLaws.length > 0;
+    updateLawVisuals();
+    rebuildInteractMeshes();
+  }
+}
+
 function mpAddPlayer(state) {
   if (!state || state.id === mpPlayerId || remotePlayers.has(state.id)) return;
   const opts = state.charOpts || { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 0, outfit: 0, accessory: 0, dress: -1 };
@@ -19370,13 +19452,21 @@ function mpAddPlayer(state) {
   tag.position.set(0, 2.2, 0);
   group.add(tag);
 
+  // Cache leg references for walk animation
+  let legL = null, legR = null;
+  group.traverse(c => {
+    if (c.userData && c.userData.isLeg === 'L') legL = c;
+    if (c.userData && c.userData.isLeg === 'R') legR = c;
+  });
+
   remotePlayers.set(state.id, {
     group, nameTag: tag,
     playerName: state.name || 'Player',
     charOpts: opts,
     targetPos: new THREE.Vector3(0, 0.15, 0),
     targetYaw: 0,
-    lastUpdate: performance.now()
+    lastUpdate: performance.now(),
+    legL, legR, walkPhase: 0
   });
 }
 
@@ -19411,6 +19501,12 @@ function mpUpdatePlayerAppearance(state) {
   rp.group = newGroup;
   rp.charOpts = newOpts;
   rp.lastUpdate = performance.now();
+  // Update cached leg references for walk animation
+  rp.legL = null; rp.legR = null;
+  newGroup.traverse(c => {
+    if (c.userData && c.userData.isLeg === 'L') rp.legL = c;
+    if (c.userData && c.userData.isLeg === 'R') rp.legR = c;
+  });
 }
 
 function mpRemovePlayer(id) {
@@ -19455,6 +19551,17 @@ function mpUpdateRemotePlayers(dt) {
     while (yawDiff < -Math.PI) yawDiff += 2 * Math.PI;
     rp.group.rotation.y += yawDiff * Math.min(1, lerpSpeed * dt);
     if (rp.nameTag) rp.nameTag.lookAt(camera.position);
+    // Walking animation — swing legs when moving
+    const dist = rp.group.position.distanceTo(rp.targetPos);
+    if (dist > 0.05) {
+      rp.walkPhase += dt * 8;
+      if (rp.legL) rp.legL.rotation.x = Math.sin(rp.walkPhase) * 0.4;
+      if (rp.legR) rp.legR.rotation.x = Math.sin(rp.walkPhase + Math.PI) * 0.4;
+    } else if (rp.walkPhase !== 0) {
+      rp.walkPhase = 0;
+      if (rp.legL) rp.legL.rotation.x = 0;
+      if (rp.legR) rp.legR.rotation.x = 0;
+    }
     if (now - rp.lastUpdate > 8000) mpRemovePlayer(id);
   });
 }
@@ -21893,6 +22000,23 @@ function updatePlayerY() {
     }
   }
 
+  // Arena tiered seating (in Graham Dimension — distance-based Y)
+  if (inGrahamDimension) {
+    const adx = x - 400, adz = z - (-81);
+    const aDist = Math.sqrt(adx * adx + adz * adz);
+    if (aDist >= 4.5 && aDist <= 10.5) {
+      // Tier 0: radius 5 (Y=0.65), Tier 1: radius 7 (Y=1.85), Tier 2: radius 9 (Y=3.05)
+      let tierY = GROUND_Y;
+      if (aDist >= 4.5 && aDist < 5.3) tierY = GROUND_Y + ((aDist - 4.5) / 0.8) * 0.5;
+      else if (aDist >= 5.3 && aDist < 6.5) tierY = 0.65;
+      else if (aDist >= 6.5 && aDist < 7.3) tierY = 0.65 + ((aDist - 6.5) / 0.8) * 1.2;
+      else if (aDist >= 7.3 && aDist < 8.5) tierY = 1.85;
+      else if (aDist >= 8.5 && aDist < 9.3) tierY = 1.85 + ((aDist - 8.5) / 0.8) * 1.2;
+      else if (aDist >= 9.3) tierY = 3.05;
+      if (tierY > GROUND_Y) { character.position.y = tierY; return; }
+    }
+  }
+
   // Presidential palace stairs (in Graham Dimension)
   if (inGrahamDimension && hasSecondFloor && gdPresHouseBuilt) {
     const onPresStairs = x >= PRES_STAIR.xMin && x <= PRES_STAIR.xMax && z >= PRES_STAIR.zMin && z <= PRES_STAIR.zMax;
@@ -23168,6 +23292,8 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { try { saveGame(); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

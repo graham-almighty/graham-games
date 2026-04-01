@@ -1877,6 +1877,8 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

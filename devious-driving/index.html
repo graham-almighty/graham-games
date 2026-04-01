@@ -2190,7 +2190,8 @@ function toggleFullscreen() {
     document.exitFullscreen().catch(() => {});
   }
 }
-
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { ddSaveStats(ddLoadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>

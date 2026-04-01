@@ -2537,6 +2537,8 @@ function showStoryOutro(mapIndex) {
 
 // Start on title
 showScreen('title-screen');
+// Launcher save button listener
+window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { try { var p = loadProgress(); saveProgress(p); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
 </script>
 </body>
 </html>
