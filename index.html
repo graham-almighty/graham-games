@@ -2831,10 +2831,18 @@ function exitGamePlayer() {
   if (quizActive) return;
   // Cancel play timer if exited before 10 seconds
   if (_playTimer) { clearTimeout(_playTimer); _playTimer = null; }
-  document.getElementById('game-player').classList.remove('visible');
-  document.getElementById('gp-iframe').src = '';
-  hideQuiz();
-  if (window.resumeLauncherMusic) window.resumeLauncherMusic();
+  // Tell the game to save before destroying iframe
+  const iframe = document.getElementById('gp-iframe');
+  if (iframe && iframe.contentWindow) {
+    try { iframe.contentWindow.postMessage({ type: 'gg-save' }, '*'); } catch(e) {}
+  }
+  // Small delay to let save complete before clearing iframe
+  setTimeout(function() {
+    document.getElementById('game-player').classList.remove('visible');
+    document.getElementById('gp-iframe').src = '';
+    hideQuiz();
+    if (window.resumeLauncherMusic) window.resumeLauncherMusic();
+  }, 100);
 }
 
 function startQuizTimer() {
