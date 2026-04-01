@@ -2811,6 +2811,28 @@ function updatePopularRanks() {
   const cards = Array.from(document.querySelectorAll('.game-card'));
   const sorted = cards.slice().sort((a, b) => (counts[b.getAttribute('href')] || 0) - (counts[a.getAttribute('href')] || 0));
   sorted.forEach((card, i) => card.dataset.popular = String(i + 1));
+  // Refresh visible badges if popular sort is active
+  const activeBtn = document.querySelector('.sort-btn.active');
+  if (activeBtn && activeBtn.dataset.sort === 'popular') {
+    const list = document.querySelector('.game-list');
+    const visible = Array.from(list.querySelectorAll('.game-card'));
+    visible.forEach(c => { const old = c.querySelector('.rank-badge'); if (old) old.remove(); });
+    visible.forEach(c => { const old = c.querySelector('.play-count'); if (old) old.remove(); });
+    // Re-sort the cards
+    visible.sort((a, b) => +a.dataset.popular - +b.dataset.popular);
+    visible.forEach(c => list.appendChild(c));
+    visible.forEach((c, i) => {
+      const badge = document.createElement('span');
+      badge.className = 'rank-badge';
+      badge.textContent = String(i + 1);
+      c.appendChild(badge);
+      const plays = counts[c.getAttribute('href')] || 0;
+      const countEl = document.createElement('span');
+      countEl.className = 'play-count';
+      countEl.textContent = plays + (plays === 1 ? ' play' : ' plays');
+      c.appendChild(countEl);
+    });
+  }
 }
 
 function openGamePlayer(href, title) {
