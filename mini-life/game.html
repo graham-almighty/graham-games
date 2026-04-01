@@ -19444,14 +19444,24 @@ function mpSyncGDWorldState() {
   }
 }
 
+// Queue for deferred player additions (prevents frame drops)
+const _mpAddQueue = [];
 function mpAddPlayer(state) {
   if (!state || state.id === mpPlayerId || remotePlayers.has(state.id)) return;
+  // Prevent duplicate queuing
+  if (_mpAddQueue.some(q => q.id === state.id)) return;
+  _mpAddQueue.push(state);
+}
+function _mpProcessAddQueue() {
+  if (!_mpAddQueue.length) return;
+  // Process one player per frame to avoid freezing
+  const state = _mpAddQueue.shift();
+  if (remotePlayers.has(state.id)) return; // already added
   const opts = state.charOpts || { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 0, outfit: 0, accessory: 0, dress: -1 };
   const group = buildCharacter(opts);
   group.visible = true;
   scene.add(group);
 
-  // Name tag
   const tagCvs = document.createElement('canvas');
   tagCvs.width = 256; tagCvs.height = 48;
   const ctx = tagCvs.getContext('2d');
@@ -19465,7 +19475,6 @@ function mpAddPlayer(state) {
   tag.position.set(0, 2.2, 0);
   group.add(tag);
 
-  // Cache leg references for walk animation
   let legL = null, legR = null;
   group.traverse(c => {
     if (c.userData && c.userData.isLeg === 'L') legL = c;
@@ -19483,6 +19492,7 @@ function mpAddPlayer(state) {
   });
 }
 
+let _mpAppearanceQueue = [];
 function mpUpdatePlayerAppearance(state) {
   const rp = remotePlayers.get(state.id);
   if (!rp) return;
@@ -19492,7 +19502,17 @@ function mpUpdatePlayerAppearance(state) {
       rp.charOpts.skinTone === newOpts.skinTone && rp.charOpts.hairStyle === newOpts.hairStyle &&
       rp.charOpts.hairColor === newOpts.hairColor && rp.charOpts.accessory === newOpts.accessory &&
       rp.charOpts.gender === newOpts.gender) return;
-  // Rebuild character with new appearance
+  // Queue the rebuild for next frame to prevent freezing
+  if (!_mpAppearanceQueue.some(q => q.id === state.id)) {
+    _mpAppearanceQueue.push({ id: state.id, charOpts: newOpts });
+  }
+}
+function _mpProcessAppearanceQueue() {
+  if (!_mpAppearanceQueue.length) return;
+  const item = _mpAppearanceQueue.shift();
+  const rp = remotePlayers.get(item.id);
+  if (!rp) return;
+  const newOpts = item.charOpts;
   const pos = rp.group.position.clone();
   const rot = rp.group.rotation.y;
   const tag = rp.nameTag;
@@ -19514,7 +19534,6 @@ function mpUpdatePlayerAppearance(state) {
   rp.group = newGroup;
   rp.charOpts = newOpts;
   rp.lastUpdate = performance.now();
-  // Update cached leg references for walk animation
   rp.legL = null; rp.legR = null;
   newGroup.traverse(c => {
     if (c.userData && c.userData.isLeg === 'L') rp.legL = c;
@@ -19555,7 +19574,7 @@ function mpBroadcastPosition() {
       x: cx,
       y: character.position.y,
       z: cz,
-      yaw: yaw,
+      yaw: yaw + Math.PI,
       floor: currentFloor
     }
   });
@@ -22414,8 +22433,8 @@ function update() {
     if (jumpOffset <= 0) { jumpOffset = 0; jumpVel = 0; }
   }
 
-  // Sync character facing to yaw (visible to remote players and mirror)
-  character.rotation.y = yaw;
+  // Sync character facing to yaw (model front is +Z, camera faces -Z at yaw=0)
+  character.rotation.y = yaw + Math.PI;
 
   // First-person camera
   let bobY = (keys['KeyW'] || keys['KeyS'] || keys['KeyA'] || keys['KeyD'] || touchState.moveX !== 0 || touchState.moveZ !== 0) ? Math.sin(walkAnim) * 0.04 : 0;
@@ -22466,7 +22485,9 @@ function update() {
   // Pepper sabotage mission
   if (pepperMissionActive) updatePepperMission(dt);
 
-  // Multiplayer: update remote players and broadcast position
+  // Multiplayer: process queued additions/rebuilds (one each per frame) then update
+  _mpProcessAddQueue();
+  _mpProcessAppearanceQueue();
   mpUpdateRemotePlayers(dt);
   mpSendTimer += dt;
   if (mpSendTimer >= 0.1 && gameStarted && !gameOver) {
