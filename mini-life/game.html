@@ -9993,7 +9993,16 @@ function performTeleport(destination) {
     if (petCat) petCat.visible = false;
     if (petBeaver) petBeaver.visible = false;
     mlTry('ml_graham_dimension');
-    if (mpIsVisiting) mpSyncGDWorldState();
+    if (mpIsVisiting && mpChannel) {
+      // Re-check presence for host world state before syncing GD
+      try {
+        const ps = mpChannel.presenceState();
+        const all = [];
+        Object.values(ps).forEach(arr => arr.forEach(p => all.push(p)));
+        mpCaptureHostWorldState(all);
+      } catch(e) {}
+      mpSyncGDWorldState();
+    }
   } else if (destination === 'town') {
     if (townGroup) townGroup.visible = true;
     if (mansionGroup) mansionGroup.visible = false;
@@ -19237,19 +19246,11 @@ function mpJoinLocation(locKey) {
     mpUpdatePlayerList();
   });
   mpChannel.on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-    // Defer removal so join events (outfit updates) process first
-    setTimeout(() => {
-      if (!mpChannel) return;
-      const currentIds = new Set();
-      try {
-        const currentState = mpChannel.presenceState();
-        Object.values(currentState).forEach(arr => arr.forEach(s => currentIds.add(s.id)));
-      } catch(e) {}
-      leftPresences.forEach(p => {
-        if (!currentIds.has(p.id)) mpRemovePlayer(p.id);
-      });
-      mpUpdatePlayerList();
-    }, 200);
+    // Don't remove players here — the 8-second timeout in mpUpdateRemotePlayers
+    // handles cleanup. This prevents the race condition where a presence update
+    // (outfit change) fires leave+join and the leave removes the player before
+    // the join can rebuild them, causing invisibility.
+    mpUpdatePlayerList();
   });
   let _syncDebounce = null;
   mpChannel.on('presence', { event: 'sync' }, () => {
