@@ -438,6 +438,16 @@
     z-index: 2;
   }
 
+  .play-count {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
+    font-size: 0.55rem;
+    color: #888;
+    letter-spacing: 0.05em;
+    z-index: 2;
+  }
+
   /* ═══ GAME LIST ═══ */
   .game-list {
     display: flex;
@@ -2745,15 +2755,22 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
       return +a.dataset.launch - +b.dataset.launch;
     });
     cards.forEach(c => list.appendChild(c));
-    // Show/hide rank badges
+    // Show/hide rank badges and play counts
     cards.forEach(c => { const old = c.querySelector('.rank-badge'); if (old) old.remove(); });
+    cards.forEach(c => { const old = c.querySelector('.play-count'); if (old) old.remove(); });
     if (mode === 'popular') {
+      const counts = getPlayCounts();
       const sorted = Array.from(list.querySelectorAll('.game-card'));
       sorted.forEach((c, i) => {
         const badge = document.createElement('span');
         badge.className = 'rank-badge';
         badge.textContent = String(i + 1);
         c.appendChild(badge);
+        const plays = counts[c.getAttribute('href')] || 0;
+        const countEl = document.createElement('span');
+        countEl.className = 'play-count';
+        countEl.textContent = plays + (plays === 1 ? ' play' : ' plays');
+        c.appendChild(countEl);
       });
     }
     list.scrollTop = 0;
