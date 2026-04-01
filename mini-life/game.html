@@ -9993,16 +9993,6 @@ function performTeleport(destination) {
     if (petCat) petCat.visible = false;
     if (petBeaver) petBeaver.visible = false;
     mlTry('ml_graham_dimension');
-    if (mpIsVisiting && mpChannel) {
-      // Re-check presence for host world state before syncing GD
-      try {
-        const ps = mpChannel.presenceState();
-        const all = [];
-        Object.values(ps).forEach(arr => arr.forEach(p => all.push(p)));
-        mpCaptureHostWorldState(all);
-      } catch(e) {}
-      mpSyncGDWorldState();
-    }
   } else if (destination === 'town') {
     if (townGroup) townGroup.visible = true;
     if (mansionGroup) mansionGroup.visible = false;
@@ -19253,11 +19243,11 @@ function mpJoinLocation(locKey) {
     mpUpdatePlayerList();
   });
   let _syncDebounce = null;
+  let _firstSync = true;
   mpChannel.on('presence', { event: 'sync' }, () => {
-    // Debounce rapid sync events to prevent cascading rebuilds
-    if (_syncDebounce) clearTimeout(_syncDebounce);
-    _syncDebounce = setTimeout(() => {
+    const doSync = () => {
       _syncDebounce = null;
+      if (!mpChannel) return;
       const state = mpChannel.presenceState();
       const allPresences = [];
       Object.values(state).forEach(arr => {
@@ -19268,7 +19258,11 @@ function mpJoinLocation(locKey) {
       });
       mpCaptureHostWorldState(allPresences);
       mpUpdatePlayerList();
-    }, 100);
+    };
+    // First sync runs immediately (channel just subscribed), subsequent ones debounce
+    if (_firstSync) { _firstSync = false; doSync(); return; }
+    if (_syncDebounce) clearTimeout(_syncDebounce);
+    _syncDebounce = setTimeout(doSync, 100);
   });
 
   // Broadcast: position updates
