@@ -1664,12 +1664,6 @@ function toggleFullscreen() {
 resizeCanvas();
 refreshBuxDisplays();
 document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState());
-// Auto-save when leaving page (iframe unloaded by launcher)
-window.addEventListener('beforeunload', function() {
-  if (typeof gameRunning !== 'undefined' && gameRunning && typeof grid !== 'undefined' && grid) {
-    try { saveGameState(); } catch(e) {}
-  }
-});
 // Auto-resume if launched inside iframe with existing save
 if (window.self !== window.top && loadGameState()) {
   setTimeout(function() { resumeGame(); }, 100);
