@@ -12214,18 +12214,19 @@ function buildGrahamDimension() {
     { x: AX - 8, z: AZ + 4, ry: -Math.PI / 4 },
     { x: AX + 8, z: AZ + 4, ry: Math.PI / 4 },
   ];
+  const tierTopY = 3.05; // Top of tier 2 seating
   thumbStatuePositions.forEach(sp => {
-    // Gold pedestal
+    // Gold pedestal (sits on top tier)
     const ped = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1, 1.2), darkGoldMat);
-    ped.position.set(sp.x, 0.5, sp.z);
+    ped.position.set(sp.x, tierTopY + 0.5, sp.z);
     ped.castShadow = true; g.add(ped);
     const pedTop = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 1.4), goldMat);
-    pedTop.position.set(sp.x, 1.05, sp.z);
+    pedTop.position.set(sp.x, tierTopY + 1.05, sp.z);
     g.add(pedTop);
     // Graham figure (1.5x scale)
     const thumbGraham = buildCharacter(grahamOpts);
     thumbGraham.scale.set(1.5, 1.5, 1.5);
-    thumbGraham.position.set(sp.x, 1.15, sp.z);
+    thumbGraham.position.set(sp.x, tierTopY + 1.15, sp.z);
     thumbGraham.rotation.y = sp.ry;
     g.add(thumbGraham);
   });
