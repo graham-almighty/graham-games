@@ -248,6 +248,9 @@ canvas { display: block; margin: 0 auto; }
 <div id="gg-toast"></div>
 
 <script>
+// Hide exit buttons when running inside launcher iframe
+if (window !== window.top) { document.querySelectorAll('.btn-exit').forEach(el => el.style.display = 'none'); }
+
 // ═══════════════════════════════════════════
 // G BUX INTEGRATION
 // ═══════════════════════════════════════════

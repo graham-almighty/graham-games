@@ -1106,6 +1106,7 @@
     border: 1px solid #4caf5044;
     border-radius: 4px;
     background: #4caf5011;
+    display: none;
   }
   .gp-timer.warning { color: #ff9800; border-color: #ff980044; background: #ff980011; }
   .gp-timer.danger { color: #ef5350; border-color: #ef535044; background: #ef535011; }
@@ -1121,19 +1122,6 @@
     transition: all 0.15s;
   }
   .gp-exit:hover { color: #c9a84c; border-color: #c9a84c; }
-  .gp-save {
-    font-family: 'Cinzel', serif;
-    font-size: 0.65rem;
-    background: transparent;
-    color: #4caf50;
-    border: 1px solid #4caf5066;
-    padding: 5px 12px;
-    cursor: pointer;
-    letter-spacing: 0.06em;
-    transition: all 0.15s;
-  }
-  .gp-save:hover { background: #4caf5015; border-color: #4caf50; box-shadow: 0 0 10px #4caf5022; }
-  .gp-save.saved { color: #c9a84c; border-color: #c9a84c66; }
   .gp-iframe {
     flex: 1;
     border: none;
@@ -1357,7 +1345,6 @@
     }
     .gp-title { font-size: 0.7rem; }
     .gp-exit { font-size: 0.6rem; padding: 4px 8px; }
-    .gp-save { font-size: 0.6rem; padding: 4px 8px; }
     .gp-timer { font-size: 0.75rem; }
     #preview-popup { display: none !important; }
   }
@@ -1385,11 +1372,15 @@ for (let i = 0; i < 30; i++) {
 <script>
 // === PROCEDURAL ELECTRONIC MUSIC (dark, glitchy, synth-driven) ===
 (function() {
+  // Never run music if loaded inside an iframe (prevents double theme song)
+  if (window !== window.top) return;
   let musicCtx = null, musicPlaying = false, musicNodes = [];
   const btn = document.getElementById('music-btn');
 
   function startMusicOnInteraction(e) {
     if (e.target === btn) return; // let the toggle button handle itself
+    // Don't start music if clicking a game card (game is about to open)
+    if (e.target.closest && e.target.closest('.game-card')) return;
     musicPlaying = true;
     createMusic();
     btn.textContent = 'MUSIC: ON';
@@ -1413,7 +1404,7 @@ for (let i = 0; i < 30; i++) {
     const loopLen = beatLen * 16; // 4 bars
 
     function scheduleLoop() {
-      if (!musicPlaying) return;
+      if (!musicPlaying || ctx.state === 'closed') return;
       const now = ctx.currentTime;
 
       for (let i = 0; i < 16; i++) {
@@ -1576,12 +1567,13 @@ for (let i = 0; i < 30; i++) {
   // Expose pause/resume for game player
   window.pauseLauncherMusic = function() {
     if (musicPlaying && musicCtx) {
-      musicCtx.suspend();
+      musicCtx.close();
+      musicCtx = null;
     }
   };
   window.resumeLauncherMusic = function() {
-    if (musicPlaying && musicCtx) {
-      musicCtx.resume();
+    if (musicPlaying && !musicCtx) {
+      createMusic();
     }
   };
 })();
@@ -2165,7 +2157,6 @@ for (let i = 0; i < 30; i++) {
     </svg>
     <div class="gp-title" id="gp-title">GAME</div>
     <div class="gp-timer" id="gp-timer">2:00</div>
-    <button class="gp-save" id="gp-save" onclick="saveCurrentGame()">&#128190; SAVE</button>
     <button class="gp-exit" onclick="exitGamePlayer()">EXIT TO LAUNCHER</button>
   </div>
   <iframe class="gp-iframe" id="gp-iframe" allow="pointer-lock"></iframe>
@@ -2751,7 +2742,10 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
     cards.sort((a, b) => {
       if (mode === 'alpha') return a.dataset.title.localeCompare(b.dataset.title);
       if (mode === 'popular') return +a.dataset.popular - +b.dataset.popular;
-      if (mode === 'recommended') return +a.dataset.recommended - +b.dataset.recommended;
+      if (mode === 'recommended') {
+        const scores = getRecommendedScores();
+        return (scores[b.getAttribute('href')] || 0) - (scores[a.getAttribute('href')] || 0);
+      }
       return +a.dataset.launch - +b.dataset.launch;
     });
     cards.forEach(c => list.appendChild(c));
@@ -2777,13 +2771,12 @@ document.querySelectorAll('.sort-btn').forEach(btn => {
   });
 });
 
-// ═══ GAME CARD INTERCEPTION (School Mode) ═══
+// ═══ GAME CARD INTERCEPTION ═══
 document.querySelector('.game-list').addEventListener('click', function(e) {
-  const sm = getSchoolMode();
-  if (!sm || !sm.enabled) return;
   const card = e.target.closest('.game-card');
   if (!card) return;
-  if (card.classList.contains('school-blocked')) return;
+  const sm = getSchoolMode();
+  if (sm && sm.enabled && card.classList.contains('school-blocked')) return;
   e.preventDefault();
   const href = card.getAttribute('href');
   const titleEl = card.querySelector('.game-title');
@@ -2795,6 +2788,61 @@ document.querySelector('.game-list').addEventListener('click', function(e) {
 let quizTimerInterval = null;
 let quizTimeLeft = 120;
 let quizActive = false;
+
+// ═══ GAME TAGS (for recommendation engine) ═══
+const GAME_TAGS = {
+  'hurgvibbit/index.html':       ['rhythm', 'music', 'multiplayer', '2d', 'arcade'],
+  'flying-ace/index.html':       ['strategy', 'board', 'multiplayer', '2d', 'turn-based'],
+  'combat/index.html':           ['action', 'shooter', 'multiplayer', '2d', 'retro'],
+  'mini-life/game.html':         ['simulation', 'open-world', '3d', 'rpg', 'exploration'],
+  'tower-defense/index.html':    ['strategy', 'tower-defense', '2d', 'action'],
+  'ancient-warfare/index.html':  ['strategy', 'action', '3d', 'military', 'simulation'],
+  'rogue-depths/index.html':     ['rpg', 'roguelike', '2d', 'action', 'exploration'],
+  'devious-driving/index.html':  ['racing', 'action', '2d', 'multiplayer', 'arcade'],
+  'brawl-monsters/index.html':   ['rpg', 'collecting', '2d', 'turn-based', 'action'],
+  'battle-bros/index.html':      ['fighting', 'action', '2d', 'multiplayer', 'retro'],
+  'mega-io/index.html':          ['action', 'shooter', '2d', 'arcade', 'multiplayer'],
+  'sibling-brawl/index.html':    ['fighting', 'action', '3d', 'multiplayer'],
+  'dress-to-depress/index.html': ['simulation', 'creative', '3d', 'fashion'],
+  'school-nurse/index.html':     ['simulation', 'detective', '2d', 'story'],
+  'super-soccer/index.html':     ['sports', 'action', '2d', 'simulation']
+};
+
+function getRecommendedScores() {
+  const counts = getPlayCounts();
+  const hrefs = Object.keys(GAME_TAGS);
+  const totalPlays = hrefs.reduce((s, h) => s + (counts[h] || 0), 0);
+
+  // If no plays yet, return equal scores (fall back to default order)
+  if (totalPlays === 0) {
+    const scores = {};
+    hrefs.forEach(h => scores[h] = 0);
+    return scores;
+  }
+
+  // Build tag preference profile: weight each tag by how much the player plays games with it
+  const tagWeights = {};
+  hrefs.forEach(h => {
+    const plays = counts[h] || 0;
+    if (plays === 0) return;
+    const tags = GAME_TAGS[h] || [];
+    tags.forEach(t => { tagWeights[t] = (tagWeights[t] || 0) + plays; });
+  });
+
+  // Score each game: sum of tag weights for its tags, minus own play count (boost undiscovered games)
+  const scores = {};
+  hrefs.forEach(h => {
+    const tags = GAME_TAGS[h] || [];
+    const tagScore = tags.reduce((s, t) => s + (tagWeights[t] || 0), 0);
+    const ownPlays = counts[h] || 0;
+    // Games you already play a lot rank lower — surface new ones that match your taste
+    // Unplayed games with matching tags get a discovery bonus
+    const discoveryBonus = ownPlays === 0 ? totalPlays * 0.3 : 0;
+    scores[h] = tagScore - (ownPlays * 2) + discoveryBonus;
+  });
+
+  return scores;
+}
 
 // ═══ PLAY COUNT TRACKING ═══
 const GG_PLAYS_KEY = 'gg-play-counts';
@@ -2839,50 +2887,35 @@ function openGamePlayer(href, title) {
   document.getElementById('gp-title').textContent = title;
   document.getElementById('gp-iframe').src = href;
   document.getElementById('game-player').classList.add('visible');
-  document.getElementById('gp-save').textContent = '\uD83D\uDCBE SAVE';
-  document.getElementById('gp-save').classList.remove('saved');
   // Only count as a play after 10 seconds of actual playtime
   if (_playTimer) clearTimeout(_playTimer);
   _playTimer = setTimeout(() => { trackPlay(href); _playTimer = null; }, 10000);
   if (window.pauseLauncherMusic) window.pauseLauncherMusic();
 }
 
-// ═══ SAVE BUTTON (sends postMessage to game iframe) ═══
-function saveCurrentGame() {
-  const iframe = document.getElementById('gp-iframe');
-  if (!iframe || !iframe.contentWindow) return;
-  try { iframe.contentWindow.postMessage({ type: 'gg-save' }, '*'); } catch(e) {}
-  const btn = document.getElementById('gp-save');
-  btn.textContent = '\u2705 SAVED!';
-  btn.classList.add('saved');
-  setTimeout(() => { btn.textContent = '\uD83D\uDCBE SAVE'; btn.classList.remove('saved'); }, 2000);
-}
-
-// Listen for save confirmation from games
-window.addEventListener('message', function(e) {
-  if (e.data && e.data.type === 'gg-save-done') {
-    const btn = document.getElementById('gp-save');
-    if (btn) { btn.textContent = '\u2705 SAVED!'; btn.classList.add('saved'); setTimeout(() => { btn.textContent = '\uD83D\uDCBE SAVE'; btn.classList.remove('saved'); }, 2000); }
-  }
-});
-
 function exitGamePlayer() {
   if (quizActive) return;
   // Cancel play timer if exited before 10 seconds
   if (_playTimer) { clearTimeout(_playTimer); _playTimer = null; }
-  // Tell the game to save before destroying iframe
-  const iframe = document.getElementById('gp-iframe');
-  if (iframe && iframe.contentWindow) {
-    try { iframe.contentWindow.postMessage({ type: 'gg-save' }, '*'); } catch(e) {}
-  }
-  // Small delay to let save complete before clearing iframe
-  setTimeout(function() {
-    document.getElementById('game-player').classList.remove('visible');
-    document.getElementById('gp-iframe').src = '';
-    hideQuiz();
-    if (window.resumeLauncherMusic) window.resumeLauncherMusic();
-  }, 100);
+  document.getElementById('game-player').classList.remove('visible');
+  document.getElementById('gp-iframe').src = '';
+  hideQuiz();
+  if (window.resumeLauncherMusic) window.resumeLauncherMusic();
 }
+
+// If a game navigates to the launcher inside the iframe, exit properly instead
+document.getElementById('gp-iframe').addEventListener('load', function() {
+  try {
+    var iframePath = this.contentWindow.location.pathname;
+    var parentPath = window.location.pathname;
+    // Match if both end at the same directory (with or without index.html)
+    var iframeDir = iframePath.replace(/index\.html$/, '');
+    var parentDir = parentPath.replace(/index\.html$/, '');
+    if (iframeDir === parentDir) {
+      exitGamePlayer();
+    }
+  } catch(e) {}
+});
 
 function startQuizTimer() {
   stopQuizTimer();
@@ -2901,11 +2934,13 @@ function startQuizTimer() {
 
 function stopQuizTimer() {
   if (quizTimerInterval) { clearInterval(quizTimerInterval); quizTimerInterval = null; }
+  document.getElementById('gp-timer').style.display = 'none';
 }
 
 function updateTimerDisplay() {
-  // Update game player timer
+  // Update game player timer (only visible during school mode)
   const gpEl = document.getElementById('gp-timer');
+  gpEl.style.display = 'inline-block';
   const m = Math.floor(quizTimeLeft / 60);
   const s = quizTimeLeft % 60;
   const timeStr = m + ':' + (s < 10 ? '0' : '') + s;

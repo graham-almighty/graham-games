@@ -1393,6 +1393,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+// Hide exit button when running inside launcher iframe
+if (window !== window.top) { var bb = document.querySelector('.back-btn'); if (bb) bb.style.display = 'none'; }
+
 // ═══ G BUX SYSTEM ═══
 const GG_KEY = 'graham-games-data';
 function ggLoad() {
@@ -4103,6 +4106,8 @@ function rebuildPlayerCharacter() {
   if (mpChannel) {
     mpChannel.track({
       id: mpPlayerId, name: mpGamerName, room: mpMyRoomCode,
+      x: character.position.x, y: character.position.y, z: character.position.z,
+      yaw: yaw + Math.PI, floor: currentFloor,
       charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
         hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress },
       worldState: mpGetWorldState()
@@ -4246,11 +4251,11 @@ const GRAHAM_BOOKS_DATA = [
     { title: 'Locations', tips: [
       "HOME — Where you start. Buy the second floor, basement, and pool to expand.",
       "TOWN — Drive there with your car. Shops, gym, library, arcade, jobs, basketball, and more.",
-      "MANSION — $500 to buy. Free kitchen, spa, hot tub, art studio, home theater. Worth every penny.",
+      "MANSION — $1000 to buy. Free kitchen, spa, hot tub, art studio, home theater. Worth every penny.",
       "GRAHAM DIMENSION — Find the big red button in Graham's House in town. Good luck.",
     ]},
     { title: 'The Mansion', tips: [
-      "The mansion costs $500. Sounds expensive. It's worth every single dollar.",
+      "The mansion costs $1000. Sounds expensive. It's worth every single dollar.",
       "Ground floor: FREE kitchen (no food cost!), grand piano (+50 fun instant), home theater, spa.",
       "Upper floor: king bed (85 energy!), library, art studio ($15 per painting), arcade, hot tub.",
       "Outside: tennis court (+45 fun, +20 energy) and zen garden (+30 fun, +10 hygiene). Fancy.",
@@ -4441,7 +4446,7 @@ const GRAHAM_BOOKS_DATA = [
       "FACT #21: The town was built before Graham arrived. It was boring. Then Graham arrived.",
       "FACT #22: Bodhi's Junkuploops has made $0 in profit. Bodhi considers this 'breaking even emotionally'.",
       "FACT #23: Graham's Autobiography is 100% true. Graham wrote that sentence too.",
-      "FACT #24: The mansion costs $500. Graham bought it for $0. Perks of being Graham.",
+      "FACT #24: The mansion costs $1000. Graham bought it for $0. Perks of being Graham.",
     ]},
     { title: 'Facts 31-40', tips: [
       "FACT #31: This book was supposed to have 1000 facts. We ran out at 40. Nobody's perfect.",
@@ -19230,7 +19235,7 @@ function mpJoinLocation(locKey) {
     mpCaptureHostWorldState(newPresences);
     newPresences.forEach(p => {
       if (p.id === mpPlayerId) return;
-      if (remotePlayers.has(p.id)) { mpUpdatePlayerAppearance(p); return; }
+      if (remotePlayers.has(p.id)) { remotePlayers.get(p.id).lastUpdate = performance.now(); mpUpdatePlayerAppearance(p); return; }
       mpAddPlayer(p);
     });
     mpUpdatePlayerList();
@@ -19253,7 +19258,14 @@ function mpJoinLocation(locKey) {
       Object.values(state).forEach(arr => {
         arr.forEach(p => {
           allPresences.push(p);
-          if (p.id !== mpPlayerId && !remotePlayers.has(p.id)) mpAddPlayer(p);
+          if (p.id === mpPlayerId) return;
+          if (remotePlayers.has(p.id)) {
+            // Refresh timeout so standing-still players don't get removed
+            const rp = remotePlayers.get(p.id);
+            rp.lastUpdate = performance.now();
+          } else {
+            mpAddPlayer(p);
+          }
         });
       });
       mpCaptureHostWorldState(allPresences);
@@ -19282,6 +19294,11 @@ function mpJoinLocation(locKey) {
         id: mpPlayerId,
         name: mpGamerName,
         room: mpMyRoomCode,
+        x: character.position.x,
+        y: character.position.y,
+        z: character.position.z,
+        yaw: yaw + Math.PI,
+        floor: currentFloor,
         charOpts: { skinTone: charOpts.skinTone, gender: charOpts.gender, hairStyle: charOpts.hairStyle,
           hairColor: charOpts.hairColor, outfit: charOpts.outfit, accessory: charOpts.accessory, dress: charOpts.dress },
         worldState: mpGetWorldState()
@@ -19389,7 +19406,6 @@ function mpGetWorldState() {
 }
 
 function mpCaptureHostWorldState(presences) {
-  if (!mpIsVisiting) return;
   for (const p of presences) {
     if (p.id !== mpPlayerId && p.room === mpCurrentRoom && p.worldState) {
       mpHostWorldState = p.worldState;
@@ -19454,6 +19470,8 @@ function _mpProcessAddQueue() {
   if (remotePlayers.has(state.id)) return; // already added
   const opts = state.charOpts || { skinTone: 1, gender: 'male', hairStyle: 'short', hairColor: 0, outfit: 0, accessory: 0, dress: -1 };
   const group = buildCharacter(opts);
+  group.position.set(state.x || 0, state.y || 0.15, state.z || 0);
+  group.rotation.y = state.yaw || 0;
   group.visible = true;
   scene.add(group);
 
@@ -19480,8 +19498,8 @@ function _mpProcessAddQueue() {
     group, nameTag: tag,
     playerName: state.name || 'Player',
     charOpts: opts,
-    targetPos: new THREE.Vector3(0, 0.15, 0),
-    targetYaw: 0,
+    targetPos: new THREE.Vector3(state.x || 0, state.y || 0.15, state.z || 0),
+    targetYaw: state.yaw || 0,
     lastUpdate: performance.now(),
     legL, legR, walkPhase: 0
   });
@@ -19553,13 +19571,16 @@ function mpRemovePlayer(id) {
 }
 
 let _lastBroadcastX = 0, _lastBroadcastZ = 0, _lastBroadcastYaw = 0;
+let _lastHeartbeat = 0;
 function mpBroadcastPosition() {
   if (!mpChannel) return;
   const cx = character.position.x, cz = character.position.z;
-  // Skip broadcast if player hasn't moved or rotated
+  const now = performance.now();
+  // Skip broadcast if player hasn't moved or rotated (but send heartbeat every 3s)
   const dx = cx - _lastBroadcastX, dz = cz - _lastBroadcastZ;
   const moved = dx * dx + dz * dz > 0.001 || Math.abs(yaw - _lastBroadcastYaw) > 0.01;
-  if (!moved) return;
+  if (!moved && now - _lastHeartbeat < 3000) return;
+  _lastHeartbeat = now;
   _lastBroadcastX = cx; _lastBroadcastZ = cz; _lastBroadcastYaw = yaw;
   mpChannel.send({
     type: 'broadcast',

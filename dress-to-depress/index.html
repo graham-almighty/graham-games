@@ -763,6 +763,11 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// Hide exit bar and exit buttons when running inside launcher iframe
+if (window !== window.top) {
+  document.querySelectorAll('.exit-bar, .exit-btn, button[onclick*="../index.html"], a[href="../index.html"]').forEach(el => el.style.display = 'none');
+}
+
 // ═══════════════════════════════════════════
 // G BUX SYSTEM
 // ═══════════════════════════════════════════

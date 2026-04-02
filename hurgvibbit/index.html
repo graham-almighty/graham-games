@@ -995,6 +995,9 @@
 </div>
 
 <script>
+// Hide exit buttons when running inside launcher iframe
+if (window !== window.top) { document.querySelectorAll('.exit-btn').forEach(el => el.style.display = 'none'); }
+
 // ═══ G BUX SYSTEM ═══
 const GG_KEY = 'graham-games-data';
 function ggLoad() {

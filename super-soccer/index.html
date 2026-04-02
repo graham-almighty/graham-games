@@ -50,6 +50,9 @@ body{background:#0a0a0f;overflow:hidden;}
 </div>
 
 <script>
+// Hide toolbar when running inside launcher iframe
+if (window !== window.top) { document.querySelector('.toolbar').style.display = 'none'; }
+
 // === G BUX SYSTEM ===
 const GG_KEY = 'graham-games-data';
 function ggLoad(){try{return JSON.parse(localStorage.getItem(GG_KEY))||{gBux:0,achievements:{},shopPurchases:{}};}catch(e){return{gBux:0,achievements:{},shopPurchases:{}};}}

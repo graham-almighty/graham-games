@@ -281,6 +281,9 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
+// Hide toolbar when running inside launcher iframe
+if (window !== window.top) { document.querySelector('.toolbar').style.display = 'none'; }
+
 // ═══════════════════════════════════════════
 // G BUX SYSTEM
 // ═══════════════════════════════════════════
