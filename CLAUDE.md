@@ -97,7 +97,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
 
-### Achievement Summary (137 total, 3070G earnable)
+### Achievement Summary (147 total, 3270G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -108,6 +108,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Devious Driving | 8 | 175G |
 | Brawl Monsters | 19 | 430G |
 | Battle Bros | 10 | 210G |
+| Mega IO | 10 | 200G |
 | Dress to Depress | 10 | 200G |
 | Sibling Brawl | 10 | 185G |
 | School Nurse | 10 | 250G |
@@ -115,7 +116,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 
 See each game's `CLAUDE.md` for full achievement tables.
 
-### G Bux Shop (23 items, 1550G total)
+### G Bux Shop (25 items, 1675G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -139,6 +140,8 @@ See each game's `CLAUDE.md` for full achievement tables.
 | sb_snack_boost | Snack Boost | 50G | Sibling Brawl | +10% damage for first 10s |
 | dtd_wild_card | Wild Card | 50G | Dress to Depress | Adds 3 wild clothing items |
 | dtd_extra_time | Extra Time | 75G | Dress to Depress | 60s per round instead of 45 |
+| mio_speed_boost | Speed Boost | 50G | Mega IO | Move 20% faster |
+| mio_trail_shield | Trail Shield | 75G | Mega IO | Trail safe for 2s after leaving territory |
 | ss_star_striker | Star Striker | 75G | Super Soccer | +15% shot power |
 | ss_speed_boots | Speed Boots | 50G | Super Soccer | +10% team speed |
 
