@@ -924,9 +924,40 @@ group('Pause');
   assert(shouldResume, 'Game loop resumes when unpaused');
 }
 
+// ═══ SAVE/LOAD FUNCTIONS ═══
+const MIO_GAME_KEY = 'mio-game-save';
+
+function saveGameState() {
+  try {
+    const state = {
+      grid: grid, trailGrid: trailGrid,
+      players: players.map(p => ({
+        id: p.id, x: p.x, y: p.y, px: p.px, py: p.py,
+        dir: p.dir, nextDir: p.nextDir, speed: p.speed,
+        moveProgress: p.moveProgress, trail: p.trail,
+        alive: p.alive, invulnTimer: p.invulnTimer,
+        isBot: p.isBot, botTimer: p.botTimer, botTargetDir: p.botTargetDir,
+        territoryCount: p.territoryCount, lives: p.lives, shieldTimer: p.shieldTimer
+      })),
+      gameTime: gameTime, kills: kills, hasDied: hasDied,
+      hasCapturedAfterDeath: hasCapturedAfterDeath,
+      maxTerritory: maxTerritory, ioBuxEarnedThisGame: ioBuxEarnedThisGame
+    };
+    localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+    return true;
+  } catch(e) { return false; }
+}
+
+function loadGameState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(MIO_GAME_KEY));
+    if (!s || !s.grid) return null;
+    return s;
+  } catch { return null; }
+}
+
 group('Save & Resume');
 {
-  const MIO_GAME_KEY = 'mio-game-save';
   localStorage.clear();
 
   // No save initially
@@ -934,12 +965,12 @@ group('Save & Resume');
   try { saved = JSON.parse(localStorage.getItem(MIO_GAME_KEY)); } catch {}
   assert(!saved, 'No game save initially');
 
-  // Save game state
+  // Save game state via saveGameState()
   initGrid();
   grid[50][50] = 1;
   grid[51][50] = 2;
   trailGrid[52][50] = 1;
-  const testPlayers = [
+  players = [
     { id: 1, x: 50, y: 50, px: 50, py: 50, dir: 0, nextDir: -1, speed: 11, moveProgress: 0,
       trail: [{x:52,y:50}], alive: true, invulnTimer: 0, isBot: false, botTimer: 0,
       botTargetDir: 0, territoryCount: 1, lives: 4, shieldTimer: 0 },
@@ -947,16 +978,15 @@ group('Save & Resume');
       trail: [], alive: true, invulnTimer: 0, isBot: true, botTimer: 0.3,
       botTargetDir: 1, territoryCount: 1, lives: 5, shieldTimer: 0 }
   ];
-  const state = {
-    grid: grid, trailGrid: trailGrid, players: testPlayers,
-    gameTime: 45.5, kills: 3, hasDied: true,
-    hasCapturedAfterDeath: true, maxTerritory: 12.5, ioBuxEarnedThisGame: 7
-  };
-  localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+  gameTime = 45.5; kills = 3; hasDied = true;
+  hasCapturedAfterDeath = true; maxTerritory = 12.5; ioBuxEarnedThisGame = 7;
 
-  // Load game state
-  const loaded = JSON.parse(localStorage.getItem(MIO_GAME_KEY));
-  assert(loaded !== null, 'Game state saved');
+  const saveResult = saveGameState();
+  assert(saveResult === true, 'saveGameState returns true on success');
+
+  // Load game state via loadGameState()
+  const loaded = loadGameState();
+  assert(loaded !== null, 'loadGameState returns saved state');
   assertEqual(loaded.gameTime, 45.5, 'Game time preserved');
   assertEqual(loaded.kills, 3, 'Kills preserved');
   assertEqual(loaded.hasDied, true, 'hasDied preserved');
@@ -979,9 +1009,8 @@ group('Save & Resume');
 
   // Clear save
   localStorage.removeItem(MIO_GAME_KEY);
-  let cleared = null;
-  try { cleared = JSON.parse(localStorage.getItem(MIO_GAME_KEY)); } catch {}
-  assert(!cleared, 'Game save cleared');
+  const afterClear = loadGameState();
+  assert(afterClear === null, 'loadGameState returns null after clear');
 
   localStorage.clear();
 }

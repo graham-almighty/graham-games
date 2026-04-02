@@ -1413,13 +1413,20 @@ function toggleFullscreen(){
 }
 
 function gameLoop(ts){
+  if (_ggQuizPaused) { requestAnimationFrame(gameLoop); return; }
   update(ts);
   render();
   requestAnimationFrame(gameLoop);
 }
 requestAnimationFrame(gameLoop);
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Launcher save button listener + quiz pause/resume
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

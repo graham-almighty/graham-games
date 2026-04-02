@@ -388,6 +388,33 @@
     margin-left: auto;
   }
 
+  /* ═══ BUGS PANEL ═══ */
+  .bug-entry {
+    padding: 10px 12px;
+    border-radius: 7px;
+    border: 1px solid #333;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .bug-severity {
+    font-size: 0.5rem;
+    padding: 2px 8px;
+    border-radius: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .bug-severity.low { background: #4caf5033; border: 1px solid #4caf5066; color: #81c784; }
+  .bug-severity.medium { background: #ff980033; border: 1px solid #ff980066; color: #ffb74d; }
+  .bug-severity.high { background: #f4433633; border: 1px solid #f4433666; color: #ef5350; }
+  .bug-body { flex: 1; }
+  .bug-game { font-size: 0.55rem; color: #888; letter-spacing: 0.04em; text-transform: uppercase; }
+  .bug-desc { font-size: 0.65rem; color: #ccc; margin-top: 2px; line-height: 1.4; }
+
   /* ═══ SORT BAR ═══ */
   .sort-bar {
     display: flex;
@@ -1697,14 +1724,15 @@ for (let i = 0; i < 30; i++) {
     <button class="nav-btn" onclick="openShop()">&#128176; G BUX SHOP</button>
     <button class="nav-btn" onclick="openSchoolMode()">&#127891; SCHOOL MODE</button>
     <button class="nav-btn" onclick="openNews()">&#128240; NEWS</button>
+    <button class="nav-btn" onclick="openBugs()">&#128027; BUGS</button>
   </div>
 
-  <!-- New Game Banner -->
-  <div class="drop-banner" style="cursor:default;">
+  <!-- Bug Warning Banner -->
+  <div class="drop-banner" onclick="openBugs()">
     <span class="drop-sparkle">&#9888;</span>
     <span class="drop-text">BUGS ALERT!</span>
     <span class="drop-tag">HEADS UP</span>
-    <span class="drop-text2">Some games may have bugs — we're fixing them! Play on, but watch out.</span>
+    <span class="drop-text2">Some games have known bugs — tap here to see the full list!</span>
     <span class="drop-sparkle">&#9888;</span>
   </div>
 
@@ -2148,6 +2176,16 @@ for (let i = 0; i < 30; i++) {
 </div>
 
 
+<!-- Bugs Overlay -->
+<div class="gg-overlay" id="bugs-overlay">
+  <div class="gg-panel">
+    <h2>&#128027; KNOWN BUGS</h2>
+    <div class="gg-panel-sub">Issues we know about &mdash; sorted least to most important</div>
+    <div id="bugs-list"></div>
+    <button class="gg-close" onclick="closeBugs()">CLOSE</button>
+  </div>
+</div>
+
 <!-- Game Player (iframe container for school mode) -->
 <div id="game-player">
   <div class="gp-toolbar">
@@ -2576,6 +2614,8 @@ const NEWS_TAG_LABELS = {
   'super-soccer': 'Super Soccer',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-04-02', title: 'Big Big Bug Fix', desc: 'Massive bug fix across multiple games! Mega IO save system overhauled — auto-saves when you exit, no more lost progress. Most Played by Public now syncs across all devices via server. School Mode quizzes now pause your game so your character stops moving. Tons of small fixes everywhere!', game: 'all' },
+  { date: '2026-04-01', title: 'Server Finally!', desc: 'Graham Games now has a real server! Play counts sync across all devices so Most Played by Public actually shows what everyone is playing. Customizable launcher backgrounds, accent colors, and card styles are live in the G Bux Shop — make your homescreen yours!', game: 'all' },
   { date: '2026-03-30', title: 'Into the Graham-verse 2', desc: 'The Graham Dimension expands! Graham Burger is now open for business — flip burgers for Burger Graham and earn cash at this hilarious fast food joint with a giant burger on the roof. Presidential Palace got a full renovation: fixed basement access, new furniture layout, and pizza throne replaces the desk chair. Plus real-time multiplayer — see other players walking around in your world!', game: 'mini-life' },
   { date: '2026-03-30', title: 'Bug Fix and Quality Update', desc: 'Mini Life: fixed save system (N key to save, auto-assigns slots), fixed mansion staircase wall blocking stairs, fixed presidential basement trapping you in home basement, fixed pepper sabotage mission button, dresses redesigned with modern style. GG Merch shirt now appears in shop after purchase. Mobile touch controls added. Daily mystery box now triggers reliably on game load.', game: 'mini-life' },
   { date: '2026-03-24', title: 'Coming Soon: Into the Graham-verse 2', desc: 'The Graham Dimension is expanding! The next big Mini Life update will take you even deeper into the Graham-verse with new areas, challenges, and secrets. Stay tuned!', game: 'mini-life' },
@@ -2617,6 +2657,42 @@ function openNews() {
   document.getElementById('news-overlay').classList.add('visible');
 }
 function closeNews() { document.getElementById('news-overlay').classList.remove('visible'); }
+
+// ═══ KNOWN BUGS LIST ═══
+const KNOWN_BUGS = [
+  { severity: 'low', game: 'Dress to Depress', desc: 'Runway camera can clip through the model briefly during the walk.' },
+  { severity: 'low', game: 'Battle Bros', desc: 'Occasionally the KO animation plays twice on the final hit.' },
+  { severity: 'low', game: 'Hurgvibbit', desc: 'Notes can sometimes overlap visually at very high speeds in Turbo Mode.' },
+  { severity: 'low', game: 'Brawl Monsters', desc: 'Freeplay map scrolling can feel sluggish on older devices.' },
+  { severity: 'medium', game: 'Mini Life', desc: 'Multiplayer players may briefly appear at the wrong position when switching floors.' },
+  { severity: 'medium', game: 'Devious Driving', desc: 'AI cars can sometimes get stuck on walls in the Downtown map.' },
+  { severity: 'medium', game: 'Super Soccer', desc: 'Goalies occasionally let easy shots through — balancing still in progress (Early Access).' },
+  { severity: 'medium', game: 'Tower Defense', desc: 'Flame tower damage tick can sometimes miss fast enemies at the edge of range.' },
+  { severity: 'medium', game: 'Ancient Warfare', desc: 'War Elephant can get stuck behind allied units in tight formations.' },
+  { severity: 'medium', game: 'Sibling Brawl', desc: 'Nerf gunner projectiles can pass through blanket tanks at certain angles.' },
+  { severity: 'medium', game: 'Rogue Depths', desc: 'Shop prices can display incorrectly after loading a save mid-run.' },
+  { severity: 'high', game: 'Mini Life', desc: 'Multiplayer can desync if both players enter the Graham Dimension at the same time.' },
+  { severity: 'high', game: 'Mega IO', desc: 'Resuming a save occasionally places bots at (0,0) instead of their saved positions.' },
+  { severity: 'high', game: 'School Nurse', desc: 'On rare occasions the day timer freezes, softlocking the game. Refresh to fix.' },
+];
+
+function openBugs() {
+  const container = document.getElementById('bugs-list');
+  container.innerHTML = '';
+  for (const bug of KNOWN_BUGS) {
+    const div = document.createElement('div');
+    div.className = 'bug-entry';
+    div.innerHTML =
+      '<span class="bug-severity ' + bug.severity + '">' + bug.severity + '</span>' +
+      '<div class="bug-body">' +
+        '<div class="bug-game">' + bug.game + '</div>' +
+        '<div class="bug-desc">' + bug.desc + '</div>' +
+      '</div>';
+    container.appendChild(div);
+  }
+  document.getElementById('bugs-overlay').classList.add('visible');
+}
+function closeBugs() { document.getElementById('bugs-overlay').classList.remove('visible'); }
 
 // ═══ REFRESH ON FOCUS ═══
 function refreshGBux() {
@@ -2844,18 +2920,53 @@ function getRecommendedScores() {
   return scores;
 }
 
-// ═══ PLAY COUNT TRACKING ═══
+// ═══ PLAY COUNT TRACKING (Supabase + localStorage) ═══
 const GG_PLAYS_KEY = 'gg-play-counts';
+const GG_PUBLIC_PLAYS_KEY = 'gg-public-play-counts';
+const GG_SB_URL = 'https://ibfjkctnklcgyfmjjivv.supabase.co';
+const GG_SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImliZmprY3Rua2xjZ3lmbWpqaXZ2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4MTM0MjYsImV4cCI6MjA5MDM4OTQyNn0.ZSaIOTJ_io3BJ0ra8r0g8EaQ_zFLD-K9fFVDhR9SRJQ';
 let _playTimer = null;
 function getPlayCounts() { try { return JSON.parse(localStorage.getItem(GG_PLAYS_KEY)) || {}; } catch(e) { return {}; } }
+function getPublicPlayCounts() { try { return JSON.parse(localStorage.getItem(GG_PUBLIC_PLAYS_KEY)) || {}; } catch(e) { return {}; } }
+
 function trackPlay(href) {
+  // Local count (personal stats)
   const counts = getPlayCounts();
   counts[href] = (counts[href] || 0) + 1;
   localStorage.setItem(GG_PLAYS_KEY, JSON.stringify(counts));
+  // Increment in Supabase (public aggregate)
+  fetch(GG_SB_URL + '/rest/v1/rpc/increment_play_count', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'apikey': GG_SB_ANON, 'Authorization': 'Bearer ' + GG_SB_ANON },
+    body: JSON.stringify({ game: href })
+  }).then(() => fetchPublicPlayCounts()).catch(() => {});
   updatePopularRanks();
 }
+
+function fetchPublicPlayCounts() {
+  return fetch(GG_SB_URL + '/rest/v1/play_counts?select=game_href,total_plays', {
+    headers: { 'apikey': GG_SB_ANON, 'Authorization': 'Bearer ' + GG_SB_ANON }
+  }).then(r => r.json()).then(rows => {
+    const counts = {};
+    if (Array.isArray(rows)) rows.forEach(r => { counts[r.game_href] = r.total_plays; });
+    localStorage.setItem(GG_PUBLIC_PLAYS_KEY, JSON.stringify(counts));
+    updatePopularRanks();
+  }).catch(() => {});
+}
+
+function getMergedPlayCounts() {
+  const pub = getPublicPlayCounts();
+  const local = getPlayCounts();
+  const merged = {};
+  const cards = document.querySelectorAll('.game-card');
+  cards.forEach(c => {
+    const href = c.getAttribute('href');
+    // Use public count if available, otherwise fall back to local
+    merged[href] = (pub[href] != null) ? pub[href] : (local[href] || 0);
+  });
+  return merged;
+}
 function updatePopularRanks() {
-  const counts = getPlayCounts();
+  const counts = getMergedPlayCounts();
   const cards = Array.from(document.querySelectorAll('.game-card'));
   const sorted = cards.slice().sort((a, b) => (counts[b.getAttribute('href')] || 0) - (counts[a.getAttribute('href')] || 0));
   sorted.forEach((card, i) => card.dataset.popular = String(i + 1));
@@ -3104,6 +3215,9 @@ function showQuiz() {
   quizActive = true;
   const sm = getSchoolMode();
   if (!sm) return;
+  // Pause the game in the iframe
+  var gpi = document.getElementById('gp-iframe');
+  if (gpi && gpi.contentWindow) try { gpi.contentWindow.postMessage({ type: 'gg-pause' }, '*'); } catch(e) {}
   currentQuizData = getQuestion(sm.subject);
   document.getElementById('quiz-subject').textContent = sm.subject.toUpperCase();
   document.getElementById('quiz-question').textContent = currentQuizData.question;
@@ -3126,6 +3240,9 @@ function hideQuiz() {
   quizActive = false;
   if (quizWaitInterval) { clearInterval(quizWaitInterval); quizWaitInterval = null; }
   document.getElementById('quiz-overlay').classList.remove('visible');
+  // Resume the game in the iframe
+  var gpi = document.getElementById('gp-iframe');
+  if (gpi && gpi.contentWindow) try { gpi.contentWindow.postMessage({ type: 'gg-resume' }, '*'); } catch(e) {}
 }
 
 function answerQuiz(index) {
@@ -3359,6 +3476,7 @@ function updateAccountUI() {
 // On load: wait for session restore then update UI
 setTimeout(() => { updateAccountUI(); refreshGBux(); }, 500);
 updatePopularRanks();
+fetchPublicPlayCounts();
 applyCustomization();
 </script>
 

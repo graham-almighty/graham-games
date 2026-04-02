@@ -2687,6 +2687,7 @@ function renderMinimap(camX, camY) {
 // ═══════════════════════════════════════════
 function gameLoop(now) {
   if (gameState !== 'playing') return;
+  if (_ggQuizPaused) { animFrame = requestAnimationFrame(gameLoop); return; }
 
   let dt = (now - lastTime) / 1000;
   lastTime = now;
@@ -2785,7 +2786,13 @@ document.addEventListener('contextmenu', e => {
 showScreen('title-screen');
 updateContinueButton();
 // Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { if (typeof gameState !== 'undefined' && gameState === 'playing') { try { localStorage.setItem('rd-save', JSON.stringify(buildSaveData())); } catch(ex) {} } ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { if (typeof gameState !== 'undefined' && gameState === 'playing') { try { localStorage.setItem('rd-save', JSON.stringify(buildSaveData())); } catch(ex) {} } ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 
 </body>

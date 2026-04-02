@@ -2656,8 +2656,14 @@ function init() {
 }
 
 window.onload = init;
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { try { saveProgress(); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Launcher save/quiz-pause listener
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { try { saveProgress(); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

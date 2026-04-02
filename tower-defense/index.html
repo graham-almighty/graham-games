@@ -1470,6 +1470,7 @@ function checkWaveComplete() {
 
 // ═══ GAME LOOP ═══
 function gameLoop(now) {
+  if (_ggQuizPaused) { animFrame = requestAnimationFrame(gameLoop); return; }
   if (gameOver || victory) return;
 
   let dt = (now - lastTime) / 1000;
@@ -2537,8 +2538,14 @@ function showStoryOutro(mapIndex) {
 
 // Start on title
 showScreen('title-screen');
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { try { var p = loadProgress(); saveProgress(p); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Launcher save button listener + quiz pause/resume
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { try { var p = loadProgress(); saveProgress(p); } catch(ex) {} ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

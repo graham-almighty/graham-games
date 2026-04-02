@@ -1954,6 +1954,7 @@ function startLandingCutscene() {
 
 function landingLoop() {
   if (!battleRunning) return;
+  if (_ggQuizPaused) { requestAnimationFrame(landingLoop); return; }
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
   landingTime += dt;
@@ -2033,6 +2034,7 @@ function beginCameraTransition() {
 
 function camTransLoop() {
   if (!battleRunning) return;
+  if (_ggQuizPaused) { requestAnimationFrame(camTransLoop); return; }
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
   camTransTime += dt;
@@ -2112,6 +2114,7 @@ function endLandingCutscene() {
 let preBattleIdle = false;
 function preBattleIdleLoop() {
   if (!preBattleIdle) return;
+  if (_ggQuizPaused) { requestAnimationFrame(preBattleIdleLoop); return; }
   updatePlayerCamera();
   billboardHealthBars();
   renderer.render(scene, camera);
@@ -3872,6 +3875,7 @@ function startBattle() {
 
 function battleLoop() {
   if (!battleRunning) return;
+  if (_ggQuizPaused) { requestAnimationFrame(battleLoop); return; }
   const rawDt = clock.getDelta();
   const dt = Math.min(rawDt, 0.05);
 
@@ -5730,8 +5734,14 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
   }
 });
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { savePlayerData(loadPlayerData()); saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Launcher save/quiz-pause listener
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { savePlayerData(loadPlayerData()); saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

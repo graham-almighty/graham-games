@@ -2001,6 +2001,7 @@ function initPreviewScene() {
 let prevRotation = 0;
 function animatePreview() {
   prevAnimId = requestAnimationFrame(animatePreview);
+  if (_ggQuizPaused) return;
   if (prevCharacter) {
     prevRotation += 0.008;
     prevCharacter.rotation.y = prevRotation;
@@ -2181,6 +2182,7 @@ function startRunway() {
 
 function animateRunway() {
   runAnimId = requestAnimationFrame(animateRunway);
+  if (_ggQuizPaused) return;
   const dt = 1 / 60;
   runwayTime += dt;
 
@@ -2262,6 +2264,7 @@ function cleanupBotPreviews() {
 
 function animateBotPreviews() {
   botPreviewAnimId = requestAnimationFrame(animateBotPreviews);
+  if (_ggQuizPaused) return;
   botPreviews.forEach(bp => {
     if (bp.model) bp.model.rotation.y += 0.012;
     bp.renderer.render(bp.scene, bp.camera);
@@ -2632,8 +2635,14 @@ window.addEventListener('resize', () => {
     }
   }
 });
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Launcher save/quiz-pause listener
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { saveStats(loadStats()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

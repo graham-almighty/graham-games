@@ -1543,6 +1543,7 @@ function spawnNote(moveType) {
 let lastTime = 0;
 function gameLoop(ts) {
   if (!gameActive && notes.length === 0 && !spawnTimer) { rafId = null; return; }
+  if (_ggQuizPaused) { rafId = requestAnimationFrame(gameLoop); return; }
   rafId = requestAnimationFrame(gameLoop);
 
   if (!lastTime) { lastTime = ts; return; }
@@ -1945,7 +1946,13 @@ document.addEventListener('keydown', (e) => {
   }
 });
 // Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

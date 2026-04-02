@@ -5463,6 +5463,7 @@ function resizeFpMapCanvas() {
 
 function fpMapLoop() {
   if (!fpMapActive) { fpMapAnimFrame = null; return; }
+  if (_ggQuizPaused) { fpMapAnimFrame = requestAnimationFrame(fpMapLoop); return; }
   updateFpMapPlayer();
   renderFpMap();
   fpMapAnimFrame = requestAnimationFrame(fpMapLoop);
@@ -6313,7 +6314,13 @@ confirmFpMoveLearn = function() {
 showScreen('title-screen');
 updateTitleFreeplayBtn();
 // Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { if (typeof fpTeam !== 'undefined' && fpTeam && fpTeam.length > 0) { try { saveFreeplay(); } catch(ex) {} } saveStats(loadStats()); saveCollection(loadCollection()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+let _ggQuizPaused = false;
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { if (typeof fpTeam !== 'undefined' && fpTeam && fpTeam.length > 0) { try { saveFreeplay(); } catch(ex) {} } saveStats(loadStats()); saveCollection(loadCollection()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause') { _ggQuizPaused = true; }
+  if (e.data.type === 'gg-resume') { _ggQuizPaused = false; }
+});
 </script>
 </body>
 </html>

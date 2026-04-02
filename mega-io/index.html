@@ -1297,22 +1297,27 @@ function togglePause() {
 }
 
 function saveGameState() {
-  const state = {
-    grid: grid,
-    trailGrid: trailGrid,
-    players: players.map(p => ({
-      id: p.id, x: p.x, y: p.y, px: p.px, py: p.py,
-      dir: p.dir, nextDir: p.nextDir, speed: p.speed,
-      moveProgress: p.moveProgress, trail: p.trail,
-      alive: p.alive, invulnTimer: p.invulnTimer,
-      isBot: p.isBot, botTimer: p.botTimer, botTargetDir: p.botTargetDir,
-      territoryCount: p.territoryCount, lives: p.lives, shieldTimer: p.shieldTimer
-    })),
-    gameTime: gameTime, kills: kills, hasDied: hasDied,
-    hasCapturedAfterDeath: hasCapturedAfterDeath,
-    maxTerritory: maxTerritory, ioBuxEarnedThisGame: ioBuxEarnedThisGame
-  };
-  localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+  try {
+    const state = {
+      grid: grid,
+      trailGrid: trailGrid,
+      players: players.map(p => ({
+        id: p.id, x: p.x, y: p.y, px: p.px, py: p.py,
+        dir: p.dir, nextDir: p.nextDir, speed: p.speed,
+        moveProgress: p.moveProgress, trail: p.trail,
+        alive: p.alive, invulnTimer: p.invulnTimer,
+        isBot: p.isBot, botTimer: p.botTimer, botTargetDir: p.botTargetDir,
+        territoryCount: p.territoryCount, lives: p.lives, shieldTimer: p.shieldTimer
+      })),
+      gameTime: gameTime, kills: kills, hasDied: hasDied,
+      hasCapturedAfterDeath: hasCapturedAfterDeath,
+      maxTerritory: maxTerritory, ioBuxEarnedThisGame: ioBuxEarnedThisGame
+    };
+    localStorage.setItem(MIO_GAME_KEY, JSON.stringify(state));
+    return true;
+  } catch(e) {
+    return false;
+  }
 }
 
 function loadGameState() {
@@ -1329,16 +1334,19 @@ function clearGameSave() {
 }
 
 function saveAndExit() {
-  saveGameState();
+  const ok = saveGameState();
+  if (!ok) showToast('Save failed — storage may be full');
   gameRunning = false;
   gamePaused = false;
+  stopMusic();
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('hud-leader').classList.add('hidden');
   document.getElementById('fs-btn-game').classList.add('hidden');
   document.getElementById('pause-btn').classList.add('hidden');
+  document.getElementById('music-btn').classList.add('hidden');
   document.getElementById('pause-overlay').classList.add('hidden');
   document.getElementById('title-screen').classList.remove('hidden');
-  document.getElementById('resume-btn').classList.remove('hidden');
+  document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState());
   refreshBuxDisplays();
 }
 
@@ -1671,8 +1679,17 @@ document.getElementById('resume-btn').classList.toggle('hidden', !loadGameState(
 if (window.self !== window.top && loadGameState()) {
   setTimeout(function() { resumeGame(); }, 100);
 }
-// Launcher save button listener
-window.addEventListener('message', function(e) { if (e.data && e.data.type === 'gg-save') { if (typeof gameRunning !== 'undefined' && gameRunning && typeof grid !== 'undefined' && grid) { try { saveGameState(); } catch(ex) {} } mioSave(mioLoad()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); } });
+// Auto-save on page unload (when launcher destroys iframe)
+window.addEventListener('beforeunload', function() {
+  if (gameRunning && grid) saveGameState();
+});
+// Launcher message listener (save + quiz pause/resume)
+window.addEventListener('message', function(e) {
+  if (!e.data) return;
+  if (e.data.type === 'gg-save') { if (typeof gameRunning !== 'undefined' && gameRunning && typeof grid !== 'undefined' && grid) { saveGameState(); } mioSave(mioLoad()); ggSave(ggLoad()); if (window.parent) window.parent.postMessage({ type: 'gg-save-done' }, '*'); }
+  if (e.data.type === 'gg-pause' && gameRunning && !gamePaused) { gamePaused = true; }
+  if (e.data.type === 'gg-resume' && gameRunning && gamePaused) { gamePaused = false; lastTime = performance.now(); requestAnimationFrame(gameLoop); }
+});
 </script>
 </body>
 </html>

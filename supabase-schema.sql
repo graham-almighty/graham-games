@@ -49,3 +49,27 @@ CREATE POLICY "Users can read own saves" ON game_saves FOR SELECT USING (auth.ui
 CREATE POLICY "Users can insert own saves" ON game_saves FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own saves" ON game_saves FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own saves" ON game_saves FOR DELETE USING (auth.uid() = user_id);
+
+-- ═══ PUBLIC PLAY COUNTS ═══
+CREATE TABLE play_counts (
+  game_href TEXT PRIMARY KEY,              -- e.g. 'mini-life/game.html'
+  total_plays INTEGER DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS: anyone can read, anyone can upsert (no auth required for play tracking)
+ALTER TABLE play_counts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read play counts" ON play_counts FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert play counts" ON play_counts FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update play counts" ON play_counts FOR UPDATE USING (true);
+
+-- RPC function to atomically increment a game's play count
+CREATE OR REPLACE FUNCTION increment_play_count(game TEXT)
+RETURNS void AS $$
+BEGIN
+  INSERT INTO play_counts (game_href, total_plays)
+  VALUES (game, 1)
+  ON CONFLICT (game_href)
+  DO UPDATE SET total_plays = play_counts.total_plays + 1, updated_at = now();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
