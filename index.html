@@ -1035,6 +1035,17 @@
     padding: 2px 8px;
     border-radius: 3px;
     letter-spacing: 0.1em;
+  }
+  .bug-warning-tag {
+    position: absolute;
+    bottom: 8px;
+    right: 10px;
+    font-size: 0.55rem;
+    color: #ffaa00;
+    background: #ffaa0022;
+    padding: 2px 8px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     z-index: 2;
   }
@@ -1728,7 +1739,7 @@ for (let i = 0; i < 30; i++) {
   </div>
 
   <!-- Bug Warning Banner -->
-  <div class="drop-banner" onclick="openBugs()">
+  <div class="drop-banner" onclick="openBugs()" id="bugs-banner">
     <span class="drop-sparkle">&#9888;</span>
     <span class="drop-text">BUGS ALERT!</span>
     <span class="drop-tag">HEADS UP</span>
@@ -2660,39 +2671,52 @@ function closeNews() { document.getElementById('news-overlay').classList.remove(
 
 // ═══ KNOWN BUGS LIST ═══
 const KNOWN_BUGS = [
-  { severity: 'low', game: 'Dress to Depress', desc: 'Runway camera can clip through the model briefly during the walk.' },
-  { severity: 'low', game: 'Battle Bros', desc: 'Occasionally the KO animation plays twice on the final hit.' },
-  { severity: 'low', game: 'Hurgvibbit', desc: 'Notes can sometimes overlap visually at very high speeds in Turbo Mode.' },
-  { severity: 'low', game: 'Brawl Monsters', desc: 'Freeplay map scrolling can feel sluggish on older devices.' },
-  { severity: 'medium', game: 'Mini Life', desc: 'Multiplayer players may briefly appear at the wrong position when switching floors.' },
-  { severity: 'medium', game: 'Devious Driving', desc: 'AI cars can sometimes get stuck on walls in the Downtown map.' },
-  { severity: 'medium', game: 'Super Soccer', desc: 'Goalies occasionally let easy shots through — balancing still in progress (Early Access).' },
-  { severity: 'medium', game: 'Tower Defense', desc: 'Flame tower damage tick can sometimes miss fast enemies at the edge of range.' },
-  { severity: 'medium', game: 'Ancient Warfare', desc: 'War Elephant can get stuck behind allied units in tight formations.' },
-  { severity: 'medium', game: 'Sibling Brawl', desc: 'Nerf gunner projectiles can pass through blanket tanks at certain angles.' },
-  { severity: 'medium', game: 'Rogue Depths', desc: 'Shop prices can display incorrectly after loading a save mid-run.' },
-  { severity: 'high', game: 'Mini Life', desc: 'Multiplayer can desync if both players enter the Graham Dimension at the same time.' },
-  { severity: 'high', game: 'Mega IO', desc: 'Resuming a save occasionally places bots at (0,0) instead of their saved positions.' },
-  { severity: 'high', game: 'School Nurse', desc: 'On rare occasions the day timer freezes, softlocking the game. Refresh to fix.' },
+  { severity: 'high', game: 'Mini Life', href: 'mini-life/game.html', desc: 'Screen can load completely black — stats visible but nothing else renders.' },
+  { severity: 'high', game: 'Mega IO', href: 'mega-io/index.html', desc: 'Game does not save properly. Progress may be lost when exiting.' },
 ];
 
 function openBugs() {
   const container = document.getElementById('bugs-list');
   container.innerHTML = '';
+  if (KNOWN_BUGS.length === 0) {
+    container.innerHTML = '<div style="text-align:center;color:#aaa;padding:30px;">No known bugs right now!</div>';
+  }
   for (const bug of KNOWN_BUGS) {
     const div = document.createElement('div');
     div.className = 'bug-entry';
+    div.style.cursor = 'pointer';
+    div.title = 'Click to play ' + bug.game;
     div.innerHTML =
       '<span class="bug-severity ' + bug.severity + '">' + bug.severity + '</span>' +
       '<div class="bug-body">' +
         '<div class="bug-game">' + bug.game + '</div>' +
         '<div class="bug-desc">' + bug.desc + '</div>' +
       '</div>';
+    div.addEventListener('click', function() {
+      closeBugs();
+      openGamePlayer(bug.href, bug.game);
+    });
     container.appendChild(div);
   }
   document.getElementById('bugs-overlay').classList.add('visible');
 }
 function closeBugs() { document.getElementById('bugs-overlay').classList.remove('visible'); }
+
+// Add warning tags to game cards that have known bugs
+function applyBugWarnings() {
+  document.querySelectorAll('.bug-warning-tag').forEach(el => el.remove());
+  const bugHrefs = new Set(KNOWN_BUGS.map(b => b.href));
+  document.querySelectorAll('.game-card').forEach(card => {
+    if (bugHrefs.has(card.getAttribute('href'))) {
+      const tag = document.createElement('span');
+      tag.className = 'bug-warning-tag';
+      tag.textContent = '\u26A0 KNOWN BUGS';
+      tag.title = 'Check the BUGS panel for details before playing';
+      card.appendChild(tag);
+    }
+  });
+}
+applyBugWarnings();
 
 // ═══ REFRESH ON FOCUS ═══
 function refreshGBux() {
@@ -2731,9 +2755,6 @@ function openSchoolMode() {
   if (sm && sm.enabled) {
     container.innerHTML =
       '<div class="school-status">School Mode is ACTIVE — Subject: ' + sm.subject.charAt(0).toUpperCase() + sm.subject.slice(1) + ' — Quiz every ' + formatInterval(sm.interval || 120) + '</div>' +
-      '<div class="school-field"><label class="school-label">Enter PIN to disable</label>' +
-      '<input type="password" class="school-input" id="school-pin-off" maxlength="4" inputmode="numeric" placeholder="4-digit PIN"></div>' +
-      '<div class="school-error" id="school-error-off"></div>' +
       '<button class="school-btn danger" onclick="disableSchoolMode()">DISABLE SCHOOL MODE</button>';
   } else {
     container.innerHTML =
@@ -2771,11 +2792,6 @@ function enableSchoolMode() {
 }
 
 function disableSchoolMode() {
-  const pin = document.getElementById('school-pin-off').value;
-  const err = document.getElementById('school-error-off');
-  const sm = getSchoolMode();
-  if (!sm) return;
-  if (pin !== sm.pin) { err.textContent = 'Incorrect PIN'; return; }
   setSchoolMode(null);
   applySchoolMode();
   closeSchoolMode();
@@ -2996,8 +3012,9 @@ function updatePopularRanks() {
 
 function openGamePlayer(href, title) {
   document.getElementById('gp-title').textContent = title;
-  document.getElementById('gp-iframe').src = href;
+  // Show the game player FIRST so the iframe has layout dimensions when it loads
   document.getElementById('game-player').classList.add('visible');
+  document.getElementById('gp-iframe').src = href;
   // Only count as a play after 10 seconds of actual playtime
   if (_playTimer) clearTimeout(_playTimer);
   _playTimer = setTimeout(() => { trackPlay(href); _playTimer = null; }, 10000);
@@ -3008,8 +3025,14 @@ function exitGamePlayer() {
   if (quizActive) return;
   // Cancel play timer if exited before 10 seconds
   if (_playTimer) { clearTimeout(_playTimer); _playTimer = null; }
-  document.getElementById('game-player').classList.remove('visible');
-  document.getElementById('gp-iframe').src = '';
+  // Tell the game to save before we destroy the iframe
+  const iframe = document.getElementById('gp-iframe');
+  try { iframe.contentWindow.postMessage({ type: 'gg-save' }, '*'); } catch(e) {}
+  // Brief delay to let save complete, then destroy
+  setTimeout(function() {
+    document.getElementById('game-player').classList.remove('visible');
+    iframe.src = '';
+  }, 100);
   hideQuiz();
   if (window.resumeLauncherMusic) window.resumeLauncherMusic();
 }

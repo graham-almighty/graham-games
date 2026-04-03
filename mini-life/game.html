@@ -4246,7 +4246,7 @@ const GRAHAM_BOOKS_DATA = [
       "MEGA BLASTER ($30): Press E to shoot foam balls! Bouncy physics. Not useful. Incredibly fun.",
       "COMFY PILLOW ($25): Goes on your bed. Boosts sleep energy from 60 to 80. Sweet dreams.",
       "SPARKLE SHAMPOO ($20): Use once for PERMANENT sparkles above your head. Maximum style.",
-      "GAME CONSOLE ($35): Play Slug Assault! A retro top-down shooter with 3 levels and a boss.",
+      "GAME CONSOLE ($35): Play Slug Assault! An infinite side-scrolling run-and-gun — survive as long as you can!",
     ]},
     { title: 'Locations', tips: [
       "HOME — Where you start. Buy the second floor, basement, and pool to expand.",
@@ -5709,7 +5709,7 @@ function runConsoleReaction(canvas, ctx, onFinish) {
   startRound();
 }
 
-// ─── Console Mini-game: Slug Assault (Metal Slug-style) ───
+// ─── Console Mini-game: Slug Assault (Metal Slug-style, infinite) ───
 function runConsoleSlug(canvas, ctx, onFinish) {
   const W = canvas.width, H = canvas.height;
   const GROUND = H - 50;
@@ -5717,10 +5717,9 @@ function runConsoleSlug(canvas, ctx, onFinish) {
   const JUMP_VEL = -340;
   const PLAYER_SPEED = 180;
   const BULLET_SPEED = 400;
-  const LEVEL_LENGTH = 3200;
 
   // Player position is in world coords; camera follows
-  let player = { x: 60, y: GROUND, vy: 0, w: 16, h: 30, onGround: true, facing: 1, hp: 3, flash: 0 };
+  let player = { x: 60, y: GROUND, vy: 0, w: 16, h: 30, onGround: true, facing: 1, hp: 5, flash: 0 };
   let camX = 0;
   let bullets = [];
   let enemies = [];
@@ -5734,56 +5733,59 @@ function runConsoleSlug(canvas, ctx, onFinish) {
   let running = true;
   let keysDown = {};
   let shootCooldown = 0;
-  let bossSpawned = false;
-  let boss = null;
 
-  // ── OBSTACLES ── (world x coords)
-  // Types: crate (solid, blocks bullets), sandbag (short cover), barrel (explodes when shot),
-  //        platform (elevated, can stand on), pit (gap in ground, fall = damage)
+  // ── PROCEDURAL OBSTACLES ──
   const obstacles = [];
+  const pits = [];
+  let generatedUpTo = 0; // world X up to which we've generated
+  const CHUNK = 300; // generate in 300-unit chunks
+
   function addObs(type, x, w, h, extra) {
     const hp = extra !== undefined ? extra : (type === 'crate' ? 3 : type === 'sandbag' ? 2 : 0);
     obstacles.push({ type, x, y: GROUND, w, h, hp, maxHp: hp });
   }
-  // Crate clusters
-  addObs('crate', 250, 28, 28); addObs('crate', 278, 28, 28);
-  addObs('crate', 260, 28, 56); // stacked double
-  addObs('sandbag', 420, 40, 16);
-  addObs('barrel', 530, 22, 26, 1);
-  addObs('platform', 600, 60, 8);  obstacles[obstacles.length - 1].y = GROUND - 50;
-  addObs('crate', 700, 28, 28);
-  addObs('barrel', 760, 22, 26, 1); addObs('barrel', 790, 22, 26, 1);
-  addObs('sandbag', 900, 40, 16);
-  addObs('platform', 950, 70, 8);  obstacles[obstacles.length - 1].y = GROUND - 55;
-  addObs('crate', 1050, 28, 28); addObs('crate', 1078, 28, 56);
-  addObs('barrel', 1150, 22, 26, 1);
-  addObs('sandbag', 1250, 50, 16);
-  addObs('platform', 1320, 55, 8); obstacles[obstacles.length - 1].y = GROUND - 45;
-  addObs('crate', 1420, 28, 28); addObs('barrel', 1460, 22, 26, 1);
-  addObs('sandbag', 1550, 40, 16);
-  addObs('platform', 1650, 80, 8); obstacles[obstacles.length - 1].y = GROUND - 60;
-  addObs('crate', 1750, 28, 28); addObs('crate', 1778, 28, 28);
-  addObs('barrel', 1850, 22, 26, 1); addObs('barrel', 1880, 22, 26, 1); addObs('barrel', 1910, 22, 26, 1);
-  addObs('sandbag', 2000, 50, 16);
-  addObs('platform', 2080, 65, 8); obstacles[obstacles.length - 1].y = GROUND - 50;
-  addObs('crate', 2180, 28, 56); addObs('crate', 2208, 28, 28);
-  addObs('sandbag', 2350, 40, 16);
-  addObs('barrel', 2450, 22, 26, 1);
-  addObs('platform', 2520, 70, 8); obstacles[obstacles.length - 1].y = GROUND - 55;
-  addObs('crate', 2650, 28, 28); addObs('crate', 2678, 28, 28); addObs('crate', 2664, 28, 56);
-  addObs('sandbag', 2800, 60, 16);
-  addObs('barrel', 2900, 22, 26, 1); addObs('barrel', 2930, 22, 26, 1);
 
-  // Pits (gaps in the ground)
-  const pits = [
-    { x: 480, w: 40 },
-    { x: 850, w: 35 },
-    { x: 1200, w: 45 },
-    { x: 1600, w: 40 },
-    { x: 2100, w: 50 },
-    { x: 2550, w: 40 },
-    { x: 2750, w: 45 },
-  ];
+  function generateChunk(fromX, toX) {
+    // Seed-like randomness based on chunk position for variety
+    let cx = fromX + 40 + Math.random() * 30;
+    while (cx < toX - 40) {
+      const r = Math.random();
+      if (r < 0.18) {
+        // Crate cluster
+        addObs('crate', cx, 28, 28);
+        if (Math.random() < 0.5) { addObs('crate', cx + 28, 28, 28); }
+        if (Math.random() < 0.3) { addObs('crate', cx + 10, 28, 56); } // stacked
+        cx += 70;
+      } else if (r < 0.32) {
+        // Sandbag
+        addObs('sandbag', cx, 35 + Math.random() * 20, 16);
+        cx += 60;
+      } else if (r < 0.46) {
+        // Barrel(s)
+        addObs('barrel', cx, 22, 26, 1);
+        if (Math.random() < 0.4) addObs('barrel', cx + 30, 22, 26, 1);
+        cx += 65;
+      } else if (r < 0.60) {
+        // Platform
+        const pw = 50 + Math.random() * 35;
+        addObs('platform', cx, pw, 8);
+        obstacles[obstacles.length - 1].y = GROUND - 40 - Math.random() * 25;
+        cx += pw + 40;
+      } else if (r < 0.72) {
+        // Pit
+        const pw = 30 + Math.random() * 25;
+        pits.push({ x: cx, w: pw });
+        cx += pw + 60;
+      } else {
+        // Gap — open space
+        cx += 50 + Math.random() * 40;
+      }
+    }
+  }
+
+  // Generate initial area
+  generateChunk(200, 200 + CHUNK * 3);
+  generatedUpTo = 200 + CHUNK * 3;
 
   function onKey(e) {
     if (e.key === 'Escape') { e.preventDefault(); running = false; document.removeEventListener('keydown', onKey); document.removeEventListener('keyup', onKeyUp); onFinish(score); return; }
@@ -5795,24 +5797,17 @@ function runConsoleSlug(canvas, ctx, onFinish) {
   document.addEventListener('keyup', onKeyUp);
 
   function spawnEnemy() {
-    const type = Math.random() < 0.25 ? 'heavy' : 'grunt';
+    const heavyChance = Math.min(0.5, 0.2 + wave * 0.02);
+    const type = Math.random() < heavyChance ? 'heavy' : 'grunt';
     const spawnX = player.x + W * 0.6 + Math.random() * 80;
-    if (spawnX > LEVEL_LENGTH + 100) return;
+    const speedBonus = Math.min(wave * 2, 40);
     enemies.push({
       x: spawnX, y: GROUND,
       w: type === 'heavy' ? 24 : 18, h: type === 'heavy' ? 32 : 26,
       hp: type === 'heavy' ? 3 : 1, type,
-      speed: type === 'heavy' ? 30 : 50 + Math.random() * 30,
+      speed: type === 'heavy' ? 30 + speedBonus * 0.5 : 50 + Math.random() * 30 + speedBonus,
       shootTimer: 1 + Math.random() * 2, flash: 0,
     });
-  }
-
-  function spawnBoss() {
-    boss = {
-      x: LEVEL_LENGTH + 100, y: GROUND - 20, w: 50, h: 50,
-      hp: 12, maxHp: 12, speed: 20, shootTimer: 0.8, flash: 0, dir: -1,
-    };
-    bossSpawned = true;
   }
 
   function addExplosion(wx, wy) {
@@ -5900,7 +5895,17 @@ function runConsoleSlug(canvas, ctx, onFinish) {
     // Player movement (world coords)
     if (keysDown['a'] || keysDown['arrowleft']) { player.x -= PLAYER_SPEED * dt; player.facing = -1; }
     if (keysDown['d'] || keysDown['arrowright']) { player.x += PLAYER_SPEED * dt; player.facing = 1; }
-    player.x = Math.max(5, Math.min(LEVEL_LENGTH + W * 0.4, player.x));
+    player.x = Math.max(camX + 5, player.x); // can't go behind camera
+
+    // Generate more world as player advances
+    if (player.x + W > generatedUpTo - CHUNK) {
+      generateChunk(generatedUpTo, generatedUpTo + CHUNK);
+      generatedUpTo += CHUNK;
+      // Clean up far-behind obstacles/pits to save memory
+      const cleanX = camX - 200;
+      while (obstacles.length > 0 && obstacles[0].x + obstacles[0].w < cleanX) obstacles.shift();
+      while (pits.length > 0 && pits[0].x + pits[0].w < cleanX) pits.shift();
+    }
 
     // Jump
     if (keysDown['w'] && player.onGround) { player.vy = JUMP_VEL; player.onGround = false; }
@@ -5940,14 +5945,11 @@ function runConsoleSlug(canvas, ctx, onFinish) {
       shootCooldown = 0.15;
     }
 
-    // Spawn enemies
-    if (!bossSpawned) {
-      spawnTimer -= dt;
-      waveTimer += dt;
-      if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = Math.max(0.6, 2 - wave * 0.12); }
-      if (waveTimer > 10) { wave++; waveTimer = 0; }
-      if (player.x >= LEVEL_LENGTH - 100 && !bossSpawned) spawnBoss();
-    }
+    // Spawn enemies (infinite waves, getting harder)
+    spawnTimer -= dt;
+    waveTimer += dt;
+    if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = Math.max(0.4, 2 - wave * 0.1); }
+    if (waveTimer > 10) { wave++; waveTimer = 0; }
 
     // Enemy AI
     enemies.forEach(e => {
@@ -5967,21 +5969,6 @@ function runConsoleSlug(canvas, ctx, onFinish) {
       }
       e.flash = Math.max(0, e.flash - dt * 5);
     });
-
-    // Boss AI
-    if (boss) {
-      boss.x += boss.dir * boss.speed * dt;
-      const bsx = boss.x - camX;
-      if (bsx < 150) boss.dir = 1;
-      if (bsx > W - 60) boss.dir = -1;
-      boss.shootTimer -= dt;
-      if (boss.shootTimer <= 0) {
-        const toP = player.x < boss.x ? -1 : 1;
-        for (let a = -1; a <= 1; a++) bullets.push({ x: boss.x, y: boss.y - 10, dx: toP * 200 + a * 60, friendly: false });
-        boss.shootTimer = 0.6 + Math.random() * 0.4;
-      }
-      boss.flash = Math.max(0, boss.flash - dt * 5);
-    }
 
     // Update bullets
     bullets.forEach(b => b.x += b.dx * dt);
@@ -6018,13 +6005,6 @@ function runConsoleSlug(canvas, ctx, onFinish) {
     // Bullet-enemy collisions
     bullets = bullets.filter(b => {
       if (!b.friendly) return true;
-      if (boss) {
-        if (b.x > boss.x - boss.w / 2 && b.x < boss.x + boss.w / 2 && b.y > boss.y - boss.h && b.y < boss.y) {
-          boss.hp--; boss.flash = 1; SFX.jobCorrect();
-          if (boss.hp <= 0) { addExplosion(boss.x, boss.y - boss.h / 2); score += 50; boss = null; }
-          return false;
-        }
-      }
       for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
         if (b.x > e.x - e.w / 2 && b.x < e.x + e.w / 2 && b.y > e.y - e.h && b.y < e.y) {
@@ -6207,21 +6187,6 @@ function runConsoleSlug(canvas, ctx, onFinish) {
       if (isH) { ctx.fillStyle = e.flash > 0 ? '#fff' : '#666'; ctx.fillRect(sx - e.w / 2 - 3, e.y - e.h + 4, 4, 18); }
     });
 
-    // Boss
-    if (boss) {
-      const bsx = boss.x - camX;
-      ctx.fillStyle = boss.flash > 0 ? '#fff' : '#663399';
-      ctx.fillRect(bsx - 25, boss.y - 30, 50, 30);
-      ctx.fillStyle = boss.flash > 0 ? '#fff' : '#442266';
-      ctx.fillRect(bsx - 15, boss.y - 45, 30, 18);
-      ctx.fillStyle = boss.flash > 0 ? '#fff' : '#555';
-      ctx.fillRect(bsx - 30, boss.y - 40, 20, 5);
-      ctx.fillStyle = '#333';
-      ctx.fillRect(bsx - 25, boss.y - 3, 50, 6);
-      ctx.fillStyle = '#333'; ctx.fillRect(bsx - 25, boss.y - 55, 50, 5);
-      ctx.fillStyle = '#ff3333'; ctx.fillRect(bsx - 25, boss.y - 55, 50 * (boss.hp / boss.maxHp), 5);
-    }
-
     // Bullets
     bullets.forEach(b => {
       const bsx = b.x - camX;
@@ -6255,28 +6220,18 @@ function runConsoleSlug(canvas, ctx, onFinish) {
     ctx.fillRect(0, 0, W, 24);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
     ctx.fillText('SCORE: ' + score, 10, 16);
+    ctx.textAlign = 'center'; ctx.fillStyle = '#7c4dff';
+    ctx.fillText('WAVE ' + wave, W / 2, 16);
     ctx.textAlign = 'right'; ctx.fillStyle = '#ff4444';
     let hpStr = '';
     for (let i = 0; i < player.hp; i++) hpStr += '\u2764 ';
     ctx.fillText(hpStr, W - 10, 17);
-    // Progress bar
-    ctx.fillStyle = '#333'; ctx.fillRect(W / 2 - 60, 8, 120, 8);
-    ctx.fillStyle = '#7c4dff'; ctx.fillRect(W / 2 - 60, 8, 120 * Math.min(1, player.x / LEVEL_LENGTH), 8);
-    ctx.strokeStyle = '#555'; ctx.lineWidth = 1; ctx.strokeRect(W / 2 - 60, 8, 120, 8);
 
-    // Game over / win
+    // Game over — 5 lives lost
     if (player.hp <= 0) {
       running = false;
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('keyup', onKeyUp);
-      onFinish(score);
-      return;
-    }
-    if (bossSpawned && !boss && enemies.length === 0) {
-      running = false;
-      document.removeEventListener('keydown', onKey);
-      document.removeEventListener('keyup', onKeyUp);
-      score += 30;
       onFinish(score);
       return;
     }
@@ -19624,19 +19579,20 @@ function mpUpdateRemotePlayers(dt) {
 let gameStarted = false;
 
 function startGame() {
-  SFX.init();
-  mpInit();
-  SFX.startMusic();
+  // Hide creator screen FIRST so it never blocks the game
+  document.getElementById('creator-screen').classList.add('hidden');
+  gameStarted = true;
+  lastTime = performance.now();
+
+  try { SFX.init(); } catch(e) {}
+  try { mpInit(); } catch(e) {}
+  try { SFX.startMusic(); } catch(e) {}
   // Rebuild the game character with chosen options
   scene.remove(character);
   character = buildCharacter(charOpts);
   character.position.set(0, 0.15, 0);
   character.visible = false;
   scene.add(character);
-
-  document.getElementById('creator-screen').classList.add('hidden');
-  gameStarted = true;
-  lastTime = performance.now();
   // Daily Mystery Box check on game start
   setTimeout(() => checkMysteryBoxFriday(), 1000);
   mlTry('ml_new_home');
@@ -19947,7 +19903,7 @@ const actionConfig = {
   bed:      { label: 'Sleeping...', duration: 6, restore: 60, cost: 0 },
   tv:       { label: 'Watching TV...', duration: 4, restore: 45, cost: 0 },
   shower:   { label: 'Showering...', duration: 3.5, restore: 50, cost: 2 },
-  computer: { label: 'Gaming...', duration: 10, restore: 0, cost: 0, earn: 10, funDrain: 10 },
+  computer: { label: 'Gaming...', duration: 99999, restore: 0, cost: 0, earn: 10, funDrain: 10 },
   libraryRead: { label: 'Reading...', duration: 5, restore: 50, cost: 0 },
   gymWorkout: { label: 'Working out...', duration: 4, restore: 15, cost: 0, hungerDrain: 15 },
   restaurantEat: { label: 'Eating a meal...', duration: 4, restore: 70, cost: 10 },
@@ -20248,7 +20204,8 @@ function beginAction(action) {
   const barWrap = document.getElementById('action-bar-wrap');
   const barLabel = document.getElementById('action-bar-label');
   barLabel.textContent = config.label;
-  barWrap.classList.add('visible');
+  // Hide progress bar for computer (infinite, ends on death)
+  if (action.obj.type !== 'computer') barWrap.classList.add('visible');
 
   // Start animation overlay
   startActionAnim(action.obj.type, config.duration);
@@ -20628,6 +20585,7 @@ function startActionAnim(type, duration) {
     let py = GROUND_Y, pvy = 0, onGround = true;
     let obstacles = [], coins = [], particles = [];
     let score = 0, combo = 0, hitFlash = 0;
+    let lives = 5;
     let groundOffset = 0;
     let stars = [];
     miniGameScore = 0;
@@ -20725,13 +20683,17 @@ function startActionAnim(type, duration) {
         if (px + PW > obs.x + 4 && px < obs.x + obs.w - 4 && py > obsTop + 4 && playerTop < GROUND_Y) {
           // Hit!
           if (hitFlash <= 0) {
-            hitFlash = 0.5;
+            hitFlash = 0.8;
             SFX.mgHit();
-            score = Math.max(0, score - 5);
+            lives--;
             combo = 0;
-            miniGameScore = score;
             for (let p = 0; p < 8; p++) {
               particles.push({ x: px + PW / 2, y: py - PH / 2, vx: (Math.random() - 0.5) * 300, vy: (Math.random() - 0.5) * 300, life: 0.5, color: '#ff4444' });
+            }
+            if (lives <= 0) {
+              miniGameRunning = false;
+              if (currentAction) finishAction(currentAction);
+              return;
             }
           }
         }
@@ -20854,13 +20816,19 @@ function startActionAnim(type, duration) {
       ctx.textAlign = 'left';
       ctx.fillText('SCORE: ' + score, 12, 22);
       ctx.fillStyle = '#ffdd44';
+      ctx.textAlign = 'center';
+      ctx.fillText('$' + (10 + score), W / 2, 22);
+      // Lives
+      ctx.fillStyle = '#ff4444';
       ctx.textAlign = 'right';
-      ctx.fillText('$' + (10 + score), W - 12, 22);
+      let livesStr = '';
+      for (let i = 0; i < lives; i++) livesStr += '\u2764 ';
+      ctx.fillText(livesStr, W - 12, 22);
       // Combo
       if (combo >= 5) {
         ctx.fillStyle = '#ff88ff';
         ctx.textAlign = 'center';
-        ctx.fillText('COMBO x' + combo + '!', W / 2, 22);
+        ctx.fillText('COMBO x' + combo + '!', W / 2 + 80, 22);
       }
     }
 
@@ -23336,8 +23304,7 @@ renderSlotList();
 let _tvFrameCount = 0;
 function animate() {
   requestAnimationFrame(animate);
-  if (_ggQuizPaused) return;
-  update();
+  if (!_ggQuizPaused) update();
   if (hasSparkleHair) updateHairSparkles();
   if (++_tvFrameCount % 3 === 0) updateTVScreenSaver();
   renderer.render(scene, camera);
@@ -23365,6 +23332,8 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+
 // Launcher save/quiz-pause listener
 let _ggQuizPaused = false;
 window.addEventListener('message', function(e) {
