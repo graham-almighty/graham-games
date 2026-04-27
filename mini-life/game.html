@@ -148,11 +148,12 @@
     position: fixed;
     inset: 0;
     z-index: 4;
+    display: none;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.5s;
   }
-  .action-overlay.visible { opacity: 1; pointer-events: auto; }
+  .action-overlay.visible { display: block; opacity: 1; pointer-events: auto; }
 
   /* Sleep overlay */
   .sleep-overlay {
@@ -283,6 +284,8 @@
     flex-direction: column;
     gap: 10px;
   }
+  .computer-overlay:not(.visible) { display: none; }
+  .computer-overlay.visible { display: flex; }
   .pc-screen-box {
     width: 75%;
     max-width: 650px;
@@ -323,6 +326,8 @@
     flex-direction: column;
     gap: 10px;
   }
+  .job-overlay:not(.visible) { display: none; }
+  .job-overlay.visible { display: flex; }
   .job-screen-box {
     width: 75%;
     max-width: 650px;
@@ -19584,18 +19589,26 @@ function mpUpdateRemotePlayers(dt) {
 }
 
 let gameStarted = false;
+let startupOverlayWatchdog = null;
 
-function clearBlockingOverlaysForGameplay() {
-  const creator = document.getElementById('creator-screen');
-  if (creator) creator.classList.add('hidden');
-
+function forceHideActionOverlays() {
+  clearAnimIntervals();
   ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay', 'mirror-overlay'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     el.classList.remove('visible');
     el.style.background = '';
+    el.style.opacity = '';
+    el.style.pointerEvents = '';
     el.innerHTML = '';
   });
+}
+
+function clearBlockingOverlaysForGameplay() {
+  const creator = document.getElementById('creator-screen');
+  if (creator) creator.classList.add('hidden');
+
+  forceHideActionOverlays();
 
   const namePrompt = document.getElementById('name-prompt-overlay');
   if (namePrompt) namePrompt.classList.remove('visible');
@@ -19615,6 +19628,22 @@ function clearBlockingOverlaysForGameplay() {
   if (mpOverlay) mpOverlay.style.display = 'none';
 
   hideDriveOverlay();
+}
+
+function startOverlayWatchdog() {
+  clearInterval(startupOverlayWatchdog);
+  const startedAt = performance.now();
+  startupOverlayWatchdog = setInterval(() => {
+    const elapsed = performance.now() - startedAt;
+    if (!gameStarted || gameOver || elapsed > 4000) {
+      clearInterval(startupOverlayWatchdog);
+      startupOverlayWatchdog = null;
+      return;
+    }
+    if (!currentAction && !jobMiniGameRunning && !miniGameRunning && !mirrorOpen) {
+      forceHideActionOverlays();
+    }
+  }, 120);
 }
 
 function setHomeSafeStart() {
@@ -19662,6 +19691,7 @@ function scheduleStartupVisibilityCheck() {
 function startGame(options = {}) {
   // Hide any full-screen UI FIRST so it never blocks the player's view.
   clearBlockingOverlaysForGameplay();
+  startOverlayWatchdog();
   gameStarted = true;
   lastTime = performance.now();
 

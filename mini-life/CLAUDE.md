@@ -214,7 +214,7 @@ To add a new purchasable expansion:
 
 On load: rebuilds character, second floor, furniture, car, town/mansion as needed. Re-checks all achievements.
 
-On start: `startGame()` calls `clearBlockingOverlaysForGameplay()` before enabling gameplay so the creator screen and any full-screen action/shop/dialogue overlays cannot leave a black layer over the player's view. The reusable save-name prompt is hidden without clearing its markup. New games spawn at `HOME_START_POS` in the yard facing back toward the house, avoiding dark interior geometry; a one-time startup brightness check moves the player back to that safe spawn if the center frame renders near-black.
+On start: `startGame()` calls `clearBlockingOverlaysForGameplay()` before enabling gameplay so the creator screen and any full-screen action/shop/dialogue overlays cannot leave a black layer over the player's view. Hidden `.action-overlay` elements use `display:none`, and `startOverlayWatchdog()` clears stray action overlays for the first 4 seconds unless a real action/mini-game/mirror is active. The reusable save-name prompt is hidden without clearing its markup. New games spawn at `HOME_START_POS` in the yard facing back toward the house, avoiding dark interior geometry; a one-time startup brightness check moves the player back to that safe spawn if the center frame renders near-black.
 
 ## NPC & Quest System
 

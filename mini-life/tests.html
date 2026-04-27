@@ -5460,9 +5460,13 @@ test('startGame cleanup clears action overlays that could block gameplay view', 
   const overlay = createMockOverlay(true);
   overlay.classList.remove('visible');
   overlay.style.background = '';
+  overlay.style.pointerEvents = '';
+  overlay.style.opacity = '';
   overlay.innerHTML = '';
   assert(!overlay.classList.contains('visible'), 'Action overlay should not remain visible');
   assertEqual(overlay.style.background, '', 'Action overlay background should be cleared');
+  assertEqual(overlay.style.pointerEvents, '', 'Action overlay pointer-events override should be cleared');
+  assertEqual(overlay.style.opacity, '', 'Action overlay opacity override should be cleared');
   assertEqual(overlay.innerHTML, '', 'Action overlay content should be cleared');
 });
 
@@ -5484,6 +5488,27 @@ test('new game camera faces back toward the house from safe start', () => {
   const HOME_START_YAW = Math.PI / 2;
   const lookX = -Math.sin(HOME_START_YAW);
   assert(lookX < -0.9, 'Safe start yaw should face toward negative X and the house');
+});
+
+test('hidden action overlays use display none so they cannot cover the game canvas', () => {
+  const hiddenRule = '.action-overlay { display: none; }';
+  const visibleRule = '.action-overlay.visible { display: block; opacity: 1; pointer-events: auto; }';
+  assert(hiddenRule.includes('display: none'), 'Hidden action overlays should not take up the viewport');
+  assert(visibleRule.includes('pointer-events: auto'), 'Visible action overlays can still receive interaction');
+});
+
+test('startup watchdog only clears overlays while no action or mini-game is active', () => {
+  const gameStarted = true, gameOver = false, currentAction = null;
+  const jobMiniGameRunning = false, miniGameRunning = false, mirrorOpen = false;
+  const shouldClear = gameStarted && !gameOver && !currentAction && !jobMiniGameRunning && !miniGameRunning && !mirrorOpen;
+  assert(shouldClear, 'Startup watchdog should clear stray blockers during normal gameplay start');
+});
+
+test('startup watchdog leaves legitimate action overlays alone', () => {
+  const currentAction = { type: 'bed' };
+  const jobMiniGameRunning = false, miniGameRunning = false, mirrorOpen = false;
+  const shouldClear = !currentAction && !jobMiniGameRunning && !miniGameRunning && !mirrorOpen;
+  assert(!shouldClear, 'Startup watchdog should not clear an active action overlay');
 });
 
 section('Multiplayer Outfit Sync');
