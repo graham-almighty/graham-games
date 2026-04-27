@@ -214,6 +214,8 @@ To add a new purchasable expansion:
 
 On load: rebuilds character, second floor, furniture, car, town/mansion as needed. Re-checks all achievements.
 
+On start: `startGame()` calls `clearBlockingOverlaysForGameplay()` before enabling gameplay so the creator screen and any full-screen action/shop/dialogue overlays cannot leave a black layer over the player's view. The reusable save-name prompt is hidden without clearing its markup. New games spawn at `HOME_START_POS` in the yard facing back toward the house, avoiding dark interior geometry; a one-time startup brightness check moves the player back to that safe spawn if the center frame renders near-black.
+
 ## NPC & Quest System
 
 **12 Town NPCs** (defined in `TOWN_NPC_DEFS`): Barista Bean, Merchant Mike, Mayor Maple, Old Pete, GG Superfan (merch clerk), Librarian Linda, Coach Carl, Chef Rosa, Gamer Gary, Sgt. Briggs, Mic Ronaldz (scale 0.55 — toddler-sized, black hair), Graham (medium skin, curly blonde hair, GG Merch outfit — inside Graham's House). Built with `buildCharacter()`, tagged with `userData.type='npc'` for raycasting.

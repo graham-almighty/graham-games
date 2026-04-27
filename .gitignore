@@ -1,5 +1,8 @@
 node_modules/
+.codex
+.codex/
 .supabase-token
 .env
 *.Zone.Identifier
+*:Zone.Identifier
 supabase/.temp/

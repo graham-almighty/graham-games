@@ -503,9 +503,16 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.5s;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.2s;
   }
-  .creator-screen.hidden { opacity: 0; pointer-events: none; }
+  .creator-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: none;
+  }
   .creator-panel {
     background: #1a1a28;
     border: 1px solid #333;
@@ -19578,9 +19585,83 @@ function mpUpdateRemotePlayers(dt) {
 
 let gameStarted = false;
 
-function startGame() {
-  // Hide creator screen FIRST so it never blocks the game
-  document.getElementById('creator-screen').classList.add('hidden');
+function clearBlockingOverlaysForGameplay() {
+  const creator = document.getElementById('creator-screen');
+  if (creator) creator.classList.add('hidden');
+
+  ['sleep-overlay', 'shower-overlay', 'eat-overlay', 'tv-overlay', 'computer-overlay', 'job-overlay', 'mirror-overlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('visible');
+    el.style.background = '';
+    el.innerHTML = '';
+  });
+
+  const namePrompt = document.getElementById('name-prompt-overlay');
+  if (namePrompt) namePrompt.classList.remove('visible');
+
+  ['shop-overlay', 'pet-menu-overlay', 'leaderboard-overlay', 'drive-dest-overlay', 'npc-dialogue-overlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('visible');
+  });
+
+  const merchOverlay = document.getElementById('merch-overlay');
+  if (merchOverlay) {
+    merchOverlay.style.display = 'none';
+    merchOverlay.innerHTML = '';
+  }
+
+  const mpOverlay = document.getElementById('mp-overlay');
+  if (mpOverlay) mpOverlay.style.display = 'none';
+
+  hideDriveOverlay();
+}
+
+function setHomeSafeStart() {
+  inTown = false;
+  inMansion = false;
+  inGrahamDimension = false;
+  pepperMissionActive = false;
+  currentFloor = 0;
+  character.position.copy(HOME_START_POS);
+  yaw = HOME_START_YAW;
+  pitch = 0;
+  scene.fog.far = HOME_FOG_FAR;
+}
+
+function readCenterBrightness() {
+  try {
+    const gl = renderer.getContext();
+    const pixel = new Uint8Array(4);
+    gl.readPixels(
+      Math.floor(renderer.domElement.width / 2),
+      Math.floor(renderer.domElement.height / 2),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixel
+    );
+    return (pixel[0] + pixel[1] + pixel[2]) / 3;
+  } catch(e) {
+    return 255;
+  }
+}
+
+function scheduleStartupVisibilityCheck() {
+  setTimeout(() => {
+    if (!gameStarted || gameOver || currentAction || inTown || inMansion || inGrahamDimension || pepperMissionActive) return;
+    const brightness = readCenterBrightness();
+    if (brightness < 8) {
+      setHomeSafeStart();
+      showTip('Moved you to a safe starting spot.');
+    }
+  }, 700);
+}
+
+function startGame(options = {}) {
+  // Hide any full-screen UI FIRST so it never blocks the player's view.
+  clearBlockingOverlaysForGameplay();
   gameStarted = true;
   lastTime = performance.now();
 
@@ -19590,9 +19671,11 @@ function startGame() {
   // Rebuild the game character with chosen options
   scene.remove(character);
   character = buildCharacter(charOpts);
-  character.position.set(0, 0.15, 0);
+  character.position.copy(HOME_START_POS);
   character.visible = false;
   scene.add(character);
+  if (!options.loadingSave) setHomeSafeStart();
+  scheduleStartupVisibilityCheck();
   // Daily Mystery Box check on game start
   setTimeout(() => checkMysteryBoxFriday(), 1000);
   mlTry('ml_new_home');
@@ -19625,6 +19708,8 @@ let secondFloorGroup = null;
 const GROUND_Y = 0.15;
 const UPPER_Y = 3.65;
 const STAIR = { xMin: -5, xMax: -3.5, zMin: -4.5, zMax: -0.5 };
+const HOME_START_POS = new THREE.Vector3(10, GROUND_Y, 0.75);
+const HOME_START_YAW = Math.PI / 2;
 
 const GAME_SPEED = 0.2; // game-minutes per real second
 
@@ -23076,7 +23161,7 @@ function loadSlot(index) {
   ownedDresses = new Set(save.ownedDresses || []);
 
   // Start the game first (hides creator, builds character)
-  startGame();
+  startGame({ loadingSave: true });
 
   // Now restore state
   needs.hunger = save.needs.hunger;

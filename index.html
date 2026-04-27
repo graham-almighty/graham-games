@@ -414,6 +414,95 @@
   .bug-body { flex: 1; }
   .bug-game { font-size: 0.55rem; color: #888; letter-spacing: 0.04em; text-transform: uppercase; }
   .bug-desc { font-size: 0.65rem; color: #ccc; margin-top: 2px; line-height: 1.4; }
+  .bugs-tabs {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0 12px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 8px;
+  }
+  .bugs-tab {
+    border: 1px solid #444;
+    background: #111118;
+    color: #aaa;
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-size: 0.65rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .bugs-tab:hover { border-color: var(--gg-accent44); color: #ddd; }
+  .bugs-tab.active { border-color: var(--gg-accent); color: var(--gg-accent); background: var(--gg-accent22); }
+  .graham-lock {
+    border: 1px solid #333;
+    border-radius: 7px;
+    padding: 16px;
+    text-align: center;
+    background: #111118;
+  }
+  .graham-lock input,
+  .graham-planner textarea,
+  .graham-reminder-form input {
+    width: 100%;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #0a0a0f;
+    color: #eee;
+    font: inherit;
+    outline: none;
+  }
+  .graham-lock input { max-width: 160px; text-align: center; padding: 9px 12px; letter-spacing: 0.2em; }
+  .graham-lock input:focus,
+  .graham-planner textarea:focus,
+  .graham-reminder-form input:focus { border-color: var(--gg-accent); }
+  .graham-lock button,
+  .graham-reminder-form button,
+  .graham-note-save {
+    border: none;
+    border-radius: 6px;
+    background: var(--gg-accent);
+    color: #0a0a0f;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 9px 14px;
+    cursor: pointer;
+  }
+  .graham-lock-row { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+  .graham-lock-error { color: #ef5350; font-size: 0.65rem; margin-top: 8px; min-height: 1em; }
+  .graham-planner { display: flex; flex-direction: column; gap: 12px; }
+  .graham-planner-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .graham-planner-title { font-family: 'Cinzel', serif; color: #eee; font-size: 0.9rem; }
+  .graham-sync-status { color: #777; font-size: 0.6rem; text-align: right; }
+  .graham-planner textarea { min-height: 110px; resize: vertical; padding: 10px; line-height: 1.5; font-size: 0.8rem; }
+  .graham-reminder-form { display: flex; gap: 8px; }
+  .graham-reminder-form input { padding: 9px 10px; font-size: 0.75rem; }
+  .graham-reminder-list { display: flex; flex-direction: column; gap: 6px; }
+  .graham-reminder {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid #333;
+    border-radius: 7px;
+    padding: 9px 10px;
+    background: #111118;
+  }
+  .graham-reminder.done { opacity: 0.55; }
+  .graham-reminder.done .graham-reminder-text { text-decoration: line-through; color: #888; }
+  .graham-reminder-check { width: 16px; height: 16px; accent-color: var(--gg-accent); flex-shrink: 0; }
+  .graham-reminder-text { flex: 1; color: #ddd; font-size: 0.72rem; line-height: 1.35; word-break: break-word; }
+  .graham-reminder-delete {
+    border: 1px solid #553333;
+    background: transparent;
+    color: #cc6666;
+    border-radius: 5px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 0.65rem;
+  }
+  .graham-empty { color: #777; text-align: center; padding: 16px; font-size: 0.7rem; }
 
   /* ═══ SORT BAR ═══ */
   .sort-bar {
@@ -2192,7 +2281,12 @@ for (let i = 0; i < 30; i++) {
   <div class="gg-panel">
     <h2>&#128027; KNOWN BUGS</h2>
     <div class="gg-panel-sub">Issues we know about &mdash; sorted least to most important</div>
+    <div class="bugs-tabs">
+      <button class="bugs-tab active" id="bugs-list-tab" onclick="showBugsTab('list')">Bugs Alert List</button>
+      <button class="bugs-tab" id="bugs-graham-tab" onclick="showBugsTab('graham')">For Graham Only</button>
+    </div>
     <div id="bugs-list"></div>
+    <div id="graham-only-panel" style="display:none;"></div>
     <button class="gg-close" onclick="closeBugs()">CLOSE</button>
   </div>
 </div>
@@ -2671,11 +2765,104 @@ function closeNews() { document.getElementById('news-overlay').classList.remove(
 
 // ═══ KNOWN BUGS LIST ═══
 const KNOWN_BUGS = [
-  { severity: 'high', game: 'Mini Life', href: 'mini-life/game.html', desc: 'Screen can load completely black — stats visible but nothing else renders.' },
   { severity: 'high', game: 'Mega IO', href: 'mega-io/index.html', desc: 'Game does not save properly. Progress may be lost when exiting.' },
 ];
+const GRAHAM_ONLY_PASSWORD = '8488';
+const GRAHAM_PLAN_KEY = 'graham-only-plan';
+const GRAHAM_PLAN_ROW_ID = 'graham-only';
+let grahamOnlyUnlocked = sessionStorage.getItem('graham-only-unlocked') === 'true';
+let grahamPlanData = loadGrahamPlanLocal();
+let grahamSyncTimer = null;
+
+function defaultGrahamPlan() {
+  return { notes: '', reminders: [], updatedAt: new Date().toISOString() };
+}
+
+function loadGrahamPlanLocal() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(GRAHAM_PLAN_KEY));
+    if (stored && typeof stored === 'object') {
+      return {
+        notes: stored.notes || '',
+        reminders: Array.isArray(stored.reminders) ? stored.reminders : [],
+        updatedAt: stored.updatedAt || new Date().toISOString(),
+      };
+    }
+  } catch(e) {}
+  return defaultGrahamPlan();
+}
+
+function saveGrahamPlanLocal() {
+  grahamPlanData.updatedAt = new Date().toISOString();
+  localStorage.setItem(GRAHAM_PLAN_KEY, JSON.stringify(grahamPlanData));
+}
+
+function setGrahamSyncStatus(text) {
+  const el = document.getElementById('graham-sync-status');
+  if (el) el.textContent = text;
+}
+
+async function fetchGrahamPlanCloud() {
+  try {
+    setGrahamSyncStatus('Syncing...');
+    const res = await fetch(GG_SB_URL + '/rest/v1/graham_notes?id=eq.' + encodeURIComponent(GRAHAM_PLAN_ROW_ID) + '&select=data,updated_at', {
+      headers: { 'apikey': GG_SB_ANON, 'Authorization': 'Bearer ' + GG_SB_ANON }
+    });
+    if (!res.ok) throw new Error('Cloud unavailable');
+    const rows = await res.json();
+    if (Array.isArray(rows) && rows[0] && rows[0].data) {
+      const cloud = rows[0].data;
+      const cloudTime = Date.parse(cloud.updatedAt || rows[0].updated_at || 0);
+      const localTime = Date.parse(grahamPlanData.updatedAt || 0);
+      if (cloudTime >= localTime) {
+        grahamPlanData = {
+          notes: cloud.notes || '',
+          reminders: Array.isArray(cloud.reminders) ? cloud.reminders : [],
+          updatedAt: cloud.updatedAt || rows[0].updated_at || new Date().toISOString(),
+        };
+        localStorage.setItem(GRAHAM_PLAN_KEY, JSON.stringify(grahamPlanData));
+        renderGrahamPlanner();
+      } else {
+        saveGrahamPlanCloud();
+      }
+    } else {
+      saveGrahamPlanCloud();
+    }
+    setGrahamSyncStatus('Synced');
+  } catch(e) {
+    setGrahamSyncStatus('Saved on this device');
+  }
+}
+
+async function saveGrahamPlanCloud() {
+  try {
+    setGrahamSyncStatus('Saving...');
+    const res = await fetch(GG_SB_URL + '/rest/v1/graham_notes', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': GG_SB_ANON,
+        'Authorization': 'Bearer ' + GG_SB_ANON,
+        'Prefer': 'resolution=merge-duplicates'
+      },
+      body: JSON.stringify({ id: GRAHAM_PLAN_ROW_ID, data: grahamPlanData, updated_at: grahamPlanData.updatedAt })
+    });
+    if (!res.ok) throw new Error('Cloud save failed');
+    setGrahamSyncStatus('Synced');
+  } catch(e) {
+    setGrahamSyncStatus('Saved on this device');
+  }
+}
+
+function queueGrahamPlanSave() {
+  saveGrahamPlanLocal();
+  setGrahamSyncStatus('Saving...');
+  clearTimeout(grahamSyncTimer);
+  grahamSyncTimer = setTimeout(saveGrahamPlanCloud, 400);
+}
 
 function openBugs() {
+  showBugsTab('list');
   const container = document.getElementById('bugs-list');
   container.innerHTML = '';
   if (KNOWN_BUGS.length === 0) {
@@ -2701,6 +2888,155 @@ function openBugs() {
   document.getElementById('bugs-overlay').classList.add('visible');
 }
 function closeBugs() { document.getElementById('bugs-overlay').classList.remove('visible'); }
+
+function showBugsTab(tab) {
+  const listTab = document.getElementById('bugs-list-tab');
+  const grahamTab = document.getElementById('bugs-graham-tab');
+  const listPanel = document.getElementById('bugs-list');
+  const grahamPanel = document.getElementById('graham-only-panel');
+  if (!listTab || !grahamTab || !listPanel || !grahamPanel) return;
+  const showGraham = tab === 'graham';
+  listTab.classList.toggle('active', !showGraham);
+  grahamTab.classList.toggle('active', showGraham);
+  listPanel.style.display = showGraham ? 'none' : '';
+  grahamPanel.style.display = showGraham ? '' : 'none';
+  if (showGraham) renderGrahamOnlyPanel();
+}
+
+function renderGrahamOnlyPanel() {
+  if (grahamOnlyUnlocked) {
+    renderGrahamPlanner();
+  } else {
+    renderGrahamLock();
+  }
+}
+
+function renderGrahamLock() {
+  const panel = document.getElementById('graham-only-panel');
+  panel.innerHTML =
+    '<div class="graham-lock">' +
+      '<div class="graham-planner-title">Graham Planning Room</div>' +
+      '<div class="news-desc" style="margin-top:6px;">Enter the secret code to open reminders and plans.</div>' +
+      '<div class="graham-lock-row">' +
+        '<input id="graham-pass-input" type="password" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="CODE">' +
+        '<button onclick="unlockGrahamOnly()">OPEN</button>' +
+      '</div>' +
+      '<div class="graham-lock-error" id="graham-lock-error"></div>' +
+    '</div>';
+  const input = document.getElementById('graham-pass-input');
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') unlockGrahamOnly(); });
+  input.focus();
+}
+
+function unlockGrahamOnly() {
+  const input = document.getElementById('graham-pass-input');
+  const error = document.getElementById('graham-lock-error');
+  if (!input || input.value !== GRAHAM_ONLY_PASSWORD) {
+    if (error) error.textContent = 'Wrong code.';
+    return;
+  }
+  grahamOnlyUnlocked = true;
+  sessionStorage.setItem('graham-only-unlocked', 'true');
+  renderGrahamPlanner();
+  fetchGrahamPlanCloud();
+}
+
+function renderGrahamPlanner() {
+  const panel = document.getElementById('graham-only-panel');
+  panel.innerHTML =
+    '<div class="graham-planner">' +
+      '<div class="graham-planner-head">' +
+        '<div>' +
+          '<div class="graham-planner-title">Graham Planning Room</div>' +
+          '<div class="news-desc">Private reminders for fixes, ideas, and plans.</div>' +
+        '</div>' +
+        '<div class="graham-sync-status" id="graham-sync-status">Saved on this device</div>' +
+      '</div>' +
+      '<textarea id="graham-notes" placeholder="Plan stuff here..."></textarea>' +
+      '<button class="graham-note-save" onclick="saveGrahamNotes()">SAVE NOTES</button>' +
+      '<div class="graham-reminder-form">' +
+        '<input id="graham-reminder-input" type="text" placeholder="Reminder to fix or build...">' +
+        '<button onclick="addGrahamReminder()">ADD</button>' +
+      '</div>' +
+      '<div class="graham-reminder-list" id="graham-reminder-list"></div>' +
+    '</div>';
+  document.getElementById('graham-notes').value = grahamPlanData.notes || '';
+  document.getElementById('graham-notes').addEventListener('input', saveGrahamNotes);
+  document.getElementById('graham-reminder-input').addEventListener('keydown', e => { if (e.key === 'Enter') addGrahamReminder(); });
+  renderGrahamReminders();
+  setGrahamSyncStatus('Saved on this device');
+}
+
+function renderGrahamReminders() {
+  const list = document.getElementById('graham-reminder-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (!grahamPlanData.reminders.length) {
+    list.innerHTML = '<div class="graham-empty">No reminders yet.</div>';
+    return;
+  }
+  grahamPlanData.reminders.forEach(reminder => {
+    const row = document.createElement('div');
+    row.className = 'graham-reminder' + (reminder.done ? ' done' : '');
+
+    const check = document.createElement('input');
+    check.className = 'graham-reminder-check';
+    check.type = 'checkbox';
+    check.checked = !!reminder.done;
+    check.addEventListener('change', () => toggleGrahamReminder(reminder.id));
+
+    const text = document.createElement('div');
+    text.className = 'graham-reminder-text';
+    text.textContent = reminder.text;
+
+    const del = document.createElement('button');
+    del.className = 'graham-reminder-delete';
+    del.textContent = 'DELETE';
+    del.addEventListener('click', () => deleteGrahamReminder(reminder.id));
+
+    row.appendChild(check);
+    row.appendChild(text);
+    row.appendChild(del);
+    list.appendChild(row);
+  });
+}
+
+function saveGrahamNotes() {
+  const notes = document.getElementById('graham-notes');
+  if (!notes) return;
+  grahamPlanData.notes = notes.value;
+  queueGrahamPlanSave();
+}
+
+function addGrahamReminder() {
+  const input = document.getElementById('graham-reminder-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+  grahamPlanData.reminders.unshift({
+    id: String(Date.now()) + '-' + Math.random().toString(36).slice(2, 8),
+    text,
+    done: false,
+    createdAt: new Date().toISOString(),
+  });
+  input.value = '';
+  renderGrahamReminders();
+  queueGrahamPlanSave();
+}
+
+function toggleGrahamReminder(id) {
+  const reminder = grahamPlanData.reminders.find(r => r.id === id);
+  if (!reminder) return;
+  reminder.done = !reminder.done;
+  renderGrahamReminders();
+  queueGrahamPlanSave();
+}
+
+function deleteGrahamReminder(id) {
+  grahamPlanData.reminders = grahamPlanData.reminders.filter(r => r.id !== id);
+  renderGrahamReminders();
+  queueGrahamPlanSave();
+}
 
 // Add warning tags to game cards that have known bugs
 function applyBugWarnings() {

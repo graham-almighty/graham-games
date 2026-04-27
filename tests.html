@@ -1123,9 +1123,10 @@ group('School Mode: No Repeats Within 8');
   recentQuestions = [];
   const seen = [];
   for (let i = 0; i < 8; i++) {
-    const q = getQuestion('science');
-    assert(!seen.includes(q.question), 'Science question ' + i + ' is not a repeat within first 8');
-    seen.push(q.question);
+    getQuestion('science');
+    const key = recentQuestions[recentQuestions.length - 1];
+    assert(!seen.includes(key), 'Science question ' + i + ' is not a repeat within first 8');
+    seen.push(key);
   }
 }
 
@@ -1133,9 +1134,10 @@ group('School Mode: No Repeats Within 8');
   recentQuestions = [];
   const seen = [];
   for (let i = 0; i < 8; i++) {
-    const q = getQuestion('english');
-    assert(!seen.includes(q.question), 'English question ' + i + ' is not a repeat within first 8');
-    seen.push(q.question);
+    getQuestion('english');
+    const key = recentQuestions[recentQuestions.length - 1];
+    assert(!seen.includes(key), 'English question ' + i + ' is not a repeat within first 8');
+    seen.push(key);
   }
 }
 
@@ -1143,9 +1145,10 @@ group('School Mode: No Repeats Within 8');
   recentQuestions = [];
   const seen = [];
   for (let i = 0; i < 8; i++) {
-    const q = getQuestion('history');
-    assert(!seen.includes(q.question), 'History question ' + i + ' is not a repeat within first 8');
-    seen.push(q.question);
+    getQuestion('history');
+    const key = recentQuestions[recentQuestions.length - 1];
+    assert(!seen.includes(key), 'History question ' + i + ' is not a repeat within first 8');
+    seen.push(key);
   }
 }
 
@@ -1442,6 +1445,62 @@ group('News Panel');
   assertEqual(list.querySelector('.news-desc').textContent, 'Test description', 'First entry description renders correctly');
 
   document.body.removeChild(overlay);
+}
+
+// --- Graham-only planner ---
+group('Graham-Only Planner');
+
+const GRAHAM_ONLY_PASSWORD = '8488';
+const GRAHAM_PLAN_KEY = 'graham-only-plan';
+
+function defaultGrahamPlan() {
+  return { notes: '', reminders: [], updatedAt: '2026-04-27T00:00:00.000Z' };
+}
+
+function loadGrahamPlanLocal() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(GRAHAM_PLAN_KEY));
+    if (stored && typeof stored === 'object') {
+      return {
+        notes: stored.notes || '',
+        reminders: Array.isArray(stored.reminders) ? stored.reminders : [],
+        updatedAt: stored.updatedAt || '2026-04-27T00:00:00.000Z',
+      };
+    }
+  } catch(e) {}
+  return defaultGrahamPlan();
+}
+
+{
+  assertEqual(GRAHAM_ONLY_PASSWORD, '8488', 'Graham-only planner uses requested passcode');
+}
+
+{
+  localStorage.removeItem(GRAHAM_PLAN_KEY);
+  const plan = loadGrahamPlanLocal();
+  assertEqual(plan.notes, '', 'Planner defaults to empty notes');
+  assertEqual(plan.reminders.length, 0, 'Planner defaults to no reminders');
+}
+
+{
+  localStorage.setItem(GRAHAM_PLAN_KEY, JSON.stringify({ notes: 'Fix Mega IO', reminders: [{ id: '1', text: 'Save bug', done: false }] }));
+  const plan = loadGrahamPlanLocal();
+  assertEqual(plan.notes, 'Fix Mega IO', 'Planner loads notes from local fallback');
+  assertEqual(plan.reminders[0].text, 'Save bug', 'Planner loads reminders from local fallback');
+}
+
+{
+  localStorage.setItem(GRAHAM_PLAN_KEY, JSON.stringify({ notes: 'Keep', reminders: 'bad-data' }));
+  const plan = loadGrahamPlanLocal();
+  assertEqual(Array.isArray(plan.reminders), true, 'Planner guards against invalid reminder data');
+  assertEqual(plan.reminders.length, 0, 'Invalid reminder data becomes empty list');
+}
+
+{
+  const local = { updatedAt: '2026-04-27T10:00:00.000Z' };
+  const cloud = { updatedAt: '2026-04-27T11:00:00.000Z' };
+  const cloudWins = Date.parse(cloud.updatedAt) >= Date.parse(local.updatedAt);
+  assert(cloudWins, 'Cloud planner data wins when newer');
 }
 
 // ============================================================

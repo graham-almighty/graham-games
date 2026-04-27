@@ -73,3 +73,17 @@ BEGIN
   DO UPDATE SET total_plays = play_counts.total_plays + 1, updated_at = now();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ═══ GRAHAM-ONLY PLANNER ═══
+-- Shared launcher reminders/notes. Access is intentionally app-gated by the
+-- launcher code so the same plan is available from all Graham devices.
+CREATE TABLE graham_notes (
+  id TEXT PRIMARY KEY,
+  data JSONB DEFAULT '{}',
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE graham_notes ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can read Graham notes" ON graham_notes FOR SELECT USING (true);
+CREATE POLICY "Anyone can insert Graham notes" ON graham_notes FOR INSERT WITH CHECK (true);
+CREATE POLICY "Anyone can update Graham notes" ON graham_notes FOR UPDATE USING (true);

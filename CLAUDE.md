@@ -96,6 +96,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - Achievements panel, G Bux Shop
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates
+- Bugs panel includes a "For Graham Only" tab gated by code `8488`; it stores Graham planning notes/reminders in localStorage and syncs via the public `graham_notes` Supabase table when available.
 
 ### Achievement Summary (147 total, 3270G earnable)
 | Game | Count | Total G |

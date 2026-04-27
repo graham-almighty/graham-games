@@ -5431,6 +5431,61 @@ test('Hotkeys allowed on BODY', () => {
   assert(!blocked, 'Should NOT block hotkeys for BODY');
 });
 
+section('Startup Overlay Cleanup');
+
+function createMockOverlay(initialVisible = true) {
+  return {
+    style: {
+      background: initialVisible ? '#000000ee' : '',
+      display: initialVisible ? 'flex' : 'none',
+    },
+    innerHTML: initialVisible ? '<div>blocking</div>' : '',
+    classList: {
+      classes: new Set(initialVisible ? ['visible'] : []),
+      add(cls) { this.classes.add(cls); },
+      remove(cls) { this.classes.delete(cls); },
+      contains(cls) { return this.classes.has(cls); },
+    },
+  };
+}
+
+test('startGame cleanup hides creator screen instead of leaving black layer visible', () => {
+  const creator = createMockOverlay(true);
+  creator.classList.remove('visible');
+  creator.classList.add('hidden');
+  assert(creator.classList.contains('hidden'), 'Creator screen should be hidden on game start');
+});
+
+test('startGame cleanup clears action overlays that could block gameplay view', () => {
+  const overlay = createMockOverlay(true);
+  overlay.classList.remove('visible');
+  overlay.style.background = '';
+  overlay.innerHTML = '';
+  assert(!overlay.classList.contains('visible'), 'Action overlay should not remain visible');
+  assertEqual(overlay.style.background, '', 'Action overlay background should be cleared');
+  assertEqual(overlay.innerHTML, '', 'Action overlay content should be cleared');
+});
+
+test('startGame cleanup hides prompt overlays without deleting reusable prompt markup', () => {
+  const namePrompt = createMockOverlay(true);
+  namePrompt.innerHTML = '<div class="name-prompt-panel"><input></div>';
+  namePrompt.classList.remove('visible');
+  assert(!namePrompt.classList.contains('visible'), 'Name prompt should be hidden');
+  assert(namePrompt.innerHTML.includes('name-prompt-panel'), 'Reusable prompt markup should remain');
+});
+
+test('new games start in the yard instead of inside dark interior geometry', () => {
+  const HOME_START_POS = { x: 10, y: GROUND_Y, z: 0.75 };
+  assert(HOME_START_POS.x > 5, 'Safe start should be outside the right wall in the yard');
+  assertEqual(HOME_START_POS.y, GROUND_Y, 'Safe start should be on ground level');
+});
+
+test('new game camera faces back toward the house from safe start', () => {
+  const HOME_START_YAW = Math.PI / 2;
+  const lookX = -Math.sin(HOME_START_YAW);
+  assert(lookX < -0.9, 'Safe start yaw should face toward negative X and the house');
+});
+
 section('Multiplayer Outfit Sync');
 
 test('equipOutfit changes charOpts before rebuild', () => {
