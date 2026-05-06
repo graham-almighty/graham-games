@@ -37,12 +37,20 @@ A board game hosted externally, accessed via iframe wrapper.
 ### Combat
 A retro-style game hosted externally, accessed via iframe wrapper.
 
+### Dumb Chaos
+A 3D first-person goofy arena shooter. Fire joke weapons like a pineapple launcher, defeat Chaos Bots and rival-player avatars, earn Chaos Coins, and buy more ridiculous gear.
+
+- **First-person controls:** WASD, mouse look, click to fire
+- **Goofy weapons:** pineapple launcher, rubber chicken, waffle mines, poo/pee toilet cannon, bouncy ball cat cannon
+- **Chaos Coins** earned from splats and spent in the in-game shop
+- **G Bux unlocks** for faster reloads, bigger blasts, speed, and extra HP
+
 ## G Bux System
 
 All games share a cross-game achievement and currency system:
 
-- **25 achievements** across Hurgvibbit (10) and Mini Life (15) — earn up to **665 G Bux**
-- **G Bux Shop** with 5 unlockable items (Neon Theme, Turbo Mode, Pets, Swimming Pool, Basement)
+- **157 achievements** across the Graham Games catalog — earn up to **3480 G Bux**
+- **G Bux Shop** with 29 unlockable items across multiple games
 - Achievements and purchases persist across all games via shared localStorage
 - The launcher displays your G Bux balance, earned achievements, and available shop items
 
@@ -61,13 +69,14 @@ All files are self-contained HTML. No server, no install, no build step needed. 
 index.html                 — Launcher with G Bux system
 mini-life/game.html        — Mini Life (Three.js, ~6000 lines)
 hurgvibbit/index.html      — Hurgvibbit rhythm game
+dumb-chaos/index.html      — Dumb Chaos first-person arena shooter
 flying-ace/index.html      — Flying Ace iframe wrapper
 combat/index.html          — Combat iframe wrapper
 ```
 
 ## Tech Stack
 
-- **Three.js r128** (Mini Life) — loaded from CDN
+- **Three.js r128** (3D games) — loaded from CDN
 - **Web Audio API** — synthesized sound effects and music (no audio files)
 - **Speech Synthesis API** — Hurgvibbit announcer voice
 - **localStorage** — save/load and cross-game data

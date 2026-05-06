@@ -969,6 +969,23 @@
     border-radius: 8px;
   }
 
+  /* DUMB CHAOS card */
+  .game-card.dumb-chaos {
+    border-left-color: #f7d84a;
+  }
+  .game-card.dumb-chaos:hover {
+    border-color: #f7d84a;
+    box-shadow: 0 0 30px #f7d84a18, -5px 0 20px #39d9ff12;
+  }
+  .game-card.dumb-chaos::before {
+    background: linear-gradient(90deg, #f7d84a0a 0%, transparent 50%);
+  }
+  .game-card.dumb-chaos .game-icon {
+    background: linear-gradient(135deg, #201b08, #141420);
+    border: 1px solid #f7d84a55;
+    border-radius: 8px;
+  }
+
   .game-card.goofball-land {
     border-left-color: #ffcc00;
   }
@@ -2226,6 +2243,31 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- DUMB CHAOS -->
+    <a href="dumb-chaos/index.html" class="game-card dumb-chaos" data-title="DUMB CHAOS" data-launch="16" data-popular="16" data-recommended="16">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#171714" stroke="#f7d84a" stroke-width="2"/>
+          <!-- pineapple -->
+          <ellipse cx="20" cy="28" rx="7" ry="9" fill="#f7d84a" opacity="0.75"/>
+          <path d="M16 18 L18 11 L21 18 L24 10 L25 19" fill="none" stroke="#40b24d" stroke-width="2" stroke-linecap="round"/>
+          <path d="M15 25 L25 31 M25 25 L15 31 M17 21 L23 35" stroke="#8a6a10" stroke-width="1" opacity="0.55"/>
+          <!-- launcher -->
+          <rect x="24" y="24" width="16" height="7" rx="3" fill="#39d9ff" opacity="0.55"/>
+          <rect x="34" y="31" width="4" height="8" rx="1" fill="#f74a6a" opacity="0.65"/>
+          <!-- explosion bits -->
+          <circle cx="34" cy="15" r="3" fill="#f74a6a" opacity="0.6"/>
+          <circle cx="39" cy="20" r="2" fill="#39d9ff" opacity="0.65"/>
+          <circle cx="12" cy="39" r="2" fill="#f7d84a" opacity="0.65"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">DUMB CHAOS</div>
+        <div class="game-desc">3D goofy arena shooter</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
     <!-- GOOFBALL LAND (hidden while in development) -->
 
   </div>
@@ -2502,6 +2544,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'ss_all_teams',    name: 'World Tour',        desc: 'Win with every team',                     reward: 30 },
     { id: 'ss_golden_boot',  name: 'Golden Boot',       desc: 'Score 50 total goals',                    reward: 30 },
   ]},
+  { group: 'DUMB CHAOS', items: [
+    { id: 'dc_first_splat',      name: 'First Splat',       desc: 'Defeat any enemy',                         reward: 5 },
+    { id: 'dc_bot_bonker',       name: 'Bot Bonker',        desc: 'Defeat 10 bots',                           reward: 10 },
+    { id: 'dc_player_prank',     name: 'Player Prankster',  desc: 'Defeat 3 rival-player avatars',            reward: 15 },
+    { id: 'dc_pineapple_party',  name: 'Pineapple Party',   desc: 'Get 8 splats in a match with pineapple',   reward: 15 },
+    { id: 'dc_shop_goof',        name: 'Shop Goof',         desc: 'Buy any weapon or upgrade',                reward: 10 },
+    { id: 'dc_streak_5',         name: 'Five Alarm Chaos',  desc: 'Reach a 5-splat streak',                   reward: 20 },
+    { id: 'dc_big_money',        name: 'Coin Gobbler',      desc: 'Earn 500 total Chaos Coins',               reward: 20 },
+    { id: 'dc_all_weapons',      name: 'Full Dumb Arsenal', desc: 'Own all weapons',                          reward: 30 },
+    { id: 'dc_boss_splat',       name: 'Big Dummy Down',    desc: 'Defeat Big Dummy',                         reward: 35 },
+    { id: 'dc_chaos_king',       name: 'Chaos King',        desc: 'Reach 100 total splats',                   reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -2530,6 +2584,10 @@ const SHOP_ITEMS = [
   { id: 'dtd_extra_time',   name: 'Extra Time',      desc: '60 seconds per round instead of 45',           cost: 75, icon: '&#9203;',   game: 'Dress to Depress' },
   { id: 'ss_star_striker',  name: 'Star Striker',    desc: '+15% shot power in Super Soccer',              cost: 75, icon: '&#9917;',   game: 'Super Soccer' },
   { id: 'ss_speed_boots',   name: 'Speed Boots',     desc: '+10% team speed in Super Soccer',              cost: 50, icon: '&#128095;', game: 'Super Soccer' },
+  { id: 'dc_fast_reload',   name: 'Fast Reload',     desc: '18% faster weapon cooldowns in Dumb Chaos',     cost: 50, icon: '&#9889;',   game: 'Dumb Chaos' },
+  { id: 'dc_confetti_blast', name: 'Confetti Blast', desc: 'Larger splash radius in Dumb Chaos',            cost: 75, icon: '&#127881;', game: 'Dumb Chaos' },
+  { id: 'dc_chaos_socks',   name: 'Chaos Socks',     desc: '15% move speed bonus in Dumb Chaos',            cost: 50, icon: '&#129510;', game: 'Dumb Chaos' },
+  { id: 'dc_bucket_armor',  name: 'Bucket Armor',    desc: 'Start each Dumb Chaos match with 125 HP',       cost: 75, icon: '&#129527;', game: 'Dumb Chaos' },
 ];
 
 // ═══ LAUNCHER CUSTOMIZATIONS ═══
@@ -2710,15 +2768,17 @@ const NEWS_TAG_COLORS = {
   'dress-to-depress': { bg: '#ff69b422', border: '#ff69b4', color: '#ff69b4' },
   'school-nurse':     { bg: '#4caa6422', border: '#4caa64', color: '#4caa64' },
   'super-soccer':     { bg: '#3da34922', border: '#3da349', color: '#3da349' },
+  'dumb-chaos':        { bg: '#f7d84a22', border: '#f7d84a', color: '#f7d84a' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
   'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress', 'school-nurse': 'School Nurse',
-  'super-soccer': 'Super Soccer',
+  'super-soccer': 'Super Soccer', 'dumb-chaos': 'Dumb Chaos',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-05-06', title: 'Dumb Chaos Launches!', desc: 'New 3D first-person goofy arena shooter! Fire pineapple launchers, bonk Chaos Bots, splat rival-player avatars, earn Chaos Coins, and buy even dumber weapons and upgrades.', game: 'dumb-chaos' },
   { date: '2026-04-02', title: 'Big Big Bug Fix', desc: 'Massive bug fix across multiple games! Mega IO save system overhauled — auto-saves when you exit, no more lost progress. Most Played by Public now syncs across all devices via server. School Mode quizzes now pause your game so your character stops moving. Tons of small fixes everywhere!', game: 'all' },
   { date: '2026-04-01', title: 'Server Finally!', desc: 'Graham Games now has a real server! Play counts sync across all devices so Most Played by Public actually shows what everyone is playing. Customizable launcher backgrounds, accent colors, and card styles are live in the G Bux Shop — make your homescreen yours!', game: 'all' },
   { date: '2026-03-30', title: 'Into the Graham-verse 2', desc: 'The Graham Dimension expands! Graham Burger is now open for business — flip burgers for Burger Graham and earn cash at this hilarious fast food joint with a giant burger on the roof. Presidential Palace got a full renovation: fixed basement access, new furniture layout, and pizza throne replaces the desk chair. Plus real-time multiplayer — see other players walking around in your world!', game: 'mini-life' },
@@ -3233,7 +3293,8 @@ const GAME_TAGS = {
   'sibling-brawl/index.html':    ['fighting', 'action', '3d', 'multiplayer'],
   'dress-to-depress/index.html': ['simulation', 'creative', '3d', 'fashion'],
   'school-nurse/index.html':     ['simulation', 'detective', '2d', 'story'],
-  'super-soccer/index.html':     ['sports', 'action', '2d', 'simulation']
+  'super-soccer/index.html':     ['sports', 'action', '2d', 'simulation'],
+  'dumb-chaos/index.html':       ['action', 'shooter', '3d', 'multiplayer', 'arcade']
 };
 
 function getRecommendedScores() {

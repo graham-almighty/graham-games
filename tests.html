@@ -1503,6 +1503,61 @@ function loadGrahamPlanLocal() {
   assert(cloudWins, 'Cloud planner data wins when newer');
 }
 
+// --- Dumb Chaos ---
+group('Dumb Chaos Integration Data');
+
+const DUMB_CHAOS_ACHIEVEMENTS = [
+  { id: 'dc_first_splat', reward: 5 },
+  { id: 'dc_bot_bonker', reward: 10 },
+  { id: 'dc_player_prank', reward: 15 },
+  { id: 'dc_pineapple_party', reward: 15 },
+  { id: 'dc_shop_goof', reward: 10 },
+  { id: 'dc_streak_5', reward: 20 },
+  { id: 'dc_big_money', reward: 20 },
+  { id: 'dc_all_weapons', reward: 30 },
+  { id: 'dc_boss_splat', reward: 35 },
+  { id: 'dc_chaos_king', reward: 50 },
+];
+
+const DUMB_CHAOS_SHOP_ITEMS = [
+  { id: 'dc_fast_reload', cost: 50 },
+  { id: 'dc_confetti_blast', cost: 75 },
+  { id: 'dc_chaos_socks', cost: 50 },
+  { id: 'dc_bucket_armor', cost: 75 },
+];
+
+function defaultDumbChaosSave() {
+  return {
+    coins: 0,
+    totalCoins: 0,
+    totalKills: 0,
+    botKills: 0,
+    playerKills: 0,
+    bestStreak: 0,
+    ownedWeapons: { pineapple: true },
+    upgrades: {},
+    equipped: 'pineapple',
+    bossKills: 0,
+  };
+}
+
+{
+  assertEqual(DUMB_CHAOS_ACHIEVEMENTS.length, 10, 'Dumb Chaos registers 10 achievements');
+  assertEqual(DUMB_CHAOS_ACHIEVEMENTS.reduce((sum, a) => sum + a.reward, 0), 210, 'Dumb Chaos achievements total 210G');
+}
+
+{
+  assertEqual(DUMB_CHAOS_SHOP_ITEMS.length, 4, 'Dumb Chaos registers 4 G Bux shop items');
+  assertEqual(DUMB_CHAOS_SHOP_ITEMS.reduce((sum, item) => sum + item.cost, 0), 250, 'Dumb Chaos G Bux shop items total 250G');
+}
+
+{
+  const save = defaultDumbChaosSave();
+  assertEqual(save.ownedWeapons.pineapple, true, 'Dumb Chaos starts with pineapple launcher');
+  assertEqual(save.equipped, 'pineapple', 'Dumb Chaos equips pineapple by default');
+  assertEqual(save.coins, 0, 'Dumb Chaos save starts with zero Chaos Coins');
+}
+
 // ============================================================
 showSummary();
 </script>

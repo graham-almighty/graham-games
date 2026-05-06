@@ -43,6 +43,7 @@
   sibling-brawl/index.html     — 3D first-person sibling battle game (Three.js r128)
   school-nurse/index.html      — 2D school nurse detective sim (Canvas)
   super-soccer/index.html      — 2D soccer simulation (Canvas, early access)
+  dumb-chaos/index.html        — 3D first-person goofy arena shooter (Three.js r128)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   gg-supabase.js               — Shared Supabase cloud save script (auth, sync, toasts)
@@ -98,7 +99,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - News panel with updates
 - Bugs panel includes a "For Graham Only" tab gated by code `8488`; it stores Graham planning notes/reminders in localStorage and syncs via the public `graham_notes` Supabase table when available.
 
-### Achievement Summary (147 total, 3270G earnable)
+### Achievement Summary (157 total, 3480G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -114,10 +115,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Sibling Brawl | 10 | 185G |
 | School Nurse | 10 | 250G |
 | Super Soccer | 10 | 200G |
+| Dumb Chaos | 10 | 210G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 
-### G Bux Shop (25 items, 1675G total)
+### G Bux Shop (29 items, 1925G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -145,6 +147,10 @@ See each game's `CLAUDE.md` for full achievement tables.
 | mio_trail_shield | Trail Shield | 75G | Mega IO | Trail safe for 2s after leaving territory |
 | ss_star_striker | Star Striker | 75G | Super Soccer | +15% shot power |
 | ss_speed_boots | Speed Boots | 50G | Super Soccer | +10% team speed |
+| dc_fast_reload | Fast Reload | 50G | Dumb Chaos | 18% faster weapon cooldowns |
+| dc_confetti_blast | Confetti Blast | 75G | Dumb Chaos | Larger splash radius |
+| dc_chaos_socks | Chaos Socks | 50G | Dumb Chaos | 15% move speed bonus |
+| dc_bucket_armor | Bucket Armor | 75G | Dumb Chaos | Start each match with 125 HP |
 
 ---
 
