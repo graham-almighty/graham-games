@@ -239,6 +239,28 @@
     text-align: center;
     margin-bottom: 10px;
   }
+  .auth-recent {
+    display: none;
+    color: #aaa;
+    font-size: 0.78rem;
+    text-align: center;
+    margin: -2px 0 10px;
+    padding: 8px 10px;
+    border: 1px solid #c9a84c33;
+    border-radius: 6px;
+    background: #c9a84c10;
+  }
+  .auth-recent.visible { display: block; }
+  .auth-recent button {
+    background: none;
+    border: none;
+    color: #c9a84c;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+  }
+  .auth-recent button:hover { color: #d4b85c; text-decoration: underline; }
   .auth-link {
     color: #c9a84c;
     cursor: pointer;
@@ -3767,8 +3789,9 @@ document.addEventListener('keydown', e => {
   <div class="auth-panel" id="auth-panel-login">
     <h2>SIGN IN</h2>
     <div class="auth-error" id="auth-login-error"></div>
+    <div class="auth-recent" id="auth-recent-login"></div>
     <input type="text" id="auth-login-name" placeholder="Gamer Name" autocomplete="off" spellcheck="false">
-    <input type="password" id="auth-login-pass" placeholder="Password">
+    <div class="auth-info" id="auth-forgot-info">No password needed. Forgot your username? Use the recent sign-in name if it appears here.</div>
     <button class="auth-btn" onclick="doLogin()">SIGN IN</button>
     <button class="auth-btn secondary" onclick="showSignUp()">CREATE ACCOUNT</button>
     <button class="auth-btn secondary" onclick="closeAuthModal()">CANCEL</button>
@@ -3777,8 +3800,7 @@ document.addEventListener('keydown', e => {
     <h2>CREATE ACCOUNT</h2>
     <div class="auth-error" id="auth-signup-error"></div>
     <input type="text" id="auth-signup-name" placeholder="Choose a gamer name" autocomplete="off" spellcheck="false" maxlength="24">
-    <input type="password" id="auth-signup-pass" placeholder="Choose a password (6+ chars)">
-    <input type="password" id="auth-signup-pass2" placeholder="Confirm password">
+    <div class="auth-info">Pick a gamer name you can remember. GG accounts do not use passwords.</div>
     <button class="auth-btn" onclick="doSignUp()">CREATE ACCOUNT</button>
     <button class="auth-btn secondary" onclick="showLogin()">BACK TO SIGN IN</button>
     <button class="auth-btn secondary" onclick="closeAuthModal()">CANCEL</button>
@@ -3797,6 +3819,44 @@ document.addEventListener('keydown', e => {
 
 <script>
 // ═══ AUTH UI ═══
+const GG_RECENT_AUTH_KEY = 'gg-recent-auth-name';
+
+function getRecentGamerName() {
+  try { return localStorage.getItem(GG_RECENT_AUTH_KEY) || ''; }
+  catch(e) { return ''; }
+}
+
+function saveRecentGamerName(name) {
+  if (!name) return;
+  try { localStorage.setItem(GG_RECENT_AUTH_KEY, name); } catch(e) {}
+}
+
+function renderRecentLoginName() {
+  const recentEl = document.getElementById('auth-recent-login');
+  if (!recentEl) return;
+  const name = getRecentGamerName();
+  if (!name) {
+    recentEl.classList.remove('visible');
+    recentEl.innerHTML = '';
+    return;
+  }
+  recentEl.innerHTML = 'Recently signed in as <button type="button" onclick="useRecentLoginName()">' + escapeHtml(name) + '</button>';
+  recentEl.classList.add('visible');
+}
+
+function useRecentLoginName() {
+  const name = getRecentGamerName();
+  if (!name) return;
+  document.getElementById('auth-login-name').value = name;
+  document.getElementById('auth-login-name').focus();
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 function openAuthModal() {
   const overlay = document.getElementById('auth-overlay');
   if (ggIsLoggedIn()) {
@@ -3816,6 +3876,10 @@ function showLogin() {
   document.getElementById('auth-panel-signup').style.display = 'none';
   document.getElementById('auth-panel-account').style.display = 'none';
   document.getElementById('auth-login-error').textContent = '';
+  renderRecentLoginName();
+  const recentName = getRecentGamerName();
+  const nameInput = document.getElementById('auth-login-name');
+  if (recentName && !nameInput.value) nameInput.value = recentName;
 }
 
 function showSignUp() {
@@ -3836,12 +3900,18 @@ function showAccountPanel() {
 
 async function doLogin() {
   const name = document.getElementById('auth-login-name').value.trim();
-  const pass = document.getElementById('auth-login-pass').value;
   const errEl = document.getElementById('auth-login-error');
-  if (!name || !pass) { errEl.textContent = 'Enter your gamer name and password.'; return; }
+  errEl.style.color = '';
+  if (!name) { errEl.textContent = 'Enter your gamer name.'; return; }
   errEl.textContent = 'Signing in...';
-  const result = await ggLogin(name, pass);
+  let result;
+  try { result = await ggLogin(name); }
+  catch(e) {
+    errEl.textContent = 'Sign-in crashed: ' + (e && e.message ? e.message : 'try again.');
+    return;
+  }
   if (result.error) { errEl.textContent = result.error; return; }
+  saveRecentGamerName(result.user ? result.user.gamerName : name);
   if (result.localUploaded) {
     errEl.style.color = '#4caf50';
     errEl.textContent = 'Local saves synced to cloud!';
@@ -3856,17 +3926,20 @@ async function doLogin() {
 
 async function doSignUp() {
   const name = document.getElementById('auth-signup-name').value.trim();
-  const pass = document.getElementById('auth-signup-pass').value;
-  const pass2 = document.getElementById('auth-signup-pass2').value;
   const errEl = document.getElementById('auth-signup-error');
+  errEl.style.color = '';
   if (!name || name.length < 3) { errEl.textContent = 'Name must be at least 3 characters.'; return; }
   if (name.length > 24) { errEl.textContent = 'Name must be 24 characters or less.'; return; }
   if (!/^[a-zA-Z0-9 _-]+$/.test(name)) { errEl.textContent = 'Letters, numbers, spaces, hyphens, underscores only.'; return; }
-  if (!pass || pass.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  if (pass !== pass2) { errEl.textContent = 'Passwords do not match.'; return; }
   errEl.textContent = 'Creating account...';
-  const result = await ggSignUp(name, pass);
+  let result;
+  try { result = await ggSignUp(name); }
+  catch(e) {
+    errEl.textContent = 'Account creation crashed: ' + (e && e.message ? e.message : 'try again.');
+    return;
+  }
   if (result.error) { errEl.textContent = result.error; return; }
+  saveRecentGamerName(result.user ? result.user.gamerName : name);
   errEl.style.color = '#4caf50';
   errEl.textContent = 'Account created! Local saves uploaded to cloud.';
   setTimeout(() => { errEl.style.color = ''; closeAuthModal(); }, 1500);
@@ -3875,6 +3948,8 @@ async function doSignUp() {
 }
 
 async function doLogout() {
+  const user = ggGetUser();
+  if (user) saveRecentGamerName(user.gamerName);
   await ggLogout();
   closeAuthModal();
   updateAccountUI();

@@ -22,6 +22,7 @@ const GG_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 
 const GG_KEY = 'graham-games-data';
 const GG_AUTH_KEY = 'gg-auth-session'; // local cache of gamer name
+const GG_INTERNAL_PASSWORD = 'graham-games-name-only-login';
 
 // ═══ SUPABASE CLIENT ═══
 let _supabase = null;
@@ -64,7 +65,60 @@ function _nameToEmail(name) {
   return name.toLowerCase().replace(/\s+/g, '_') + '@gg.internal';
 }
 
-async function ggSignUp(gamerName, password) {
+function _friendlyAuthError(error, fallback) {
+  const message = (error && error.message) ? error.message : '';
+  if (/invalid login credentials/i.test(message)) return fallback || 'Gamer name was not found.';
+  if (/email not confirmed/i.test(message)) return 'This account exists, but Supabase email confirmation is blocking sign-in.';
+  if (/fetch|network|failed to fetch|timed out/i.test(message)) return 'Could not reach cloud sign-in. Check internet and try again.';
+  return message || fallback || 'Sign-in failed. Try again.';
+}
+
+function _withTimeout(promise, label, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve({ error: { message: label + ' timed out' } }), ms))
+  ]);
+}
+
+async function _ensureUserRows(userId, gamerName) {
+  const sb = getSupabase();
+  if (!sb) return { error: 'Supabase not configured' };
+  const lowerName = gamerName.toLowerCase();
+  const localData = ggLoad();
+
+  const { error: usernameError } = await _withTimeout(sb.from('usernames').upsert({
+    gamer_name: lowerName,
+    display_name: gamerName,
+    user_id: userId,
+  }, { onConflict: 'gamer_name' }), 'Saving gamer name');
+  if (usernameError) return { error: 'Could not save gamer name: ' + usernameError.message };
+
+  const { data: existingData, error: readError } = await _withTimeout(sb.from('user_data').select('user_id').eq('user_id', userId).maybeSingle(), 'Checking cloud profile');
+  if (readError) return { error: 'Could not check cloud profile: ' + readError.message };
+  if (!existingData) {
+    const { error: userDataError } = await _withTimeout(sb.from('user_data').insert({
+      user_id: userId,
+      gamer_name: gamerName,
+      g_bux: localData.gBux || 0,
+      achievements: localData.achievements || {},
+      shop_purchases: localData.shopPurchases || {},
+    }), 'Saving cloud profile');
+    if (userDataError) return { error: 'Could not save cloud profile: ' + userDataError.message };
+  }
+
+  return { ok: true };
+}
+
+async function _preparePasswordlessLogin(gamerName) {
+  const sb = getSupabase();
+  if (!sb) return { error: 'Supabase not configured' };
+  const { data, error } = await _withTimeout(sb.rpc('prepare_graham_games_name_login', { gamer: gamerName }), 'Preparing name-only sign-in');
+  if (error) return { error: 'Name-only sign-in is not installed yet. Run the latest Supabase schema SQL, then try again.' };
+  if (data && data.error) return { error: data.error };
+  return { ok: true };
+}
+
+async function ggSignUp(gamerName) {
   const sb = getSupabase();
   if (!sb) return { error: 'Supabase not configured' };
 
@@ -72,31 +126,24 @@ async function ggSignUp(gamerName, password) {
   const email = _nameToEmail(gamerName);
 
   // Check if name is taken
-  const { data: existing } = await sb.from('usernames').select('gamer_name').eq('gamer_name', lowerName).single();
+  const { data: existing, error: existingError } = await _withTimeout(sb.from('usernames').select('gamer_name').eq('gamer_name', lowerName).maybeSingle(), 'Checking gamer name');
+  if (existingError) return { error: 'Could not check gamer name: ' + existingError.message };
   if (existing) return { error: 'That gamer name is already taken!' };
 
   // Sign up with Supabase Auth
-  const { data: authData, error: authError } = await sb.auth.signUp({
+  const { data: authData, error: authError } = await _withTimeout(sb.auth.signUp({
     email,
-    password,
+    password: GG_INTERNAL_PASSWORD,
     options: { data: { gamer_name: gamerName } }
-  });
-  if (authError) return { error: authError.message };
+  }), 'Creating account');
+  if (authError) return { error: _friendlyAuthError(authError, 'Could not create account.') };
+  if (!authData || !authData.user) return { error: 'Account was not created. Try again.' };
 
   const userId = authData.user.id;
+  if (!authData.session) return { error: 'Account was created, but Supabase email confirmation is blocking setup. Disable email confirmations for GG accounts, then create/sign in again.' };
 
-  // Insert username record
-  await sb.from('usernames').insert({ gamer_name: lowerName, display_name: gamerName, user_id: userId });
-
-  // Initialize user_data with current localStorage G Bux data
-  const localData = ggLoad();
-  await sb.from('user_data').insert({
-    user_id: userId,
-    gamer_name: gamerName,
-    g_bux: localData.gBux || 0,
-    achievements: localData.achievements || {},
-    shop_purchases: localData.shopPurchases || {},
-  });
+  const rowResult = await _ensureUserRows(userId, gamerName);
+  if (rowResult.error) return { error: rowResult.error };
 
   _ggUser = { id: userId, gamerName };
   _ggAuthReady = true;
@@ -108,24 +155,33 @@ async function ggSignUp(gamerName, password) {
   return { user: _ggUser };
 }
 
-async function ggLogin(gamerName, password) {
+async function ggLogin(gamerName) {
   const sb = getSupabase();
   if (!sb) return { error: 'Supabase not configured' };
 
   const lowerName = gamerName.toLowerCase();
 
   // Look up the actual email from the username
-  const { data: nameRow } = await sb.from('usernames').select('display_name').eq('gamer_name', lowerName).single();
-  if (!nameRow) return { error: 'Gamer name not found!' };
+  const { data: nameRow, error: nameError } = await _withTimeout(sb.from('usernames').select('display_name').eq('gamer_name', lowerName).maybeSingle(), 'Checking gamer name');
+  if (nameError) return { error: 'Could not check gamer name: ' + nameError.message };
 
-  const email = _nameToEmail(nameRow.display_name);
-  const { data: authData, error: authError } = await sb.auth.signInWithPassword({ email, password });
-  if (authError) return { error: 'Wrong password!' };
+  const displayName = nameRow ? nameRow.display_name : gamerName;
+  if (nameRow) {
+    const prepareResult = await _preparePasswordlessLogin(displayName);
+    if (prepareResult.error) return prepareResult;
+  }
+  const email = _nameToEmail(displayName);
+  const { data: authData, error: authError } = await _withTimeout(sb.auth.signInWithPassword({ email, password: GG_INTERNAL_PASSWORD }), 'Signing in');
+  if (authError) return { error: _friendlyAuthError(authError, nameRow ? 'Could not sign in with that gamer name.' : 'Gamer name not found.') };
+  if (!authData || !authData.user) return { error: 'Sign-in failed. Try again.' };
 
   const userId = authData.user.id;
-  _ggUser = { id: userId, gamerName: nameRow.display_name };
+  const rowResult = await _ensureUserRows(userId, displayName);
+  if (rowResult.error) return { error: rowResult.error };
+
+  _ggUser = { id: userId, gamerName: displayName };
   _ggAuthReady = true;
-  localStorage.setItem(GG_AUTH_KEY, JSON.stringify({ gamerName: nameRow.display_name }));
+  localStorage.setItem(GG_AUTH_KEY, JSON.stringify({ gamerName: displayName }));
 
   // Smart merge: local progress is never lost
   const syncResult = await _pullCloudData(userId);

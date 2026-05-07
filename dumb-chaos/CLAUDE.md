@@ -16,7 +16,7 @@
 - **Enemy weapons:** Enemies visibly carry random goofy weapons and fire matching projectiles at the player or nearby NPCs.
 - **NPC targeting:** NPCs choose the closest visible target from the player or other NPCs, so arena fights break out without every enemy focusing only on the player.
 - **Unique names:** Active enemies never share the same visible name. Duplicates get numbered while active, and names are released when an enemy leaves the arena.
-- **Map:** Arena is a big house with large rooms, ceiling-height interior/exterior walls, visible door frames/doors, room furniture, a raised play room floor, an upper hallway loft, and a high roof/ceiling.
+- **Map:** Arena is a big house with large rooms, ceiling-height interior/exterior walls, properly sized visible door frames/doors that fill 4-unit wall openings, room furniture, goofy room props, a raised play room floor, an upper hallway loft, and a high roof/ceiling.
 - **Cover:** House walls and furniture cover structures block line of sight, catch projectiles, and have simple collision so players/NPCs can hide behind them. Non-furniture junk obstacles are not spawned in the house map.
 - **Climbable props:** Smaller goofy props are climbable; big cover blocks have visible ladders that lift the player to the top, and house stairs connect the different floor heights.
 - **Rubber chicken projectile:** Rubber Chicken Slapper projectile is shaped like a small chicken with body, neck, head, beak, comb, and tail.
@@ -48,28 +48,28 @@
 | ID | Name | Cost | Damage | Cooldown | Splash |
 |----|------|------|--------|----------|--------|
 | pineapple | Pineapple Launcher | 0 | 38 | 0.7s | 3.1 |
-| rubber | Rubber Chicken Slapper | 12 | 12 | 0.25s | 0 |
-| waffle | Waffle Mine Tosser | 18 | 65 | 1.1s | 4.2 |
-| toilet | Poo & Pee Toilet Cannon | 8 | 24 | 0.55s | 1.8 |
-| catball | Bouncy Ball Cat Cannon | 250 | 72 | 1.0s | 3.8 |
+| rubber | Rubber Chicken Slapper | 60 | 12 | 0.25s | 0 |
+| waffle | Waffle Mine Tosser | 90 | 65 | 1.1s | 4.2 |
+| toilet | Poo & Pee Toilet Cannon | 40 | 24 | 0.55s | 1.8 |
+| catball | Bouncy Ball Cat Cannon | 1250 | 72 | 1.0s | 3.8 |
 
-Weapon prices use real-world-ish joke item costs instead of large game-economy prices.
+Purchasable Chaos Coin items are priced at 5x the original launch values.
 
 ## Paid Outfits
 | Outfit | Cost |
 |--------|------|
-| Casual Blue | 30 |
-| Sporty Red | 35 |
-| Forest Green | 35 |
-| Pink Pop | 40 |
-| Golden Drip | 55 |
-| GG Merch | 40 |
-| Pizza Pajamas | 38 |
-| Cosmic Hoodie | 48 |
-| Slime Suit | 45 |
-| Cardboard Hero | 32 |
-| Neon Zebra | 60 |
-| Royal Purple | 65 |
+| Casual Blue | 150 |
+| Sporty Red | 175 |
+| Forest Green | 175 |
+| Pink Pop | 200 |
+| Golden Drip | 275 |
+| GG Merch | 200 |
+| Pizza Pajamas | 190 |
+| Cosmic Hoodie | 240 |
+| Slime Suit | 225 |
+| Cardboard Hero | 160 |
+| Neon Zebra | 300 |
+| Royal Purple | 325 |
 
 Existing and new saves start with Casual Blue owned so the player always has one outfit equipped. Other outfits must be bought with Chaos Coins before equipping.
 
@@ -77,20 +77,24 @@ Existing and new saves start with Casual Blue owned so the player always has one
 | Hat | Cost |
 |-----|------|
 | No Hat | 0 |
-| Traffic Cone | 10 |
-| Bucket Hat | 14 |
-| Tiny Crown | 25 |
-| Propeller Cap | 22 |
+| Traffic Cone | 50 |
+| Bucket Hat | 70 |
+| Tiny Crown | 125 |
+| Propeller Cap | 110 |
 
-Hats are bought with Chaos Coins in the Custom Look + Weapon Select panel. Enemies can spawn with random hats; Boss uses Tiny Crown.
+Hats are bought with Chaos Coins in the Custom Look + Weapon Select panel. Bucket Hat uses bucket body/rim/handle geometry; Tiny Crown uses a detailed band, points, and jewels. Enemies can spawn with random hats; Boss uses Tiny Crown.
 
 ## Upgrades
 | ID | Cost | Effect |
 |----|------|--------|
-| speedShoes | 90 | Higher move speed |
-| biggerBooms | 140 | Splash weapons get wider explosions |
-| helmet | 120 | Reduces incoming damage |
-| coinMagnet | 160 | Extra Chaos Coins per splat |
+| speedShoes | 450 | Higher move speed |
+| biggerBooms | 700 | Splash weapons get wider explosions |
+| helmet | 600 | Reduces incoming damage |
+| coinMagnet | 800 | Extra Chaos Coins per splat |
+| springyPants | 550 | Higher jumps |
+| snackTax | 650 | Extra Chaos Coins per splat |
+| bubbleWrap | 725 | Further incoming damage reduction |
+| sockCannonGrease | 500 | Slightly faster player weapon reloads |
 
 ## G Bux Shop Items
 | ID | Cost | Effect |

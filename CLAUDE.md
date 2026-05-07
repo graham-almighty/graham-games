@@ -60,7 +60,10 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 ### Cloud Save System (Supabase — in progress)
 - **Supabase project:** `Graham Games` (ref: ibfjkctnklcgyfmjjivv, West US/Oregon)
 - **`gg-supabase.js`** replaces duplicated ggLoad/ggSave/ggUnlockAchievement in every game
-- Auth uses gamer names (e.g. "fried potato153763") mapped to fake emails internally
+- Auth uses gamer names only (e.g. "fried potato153763") mapped to fake emails internally; players do not enter passwords.
+- Email confirmation must stay disabled for GG accounts because fake internal emails cannot receive confirmation links.
+- Existing accounts are migrated to name-only login through the Supabase RPC `prepare_graham_games_name_login(gamer)`; run the latest `supabase-schema.sql` before using name-only login on old accounts.
+- Login can recover missing `user_data` rows after name-only auth succeeds, preventing partial account state from getting stuck.
 - localStorage-first reads, async Supabase sync on writes
 - localStorage monkey-patch auto-syncs 29 game save keys
 - **Status:** Schema deployed, shared script built. Next: auth UI in launcher, wire into all games.
@@ -94,6 +97,8 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - Dark/gold serpent double-G SVG logo
 - Game cards with color-coded borders + hover video preview popups
 - G Bux balance display (top right)
+- Account sign-in modal remembers the most recent gamer name in `gg-recent-auth-name` and shows it on the sign-in panel after logout.
+- Sign-in modal includes recent username reuse and no password field.
 - Achievements panel, G Bux Shop
 - School Mode: PIN-protected parental controls, quiz timer, blocks Combat & Ancient Warfare
 - News panel with updates

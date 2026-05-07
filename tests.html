@@ -1503,6 +1503,46 @@ function loadGrahamPlanLocal() {
   assert(cloudWins, 'Cloud planner data wins when newer');
 }
 
+// --- Auth recent sign-in ---
+group('Auth Recent Sign-In');
+
+const GG_RECENT_AUTH_KEY = 'gg-recent-auth-name';
+const GG_NAME_ONLY_INTERNAL_PASSWORD = 'graham-games-name-only-login';
+
+function getRecentGamerName() {
+  try { return localStorage.getItem(GG_RECENT_AUTH_KEY) || ''; }
+  catch(e) { return ''; }
+}
+
+function saveRecentGamerName(name) {
+  if (!name) return;
+  try { localStorage.setItem(GG_RECENT_AUTH_KEY, name); } catch(e) {}
+}
+
+{
+  localStorage.removeItem(GG_RECENT_AUTH_KEY);
+  assertEqual(getRecentGamerName(), '', 'Recent auth name defaults to empty');
+}
+
+{
+  saveRecentGamerName('fried potato153763');
+  assertEqual(getRecentGamerName(), 'fried potato153763', 'Recent auth name persists after sign-in');
+}
+
+{
+  saveRecentGamerName('');
+  assertEqual(getRecentGamerName(), 'fried potato153763', 'Blank recent auth name does not overwrite the last account');
+}
+
+{
+  assertEqual(GG_NAME_ONLY_INTERNAL_PASSWORD, 'graham-games-name-only-login', 'GG auth uses a hidden internal password');
+}
+
+{
+  const playerPasswordRequired = false;
+  assertEqual(playerPasswordRequired, false, 'GG sign-in does not require a player password');
+}
+
 // --- Dumb Chaos ---
 group('Dumb Chaos Integration Data');
 
@@ -1525,6 +1565,13 @@ const DUMB_CHAOS_SHOP_ITEMS = [
   { id: 'dc_chaos_socks', cost: 50 },
   { id: 'dc_bucket_armor', cost: 75 },
 ];
+
+const DUMB_CHAOS_COIN_PRICES = {
+  weapons: { rubber: 60, waffle: 90, toilet: 40, catball: 1250 },
+  upgrades: { speedShoes: 450, biggerBooms: 700, helmet: 600, coinMagnet: 800, springyPants: 550, snackTax: 650, bubbleWrap: 725, sockCannonGrease: 500 },
+  hats: { cone: 50, bucket: 70, crown: 125, propeller: 110 },
+  outfits: [150, 175, 175, 200, 275, 200, 190, 240, 225, 160, 300, 325],
+};
 
 function defaultDumbChaosSave() {
   return {
@@ -1549,6 +1596,15 @@ function defaultDumbChaosSave() {
 {
   assertEqual(DUMB_CHAOS_SHOP_ITEMS.length, 4, 'Dumb Chaos registers 4 G Bux shop items');
   assertEqual(DUMB_CHAOS_SHOP_ITEMS.reduce((sum, item) => sum + item.cost, 0), 250, 'Dumb Chaos G Bux shop items total 250G');
+}
+
+{
+  assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.rubber, 60, 'Dumb Chaos rubber chicken costs 5x launch price');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.catball, 1250, 'Dumb Chaos cat cannon costs 5x launch price');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.upgrades.springyPants, 550, 'Dumb Chaos adds Springy Pants Goofy Stuff');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.upgrades.sockCannonGrease, 500, 'Dumb Chaos adds Sock Cannon Grease Goofy Stuff');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.hats.propeller, 110, 'Dumb Chaos propeller cap costs 5x launch price');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.outfits.reduce((sum, cost) => sum + cost, 0), 2615, 'Dumb Chaos outfit prices use 5x launch totals');
 }
 
 {

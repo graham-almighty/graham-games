@@ -50,6 +50,44 @@ CREATE POLICY "Users can insert own saves" ON game_saves FOR INSERT WITH CHECK (
 CREATE POLICY "Users can update own saves" ON game_saves FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own saves" ON game_saves FOR DELETE USING (auth.uid() = user_id);
 
+-- ═══ GG NAME-ONLY LOGIN ═══
+-- GG accounts use fake internal emails and no player-entered passwords. This
+-- RPC prepares old accounts by replacing whatever password they used before
+-- with the app's internal name-only login password.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE OR REPLACE FUNCTION prepare_graham_games_name_login(gamer TEXT)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auth
+AS $$
+DECLARE
+  target_user_id UUID;
+BEGIN
+  SELECT user_id INTO target_user_id
+  FROM public.usernames
+  WHERE gamer_name = lower(trim(gamer));
+
+  IF target_user_id IS NULL THEN
+    RETURN jsonb_build_object('error', 'Gamer name not found.');
+  END IF;
+
+  UPDATE auth.users
+  SET encrypted_password = crypt('graham-games-name-only-login', gen_salt('bf')),
+      email_confirmed_at = coalesce(email_confirmed_at, now()),
+      confirmation_token = '',
+      recovery_token = '',
+      updated_at = now()
+  WHERE id = target_user_id;
+
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION prepare_graham_games_name_login(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION prepare_graham_games_name_login(TEXT) TO anon, authenticated;
+
 -- ═══ PUBLIC PLAY COUNTS ═══
 CREATE TABLE play_counts (
   game_href TEXT PRIMARY KEY,              -- e.g. 'mini-life/game.html'
