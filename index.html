@@ -1008,6 +1008,22 @@
     border-radius: 8px;
   }
 
+  .game-card.school-sim {
+    border-left-color: #54c6a0;
+  }
+  .game-card.school-sim:hover {
+    border-color: #54c6a0;
+    box-shadow: 0 0 30px #54c6a018, -5px 0 20px #ffd45a12;
+  }
+  .game-card.school-sim::before {
+    background: linear-gradient(90deg, #54c6a00a 0%, transparent 50%);
+  }
+  .game-card.school-sim .game-icon {
+    background: linear-gradient(135deg, #07111f, #112018);
+    border: 1px solid #54c6a055;
+    border-radius: 8px;
+  }
+
   .game-card.goofball-land {
     border-left-color: #ffcc00;
   }
@@ -2285,7 +2301,31 @@ for (let i = 0; i < 30; i++) {
       </div>
       <div class="game-info">
         <div class="game-title">DUMB CHAOS</div>
-        <div class="game-desc">3D goofy arena shooter</div>
+        <div class="game-desc">3D... well, dumb chaos</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
+    <!-- SCHOOL SIM -->
+    <a href="school-sim/index.html" class="game-card school-sim" data-title="SCHOOL SIM" data-launch="17" data-popular="17" data-recommended="17">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="4" fill="#07111f" stroke="#54c6a0" stroke-width="2"/>
+          <rect x="11" y="11" width="28" height="12" rx="1" fill="#20322f" stroke="#54c6a0" stroke-width="1" opacity="0.8"/>
+          <line x1="15" y1="17" x2="27" y2="17" stroke="#dfffea" stroke-width="1" opacity="0.7"/>
+          <line x1="15" y1="20" x2="23" y2="20" stroke="#dfffea" stroke-width="1" opacity="0.5"/>
+          <rect x="13" y="30" width="24" height="5" rx="1" fill="#9b6f45" opacity="0.8"/>
+          <rect x="16" y="35" width="3" height="7" fill="#634126" opacity="0.8"/>
+          <rect x="31" y="35" width="3" height="7" fill="#634126" opacity="0.8"/>
+          <rect x="16" y="25" width="8" height="4" rx="1" fill="#ff7aa8" opacity="0.9"/>
+          <rect x="27" y="26" width="11" height="2" rx="1" fill="#72d7ff" opacity="0.9"/>
+          <rect x="35" y="25" width="3" height="4" rx="1" fill="#ffd45a" opacity="0.9"/>
+          <path d="M24 27 L27 27" stroke="#ffd45a" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">SCHOOL SIM</div>
+        <div class="game-desc">3D classroom crafting simulator</div>
       </div>
       <div class="game-arrow">&#9654;</div>
     </a>
@@ -2578,6 +2618,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'dc_boss_splat',       name: 'Big Dummy Down',    desc: 'Defeat Big Dummy',                         reward: 35 },
     { id: 'dc_chaos_king',       name: 'Chaos King',        desc: 'Reach 100 total splats',                   reward: 50 },
   ]},
+  { group: 'SCHOOL SIM', items: [
+    { id: 'sch_first_pickup', name: 'Supply Grabber',   desc: 'Pick up any supply',                    reward: 5 },
+    { id: 'sch_first_craft',  name: 'Desk Inventor',    desc: 'Craft any item',                        reward: 10 },
+    { id: 'sch_mega_eraser',  name: 'Mega Eraser',      desc: 'Craft Mega Eraser',                     reward: 15 },
+    { id: 'sch_three_crafts', name: 'Triple Maker',     desc: 'Craft 3 different items',               reward: 20 },
+    { id: 'sch_all_supplies', name: 'Locker Loot',      desc: 'Collect all base supplies',             reward: 20 },
+    { id: 'sch_all_recipes',  name: 'Craft Class Hero', desc: 'Craft every School Sim recipe',          reward: 40 },
+    { id: 'sch_test_tool',    name: 'Field Tester',     desc: 'Use a crafted item',                    reward: 15 },
+    { id: 'sch_star_student', name: 'Star Student',     desc: 'Earn 50 School Sim stars',              reward: 25 },
+    { id: 'sch_combo_two',    name: 'Desk Combo',       desc: 'Craft two items in one run',            reward: 20 },
+    { id: 'sch_clean_board',  name: 'Board Cleaner',    desc: 'Use Mega Eraser on the board',          reward: 30 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -2791,15 +2843,18 @@ const NEWS_TAG_COLORS = {
   'school-nurse':     { bg: '#4caa6422', border: '#4caa64', color: '#4caa64' },
   'super-soccer':     { bg: '#3da34922', border: '#3da349', color: '#3da349' },
   'dumb-chaos':        { bg: '#f7d84a22', border: '#f7d84a', color: '#f7d84a' },
+  'school-sim':       { bg: '#54c6a022', border: '#54c6a0', color: '#54c6a0' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
   'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress', 'school-nurse': 'School Nurse',
-  'super-soccer': 'Super Soccer', 'dumb-chaos': 'Dumb Chaos',
+  'super-soccer': 'Super Soccer', 'dumb-chaos': 'Dumb Chaos', 'school-sim': 'School Sim',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-05-07', title: 'School Sim Launches!', desc: 'New 3D classroom crafting sim. Collect supplies, use a desk as the crafting table, and combine things like Eraser + Electric Screwdriver into Mega Eraser.', game: 'school-sim' },
+  { date: '2026-05-07', title: 'Dumb Chaos Quality Update', desc: '3D... well, dumb chaos. New ranked battles, rapid-fire Cat Blaster, goofy weapons, upbeat music, better hats, fixed doors, and extra arena silliness.', game: 'dumb-chaos' },
   { date: '2026-05-06', title: 'Dumb Chaos Launches!', desc: 'New 3D first-person goofy arena shooter! Fire pineapple launchers, bonk Chaos Bots, splat rival-player avatars, earn Chaos Coins, and buy even dumber weapons and upgrades.', game: 'dumb-chaos' },
   { date: '2026-04-02', title: 'Big Big Bug Fix', desc: 'Massive bug fix across multiple games! Mega IO save system overhauled — auto-saves when you exit, no more lost progress. Most Played by Public now syncs across all devices via server. School Mode quizzes now pause your game so your character stops moving. Tons of small fixes everywhere!', game: 'all' },
   { date: '2026-04-01', title: 'Server Finally!', desc: 'Graham Games now has a real server! Play counts sync across all devices so Most Played by Public actually shows what everyone is playing. Customizable launcher backgrounds, accent colors, and card styles are live in the G Bux Shop — make your homescreen yours!', game: 'all' },
@@ -3145,7 +3200,7 @@ window.addEventListener('pageshow', refreshGBux);
 refreshGBux();
 
 // ═══ SCHOOL MODE ═══
-const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros', 'sibling-brawl'];
+const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros', 'sibling-brawl', 'dumb-chaos'];
 
 function getSchoolMode() {
   const data = ggLoad();

@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>School Sim - Graham Games</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    overflow: hidden;
+    background: #0b1017;
+    color: #eef6ff;
+    font-family: "Segoe UI", Arial, sans-serif;
+    user-select: none;
+  }
+  canvas { display: block; }
+  #ui {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+  .topbar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .panel {
+    background: #07111fcc;
+    border: 1px solid #54c6a055;
+    border-radius: 8px;
+    box-shadow: 0 12px 36px #0007;
+    backdrop-filter: blur(5px);
+    padding: 10px 12px;
+  }
+  .brand {
+    min-width: 210px;
+  }
+  .brand h1 {
+    color: #54c6a0;
+    font-family: Georgia, serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.04em;
+    margin-bottom: 4px;
+  }
+  .brand div, .stats div, .desk-status {
+    color: #b8c8d6;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+  .stats {
+    text-align: right;
+    min-width: 190px;
+  }
+  .value {
+    color: #ffd45a;
+    font-weight: 800;
+  }
+  #center-dot {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: #ffffffcc;
+    box-shadow: 0 0 12px #54c6a0;
+  }
+  #prompt {
+    position: absolute;
+    left: 50%;
+    top: 56%;
+    transform: translateX(-50%);
+    min-width: 260px;
+    max-width: 520px;
+    text-align: center;
+    color: #eef6ff;
+    font-weight: 700;
+  }
+  #inventory {
+    position: absolute;
+    left: 50%;
+    bottom: 18px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    max-width: min(92vw, 760px);
+    overflow-x: auto;
+    pointer-events: auto;
+    padding-bottom: 3px;
+  }
+  .slot {
+    width: 96px;
+    height: 66px;
+    border-radius: 8px;
+    border: 1px solid #ffffff22;
+    background: #07111fcc;
+    color: #c8d5df;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px;
+    font-size: 0.72rem;
+    text-align: center;
+    cursor: pointer;
+  }
+  .slot.active {
+    border-color: #ffd45a;
+    box-shadow: 0 0 14px #ffd45a44;
+    color: #fff;
+  }
+  .slot .icon { font-size: 1.25rem; }
+  #message {
+    position: absolute;
+    left: 50%;
+    top: 14px;
+    transform: translateX(-50%);
+    max-width: min(90vw, 560px);
+    text-align: center;
+    color: #fff;
+    background: #0f1828e6;
+    border: 1px solid #ffd45a66;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: none;
+  }
+  #start {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    background: linear-gradient(180deg, #07111f, #122033);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+  }
+  .start-panel {
+    width: min(520px, 92vw);
+    background: #0c1726f2;
+    border: 2px solid #54c6a0;
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: 0 20px 70px #0009;
+  }
+  .start-panel h1 {
+    color: #54c6a0;
+    font-family: Georgia, serif;
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    margin-bottom: 10px;
+  }
+  .start-panel p {
+    color: #c8d5df;
+    margin: 8px 0;
+    line-height: 1.5;
+  }
+  .start-panel button {
+    margin-top: 18px;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    background: #ffd45a;
+    color: #10131a;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .exit {
+    position: fixed;
+    left: 12px;
+    bottom: 12px;
+    pointer-events: auto;
+    color: #54c6a0;
+    text-decoration: none;
+    font-weight: 800;
+    background: #07111fcc;
+    border: 1px solid #54c6a055;
+    border-radius: 8px;
+    padding: 8px 10px;
+  }
+  @media (max-width: 600px) {
+    .topbar { flex-direction: column; right: auto; }
+    .stats { text-align: left; }
+    .slot { width: 82px; font-size: 0.64rem; }
+    #inventory { bottom: 54px; }
+  }
+</style>
+</head>
+<body>
+<div id="start">
+  <div class="start-panel">
+    <h1>School Sim</h1>
+    <p>Build weird classroom inventions from supplies you find around the room.</p>
+    <p>Try Eraser + Electric Screwdriver on the crafting desk.</p>
+    <button id="start-btn">START CLASS</button>
+  </div>
+</div>
+<div id="ui">
+  <div class="topbar">
+    <div class="panel brand">
+      <h1>School Sim</h1>
+      <div id="quest">Find supplies and craft something strange.</div>
+      <div class="desk-status" id="desk-status">Desk: empty</div>
+    </div>
+    <div class="panel stats">
+      <div>Stars: <span class="value" id="stars">0</span></div>
+      <div>Crafted: <span class="value" id="crafted-count">0</span> / 5</div>
+      <div>Selected: <span class="value" id="selected-name">None</span></div>
+    </div>
+  </div>
+  <div id="center-dot"></div>
+  <div id="prompt" class="panel">Click start to enter class.</div>
+  <div id="message"></div>
+  <div id="inventory"></div>
+  <a class="exit" href="../index.html">EXIT</a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="../gg-supabase.js"></script>
+<script>
+const SAVE_KEY = 'school-sim-save';
+const BASE_ITEMS = [
+  { id: 'eraser', name: 'Eraser', icon: 'ER', color: 0xff7aa8, pos: [-10, 1.1, -8] },
+  { id: 'screwdriver', name: 'Electric Screwdriver', icon: 'SD', color: 0x72d7ff, pos: [8, 1.1, -9] },
+  { id: 'marker', name: 'Marker', icon: 'MK', color: 0x5d7cff, pos: [-13, 1.1, 4] },
+  { id: 'glue', name: 'Glue Stick', icon: 'GL', color: 0xffffff, pos: [12, 1.1, 5] },
+  { id: 'ruler', name: 'Ruler', icon: 'RL', color: 0xffd45a, pos: [-4, 1.1, 9] },
+  { id: 'tray', name: 'Lunch Tray', icon: 'TR', color: 0xb5c1c9, pos: [4, 1.1, 8] },
+  { id: 'paper', name: 'Paper Stack', icon: 'PP', color: 0xf3f7ff, pos: [-8, 1.1, 2] },
+  { id: 'calculator', name: 'Calculator', icon: 'CA', color: 0x273142, pos: [10, 1.1, -2] },
+];
+const RECIPES = [
+  { id: 'megaEraser', name: 'Mega Eraser', icon: 'ME', inputs: ['eraser', 'screwdriver'], stars: 15, color: 0xff4f9c },
+  { id: 'homeworkBlaster', name: 'Homework Blaster', icon: 'HB', inputs: ['marker', 'glue'], stars: 12, color: 0x50a7ff },
+  { id: 'hallPassGlider', name: 'Hall Pass Glider', icon: 'HG', inputs: ['ruler', 'paper'], stars: 18, color: 0xf7d35d },
+  { id: 'stickyRuler', name: 'Sticky Ruler', icon: 'SR', inputs: ['glue', 'ruler'], stars: 10, color: 0xb8f26a },
+  { id: 'lunchShield', name: 'Lunch Shield', icon: 'LS', inputs: ['tray', 'calculator'], stars: 20, color: 0xb9c3cc },
+];
+const ACH = {
+  firstPickup: ['sch_first_pickup', 'Supply Grabber', 5],
+  firstCraft: ['sch_first_craft', 'Desk Inventor', 10],
+  megaEraser: ['sch_mega_eraser', 'Mega Eraser', 15],
+  threeCrafts: ['sch_three_crafts', 'Triple Maker', 20],
+  allSupplies: ['sch_all_supplies', 'Locker Loot', 20],
+  allRecipes: ['sch_all_recipes', 'Craft Class Hero', 40],
+  testTool: ['sch_test_tool', 'Field Tester', 15],
+  starStudent: ['sch_star_student', 'Star Student', 25],
+  comboTwo: ['sch_combo_two', 'Desk Combo', 20],
+  cleanBoard: ['sch_clean_board', 'Board Cleaner', 30],
+};
+function defaultSave() {
+  return { stars: 0, crafted: {}, collected: {}, usedCrafts: {}, bestCombo: 0, gamesPlayed: 0 };
+}
+function loadSave() {
+  try {
+    return Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY)) || {});
+  } catch (e) {
+    return defaultSave();
+  }
+}
+function saveGame() {
+  localStorage.setItem(SAVE_KEY, JSON.stringify(save));
+}
+function unlock(key) {
+  const a = ACH[key];
+  if (a && typeof ggUnlockAchievement === 'function') ggUnlockAchievement(a[0], a[1], a[2]);
+}
+const save = loadSave();
+save.gamesPlayed++;
+saveGame();
+
+let scene, camera, renderer, clock;
+let player = { x: 0, z: 11, yaw: Math.PI, pitch: 0, speed: 9 };
+let keys = {};
+let pointerLocked = false;
+let interactables = [];
+let inventory = [];
+let selectedIndex = 0;
+let deskItems = [];
+let runCrafts = 0;
+let boardCleaned = false;
+let lastPrompt = '';
+let itemMeshes = {};
+
+function makeMat(color, roughness) {
+  return new THREE.MeshStandardMaterial({ color, roughness: roughness || 0.75 });
+}
+function addBox(parent, x, y, z, w, h, d, color) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), makeMat(color));
+  mesh.position.set(x, y, z);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  parent.add(mesh);
+  return mesh;
+}
+function addTextSprite(text, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = 'rgba(8, 16, 28, 0.75)';
+  ctx.fillRect(0, 0, 256, 64);
+  ctx.fillStyle = color || '#ffffff';
+  ctx.font = 'bold 26px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 128, 40);
+  const texture = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+  sprite.scale.set(3.4, 0.85, 1);
+  return sprite;
+}
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x9ecbe4);
+  scene.fog = new THREE.Fog(0x9ecbe4, 22, 60);
+  camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1000);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.shadowMap.enabled = true;
+  document.body.insertBefore(renderer.domElement, document.getElementById('start'));
+  clock = new THREE.Clock();
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x486070, 0.72);
+  scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(-8, 16, 10);
+  sun.castShadow = true;
+  scene.add(sun);
+
+  buildRoom();
+  buildSupplies();
+  refreshInventory();
+  updateHud();
+  animate();
+}
+function buildRoom() {
+  addBox(scene, 0, -0.05, 0, 34, 0.1, 28, 0x63727a);
+  addBox(scene, 0, 3, -14, 34, 6, 0.35, 0xd8e8ef);
+  addBox(scene, -17, 3, 0, 0.35, 6, 28, 0xd8e8ef);
+  addBox(scene, 17, 3, 0, 0.35, 6, 28, 0xd8e8ef);
+  addBox(scene, 0, 3, 14, 34, 6, 0.35, 0xcadce7);
+  addBox(scene, 0, 6.1, 0, 34, 0.25, 28, 0xf1f6fa);
+  for (let x = -13; x <= 13; x += 6) {
+    addBox(scene, x, 3.3, -13.75, 3.7, 2.2, 0.12, 0xaee5ff);
+  }
+  addBox(scene, 0, 2.9, -13.58, 8, 2.7, 0.18, 0x20322f);
+  const boardLabel = addTextSprite('CRAFT BOARD', '#54c6a0');
+  boardLabel.position.set(0, 4.7, -13.35);
+  scene.add(boardLabel);
+  addBox(scene, -14.6, 2, -4, 2.2, 4, 7, 0x315276);
+  addBox(scene, 14.6, 2, -4, 2.2, 4, 7, 0x315276);
+  addBox(scene, 0, 0.8, 4, 5, 0.25, 3, 0x9b6f45);
+  addBox(scene, -2, 0.35, 3, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, 2, 0.35, 3, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -2, 0.35, 5, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, 2, 0.35, 5, 0.25, 0.7, 0.25, 0x634126);
+  const deskLabel = addTextSprite('CRAFT DESK', '#ffd45a');
+  deskLabel.position.set(0, 1.65, 4);
+  scene.add(deskLabel);
+  interactables.push({ type: 'desk', name: 'Craft Desk', pos: new THREE.Vector3(0, 0.8, 4), radius: 4 });
+
+  for (let i = 0; i < 8; i++) {
+    const x = -10 + (i % 4) * 6.6;
+    const z = -6 + Math.floor(i / 4) * 5;
+    addBox(scene, x, 0.65, z, 2.2, 0.22, 1.6, 0x7a5839);
+    addBox(scene, x, 0.25, z + 1.1, 1.5, 0.5, 0.16, 0x46657a);
+  }
+}
+function makeSupplyMesh(item) {
+  const group = new THREE.Group();
+  if (item.id === 'eraser') {
+    addBox(group, 0, 0, 0, 0.9, 0.35, 0.55, item.color);
+  } else if (item.id === 'screwdriver') {
+    addBox(group, 0, 0, 0, 1.1, 0.16, 0.16, 0x333333);
+    addBox(group, 0.6, 0, 0, 0.35, 0.28, 0.28, item.color);
+  } else if (item.id === 'marker' || item.id === 'glue') {
+    const cylinder = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 18), makeMat(item.color));
+    cylinder.rotation.z = Math.PI / 2;
+    cylinder.castShadow = true;
+    group.add(cylinder);
+  } else if (item.id === 'ruler') {
+    addBox(group, 0, 0, 0, 1.5, 0.08, 0.28, item.color);
+  } else if (item.id === 'tray') {
+    addBox(group, 0, 0, 0, 1.25, 0.14, 0.85, item.color);
+    addBox(group, 0, 0.12, 0, 1, 0.08, 0.58, 0x8fa0aa);
+  } else if (item.id === 'paper') {
+    addBox(group, 0, 0, 0, 1.1, 0.12, 0.8, item.color);
+    addBox(group, 0.06, 0.08, 0.04, 1.1, 0.05, 0.8, 0xdbe6ef);
+  } else {
+    addBox(group, 0, 0, 0, 0.75, 0.55, 0.45, item.color);
+    addBox(group, 0, 0.01, -0.24, 0.55, 0.36, 0.03, 0x7bd7ff);
+  }
+  return group;
+}
+function buildSupplies() {
+  for (const item of BASE_ITEMS) {
+    if (save.collected[item.id]) {
+      inventory.push(item);
+      continue;
+    }
+    const mesh = makeSupplyMesh(item);
+    mesh.position.set(item.pos[0], item.pos[1], item.pos[2]);
+    const label = addTextSprite(item.name, '#ffffff');
+    label.position.set(0, 1.0, 0);
+    mesh.add(label);
+    scene.add(mesh);
+    itemMeshes[item.id] = mesh;
+    interactables.push({ type: 'item', item, name: item.name, pos: mesh.position, radius: 2.4, mesh });
+  }
+  for (const recipe of RECIPES) {
+    if (save.crafted[recipe.id]) inventory.push(recipe);
+  }
+}
+function nearestInteractable() {
+  const p = new THREE.Vector3(player.x, 1, player.z);
+  let best = null;
+  for (const obj of interactables) {
+    const dist = p.distanceTo(obj.pos);
+    if (dist < obj.radius && (!best || dist < best.dist)) best = Object.assign({ dist }, obj);
+  }
+  return best;
+}
+function selectedItem() {
+  return inventory[selectedIndex] || null;
+}
+function interact() {
+  const near = nearestInteractable();
+  if (!near) return;
+  if (near.type === 'item') collectItem(near);
+  if (near.type === 'desk') placeOnDesk();
+}
+function collectItem(obj) {
+  save.collected[obj.item.id] = true;
+  inventory.push(obj.item);
+  if (obj.mesh) scene.remove(obj.mesh);
+  interactables = interactables.filter(it => it !== obj);
+  unlock('firstPickup');
+  if (Object.keys(save.collected).length >= BASE_ITEMS.length) unlock('allSupplies');
+  showMessage('Picked up ' + obj.item.name + '.');
+  saveGame();
+  refreshInventory();
+  updateHud();
+}
+function placeOnDesk() {
+  const item = selectedItem();
+  if (!item) return showMessage('Pick a supply first.');
+  if (!BASE_ITEMS.some(base => base.id === item.id)) return useCraft(item);
+  if (deskItems.find(d => d.id === item.id)) return showMessage(item.name + ' is already on the desk.');
+  if (deskItems.length >= 2) deskItems.shift();
+  deskItems.push(item);
+  showMessage('Placed ' + item.name + ' on the craft desk.');
+  updateHud();
+}
+function sameInputs(a, b) {
+  return a.length === b.length && a.every(x => b.includes(x));
+}
+function craft() {
+  if (deskItems.length < 2) return showMessage('The desk needs two supplies.');
+  const ids = deskItems.map(i => i.id);
+  const recipe = RECIPES.find(r => sameInputs(r.inputs, ids));
+  if (!recipe) return showMessage('That combo only makes homework dust.');
+  if (!save.crafted[recipe.id]) {
+    save.crafted[recipe.id] = true;
+    save.stars += recipe.stars;
+    inventory.push(recipe);
+    runCrafts++;
+    save.bestCombo = Math.max(save.bestCombo, runCrafts);
+    unlock('firstCraft');
+    if (recipe.id === 'megaEraser') unlock('megaEraser');
+    if (Object.keys(save.crafted).length >= 3) unlock('threeCrafts');
+    if (Object.keys(save.crafted).length >= RECIPES.length) unlock('allRecipes');
+    if (save.stars >= 50) unlock('starStudent');
+    if (runCrafts >= 2) unlock('comboTwo');
+    showMessage('Crafted ' + recipe.name + ' for ' + recipe.stars + ' stars.');
+  } else {
+    showMessage(recipe.name + ' is already in your backpack.');
+  }
+  deskItems = [];
+  saveGame();
+  refreshInventory();
+  updateHud();
+}
+function useCraft(item) {
+  if (!RECIPES.some(r => r.id === item.id)) return;
+  save.usedCrafts[item.id] = true;
+  unlock('testTool');
+  if (item.id === 'megaEraser' && !boardCleaned) {
+    boardCleaned = true;
+    save.stars += 10;
+    unlock('cleanBoard');
+    showMessage('Mega Eraser cleaned the entire board in one tiny zap.');
+  } else {
+    showMessage(item.name + ' works exactly as weirdly as expected.');
+  }
+  saveGame();
+  updateHud();
+}
+function refreshInventory() {
+  const wrap = document.getElementById('inventory');
+  wrap.innerHTML = '';
+  inventory.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'slot' + (index === selectedIndex ? ' active' : '');
+    div.innerHTML = '<div class="icon">' + item.icon + '</div><div>' + (index + 1) + '. ' + item.name + '</div>';
+    div.onclick = () => { selectedIndex = index; refreshInventory(); updateHud(); };
+    wrap.appendChild(div);
+  });
+}
+function updateHud() {
+  document.getElementById('stars').textContent = save.stars;
+  document.getElementById('crafted-count').textContent = Object.keys(save.crafted).length;
+  document.getElementById('selected-name').textContent = selectedItem() ? selectedItem().name : 'None';
+  document.getElementById('desk-status').textContent = 'Desk: ' + (deskItems.length ? deskItems.map(i => i.name).join(' + ') : 'empty');
+  let quest = 'Find supplies and craft something strange.';
+  if (!save.collected.eraser || !save.collected.screwdriver) quest = 'Find the Eraser and Electric Screwdriver.';
+  else if (!save.crafted.megaEraser) quest = 'Put Eraser + Electric Screwdriver on the desk, then craft.';
+  else if (!save.usedCrafts.megaEraser) quest = 'Select Mega Eraser and use it at the desk.';
+  else if (Object.keys(save.crafted).length < RECIPES.length) quest = 'Discover every classroom recipe.';
+  else quest = 'Every recipe is built. You own this classroom.';
+  document.getElementById('quest').textContent = quest;
+}
+function showMessage(text) {
+  const el = document.getElementById('message');
+  el.textContent = text;
+  el.style.display = 'block';
+  clearTimeout(showMessage.timer);
+  showMessage.timer = setTimeout(() => { el.style.display = 'none'; }, 2500);
+}
+function updatePrompt() {
+  const near = nearestInteractable();
+  let text = '';
+  if (near && near.type === 'item') text = 'E: pick up ' + near.name;
+  if (near && near.type === 'desk') text = selectedItem() && RECIPES.some(r => r.id === selectedItem().id) ? 'E: test ' + selectedItem().name + ' at desk' : 'E: place selected supply | C: craft';
+  if (!text) text = 'Explore the classroom.';
+  if (text !== lastPrompt) {
+    lastPrompt = text;
+    document.getElementById('prompt').textContent = text;
+  }
+}
+function updatePlayer(dt) {
+  const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+  const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+  const move = new THREE.Vector3();
+  if (keys.KeyW) move.add(forward);
+  if (keys.KeyS) move.sub(forward);
+  if (keys.KeyD) move.add(right);
+  if (keys.KeyA) move.sub(right);
+  if (move.lengthSq() > 0) move.normalize().multiplyScalar(player.speed * dt);
+  player.x = THREE.MathUtils.clamp(player.x + move.x, -15.5, 15.5);
+  player.z = THREE.MathUtils.clamp(player.z + move.z, -12.4, 12.4);
+  camera.position.set(player.x, 1.65, player.z);
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = player.yaw;
+  camera.rotation.x = player.pitch;
+}
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  updatePlayer(dt);
+  for (const id in itemMeshes) itemMeshes[id].rotation.y += dt * 1.8;
+  updatePrompt();
+  renderer.render(scene, camera);
+}
+function startGame() {
+  document.getElementById('start').style.display = 'none';
+  renderer.domElement.requestPointerLock();
+}
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if (e.code === 'KeyE') interact();
+  if (e.code === 'KeyC') craft();
+  if (/^Digit[1-9]$/.test(e.code)) {
+    const idx = Number(e.code.slice(5)) - 1;
+    if (idx < inventory.length) {
+      selectedIndex = idx;
+      refreshInventory();
+      updateHud();
+    }
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+document.addEventListener('pointerlockchange', () => { pointerLocked = document.pointerLockElement === renderer.domElement; });
+window.addEventListener('mousemove', e => {
+  if (!pointerLocked) return;
+  player.yaw -= e.movementX * 0.0025;
+  player.pitch = THREE.MathUtils.clamp(player.pitch - e.movementY * 0.002, -1.2, 1.2);
+});
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+document.getElementById('start-btn').addEventListener('click', startGame);
+init();
+</script>
+</body>
+</html>

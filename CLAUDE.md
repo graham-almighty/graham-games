@@ -44,6 +44,7 @@
   school-nurse/index.html      — 2D school nurse detective sim (Canvas)
   super-soccer/index.html      — 2D soccer simulation (Canvas, early access)
   dumb-chaos/index.html        — 3D first-person goofy arena shooter (Three.js r128)
+  school-sim/index.html        — 3D classroom crafting simulator (Three.js r128)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   gg-supabase.js               — Shared Supabase cloud save script (auth, sync, toasts)
@@ -104,7 +105,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - News panel with updates
 - Bugs panel includes a "For Graham Only" tab gated by code `8488`; it stores Graham planning notes/reminders in localStorage and syncs via the public `graham_notes` Supabase table when available.
 
-### Achievement Summary (157 total, 3480G earnable)
+### Achievement Summary (167 total, 3680G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -121,6 +122,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | School Nurse | 10 | 250G |
 | Super Soccer | 10 | 200G |
 | Dumb Chaos | 10 | 210G |
+| School Sim | 10 | 200G |
 
 See each game's `CLAUDE.md` for full achievement tables.
 

@@ -130,6 +130,7 @@ body.embedded #overlay { top: 0; }
 <section id="title-screen" class="screen">
   <h1>DUMB CHAOS</h1>
   <p class="subtitle">First-person goofy arena mayhem. Launch pineapples, bonk bots, splat rival players, earn Chaos Coins, then buy even dumber stuff.</p>
+  <div class="menu-row" id="rank-row"></div>
   <div class="menu-row">
     <button class="chaos-btn" onclick="startGame()">CREATE CHAOS</button>
     <button class="chaos-btn secondary" onclick="openCustomize()">CUSTOM LOOK + WEAPON SELECT</button>
@@ -186,7 +187,10 @@ const WEAPONS = [
   { id: 'rubber', name: 'Rubber Chicken Slapper', emoji: 'C', cost: 60, cooldown: 0.25, damage: 12, speed: 32, splash: 0, color: 0xff6a2a, projectile: 'chicken' },
   { id: 'waffle', name: 'Waffle Mine Tosser', emoji: 'W', cost: 90, cooldown: 1.1, damage: 65, speed: 14, splash: 4.2, color: 0xc98935, projectile: 'waffle' },
   { id: 'toilet', name: 'Poo & Pee Toilet Cannon', emoji: 'T', cost: 40, cooldown: 0.55, damage: 24, speed: 20, splash: 1.8, color: 0xffffff, projectile: 'toilet' },
-  { id: 'catball', name: 'Bouncy Ball Cat Cannon', emoji: 'K', cost: 1250, cooldown: 1.0, damage: 72, speed: 28, splash: 3.8, color: 0xff66aa, projectile: 'catball' },
+  { id: 'catball', name: 'Rapid Cat Blaster', emoji: 'K', cost: 1250, cooldown: 0.1, damage: 72, speed: 38, splash: 1.8, color: 0xff66aa, projectile: 'catball' },
+  { id: 'banana', name: 'Banana Peel Zapper', emoji: 'B', cost: 325, cooldown: 0.38, damage: 28, speed: 30, splash: 1.2, color: 0xffee55, projectile: 'banana' },
+  { id: 'sock', name: 'Stinky Sock Stormer', emoji: 'S', cost: 420, cooldown: 0.18, damage: 16, speed: 36, splash: 0.8, color: 0xb987ff, projectile: 'sock' },
+  { id: 'pickle', name: 'Pickle Jar Mortar', emoji: 'J', cost: 650, cooldown: 0.95, damage: 54, speed: 18, splash: 4.8, color: 0x77dd44, projectile: 'pickle' },
 ];
 const UPGRADES = [
   { id: 'speedShoes', name: 'Slippy Speed Shoes', cost: 450, desc: 'Move faster while causing problems.' },
@@ -197,6 +201,12 @@ const UPGRADES = [
   { id: 'snackTax', name: 'Snack Tax Permit', cost: 650, desc: 'Rival splats drop a few extra Chaos Coins.' },
   { id: 'bubbleWrap', name: 'Bubble Wrap Suit', cost: 725, desc: 'Enemy hits hurt a little less.' },
   { id: 'sockCannonGrease', name: 'Sock Cannon Grease', cost: 500, desc: 'All goofy weapons reload slightly faster.' },
+];
+const BATTLE_RANKS = [
+  { id: 'newbie', name: 'Newbie', label: 'NEWBIE', desc: 'Easy bots, tiny payouts', coinMult: 0.6, hpMult: 0.7, speedMult: 0.82, spawnMult: 0.7, startEnemies: 4, maxBonus: -2 },
+  { id: 'goofy', name: 'Goofy', label: 'GOOFY', desc: 'Normal chaos and pay', coinMult: 1, hpMult: 1, speedMult: 1, spawnMult: 1, startEnemies: 7, maxBonus: 0 },
+  { id: 'pro', name: 'Pro', label: 'PRO', desc: 'Harder fights, bigger payouts', coinMult: 1.8, hpMult: 1.45, speedMult: 1.18, spawnMult: 1.35, startEnemies: 9, maxBonus: 3 },
+  { id: 'nightmare', name: 'Nightmare', label: 'NIGHTMARE', desc: 'Wild pressure, huge payouts', coinMult: 2.6, hpMult: 1.9, speedMult: 1.35, spawnMult: 1.65, startEnemies: 11, maxBonus: 5 },
 ];
 const RIVAL_NAMES = ['ToastWizard', 'NoodleNinja', 'SirTripsALot', 'BucketMode', 'SnackBandit', 'WaffleDad'];
 const BOT_NAMES = ['Chaos Bot', 'Wobble Bot', 'Goof Drone', 'Bonk Unit', 'Splat Machine', 'Dummy Droid', 'Panic Bot', 'Snack Bot', 'Noodle Bot', 'Bucket Bot'];
@@ -231,6 +241,7 @@ let enemies = [], projectiles = [], pickups = [], chaosProps = [];
 let state = loadGame();
 let currentWeapon = state.equipped || 'pineapple';
 let cooldown = 0, spawnTimer = 0, wave = 1, matchKills = 0, streak = 0, bossSpawned = false;
+let firingHeld = false;
 let weaponView = null, weaponRecoil = 0, walkBob = 0;
 let customizeRenderer = null, customizeScene = null, customizeCamera = null, customizeChar = null, customizeAnim = null;
 let matchCountdown = 0, knockoutCountdown = 0, playerOut = false;
@@ -244,7 +255,8 @@ function defaultSave() {
     ownedWeapons: { pineapple: true }, upgrades: {}, equipped: 'pineapple', bossKills: 0,
     ownedOutfits: { 0: true },
     ownedHats: { none: true },
-    appearance: { skin: 1, hair: 1, hairStyle: 'short', outfit: 0, hat: 'none' }
+    appearance: { skin: 1, hair: 1, hairStyle: 'short', outfit: 0, hat: 'none' },
+    battleRank: 'goofy'
   };
 }
 function loadGame() {
@@ -255,6 +267,7 @@ function loadGame() {
     loaded.ownedOutfits = Object.assign({ 0: true }, loaded.ownedOutfits || {});
     loaded.ownedHats = Object.assign({ none: true }, loaded.ownedHats || {});
     loaded.upgrades = Object.assign({}, loaded.upgrades || {});
+    if (!BATTLE_RANKS.some(r => r.id === loaded.battleRank)) loaded.battleRank = 'goofy';
     return loaded;
   }
   catch(e) { return defaultSave(); }
@@ -284,6 +297,9 @@ function unlock(id) {
 function hasGgPurchase(id) {
   const data = window.ggLoad ? window.ggLoad() : ggData();
   return !!(data.shopPurchases && data.shopPurchases[id]);
+}
+function currentRank() {
+  return BATTLE_RANKS.find(r => r.id === state.battleRank) || BATTLE_RANKS[1];
 }
 
 function initThree() {
@@ -515,6 +531,7 @@ function startGame() {
   document.getElementById('title-screen').classList.add('hidden');
   document.getElementById('game-screen').classList.remove('hidden');
   if (!scene) initThree();
+  startBgMusic();
   buildWeaponView();
   resetMatch();
   renderer.domElement.onclick = () => renderer.domElement.requestPointerLock();
@@ -522,7 +539,8 @@ function startGame() {
   document.addEventListener('mousemove', mouseLook);
   document.addEventListener('keydown', onKey);
   document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-  document.addEventListener('mousedown', () => { if (locked) fireWeapon(); });
+  document.addEventListener('mousedown', () => { firingHeld = true; if (locked) fireWeapon(); });
+  document.addEventListener('mouseup', () => { firingHeld = false; });
   requestAnimationFrame(loop);
   setTimeout(() => renderer.domElement.requestPointerLock && renderer.domElement.requestPointerLock(), 100);
 }
@@ -533,7 +551,7 @@ function resetMatch() {
   matchKills = 0; streak = 0; wave = 1; bossSpawned = false; spawnTimer = 0.2; cooldown = 0;
   matchCountdown = 10; knockoutCountdown = 0; playerOut = false;
   updateHud(); renderWeaponBar();
-  setCenterMessage('CHAOS STARTS IN 10');
+  setCenterMessage(currentRank().label + ' CHAOS STARTS IN 10');
 }
 function mouseLook(e) {
   if (!locked) return;
@@ -561,6 +579,7 @@ function loop() {
 function update(dt) {
   cooldown = Math.max(0, cooldown - dt);
   weaponRecoil = Math.max(0, weaponRecoil - dt * 7);
+  if (firingHeld && locked) fireWeapon();
   if (knockoutCountdown > 0) {
     knockoutCountdown = Math.max(0, knockoutCountdown - dt);
     setCenterMessage('KNOCKED OUT - BACK IN ' + Math.ceil(knockoutCountdown));
@@ -569,10 +588,11 @@ function update(dt) {
   if (!playerOut) updatePlayer(dt);
   if (matchCountdown > 0) {
     matchCountdown = Math.max(0, matchCountdown - dt);
-    setCenterMessage('CHAOS STARTS IN ' + Math.ceil(matchCountdown));
+    setCenterMessage(currentRank().label + ' CHAOS STARTS IN ' + Math.ceil(matchCountdown));
     if (matchCountdown <= 0) {
       hideCenterMessage();
-      for (let i = 0; i < 7; i++) spawnEnemy(i % 3 === 0);
+      const rank = currentRank();
+      for (let i = 0; i < rank.startEnemies; i++) spawnEnemy(i % 3 === 0);
       centerMessage('CHAOS!');
     }
     updateHud();
@@ -582,7 +602,8 @@ function update(dt) {
   updateProjectiles(dt);
   updatePickups(dt);
   spawnTimer -= dt;
-  if (spawnTimer <= 0 && enemies.length < 8 + wave * 2) { spawnEnemy(Math.random() < 0.28); spawnTimer = Math.max(0.7, 2.2 - wave * 0.08); }
+  const rank = currentRank();
+  if (spawnTimer <= 0 && enemies.length < 8 + rank.maxBonus + wave * 2) { spawnEnemy(Math.random() < 0.28); spawnTimer = Math.max(0.45, (2.2 - wave * 0.08) / rank.spawnMult); }
   if (!bossSpawned && matchKills >= 18) { spawnEnemy(false, true); bossSpawned = true; centerMessage('BIG DUMMY ARRIVED'); }
   updateHud();
 }
@@ -615,6 +636,7 @@ function updatePlayer(dt) {
   updateWeaponView(dt, moving);
 }
 function spawnEnemy(playerLike, boss) {
+  const rank = currentRank();
   const twin = playerLike && !boss && Math.random() < 0.28;
   const name = pickUniqueEnemyName(boss ? 'Big Dummy' : twin ? 'Chaos Twin' : playerLike ? RIVAL_NAMES[Math.floor(Math.random() * RIVAL_NAMES.length)] : BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)]);
   const outfit = twin ? state.appearance.outfit : boss ? 4 : (playerLike ? Math.floor(rand(0, DC_OUTFITS.length)) : 1);
@@ -633,9 +655,10 @@ function spawnEnemy(playerLike, boss) {
   const angle = Math.random() * Math.PI * 2, dist = rand(20, 39);
   group.position.set(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
   scene.add(group);
+  const baseHp = boss ? 360 : (playerLike ? 115 : 80);
   const enemy = {
-    group, hp: boss ? 360 : (playerLike ? 115 : 80), maxHp: boss ? 360 : (playerLike ? 115 : 80),
-    speed: boss ? 2.1 : rand(2.2, 4.1), attackCd: rand(0.2, 1.4), playerLike, boss,
+    group, hp: baseHp * rank.hpMult, maxHp: baseHp * rank.hpMult,
+    speed: (boss ? 2.1 : rand(2.2, 4.1)) * rank.speedMult, attackCd: rand(0.2, 1.4) / rank.spawnMult, playerLike, boss,
     name, weapon: enemyWeapon
   };
   enemy.healthBar = addHealthBar(group, boss);
@@ -880,7 +903,7 @@ function fireEnemyWeapon(e, target) {
   const mesh = makeProjectileMesh(w);
   mesh.position.copy(origin).add(dir.clone().multiplyScalar(0.8));
   scene.add(mesh);
-  projectiles.push({ mesh, dir, weapon: w, enemy: true, owner: e, life: w.id === 'catball' ? Infinity : 2.4, velY: w.id === 'waffle' ? 2 : w.id === 'catball' ? 3.5 : 0, bounces: 0 });
+  projectiles.push({ mesh, dir, weapon: w, enemy: true, owner: e, life: w.id === 'catball' ? Infinity : 2.4, velY: projectileLift(w, false), bounces: 0 });
 }
 function fireWeapon() {
   if (playerOut || matchCountdown > 0) return;
@@ -892,9 +915,16 @@ function fireWeapon() {
   const mesh = makeProjectileMesh(w);
   mesh.position.copy(player.pos).add(dir.clone().multiplyScalar(1.2));
   scene.add(mesh);
-  projectiles.push({ mesh, dir, weapon: w, life: w.id === 'catball' ? Infinity : 3.2, velY: w.id === 'waffle' ? 4 : w.id === 'catball' ? 4.5 : 0, bounces: 0 });
+  projectiles.push({ mesh, dir, weapon: w, life: w.id === 'catball' ? Infinity : 3.2, velY: projectileLift(w, true), bounces: 0 });
   popSfx(w.id);
   if (w.id === 'catball') buildWeaponView();
+}
+function projectileLift(w, playerShot) {
+  if (w.id === 'waffle') return playerShot ? 4 : 2;
+  if (w.id === 'catball') return playerShot ? 3.1 : 2.5;
+  if (w.id === 'pickle') return playerShot ? 5.5 : 3.2;
+  if (w.id === 'banana') return playerShot ? 1.6 : 0.8;
+  return 0;
 }
 function prepareShotWeapon(w, consumeCatColor) {
   if (!w) return w;
@@ -982,7 +1012,55 @@ function makeProjectileMesh(w) {
   if (w.projectile === 'waffle') return new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.1, 0.42), mat);
   if (w.projectile === 'toilet') return makeToiletShotMesh(w.toiletKind || 'poo');
   if (w.projectile === 'catball') return makeCatBallMesh(1, w.catColor || CAT_COLORS[nextCatColorIndex % CAT_COLORS.length]);
+  if (w.projectile === 'banana') return makeBananaMesh();
+  if (w.projectile === 'sock') return makeSockMesh();
+  if (w.projectile === 'pickle') return makePickleJarMesh();
   return new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 8), mat);
+}
+function makeBananaMesh() {
+  const g = new THREE.Group();
+  const peel = new THREE.MeshStandardMaterial({ color: 0xffee55, roughness: 0.62, emissive: 0x332200 });
+  const stem = new THREE.MeshStandardMaterial({ color: 0x6b3a1f, roughness: 0.7 });
+  for (let i = 0; i < 3; i++) {
+    const strip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.055, 0.48, 8), peel);
+    strip.position.set((i - 1) * 0.09, 0, 0);
+    strip.rotation.set(0.55, 0, (i - 1) * 0.7);
+    g.add(strip);
+  }
+  const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 6), peel);
+  cap.position.set(0, 0.18, 0); g.add(cap);
+  const nib = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.16, 6), stem);
+  nib.position.set(0, 0.32, 0); nib.rotation.z = 0.3; g.add(nib);
+  return g;
+}
+function makeSockMesh() {
+  const g = new THREE.Group();
+  const sockMat = new THREE.MeshStandardMaterial({ color: 0xd8d8e8, roughness: 0.8 });
+  const toeMat = new THREE.MeshStandardMaterial({ color: 0xb987ff, roughness: 0.75, emissive: 0x180028 });
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.34, 10), sockMat);
+  leg.rotation.z = Math.PI / 2; g.add(leg);
+  const foot = new THREE.Mesh(new THREE.SphereGeometry(0.13, 10, 8), toeMat);
+  foot.position.set(0.2, -0.04, 0); foot.scale.set(1.35, 0.75, 0.8); g.add(foot);
+  const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.055, 10), toeMat);
+  cuff.position.set(-0.2, 0, 0); cuff.rotation.z = Math.PI / 2; g.add(cuff);
+  return g;
+}
+function makePickleJarMesh() {
+  const g = new THREE.Group();
+  const glass = new THREE.MeshStandardMaterial({ color: 0x9ee6ff, roughness: 0.18, transparent: true, opacity: 0.62, emissive: 0x042022 });
+  const pickle = new THREE.MeshStandardMaterial({ color: 0x77dd44, roughness: 0.65, emissive: 0x0a2205 });
+  const lidMat = new THREE.MeshStandardMaterial({ color: 0xbfc6cc, metalness: 0.25, roughness: 0.34 });
+  const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.36, 16), glass);
+  g.add(jar);
+  const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 0.055, 16), lidMat);
+  lid.position.y = 0.2; g.add(lid);
+  for (let i = 0; i < 3; i++) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.25, 7), pickle);
+    p.position.set((i - 1) * 0.055, -0.02, (i % 2) * 0.04 - 0.02);
+    p.rotation.z = (i - 1) * 0.18;
+    g.add(p);
+  }
+  return g;
 }
 function makeToiletShotMesh(kind) {
   const g = new THREE.Group();
@@ -1119,7 +1197,8 @@ function defeatEnemy(i, w, award = true) {
     removeEnemyAt(i);
     return;
   }
-  const reward = (e.boss ? 95 : e.playerLike ? 24 : 12) + (state.upgrades.coinMagnet ? 5 : 0) + (state.upgrades.snackTax ? 3 : 0);
+  const rank = currentRank();
+  const reward = Math.max(1, Math.round(((e.boss ? 95 : e.playerLike ? 24 : 12) + (state.upgrades.coinMagnet ? 5 : 0) + (state.upgrades.snackTax ? 3 : 0)) * rank.coinMult));
   state.coins += reward; state.totalCoins += reward; state.totalKills++; matchKills++; streak++;
   if (e.playerLike) state.playerKills++; else state.botKills++;
   if (e.boss) state.bossKills++;
@@ -1272,6 +1351,21 @@ function closeShop() {
   document.getElementById('overlay').classList.add('hidden');
   document.getElementById('overlay').innerHTML = '';
   if (renderer) renderer.domElement.focus();
+}
+function renderRankSelector() {
+  const row = document.getElementById('rank-row');
+  if (!row) return;
+  const rank = currentRank();
+  row.innerHTML = BATTLE_RANKS.map(r =>
+    '<button class="chaos-btn ' + (r.id === rank.id ? '' : 'secondary') + '" onclick="selectBattleRank(&quot;' + r.id + '&quot;)">' + r.label + '<br><span style="font-size:0.62rem;color:#aaa;">' + r.desc + ' x' + r.coinMult + '</span></button>'
+  ).join('');
+}
+function selectBattleRank(id) {
+  if (!BATTLE_RANKS.some(r => r.id === id)) return;
+  state.battleRank = id;
+  saveGame();
+  renderRankSelector();
+  updateHud();
 }
 function openCustomize() {
   const overlay = document.getElementById('overlay');
@@ -1437,7 +1531,7 @@ function updateHud() {
   document.getElementById('coin-stat').textContent = state.coins + ' CHAOS COINS';
   document.getElementById('weapon-stat').textContent = w.name;
   document.getElementById('ammo-stat').textContent = cooldown <= 0 ? 'Ready' : 'Reloading ' + cooldown.toFixed(1) + 's';
-  document.getElementById('title-stats').textContent = 'Saved: ' + state.coins + ' coins, ' + state.totalKills + ' splats, best streak ' + state.bestStreak;
+  document.getElementById('title-stats').textContent = 'Saved: ' + state.coins + ' coins, ' + state.totalKills + ' splats, best streak ' + state.bestStreak + ' | Rank: ' + currentRank().name;
 }
 function centerMessage(text) {
   const el = document.getElementById('center-msg'); el.textContent = text; el.style.opacity = '1'; clearTimeout(el._t); el._t = setTimeout(() => el.style.opacity = '0', 1200);
@@ -1451,15 +1545,50 @@ function hideCenterMessage() {
 function toast(text) {
   const el = document.getElementById('toast'); el.textContent = text; el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2200);
 }
+function getAudioContext() {
+  return popSfx.ac || (popSfx.ac = new (window.AudioContext || window.webkitAudioContext)());
+}
 function popSfx(kind) {
   try {
-    const ac = popSfx.ac || (popSfx.ac = new (window.AudioContext || window.webkitAudioContext)());
+    const ac = getAudioContext();
     const osc = ac.createOscillator(), gain = ac.createGain();
-    osc.type = kind === 'rubber' ? 'square' : 'triangle';
-    osc.frequency.setValueAtTime(kind === 'pineapple' ? 160 : 260, ac.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(kind === 'catball' ? 900 : 80, ac.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.08, ac.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15);
-    osc.connect(gain); gain.connect(ac.destination); osc.start(); osc.stop(ac.currentTime + 0.16);
+    const start = kind === 'pickle' ? 110 : kind === 'banana' ? 520 : kind === 'sock' ? 220 : kind === 'pineapple' ? 160 : 260;
+    const end = kind === 'catball' ? 1180 : kind === 'banana' ? 760 : kind === 'sock' ? 120 : kind === 'pickle' ? 70 : 80;
+    osc.type = kind === 'rubber' || kind === 'sock' ? 'square' : kind === 'catball' ? 'sine' : 'triangle';
+    osc.frequency.setValueAtTime(start, ac.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(end, ac.currentTime + 0.1);
+    gain.gain.setValueAtTime(kind === 'catball' ? 0.045 : 0.08, ac.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.14);
+    osc.connect(gain); gain.connect(ac.destination); osc.start(); osc.stop(ac.currentTime + 0.15);
+  } catch(e) {}
+}
+function startBgMusic() {
+  try {
+    const ac = getAudioContext();
+    if (ac.state === 'suspended') ac.resume();
+    if (startBgMusic.timer) return;
+    const bass = [130.81, 164.81, 196, 164.81, 146.83, 196, 220, 196];
+    const lead = [523.25, 659.25, 783.99, 0, 698.46, 659.25, 587.33, 659.25, 783.99, 880, 987.77, 880, 783.99, 659.25, 698.46, 0];
+    const honks = [329.63, 392, 261.63, 440];
+    let step = 0;
+    const playNote = (freq, duration, type, volume) => {
+      if (!freq) return;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, ac.currentTime);
+      gain.gain.setValueAtTime(volume, ac.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + duration);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(); osc.stop(ac.currentTime + duration + 0.02);
+    };
+    startBgMusic.timer = setInterval(() => {
+      playNote(bass[step % bass.length], 0.12, 'square', 0.014);
+      playNote(lead[step % lead.length], 0.11, 'triangle', 0.018);
+      if (step % 4 === 1) playNote(honks[(step >> 2) % honks.length], 0.07, 'sawtooth', 0.012);
+      if (step % 8 === 6) playNote(1046.5, 0.045, 'square', 0.01);
+      step++;
+    }, 135);
   } catch(e) {}
 }
 function rand(a, b) { return a + Math.random() * (b - a); }
@@ -1467,6 +1596,7 @@ function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
 window.addEventListener('message', e => { if (e.data && e.data.type === 'gg-save') saveGame(); });
 window.addEventListener('beforeunload', saveGame);
+renderRankSelector();
 updateHud();
 </script>
 </body>

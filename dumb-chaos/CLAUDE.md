@@ -21,7 +21,10 @@
 - **Climbable props:** Smaller goofy props are climbable; big cover blocks have visible ladders that lift the player to the top, and house stairs connect the different floor heights.
 - **Rubber chicken projectile:** Rubber Chicken Slapper projectile is shaped like a small chicken with body, neck, head, beak, comb, and tail.
 - **Toilet projectile:** Poo & Pee Toilet Cannon alternates between yellow pee stream shots and brown poo lump shots.
-- **Cat cannon projectile:** Bouncy Ball Cat Cannon fires a spherical cat ball with ears and pupils, no ring/tail, randomized colors, and infinite lifetime/range until it hits something or reaches its third bounce. The first-person weapon preview shows the next cat color before the player fires.
+- **Cat cannon projectile:** Rapid Cat Blaster is intentionally the best late-game weapon, firing very fast 72-damage spherical cat balls while the mouse is held. Cat balls have ears and pupils, no ring/tail, randomized colors, and infinite lifetime/range until they hit something or reach a third bounce. The first-person weapon preview shows the next cat color before the player fires.
+- **Extra weapons:** Banana Peel Zapper, Stinky Sock Stormer, and Pickle Jar Mortar add new projectile meshes and shop unlocks.
+- **Music:** Upbeat, funny procedural background music starts after the player enters the arena, using Web Audio so the game remains a single HTML file.
+- **Battle ranks:** Title screen rank selector changes difficulty and Chaos Coin payout. Newbie is easy/low-pay, Goofy is normal, Pro is harder/higher-pay, Nightmare is highest pressure/highest pay.
 - **Hitboxes:** Projectile hits use full player/NPC body height and width instead of only checking distance to the character base point.
 - **Health bars:** Every enemy gets a sprite health bar above the name tag, color-shifting from green to yellow to red.
 - **Eyes:** Characters use pupil-only black dot eyes with no whites; the Custom Look + Weapon Select panel includes a "YOU" preview with pupils.
@@ -51,9 +54,20 @@
 | rubber | Rubber Chicken Slapper | 60 | 12 | 0.25s | 0 |
 | waffle | Waffle Mine Tosser | 90 | 65 | 1.1s | 4.2 |
 | toilet | Poo & Pee Toilet Cannon | 40 | 24 | 0.55s | 1.8 |
-| catball | Bouncy Ball Cat Cannon | 1250 | 72 | 1.0s | 3.8 |
+| catball | Rapid Cat Blaster | 1250 | 72 | 0.1s | 1.8 |
+| banana | Banana Peel Zapper | 325 | 28 | 0.38s | 1.2 |
+| sock | Stinky Sock Stormer | 420 | 16 | 0.18s | 0.8 |
+| pickle | Pickle Jar Mortar | 650 | 54 | 0.95s | 4.8 |
 
 Purchasable Chaos Coin items are priced at 5x the original launch values.
+
+## Battle Ranks
+| ID | Coin Mult | HP Mult | Speed Mult | Spawn Mult | Start Enemies |
+|----|-----------|---------|------------|------------|---------------|
+| newbie | 0.6x | 0.7x | 0.82x | 0.7x | 4 |
+| goofy | 1.0x | 1.0x | 1.0x | 1.0x | 7 |
+| pro | 1.8x | 1.45x | 1.18x | 1.35x | 9 |
+| nightmare | 2.6x | 1.9x | 1.35x | 1.65x | 11 |
 
 ## Paid Outfits
 | Outfit | Cost |
@@ -121,6 +135,7 @@ Hats are bought with Chaos Coins in the Custom Look + Weapon Select panel. Bucke
   upgrades: { [id]: true },
   equipped: string,
   bossKills: number,
+  battleRank: 'newbie' | 'goofy' | 'pro' | 'nightmare',
   appearance: { skin, hair, hairStyle, outfit }
 }
 ```

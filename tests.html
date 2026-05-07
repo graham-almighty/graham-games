@@ -653,7 +653,7 @@ localStorage.clear();
 // ============================================================
 // SCHOOL MODE FUNCTIONS (replicated from index.html)
 // ============================================================
-const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros'];
+const BLOCKED_GAMES = ['combat', 'ancient-warfare', 'rogue-depths', 'battle-bros', 'sibling-brawl', 'dumb-chaos'];
 
 function getSchoolMode() {
   const data = ggLoad();
@@ -971,15 +971,18 @@ localStorage.clear();
 group('School Mode: Blocked Games');
 
 {
-  assertEqual(BLOCKED_GAMES.length, 4, 'Four games are blocked');
+  assertEqual(BLOCKED_GAMES.length, 6, 'Six games are blocked');
   assert(BLOCKED_GAMES.includes('combat'), 'Combat is in blocked list');
   assert(BLOCKED_GAMES.includes('ancient-warfare'), 'Ancient Warfare is in blocked list');
   assert(BLOCKED_GAMES.includes('rogue-depths'), 'Rogue Depths is in blocked list');
   assert(BLOCKED_GAMES.includes('battle-bros'), 'Battle Bros is in blocked list');
+  assert(BLOCKED_GAMES.includes('sibling-brawl'), 'Sibling Brawl is in blocked list');
+  assert(BLOCKED_GAMES.includes('dumb-chaos'), 'Dumb Chaos is in blocked list');
   assert(!BLOCKED_GAMES.includes('hurgvibbit'), 'Hurgvibbit is NOT blocked');
   assert(!BLOCKED_GAMES.includes('flying-ace'), 'Flying Ace is NOT blocked');
   assert(!BLOCKED_GAMES.includes('mini-life'), 'Mini Life is NOT blocked');
   assert(!BLOCKED_GAMES.includes('tower-defense'), 'Tower Defense is NOT blocked');
+  assert(!BLOCKED_GAMES.includes('school-sim'), 'School Sim is NOT blocked');
 }
 
 group('School Mode: Persistence Across Refresh');
@@ -1352,6 +1355,8 @@ group('News Panel');
 {
   // Test: NEWS_ENTRIES is a non-empty array with required fields
   const entries = [
+    { date: '2026-05-07', title: 'School Sim Launches!', desc: 'New 3D classroom crafting sim. Collect supplies, use a desk as the crafting table, and combine things like Eraser + Electric Screwdriver into Mega Eraser.', game: 'school-sim' },
+    { date: '2026-05-07', title: 'Dumb Chaos Quality Update', desc: '3D... well, dumb chaos. New ranked battles, rapid-fire Cat Blaster, goofy weapons, upbeat music, better hats, fixed doors, and extra arena silliness.', game: 'dumb-chaos' },
     { date: '2026-02-28', title: 'Battle Bros Launches!', desc: 'New 8-bit pixel fighting game with 8 unique fighters, VS CPU and 2P local modes, special moves, and best-of-3 rounds!', game: 'battle-bros' },
     { date: '2026-02-24', title: 'Brawl Monsters Launches!', desc: 'Brand new monster battling game with 13 unique monsters, a trainer system, tutorial mode, and collection tracking. Catch and battle your way to the top!', game: 'brawl-monsters' },
     { date: '2026-02-24', title: 'Bug Update 3', desc: 'Devious Driving: removed power-ups, added bot count selection, improved start line visuals.', game: 'devious-driving' },
@@ -1383,13 +1388,14 @@ group('News Panel');
     'all': true, 'brawl-monsters': true, 'devious-driving': true,
     'tower-defense': true, 'mini-life': true, 'hurgvibbit': true,
     'ancient-warfare': true, 'rogue-depths': true, 'battle-bros': true,
+    'dumb-chaos': true, 'school-sim': true,
   };
   for (const entry of entries) {
     assert(TAG_COLORS[entry.game], 'Game tag "' + entry.game + '" has matching color definition');
   }
 
   // Test: TAG_COLORS has expected game keys
-  const expectedGames = ['all', 'brawl-monsters', 'devious-driving', 'tower-defense', 'mini-life', 'hurgvibbit', 'ancient-warfare', 'rogue-depths', 'battle-bros'];
+  const expectedGames = ['all', 'brawl-monsters', 'devious-driving', 'tower-defense', 'mini-life', 'hurgvibbit', 'ancient-warfare', 'rogue-depths', 'battle-bros', 'dumb-chaos', 'school-sim'];
   for (const g of expectedGames) {
     assert(TAG_COLORS[g], 'TAG_COLORS has key for "' + g + '"');
   }
@@ -1567,11 +1573,23 @@ const DUMB_CHAOS_SHOP_ITEMS = [
 ];
 
 const DUMB_CHAOS_COIN_PRICES = {
-  weapons: { rubber: 60, waffle: 90, toilet: 40, catball: 1250 },
+  weapons: { rubber: 60, waffle: 90, toilet: 40, catball: 1250, banana: 325, sock: 420, pickle: 650 },
   upgrades: { speedShoes: 450, biggerBooms: 700, helmet: 600, coinMagnet: 800, springyPants: 550, snackTax: 650, bubbleWrap: 725, sockCannonGrease: 500 },
   hats: { cone: 50, bucket: 70, crown: 125, propeller: 110 },
   outfits: [150, 175, 175, 200, 275, 200, 190, 240, 225, 160, 300, 325],
 };
+const DUMB_CHAOS_WEAPON_STATS = {
+  catball: { name: 'Rapid Cat Blaster', cooldown: 0.1, damage: 72, splash: 1.8, holdToFire: true },
+  banana: { name: 'Banana Peel Zapper', cooldown: 0.38 },
+  sock: { name: 'Stinky Sock Stormer', cooldown: 0.18 },
+  pickle: { name: 'Pickle Jar Mortar', cooldown: 0.95 },
+};
+const DUMB_CHAOS_RANKS = [
+  { id: 'newbie', coinMult: 0.6, hpMult: 0.7, startEnemies: 4 },
+  { id: 'goofy', coinMult: 1, hpMult: 1, startEnemies: 7 },
+  { id: 'pro', coinMult: 1.8, hpMult: 1.45, startEnemies: 9 },
+  { id: 'nightmare', coinMult: 2.6, hpMult: 1.9, startEnemies: 11 },
+];
 
 function defaultDumbChaosSave() {
   return {
@@ -1585,6 +1603,7 @@ function defaultDumbChaosSave() {
     upgrades: {},
     equipped: 'pineapple',
     bossKills: 0,
+    battleRank: 'goofy',
   };
 }
 
@@ -1601,6 +1620,10 @@ function defaultDumbChaosSave() {
 {
   assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.rubber, 60, 'Dumb Chaos rubber chicken costs 5x launch price');
   assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.catball, 1250, 'Dumb Chaos cat cannon costs 5x launch price');
+  assertEqual(Object.keys(DUMB_CHAOS_COIN_PRICES.weapons).length, 7, 'Dumb Chaos has 7 purchasable weapons plus starter pineapple');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.banana, 325, 'Dumb Chaos adds Banana Peel Zapper');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.sock, 420, 'Dumb Chaos adds Stinky Sock Stormer');
+  assertEqual(DUMB_CHAOS_COIN_PRICES.weapons.pickle, 650, 'Dumb Chaos adds Pickle Jar Mortar');
   assertEqual(DUMB_CHAOS_COIN_PRICES.upgrades.springyPants, 550, 'Dumb Chaos adds Springy Pants Goofy Stuff');
   assertEqual(DUMB_CHAOS_COIN_PRICES.upgrades.sockCannonGrease, 500, 'Dumb Chaos adds Sock Cannon Grease Goofy Stuff');
   assertEqual(DUMB_CHAOS_COIN_PRICES.hats.propeller, 110, 'Dumb Chaos propeller cap costs 5x launch price');
@@ -1608,10 +1631,79 @@ function defaultDumbChaosSave() {
 }
 
 {
+  assertEqual(DUMB_CHAOS_WEAPON_STATS.catball.name, 'Rapid Cat Blaster', 'Dumb Chaos renames cat cannon to rapid blaster');
+  assertEqual(DUMB_CHAOS_WEAPON_STATS.catball.cooldown, 0.1, 'Dumb Chaos cat blaster fires very rapidly');
+  assertEqual(DUMB_CHAOS_WEAPON_STATS.catball.damage, 72, 'Dumb Chaos cat blaster keeps original cat cannon damage');
+  assertEqual(DUMB_CHAOS_WEAPON_STATS.catball.holdToFire, true, 'Dumb Chaos cat blaster supports holding click to fire');
+  assertEqual(DUMB_CHAOS_WEAPON_STATS.catball.damage / DUMB_CHAOS_WEAPON_STATS.catball.cooldown > 200, true, 'Dumb Chaos cat blaster remains the strongest DPS weapon');
+}
+
+{
+  assertEqual(DUMB_CHAOS_RANKS.length, 4, 'Dumb Chaos has 4 battle ranks');
+  assertEqual(DUMB_CHAOS_RANKS[0].id, 'newbie', 'Dumb Chaos starts rank list with Newbie');
+  assertEqual(DUMB_CHAOS_RANKS[2].coinMult, 1.8, 'Dumb Chaos Pro rank pays more than normal');
+  assertEqual(DUMB_CHAOS_RANKS[3].hpMult > DUMB_CHAOS_RANKS[2].hpMult, true, 'Dumb Chaos Nightmare is harder than Pro');
+  assertEqual(Math.round(12 * DUMB_CHAOS_RANKS[0].coinMult), 7, 'Dumb Chaos Newbie bot payout is low');
+  assertEqual(Math.round(12 * DUMB_CHAOS_RANKS[2].coinMult), 22, 'Dumb Chaos Pro bot payout is higher');
+}
+
+{
   const save = defaultDumbChaosSave();
   assertEqual(save.ownedWeapons.pineapple, true, 'Dumb Chaos starts with pineapple launcher');
   assertEqual(save.equipped, 'pineapple', 'Dumb Chaos equips pineapple by default');
   assertEqual(save.coins, 0, 'Dumb Chaos save starts with zero Chaos Coins');
+  assertEqual(save.battleRank, 'goofy', 'Dumb Chaos defaults to Goofy battle rank');
+}
+
+// --- School Sim ---
+group('School Sim Integration Data');
+
+const SCHOOL_SIM_ACHIEVEMENTS = [
+  { id: 'sch_first_pickup', reward: 5 },
+  { id: 'sch_first_craft', reward: 10 },
+  { id: 'sch_mega_eraser', reward: 15 },
+  { id: 'sch_three_crafts', reward: 20 },
+  { id: 'sch_all_supplies', reward: 20 },
+  { id: 'sch_all_recipes', reward: 40 },
+  { id: 'sch_test_tool', reward: 15 },
+  { id: 'sch_star_student', reward: 25 },
+  { id: 'sch_combo_two', reward: 20 },
+  { id: 'sch_clean_board', reward: 30 },
+];
+
+const SCHOOL_SIM_BASE_ITEMS = ['eraser', 'screwdriver', 'marker', 'glue', 'ruler', 'tray', 'paper', 'calculator'];
+const SCHOOL_SIM_RECIPES = [
+  { id: 'megaEraser', inputs: ['eraser', 'screwdriver'], stars: 15 },
+  { id: 'homeworkBlaster', inputs: ['marker', 'glue'], stars: 12 },
+  { id: 'hallPassGlider', inputs: ['ruler', 'paper'], stars: 18 },
+  { id: 'stickyRuler', inputs: ['glue', 'ruler'], stars: 10 },
+  { id: 'lunchShield', inputs: ['tray', 'calculator'], stars: 20 },
+];
+
+function defaultSchoolSimSave() {
+  return { stars: 0, crafted: {}, collected: {}, usedCrafts: {}, bestCombo: 0, gamesPlayed: 0 };
+}
+
+{
+  assertEqual(SCHOOL_SIM_ACHIEVEMENTS.length, 10, 'School Sim registers 10 achievements');
+  assertEqual(SCHOOL_SIM_ACHIEVEMENTS.reduce((sum, a) => sum + a.reward, 0), 200, 'School Sim achievements total 200G');
+  assertEqual(SCHOOL_SIM_ACHIEVEMENTS.every(a => a.id.indexOf('sch_') === 0), true, 'School Sim achievement IDs use unique sch_ prefix');
+}
+
+{
+  assertEqual(SCHOOL_SIM_BASE_ITEMS.length, 8, 'School Sim has 8 base supplies');
+  assertEqual(SCHOOL_SIM_RECIPES.length, 5, 'School Sim has 5 crafting recipes');
+  assertEqual(SCHOOL_SIM_RECIPES[0].id, 'megaEraser', 'School Sim first recipe is Mega Eraser');
+  assertDeepEqual(SCHOOL_SIM_RECIPES[0].inputs, ['eraser', 'screwdriver'], 'School Sim crafts Mega Eraser from eraser and electric screwdriver');
+  assertEqual(SCHOOL_SIM_RECIPES.reduce((sum, r) => sum + r.stars, 0), 75, 'School Sim recipes pay 75 total stars');
+}
+
+{
+  const save = defaultSchoolSimSave();
+  assertEqual(save.stars, 0, 'School Sim save starts with zero stars');
+  assertDeepEqual(save.crafted, {}, 'School Sim save starts with no crafted items');
+  assertDeepEqual(save.collected, {}, 'School Sim save starts with no collected supplies');
+  assertEqual(save.bestCombo, 0, 'School Sim save starts with zero best combo');
 }
 
 // ============================================================
