@@ -184,11 +184,103 @@
     border-radius: 8px;
     padding: 8px 10px;
   }
+  #craft-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: #020712aa;
+    pointer-events: auto;
+  }
+  #craft-overlay.visible { display: flex; }
+  .craft-panel {
+    width: min(680px, 94vw);
+    background: #121824f2;
+    border: 2px solid #8a8f98;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px #000b;
+    padding: 18px;
+  }
+  .craft-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #f3f7ff;
+    font-weight: 900;
+    margin-bottom: 14px;
+  }
+  .craft-close {
+    border: 1px solid #ffffff33;
+    border-radius: 6px;
+    background: #283142;
+    color: #fff;
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+  .craft-grid {
+    display: grid;
+    grid-template-columns: 1fr 54px 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .craft-slots {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .craft-slot, .craft-result {
+    min-height: 92px;
+    border: 2px solid #4f5968;
+    background: #0b111c;
+    border-radius: 6px;
+    color: #d8e3ec;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8px;
+    font-weight: 800;
+  }
+  .craft-result.ready { border-color: #ffd45a; color: #ffd45a; }
+  .craft-arrow { text-align: center; color: #ffd45a; font-size: 2rem; font-weight: 900; }
+  .craft-inventory {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .craft-item-btn, .craft-make {
+    border: 1px solid #ffffff22;
+    border-radius: 6px;
+    background: #1f2a3a;
+    color: #eef6ff;
+    padding: 10px;
+    cursor: pointer;
+    font-weight: 800;
+  }
+  .craft-item-btn:hover, .craft-item-btn.selected { border-color: #ffd45a; color: #ffd45a; }
+  .craft-make {
+    width: 100%;
+    background: #ffd45a;
+    color: #10131a;
+    border: none;
+  }
+  .craft-make:disabled {
+    background: #394250;
+    color: #8b96a6;
+    cursor: default;
+  }
   @media (max-width: 600px) {
     .topbar { flex-direction: column; right: auto; }
     .stats { text-align: left; }
     .slot { width: 82px; font-size: 0.64rem; }
     #inventory { bottom: 54px; }
+    .craft-grid { grid-template-columns: 1fr; }
+    .craft-arrow { font-size: 1.4rem; }
   }
 </style>
 </head>
@@ -209,8 +301,9 @@
       <div class="desk-status" id="desk-status">Desk: empty</div>
     </div>
     <div class="panel stats">
-      <div>Stars: <span class="value" id="stars">0</span></div>
+      <div>Candy: <span class="value" id="candy">0</span></div>
       <div>Crafted: <span class="value" id="crafted-count">0</span> / 5</div>
+      <div>Outfit: <span class="value" id="outfit-name">School Hoodie</span></div>
       <div>Selected: <span class="value" id="selected-name">None</span></div>
     </div>
   </div>
@@ -220,27 +313,64 @@
   <div id="inventory"></div>
   <a class="exit" href="../index.html">EXIT</a>
 </div>
+<div id="craft-overlay">
+  <div class="craft-panel">
+    <div class="craft-title">
+      <span>CRAFTING TABLE</span>
+      <button class="craft-close" onclick="closeCraftingTable()">CLOSE</button>
+    </div>
+    <div class="craft-grid">
+      <div class="craft-slots">
+        <div class="craft-slot" id="craft-slot-0">Pick item 1</div>
+        <div class="craft-slot" id="craft-slot-1">Pick item 2</div>
+      </div>
+      <div class="craft-arrow">=&gt;</div>
+      <div class="craft-result" id="craft-result">No recipe</div>
+    </div>
+    <div class="craft-inventory" id="craft-inventory"></div>
+    <button class="craft-make" id="craft-make" onclick="craft()">CRAFT</button>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 <script src="../gg-supabase.js"></script>
 <script>
 const SAVE_KEY = 'school-sim-save';
+const SCHOOL_BOUNDS = { minX: -36.3, maxX: 36.3, minZ: -30.3, maxZ: 30.3 };
 const BASE_ITEMS = [
-  { id: 'eraser', name: 'Eraser', icon: 'ER', color: 0xff7aa8, pos: [-10, 1.1, -8] },
-  { id: 'screwdriver', name: 'Electric Screwdriver', icon: 'SD', color: 0x72d7ff, pos: [8, 1.1, -9] },
-  { id: 'marker', name: 'Marker', icon: 'MK', color: 0x5d7cff, pos: [-13, 1.1, 4] },
-  { id: 'glue', name: 'Glue Stick', icon: 'GL', color: 0xffffff, pos: [12, 1.1, 5] },
-  { id: 'ruler', name: 'Ruler', icon: 'RL', color: 0xffd45a, pos: [-4, 1.1, 9] },
-  { id: 'tray', name: 'Lunch Tray', icon: 'TR', color: 0xb5c1c9, pos: [4, 1.1, 8] },
-  { id: 'paper', name: 'Paper Stack', icon: 'PP', color: 0xf3f7ff, pos: [-8, 1.1, 2] },
-  { id: 'calculator', name: 'Calculator', icon: 'CA', color: 0x273142, pos: [10, 1.1, -2] },
+  { id: 'eraser', name: 'Eraser', icon: 'ER', color: 0xff7aa8, pos: [-11, 1.1, -8] },
+  { id: 'screwdriver', name: 'Electric Screwdriver', icon: 'SD', color: 0x72d7ff, pos: [-7, 1.1, -10] },
+  { id: 'marker', name: 'Marker', icon: 'MK', color: 0x5d7cff, pos: [12, 1.1, 15.5] },
+  { id: 'glue', name: 'Glue Stick', icon: 'GL', color: 0xffffff, pos: [14, 1.1, 18] },
+  { id: 'ruler', name: 'Ruler', icon: 'RL', color: 0xffd45a, pos: [-16, 1.1, 16] },
+  { id: 'tray', name: 'Lunch Tray', icon: 'TR', color: 0xb5c1c9, pos: [25, 1.1, -7] },
+  { id: 'paper', name: 'Paper Stack', icon: 'PP', color: 0xf3f7ff, pos: [-20, 1.1, 15] },
+  { id: 'calculator', name: 'Calculator', icon: 'CA', color: 0x273142, pos: [28, 1.1, -5] },
 ];
 const RECIPES = [
-  { id: 'megaEraser', name: 'Mega Eraser', icon: 'ME', inputs: ['eraser', 'screwdriver'], stars: 15, color: 0xff4f9c },
-  { id: 'homeworkBlaster', name: 'Homework Blaster', icon: 'HB', inputs: ['marker', 'glue'], stars: 12, color: 0x50a7ff },
-  { id: 'hallPassGlider', name: 'Hall Pass Glider', icon: 'HG', inputs: ['ruler', 'paper'], stars: 18, color: 0xf7d35d },
-  { id: 'stickyRuler', name: 'Sticky Ruler', icon: 'SR', inputs: ['glue', 'ruler'], stars: 10, color: 0xb8f26a },
-  { id: 'lunchShield', name: 'Lunch Shield', icon: 'LS', inputs: ['tray', 'calculator'], stars: 20, color: 0xb9c3cc },
+  { id: 'megaEraser', name: 'Mega Eraser', icon: 'ME', inputs: ['eraser', 'screwdriver'], candy: 15, color: 0xff4f9c },
+  { id: 'homeworkBlaster', name: 'Homework Blaster', icon: 'HB', inputs: ['marker', 'glue'], candy: 12, color: 0x50a7ff },
+  { id: 'hallPassGlider', name: 'Hall Pass Glider', icon: 'HG', inputs: ['ruler', 'paper'], candy: 18, color: 0xf7d35d },
+  { id: 'stickyRuler', name: 'Sticky Ruler', icon: 'SR', inputs: ['glue', 'ruler'], candy: 10, color: 0xb8f26a },
+  { id: 'lunchShield', name: 'Lunch Shield', icon: 'LS', inputs: ['tray', 'calculator'], candy: 20, color: 0xb9c3cc },
+];
+const CLOTHES = [
+  { id: 'schoolHoodie', name: 'School Hoodie', icon: 'SH', color: 0x54c6a0 },
+  { id: 'artApron', name: 'Art Apron', icon: 'AA', color: 0xff7aa8 },
+  { id: 'coachJersey', name: 'Coach Jersey', icon: 'CJ', color: 0xffaa55 },
+  { id: 'libraryCape', name: 'Library Cape', icon: 'LC', color: 0x8f7cff },
+];
+const RESTROOM_STALL_COST = 60;
+const NPCS = [
+  { id: 'teacher', name: 'Ms. Chalk', job: 'Teacher', want: 'megaEraser', reward: 18, clothing: 'artApron', hair: 0x4b2a18, hairStyle: 'bob', line: 'My board is doomed. Bring me a Mega Eraser.' },
+  { id: 'janitor', name: 'Mr. Mop', job: 'Janitor', want: 'stickyRuler', reward: 12, hair: 0x2f261f, hairStyle: 'cap', line: 'I need a Sticky Ruler to rescue pencils from vents.' },
+  { id: 'coach', name: 'Coach Pop', job: 'Gym Coach', want: 'lunchShield', reward: 22, clothing: 'coachJersey', hair: 0x1c1714, hairStyle: 'short', line: 'Build me a Lunch Shield for dodgeball defense.' },
+  { id: 'librarian', name: 'Book Boss', job: 'Librarian', want: 'hallPassGlider', reward: 20, clothing: 'libraryCape', hair: 0x6b4a2b, hairStyle: 'long', line: 'A Hall Pass Glider would move books in style.' },
+  { id: 'joey', name: 'Joey', job: 'Classmate', vendor: 'stall', hair: 0x8a5a2d, hairStyle: 'short', line: 'I know a restroom stall you can buy. It is basically real estate.' },
+  { id: 'maya', name: 'Maya', job: 'Classmate', hair: 0x2a1710, hairStyle: 'long', line: 'I am mapping the whole campus before the bell rings.' },
+  { id: 'nolan', name: 'Nolan', job: 'Classmate', hair: 0xd8b16a, hairStyle: 'cap', line: 'The gym is enormous now. I still cannot find my left shoe.' },
+  { id: 'zoe', name: 'Zoe', job: 'Classmate', hair: 0x151515, hairStyle: 'bob', line: 'Science room smells like glue and victory.' },
+  { id: 'amir', name: 'Amir', job: 'Classmate', hair: 0x3b271c, hairStyle: 'short', line: 'I heard Joey is calling that stall a luxury apartment.' },
 ];
 const ACH = {
   firstPickup: ['sch_first_pickup', 'Supply Grabber', 5],
@@ -250,16 +380,21 @@ const ACH = {
   allSupplies: ['sch_all_supplies', 'Locker Loot', 20],
   allRecipes: ['sch_all_recipes', 'Craft Class Hero', 40],
   testTool: ['sch_test_tool', 'Field Tester', 15],
-  starStudent: ['sch_star_student', 'Star Student', 25],
+  starStudent: ['sch_star_student', 'Candy Scholar', 25],
   comboTwo: ['sch_combo_two', 'Desk Combo', 20],
   cleanBoard: ['sch_clean_board', 'Board Cleaner', 30],
 };
 function defaultSave() {
-  return { stars: 0, crafted: {}, collected: {}, usedCrafts: {}, bestCombo: 0, gamesPlayed: 0 };
+  return { candy: 0, crafted: {}, collected: {}, usedCrafts: {}, completedQuests: {}, ownedClothes: { schoolHoodie: true }, equippedOutfit: 'schoolHoodie', stallOwned: false, bestCombo: 0, gamesPlayed: 0 };
 }
 function loadSave() {
   try {
-    return Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY)) || {});
+    const raw = JSON.parse(localStorage.getItem(SAVE_KEY)) || {};
+    if (raw.candy === undefined && raw.stars !== undefined) raw.candy = raw.stars;
+    const merged = Object.assign(defaultSave(), raw);
+    merged.ownedClothes = Object.assign({ schoolHoodie: true }, merged.ownedClothes || {});
+    if (!merged.ownedClothes[merged.equippedOutfit]) merged.equippedOutfit = 'schoolHoodie';
+    return merged;
   } catch (e) {
     return defaultSave();
   }
@@ -283,20 +418,29 @@ let interactables = [];
 let inventory = [];
 let selectedIndex = 0;
 let deskItems = [];
+let craftingOpen = false;
 let runCrafts = 0;
 let boardCleaned = false;
 let lastPrompt = '';
 let itemMeshes = {};
+let stallApartmentGroup = null;
+let stallStatusLabel = null;
+let wallColliders = [];
 
 function makeMat(color, roughness) {
   return new THREE.MeshStandardMaterial({ color, roughness: roughness || 0.75 });
 }
 function addBox(parent, x, y, z, w, h, d, color) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), makeMat(color));
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), color && color.isMaterial ? color : makeMat(color));
   mesh.position.set(x, y, z);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   parent.add(mesh);
+  return mesh;
+}
+function addWall(parent, x, y, z, w, h, d, color) {
+  const mesh = addBox(parent, x, y, z, w, h, d, color);
+  wallColliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
   return mesh;
 }
 function addTextSprite(text, color) {
@@ -313,6 +457,29 @@ function addTextSprite(text, color) {
   const texture = new THREE.CanvasTexture(canvas);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
   sprite.scale.set(3.4, 0.85, 1);
+  return sprite;
+}
+function addQuestMarkerSprite(done) {
+  const text = done ? 'DONE' : '!';
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = done ? 'rgba(84, 198, 160, 0.9)' : 'rgba(255, 212, 90, 0.95)';
+  ctx.beginPath();
+  ctx.arc(64, 64, 46, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = done ? '#dfffea' : '#4a3200';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  ctx.fillStyle = done ? '#07111f' : '#10131a';
+  ctx.font = done ? 'bold 30px Segoe UI' : 'bold 82px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, done ? 66 : 58);
+  const texture = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+  sprite.scale.set(done ? 1.35 : 0.95, done ? 1.35 : 0.95, 1);
   return sprite;
 }
 function init() {
@@ -335,42 +502,179 @@ function init() {
 
   buildRoom();
   buildSupplies();
+  buildNpcs();
   refreshInventory();
   updateHud();
   animate();
 }
 function buildRoom() {
-  addBox(scene, 0, -0.05, 0, 34, 0.1, 28, 0x63727a);
-  addBox(scene, 0, 3, -14, 34, 6, 0.35, 0xd8e8ef);
-  addBox(scene, -17, 3, 0, 0.35, 6, 28, 0xd8e8ef);
-  addBox(scene, 17, 3, 0, 0.35, 6, 28, 0xd8e8ef);
-  addBox(scene, 0, 3, 14, 34, 6, 0.35, 0xcadce7);
-  addBox(scene, 0, 6.1, 0, 34, 0.25, 28, 0xf1f6fa);
-  for (let x = -13; x <= 13; x += 6) {
-    addBox(scene, x, 3.3, -13.75, 3.7, 2.2, 0.12, 0xaee5ff);
+  addBox(scene, 0, -0.05, 0, 74, 0.1, 62, 0x63727a);
+  addWall(scene, 0, 3, -31, 74, 6, 0.35, 0xd8e8ef);
+  addWall(scene, -37, 3, 0, 0.35, 6, 62, 0xd8e8ef);
+  addWall(scene, 37, 3, 0, 0.35, 6, 62, 0xd8e8ef);
+  addWall(scene, 0, 3, 31, 74, 6, 0.35, 0xcadce7);
+  addBox(scene, 0, 6.1, 0, 74, 0.25, 62, 0xf1f6fa);
+  buildSchoolLayout();
+  for (let x = -30; x <= 30; x += 6) {
+    addBox(scene, x, 3.3, -30.75, 3.7, 2.2, 0.12, 0xaee5ff);
   }
-  addBox(scene, 0, 2.9, -13.58, 8, 2.7, 0.18, 0x20322f);
+  addBox(scene, -11, 2.9, -13.58, 8, 2.7, 0.18, 0x20322f);
   const boardLabel = addTextSprite('CRAFT BOARD', '#54c6a0');
-  boardLabel.position.set(0, 4.7, -13.35);
+  boardLabel.position.set(-11, 4.7, -13.35);
   scene.add(boardLabel);
-  addBox(scene, -14.6, 2, -4, 2.2, 4, 7, 0x315276);
-  addBox(scene, 14.6, 2, -4, 2.2, 4, 7, 0x315276);
-  addBox(scene, 0, 0.8, 4, 5, 0.25, 3, 0x9b6f45);
-  addBox(scene, -2, 0.35, 3, 0.25, 0.7, 0.25, 0x634126);
-  addBox(scene, 2, 0.35, 3, 0.25, 0.7, 0.25, 0x634126);
-  addBox(scene, -2, 0.35, 5, 0.25, 0.7, 0.25, 0x634126);
-  addBox(scene, 2, 0.35, 5, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -18.5, 2, -8, 2.2, 4, 7, 0x315276);
+  addBox(scene, 18.8, 2, -11, 2.2, 4, 7, 0x315276);
+  addBox(scene, -11, 0.8, -6, 5, 0.25, 3, 0x9b6f45);
+  addBox(scene, -13, 0.35, -7, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -9, 0.35, -7, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -13, 0.35, -5, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -9, 0.35, -5, 0.25, 0.7, 0.25, 0x634126);
   const deskLabel = addTextSprite('CRAFT DESK', '#ffd45a');
-  deskLabel.position.set(0, 1.65, 4);
+  deskLabel.position.set(-11, 1.65, -6);
   scene.add(deskLabel);
-  interactables.push({ type: 'desk', name: 'Craft Desk', pos: new THREE.Vector3(0, 0.8, 4), radius: 4 });
+  interactables.push({ type: 'desk', name: 'Craft Desk', pos: new THREE.Vector3(-11, 0.8, -6), radius: 4 });
 
   for (let i = 0; i < 8; i++) {
-    const x = -10 + (i % 4) * 6.6;
-    const z = -6 + Math.floor(i / 4) * 5;
+    const x = -17 + (i % 4) * 4;
+    const z = -12 + Math.floor(i / 4) * 4;
     addBox(scene, x, 0.65, z, 2.2, 0.22, 1.6, 0x7a5839);
     addBox(scene, x, 0.25, z + 1.1, 1.5, 0.5, 0.16, 0x46657a);
   }
+  buildRestroom();
+}
+function addRoomLabel(text, x, z, color) {
+  const label = addTextSprite(text, color || '#ffffff');
+  label.position.set(x, 2.65, z);
+  scene.add(label);
+}
+function addDoorFrame(x, z, rot, color) {
+  const group = new THREE.Group();
+  const matColor = color || 0x7a5839;
+  addBox(group, -0.95, 0.95, 0, 0.16, 1.9, 0.18, matColor);
+  addBox(group, 0.95, 0.95, 0, 0.16, 1.9, 0.18, matColor);
+  addBox(group, 0, 1.9, 0, 2.05, 0.16, 0.18, matColor);
+  addBox(group, -1.25, 0.85, -0.42, 0.12, 1.7, 0.8, 0xa36d3a);
+  group.position.set(x, 0.05, z);
+  group.rotation.y = rot || 0;
+  scene.add(group);
+}
+function buildSchoolLayout() {
+  addBox(scene, 0, 0.01, 0, 68, 0.05, 6.5, 0x8293a0);
+  addBox(scene, 0, 0.012, -22, 6.5, 0.05, 16, 0x8293a0);
+  addBox(scene, 0, 0.013, -8, 14, 0.05, 7, 0x6f9778);
+  addBox(scene, -12, 0.015, -9.8, 16, 0.05, 13.4, 0x6f8a95);
+  addBox(scene, -19, 0.015, 17, 16, 0.05, 12.4, 0x798a68);
+  addBox(scene, 13, 0.015, 17, 14, 0.05, 12.4, 0x8c7c97);
+  addBox(scene, 21, 0.015, 4, 12, 0.05, 12, 0x88a0aa);
+  addBox(scene, 26, 0.015, -10, 12, 0.05, 13, 0x8f938f);
+  addBox(scene, -14, 0.015, -26, 16, 0.05, 9, 0x7d9296);
+  addBox(scene, 14, 0.015, -26, 18, 0.05, 9, 0x8f7b66);
+
+  addWall(scene, -4, 2, -9.8, 0.18, 4, 10.2, 0xc7d5dd);
+  addWall(scene, -15, 2, -2.7, 10, 4, 0.18, 0xc7d5dd);
+  addWall(scene, -3.8, 2, -2.7, 1.8, 4, 0.18, 0xc7d5dd);
+  addWall(scene, -11, 2, 17, 0.18, 4, 10, 0xc7d5dd);
+  addWall(scene, -22, 2, 9.9, 10, 4, 0.18, 0xc7d5dd);
+  addWall(scene, -10.2, 2, 9.9, 1.8, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 6, 2, 17, 0.18, 4, 10, 0xc7d5dd);
+  addWall(scene, 13, 2, 9.9, 7, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 23, 2, 9.9, 4, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 13, 2, 23.2, 14, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 21, 2, -2.7, 12, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 26, 2, -12.8, 0.18, 4, 5, 0xc7d5dd);
+  addWall(scene, 26, 2, -5.8, 0.18, 4, 5, 0xc7d5dd);
+  addWall(scene, -21, 2, -22, 10, 4, 0.18, 0xc7d5dd);
+  addWall(scene, -9, 2, -22, 1.8, 4, 0.18, 0xc7d5dd);
+  addWall(scene, -6, 2, -26, 0.18, 4, 8, 0xc7d5dd);
+  addWall(scene, 6, 2, -22, 5, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 18, 2, -22, 8, 4, 0.18, 0xc7d5dd);
+  addWall(scene, 5, 2, -26, 0.18, 4, 8, 0xc7d5dd);
+
+  addDoorFrame(-2.75, -2.7, 0, 0x7a5839);
+  addDoorFrame(-9.1, 9.9, 0, 0x7a5839);
+  addDoorFrame(20.1, 9.9, 0, 0x7a5839);
+  addDoorFrame(21, -2.7, 0, 0x7a5839);
+  addDoorFrame(26, -3.2, Math.PI / 2, 0x7a5839);
+  addDoorFrame(-7.2, -22, 0, 0x7a5839);
+  addDoorFrame(11.2, -22, 0, 0x7a5839);
+
+  addRoomLabel('HALLWAY', 0, 0, '#ffd45a');
+  addRoomLabel('CRAFT CLASS', -11, -3.1, '#54c6a0');
+  addRoomLabel('COMMONS', 0, -7.8, '#dfffea');
+  addRoomLabel('LIBRARY', -19, 10.8, '#dfffea');
+  addRoomLabel('ART ROOM', 13, 10.8, '#ffd1f0');
+  addRoomLabel('CAFETERIA', 26, -3.7, '#fff1b8');
+  addRoomLabel('SCIENCE', -14, -21.6, '#aee5ff');
+  addRoomLabel('GYM', 14, -21.6, '#ffd1c2');
+
+  addBox(scene, -24.1, 1.2, 16.7, 0.8, 2.4, 4.8, 0x5a3d28);
+  addBox(scene, -23.7, 1.2, 14.9, 0.12, 1.8, 0.18, 0xff7aa8);
+  addBox(scene, -23.7, 1.2, 15.7, 0.12, 1.8, 0.18, 0x54c6a0);
+  addBox(scene, -23.7, 1.2, 16.5, 0.12, 1.8, 0.18, 0xffd45a);
+  addBox(scene, -17.5, 0.55, 17.2, 3.2, 0.22, 1.4, 0x9b6f45);
+  addBox(scene, -17.5, 0.85, 17.2, 0.5, 0.35, 0.5, 0xdfffea);
+
+  addBox(scene, 13, 1.25, 20.5, 5.4, 2.2, 0.12, 0xf3f7ff);
+  addBox(scene, 12, 1.35, 20.35, 0.7, 0.7, 0.04, 0xff7aa8);
+  addBox(scene, 13, 1.35, 20.35, 0.7, 0.7, 0.04, 0x54c6a0);
+  addBox(scene, 14, 1.35, 20.35, 0.7, 0.7, 0.04, 0xffd45a);
+  addBox(scene, 13, 0.62, 16.2, 3.4, 0.24, 1.6, 0x7a5839);
+  addBox(scene, 12.1, 0.95, 16.0, 0.25, 0.55, 0.25, 0x5d7cff);
+  addBox(scene, 13, 0.95, 16.0, 0.25, 0.55, 0.25, 0xff7aa8);
+  addBox(scene, 13.9, 0.95, 16.0, 0.25, 0.55, 0.25, 0xffd45a);
+  addBox(scene, 26, 0.7, -10.2, 4.8, 0.24, 1.6, 0x9b6f45);
+  addBox(scene, 26, 0.7, -7.2, 4.8, 0.24, 1.6, 0x9b6f45);
+  addBox(scene, 23.6, 0.35, -10.2, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, 28.4, 0.35, -10.2, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, 23.6, 0.35, -7.2, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, 28.4, 0.35, -7.2, 0.25, 0.7, 0.25, 0x634126);
+  addBox(scene, -14, 0.8, -26, 4, 0.22, 1.4, 0xb9c3cc);
+  addBox(scene, -15.2, 1.1, -26.1, 0.35, 0.55, 0.35, 0x72d7ff);
+  addBox(scene, -13.9, 1.1, -25.9, 0.35, 0.55, 0.35, 0xff7aa8);
+  addBox(scene, -12.7, 1.1, -26.1, 0.35, 0.55, 0.35, 0xb8f26a);
+  addBox(scene, 14, 0.05, -26, 12, 0.06, 5.5, 0xc07d55);
+  addBox(scene, 14, 0.12, -26, 10, 0.08, 0.12, 0xffffff);
+  addBox(scene, 9.2, 0.4, -24.2, 0.55, 0.55, 0.55, 0xffaa55);
+  addBox(scene, 18.2, 0.4, -27.8, 0.55, 0.55, 0.55, 0x54c6a0);
+}
+function buildRestroom() {
+  addBox(scene, 12, 0.02, 2, 8, 0.04, 9, 0x88a0aa);
+  addWall(scene, 8, 2, 2, 0.18, 4, 9, 0xb8ccd6);
+  addWall(scene, 12, 2, -2.4, 8, 4, 0.18, 0xb8ccd6);
+  addWall(scene, 16, 2, 2, 0.18, 4, 9, 0xb8ccd6);
+  addWall(scene, 10.4, 2, 6.4, 4.8, 4, 0.18, 0xb8ccd6);
+  addWall(scene, 15.2, 2, 6.4, 1.6, 4, 0.18, 0xb8ccd6);
+  addDoorFrame(14, 6.4, 0, 0x4a97a8);
+  const restroomLabel = addTextSprite('RESTROOM', '#20322f');
+  restroomLabel.position.set(12, 3.35, -2.25);
+  scene.add(restroomLabel);
+  addBox(scene, 9.4, 1, 2.5, 0.14, 2, 2.2, 0x4a97a8);
+  addBox(scene, 12, 1, 2.5, 0.14, 2, 2.2, 0x4a97a8);
+  addBox(scene, 14.6, 1, 2.5, 0.14, 2, 2.2, 0x4a97a8);
+  addBox(scene, 10.7, 1, 1.4, 2.6, 2, 0.12, save.stallOwned ? 0x54c6a0 : 0x6d7884);
+  addBox(scene, 10.7, 0.45, 4.4, 1.4, 0.9, 1.0, 0xf3f7ff);
+  addBox(scene, 14.6, 1, -0.6, 1.6, 0.32, 0.75, 0xc7d5dd);
+  addBox(scene, 15.2, 1.35, -0.6, 0.08, 0.7, 0.65, 0x9ecbe4);
+  updateStallStatusLabel();
+  if (save.stallOwned) buildOwnedStallApartment();
+}
+function updateStallStatusLabel() {
+  if (stallStatusLabel) scene.remove(stallStatusLabel);
+  stallStatusLabel = addTextSprite(save.stallOwned ? 'JOEY STALL HOME' : 'STALL FOR SALE', save.stallOwned ? '#54c6a0' : '#ffd45a');
+  stallStatusLabel.position.set(10.7, 2.7, 1.4);
+  scene.add(stallStatusLabel);
+}
+function buildOwnedStallApartment() {
+  if (stallApartmentGroup) return;
+  stallApartmentGroup = new THREE.Group();
+  addBox(stallApartmentGroup, 0, 0.45, 0, 1.5, 0.3, 1.8, 0x2f5d82);
+  addBox(stallApartmentGroup, 0.2, 0.75, -0.45, 0.9, 0.2, 0.55, 0xfff1b8);
+  addBox(stallApartmentGroup, -0.75, 0.8, 0.65, 0.28, 1.4, 0.55, 0xff7aa8);
+  addBox(stallApartmentGroup, 0.65, 0.75, 0.7, 0.9, 0.18, 0.45, 0x9b6f45);
+  addBox(stallApartmentGroup, 0.65, 1.02, 0.7, 0.28, 0.22, 0.22, 0xffd45a);
+  stallApartmentGroup.position.set(10.7, 0.05, 3.7);
+  scene.add(stallApartmentGroup);
+  interactables.push({ type: 'closet', name: 'Stall Closet', pos: new THREE.Vector3(10, 1, 4.35), radius: 2.4 });
 }
 function makeSupplyMesh(item) {
   const group = new THREE.Group();
@@ -416,24 +720,138 @@ function buildSupplies() {
   for (const recipe of RECIPES) {
     if (save.crafted[recipe.id]) inventory.push(recipe);
   }
+  for (const outfit of CLOTHES) {
+    if (save.ownedClothes[outfit.id]) inventory.push(outfit);
+  }
+}
+function makeNpcMesh(npc, color) {
+  const group = new THREE.Group();
+  addBox(group, 0, 0.55, 0, 0.75, 1.1, 0.38, color);
+  addBox(group, -0.22, -0.15, 0, 0.22, 0.7, 0.24, 0x253142);
+  addBox(group, 0.22, -0.15, 0, 0.22, 0.7, 0.24, 0x253142);
+  const skinMat = makeMat(0xf1c39b);
+  const hairMat = makeMat(npc.hair);
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.12, 10), skinMat);
+  neck.position.set(0, 1.14, 0);
+  neck.castShadow = true;
+  group.add(neck);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 10), skinMat);
+  head.position.set(0, 1.34, 0);
+  head.castShadow = true;
+  group.add(head);
+  addSchoolSimEyes(group, -0.2, eyeMat);
+  addSchoolSimHair(group, npc.hairStyle, hairMat);
+  addBox(group, -0.48, 0.55, 0, 0.18, 0.85, 0.18, 0xf1c39b);
+  addBox(group, 0.48, 0.55, 0, 0.18, 0.85, 0.18, 0xf1c39b);
+  const label = npc.want ? addQuestMarkerSprite(!!save.completedQuests[npc.id]) : addTextSprite(npc.name + ' - ' + npc.job, '#ffffff');
+  label.position.set(0, 2.1, 0);
+  group.userData.questLabel = label;
+  group.add(label);
+  return group;
+}
+function addSchoolSimEyes(group, z, eyeMat) {
+  [-0.08, 0.08].forEach(x => {
+    const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.043, 8, 6), eyeMat);
+    pupil.position.set(x, 1.39, z - 0.045);
+    group.add(pupil);
+  });
+}
+function addSchoolSimHair(group, style, hairMat) {
+  if (style === 'cap') {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    cap.position.set(0, 1.37, 0);
+    group.add(cap);
+    addBox(group, 0, 1.47, -0.29, 0.44, 0.04, 0.2, 0x54c6a0);
+    return;
+  }
+  if (style === 'long' || style === 'bob') {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    cap.position.set(0, 1.37, 0);
+    group.add(cap);
+    addBox(group, 0, style === 'long' ? 1.08 : 1.2, 0.18, 0.48, style === 'long' ? 0.6 : 0.38, 0.22, hairMat);
+    if (style === 'bob') {
+      addBox(group, -0.27, 1.23, -0.02, 0.09, 0.36, 0.24, hairMat);
+      addBox(group, 0.27, 1.23, -0.02, 0.09, 0.36, 0.24, hairMat);
+    }
+    return;
+  }
+  if (style === 'short') {
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), hairMat);
+    cap.position.set(0, 1.37, 0);
+    group.add(cap);
+    return;
+  }
+  [
+    [-0.13, 1.43, -0.04], [-0.06, 1.48, -0.08], [0, 1.5, -0.08], [0.06, 1.48, -0.08], [0.13, 1.43, -0.04],
+    [-0.1, 1.42, 0.04], [-0.03, 1.47, 0.03], [0.04, 1.46, 0.03], [0.1, 1.42, 0.04],
+  ].forEach(p => {
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 6, 4), hairMat);
+    dot.position.set(p[0], p[1], p[2]);
+    group.add(dot);
+  });
+}
+function updateNpcQuestLabels() {
+  for (const obj of interactables) {
+    if (obj.type !== 'npc' || !obj.mesh || !obj.npc.want) continue;
+    const oldLabel = obj.mesh.userData.questLabel;
+    if (oldLabel) obj.mesh.remove(oldLabel);
+    const label = addQuestMarkerSprite(!!save.completedQuests[obj.npc.id]);
+    label.position.set(0, 2.1, 0);
+    obj.mesh.userData.questLabel = label;
+    obj.mesh.add(label);
+  }
+}
+function buildNpcs() {
+  const spots = [
+    [-11, 0.75, -11, 0x6bb7ff],
+    [26, 0.75, -12.8, 0xffaa55],
+    [-20, 0.75, 18, 0x9ee66b],
+    [16, 0.75, 18, 0xc8a0ff],
+    [6.5, 0.75, 0.2, 0x54c6a0],
+    [-1.2, 0.75, -12, 0xff7aa8],
+    [14.2, 0.75, -27.4, 0xffaa55],
+    [-14.2, 0.75, -24.2, 0xaee5ff],
+    [0.5, 0.75, 2.0, 0xb8f26a],
+  ];
+  NPCS.forEach((npc, i) => {
+    const spot = spots[i];
+    const mesh = makeNpcMesh(npc, spot[3]);
+    mesh.position.set(spot[0], spot[1], spot[2]);
+    scene.add(mesh);
+    interactables.push({ type: 'npc', npc, name: npc.name, pos: mesh.position, radius: 3, mesh });
+  });
 }
 function nearestInteractable() {
   const p = new THREE.Vector3(player.x, 1, player.z);
   let best = null;
+  let bestDist = Infinity;
   for (const obj of interactables) {
     const dist = p.distanceTo(obj.pos);
-    if (dist < obj.radius && (!best || dist < best.dist)) best = Object.assign({ dist }, obj);
+    if (dist < obj.radius && dist < bestDist) {
+      best = obj;
+      bestDist = dist;
+    }
   }
   return best;
 }
 function selectedItem() {
   return inventory[selectedIndex] || null;
 }
+function isClothing(item) {
+  return !!item && CLOTHES.some(outfit => outfit.id === item.id);
+}
 function interact() {
   const near = nearestInteractable();
-  if (!near) return;
+  const item = selectedItem();
+  if (!near) {
+    if (isClothing(item)) equipClothing(item);
+    return;
+  }
   if (near.type === 'item') collectItem(near);
   if (near.type === 'desk') placeOnDesk();
+  if (near.type === 'npc') talkToNpc(near.npc);
+  if (near.type === 'closet') useStallCloset();
 }
 function collectItem(obj) {
   save.collected[obj.item.id] = true;
@@ -449,25 +867,79 @@ function collectItem(obj) {
 }
 function placeOnDesk() {
   const item = selectedItem();
-  if (!item) return showMessage('Pick a supply first.');
-  if (!BASE_ITEMS.some(base => base.id === item.id)) return useCraft(item);
-  if (deskItems.find(d => d.id === item.id)) return showMessage(item.name + ' is already on the desk.');
-  if (deskItems.length >= 2) deskItems.shift();
-  deskItems.push(item);
-  showMessage('Placed ' + item.name + ' on the craft desk.');
-  updateHud();
+  if (isClothing(item)) return equipClothing(item);
+  openCraftingTable();
 }
 function sameInputs(a, b) {
   return a.length === b.length && a.every(x => b.includes(x));
 }
+function currentRecipe() {
+  if (deskItems.length < 2) return null;
+  const ids = deskItems.map(i => i.id);
+  return RECIPES.find(r => sameInputs(r.inputs, ids)) || null;
+}
+function openCraftingTable() {
+  craftingOpen = true;
+  const overlay = document.getElementById('craft-overlay');
+  overlay.classList.add('visible');
+  document.exitPointerLock && document.exitPointerLock();
+  renderCraftingTable();
+  updateHud();
+}
+function requestGameMouseLook() {
+  if (!renderer || document.getElementById('start').style.display !== 'none') return;
+  if (document.pointerLockElement !== renderer.domElement) renderer.domElement.requestPointerLock();
+}
+function closeCraftingTable() {
+  craftingOpen = false;
+  document.getElementById('craft-overlay').classList.remove('visible');
+  requestGameMouseLook();
+}
+function setCraftSlot(itemId) {
+  const item = BASE_ITEMS.find(base => base.id === itemId);
+  if (!item || !save.collected[item.id]) return;
+  if (deskItems.find(slot => slot.id === item.id)) return;
+  if (deskItems.length >= 2) deskItems.shift();
+  deskItems.push(item);
+  renderCraftingTable();
+  updateHud();
+}
+function clearCraftSlot(index) {
+  deskItems.splice(index, 1);
+  renderCraftingTable();
+  updateHud();
+}
+function renderCraftingTable() {
+  for (let i = 0; i < 2; i++) {
+    const slot = document.getElementById('craft-slot-' + i);
+    const item = deskItems[i];
+    slot.innerHTML = item ? '<button class="craft-item-btn selected" onclick="clearCraftSlot(' + i + ')">' + item.icon + '<br>' + item.name + '</button>' : 'Pick item ' + (i + 1);
+  }
+  const result = document.getElementById('craft-result');
+  const recipe = currentRecipe();
+  result.className = 'craft-result' + (recipe ? ' ready' : '');
+  result.textContent = recipe ? recipe.icon + ' ' + recipe.name : 'No recipe';
+  document.getElementById('craft-make').disabled = !recipe;
+  const list = document.getElementById('craft-inventory');
+  list.innerHTML = '';
+  BASE_ITEMS.forEach(item => {
+    if (!save.collected[item.id]) return;
+    const btn = document.createElement('button');
+    const selected = deskItems.some(slot => slot.id === item.id);
+    btn.className = 'craft-item-btn' + (selected ? ' selected' : '');
+    btn.innerHTML = item.icon + '<br>' + item.name;
+    btn.onclick = () => setCraftSlot(item.id);
+    list.appendChild(btn);
+  });
+  if (!list.children.length) list.textContent = 'Collect classroom supplies first.';
+}
 function craft() {
   if (deskItems.length < 2) return showMessage('The desk needs two supplies.');
-  const ids = deskItems.map(i => i.id);
-  const recipe = RECIPES.find(r => sameInputs(r.inputs, ids));
+  const recipe = currentRecipe();
   if (!recipe) return showMessage('That combo only makes homework dust.');
   if (!save.crafted[recipe.id]) {
     save.crafted[recipe.id] = true;
-    save.stars += recipe.stars;
+    save.candy += recipe.candy;
     inventory.push(recipe);
     runCrafts++;
     save.bestCombo = Math.max(save.bestCombo, runCrafts);
@@ -475,16 +947,68 @@ function craft() {
     if (recipe.id === 'megaEraser') unlock('megaEraser');
     if (Object.keys(save.crafted).length >= 3) unlock('threeCrafts');
     if (Object.keys(save.crafted).length >= RECIPES.length) unlock('allRecipes');
-    if (save.stars >= 50) unlock('starStudent');
+    if (save.candy >= 50) unlock('starStudent');
     if (runCrafts >= 2) unlock('comboTwo');
-    showMessage('Crafted ' + recipe.name + ' for ' + recipe.stars + ' stars.');
+    showMessage('Crafted ' + recipe.name + ' for ' + recipe.candy + ' candy.');
   } else {
     showMessage(recipe.name + ' is already in your backpack.');
   }
   deskItems = [];
   saveGame();
   refreshInventory();
+  if (craftingOpen) renderCraftingTable();
   updateHud();
+}
+function talkToNpc(npc) {
+  if (npc.vendor === 'stall') return talkToJoey(npc);
+  const wanted = RECIPES.find(r => r.id === npc.want);
+  if (save.completedQuests[npc.id]) return showMessage(npc.name + ': Thanks again. That ' + wanted.name + ' is doing the job.');
+  if (save.crafted[npc.want]) {
+    save.completedQuests[npc.id] = true;
+    save.candy += npc.reward;
+    let rewardText = npc.reward + ' candy';
+    if (npc.clothing && !save.ownedClothes[npc.clothing]) {
+      save.ownedClothes[npc.clothing] = true;
+      const outfit = CLOTHES.find(c => c.id === npc.clothing);
+      inventory.push(outfit);
+      rewardText += ' and ' + outfit.name;
+      refreshInventory();
+    }
+    if (save.candy >= 50) unlock('starStudent');
+    saveGame();
+    updateNpcQuestLabels();
+    updateHud();
+    return showMessage(npc.name + ' gave you ' + rewardText + ' for ' + wanted.name + '.');
+  }
+  showMessage(npc.name + ' the ' + npc.job + ': ' + npc.line);
+}
+function talkToJoey(npc) {
+  if (save.stallOwned) return showMessage('Joey: Your restroom stall apartment is ready. Use the closet in there to change outfits.');
+  if (save.candy < RESTROOM_STALL_COST) return showMessage('Joey: The stall costs ' + RESTROOM_STALL_COST + ' candy. Come back when you are candy-rich.');
+  save.candy -= RESTROOM_STALL_COST;
+  save.stallOwned = true;
+  saveGame();
+  updateStallStatusLabel();
+  buildOwnedStallApartment();
+  updateHud();
+  showMessage('Joey sold you the restroom stall mini apartment for ' + RESTROOM_STALL_COST + ' candy.');
+}
+function equipClothing(item) {
+  save.equippedOutfit = item.id;
+  save.ownedClothes[item.id] = true;
+  saveGame();
+  updateHud();
+  refreshInventory();
+  showMessage('Swapped into ' + item.name + '.');
+}
+function useStallCloset() {
+  if (!save.stallOwned) return showMessage('This stall is still locked. Joey knows the price.');
+  const owned = CLOTHES.filter(outfit => save.ownedClothes[outfit.id]);
+  if (!owned.length) return;
+  const current = owned.findIndex(outfit => outfit.id === save.equippedOutfit);
+  const next = owned[(current + 1) % owned.length];
+  equipClothing(next);
+  showMessage('Changed outfit in your stall apartment: ' + next.name + '.');
 }
 function useCraft(item) {
   if (!RECIPES.some(r => r.id === item.id)) return;
@@ -492,7 +1016,7 @@ function useCraft(item) {
   unlock('testTool');
   if (item.id === 'megaEraser' && !boardCleaned) {
     boardCleaned = true;
-    save.stars += 10;
+    save.candy += 10;
     unlock('cleanBoard');
     showMessage('Mega Eraser cleaned the entire board in one tiny zap.');
   } else {
@@ -507,20 +1031,24 @@ function refreshInventory() {
   inventory.forEach((item, index) => {
     const div = document.createElement('div');
     div.className = 'slot' + (index === selectedIndex ? ' active' : '');
-    div.innerHTML = '<div class="icon">' + item.icon + '</div><div>' + (index + 1) + '. ' + item.name + '</div>';
+    const equipped = isClothing(item) && save.equippedOutfit === item.id ? ' (ON)' : '';
+    div.innerHTML = '<div class="icon">' + item.icon + '</div><div>' + (index + 1) + '. ' + item.name + equipped + '</div>';
     div.onclick = () => { selectedIndex = index; refreshInventory(); updateHud(); };
     wrap.appendChild(div);
   });
 }
 function updateHud() {
-  document.getElementById('stars').textContent = save.stars;
+  document.getElementById('candy').textContent = save.candy;
   document.getElementById('crafted-count').textContent = Object.keys(save.crafted).length;
+  const outfit = CLOTHES.find(c => c.id === save.equippedOutfit) || CLOTHES[0];
+  document.getElementById('outfit-name').textContent = outfit.name;
   document.getElementById('selected-name').textContent = selectedItem() ? selectedItem().name : 'None';
   document.getElementById('desk-status').textContent = 'Desk: ' + (deskItems.length ? deskItems.map(i => i.name).join(' + ') : 'empty');
   let quest = 'Find supplies and craft something strange.';
   if (!save.collected.eraser || !save.collected.screwdriver) quest = 'Find the Eraser and Electric Screwdriver.';
   else if (!save.crafted.megaEraser) quest = 'Put Eraser + Electric Screwdriver on the desk, then craft.';
   else if (!save.usedCrafts.megaEraser) quest = 'Select Mega Eraser and use it at the desk.';
+  else if (NPCS.some(n => !save.completedQuests[n.id])) quest = 'Talk to NPCs and finish their job quests for candy.';
   else if (Object.keys(save.crafted).length < RECIPES.length) quest = 'Discover every classroom recipe.';
   else quest = 'Every recipe is built. You own this classroom.';
   document.getElementById('quest').textContent = quest;
@@ -536,7 +1064,10 @@ function updatePrompt() {
   const near = nearestInteractable();
   let text = '';
   if (near && near.type === 'item') text = 'E: pick up ' + near.name;
-  if (near && near.type === 'desk') text = selectedItem() && RECIPES.some(r => r.id === selectedItem().id) ? 'E: test ' + selectedItem().name + ' at desk' : 'E: place selected supply | C: craft';
+  if (near && near.type === 'desk') text = 'E: open crafting table';
+  if (near && near.type === 'npc') text = 'E: talk to ' + near.name + ' (' + near.npc.job + ')';
+  if (near && near.type === 'closet') text = 'E: change outfit in stall';
+  if (!near && isClothing(selectedItem())) text = 'E: swap into ' + selectedItem().name;
   if (!text) text = 'Explore the classroom.';
   if (text !== lastPrompt) {
     lastPrompt = text;
@@ -544,7 +1075,7 @@ function updatePrompt() {
   }
 }
 function updatePlayer(dt) {
-  const forward = new THREE.Vector3(Math.sin(player.yaw), 0, Math.cos(player.yaw));
+  const forward = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
   const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
   const move = new THREE.Vector3();
   if (keys.KeyW) move.add(forward);
@@ -552,12 +1083,27 @@ function updatePlayer(dt) {
   if (keys.KeyD) move.add(right);
   if (keys.KeyA) move.sub(right);
   if (move.lengthSq() > 0) move.normalize().multiplyScalar(player.speed * dt);
-  player.x = THREE.MathUtils.clamp(player.x + move.x, -15.5, 15.5);
-  player.z = THREE.MathUtils.clamp(player.z + move.z, -12.4, 12.4);
+  tryMovePlayer(move.x, 0);
+  tryMovePlayer(0, move.z);
   camera.position.set(player.x, 1.65, player.z);
   camera.rotation.order = 'YXZ';
   camera.rotation.y = player.yaw;
   camera.rotation.x = player.pitch;
+}
+function tryMovePlayer(dx, dz) {
+  const nx = THREE.MathUtils.clamp(player.x + dx, SCHOOL_BOUNDS.minX, SCHOOL_BOUNDS.maxX);
+  const nz = THREE.MathUtils.clamp(player.z + dz, SCHOOL_BOUNDS.minZ, SCHOOL_BOUNDS.maxZ);
+  if (!hitsWall(nx, nz)) {
+    player.x = nx;
+    player.z = nz;
+  }
+}
+function hitsWall(x, z) {
+  const r = 0.36;
+  return wallColliders.some(wall =>
+    x + r > wall.minX && x - r < wall.maxX &&
+    z + r > wall.minZ && z - r < wall.maxZ
+  );
 }
 function animate() {
   requestAnimationFrame(animate);
@@ -572,6 +1118,10 @@ function startGame() {
   renderer.domElement.requestPointerLock();
 }
 window.addEventListener('keydown', e => {
+  if (craftingOpen && e.code === 'Escape') {
+    closeCraftingTable();
+    return;
+  }
   keys[e.code] = true;
   if (e.code === 'KeyE') interact();
   if (e.code === 'KeyC') craft();

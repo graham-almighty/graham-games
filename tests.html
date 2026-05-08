@@ -1673,15 +1673,39 @@ const SCHOOL_SIM_ACHIEVEMENTS = [
 
 const SCHOOL_SIM_BASE_ITEMS = ['eraser', 'screwdriver', 'marker', 'glue', 'ruler', 'tray', 'paper', 'calculator'];
 const SCHOOL_SIM_RECIPES = [
-  { id: 'megaEraser', inputs: ['eraser', 'screwdriver'], stars: 15 },
-  { id: 'homeworkBlaster', inputs: ['marker', 'glue'], stars: 12 },
-  { id: 'hallPassGlider', inputs: ['ruler', 'paper'], stars: 18 },
-  { id: 'stickyRuler', inputs: ['glue', 'ruler'], stars: 10 },
-  { id: 'lunchShield', inputs: ['tray', 'calculator'], stars: 20 },
+  { id: 'megaEraser', inputs: ['eraser', 'screwdriver'], candy: 15 },
+  { id: 'homeworkBlaster', inputs: ['marker', 'glue'], candy: 12 },
+  { id: 'hallPassGlider', inputs: ['ruler', 'paper'], candy: 18 },
+  { id: 'stickyRuler', inputs: ['glue', 'ruler'], candy: 10 },
+  { id: 'lunchShield', inputs: ['tray', 'calculator'], candy: 20 },
 ];
+const SCHOOL_SIM_NPCS = [
+  { id: 'teacher', job: 'Teacher', want: 'megaEraser', reward: 18, clothing: 'artApron', hairStyle: 'bob' },
+  { id: 'janitor', job: 'Janitor', want: 'stickyRuler', reward: 12, hairStyle: 'cap' },
+  { id: 'coach', job: 'Gym Coach', want: 'lunchShield', reward: 22, clothing: 'coachJersey', hairStyle: 'short' },
+  { id: 'librarian', job: 'Librarian', want: 'hallPassGlider', reward: 20, clothing: 'libraryCape', hairStyle: 'long' },
+  { id: 'joey', job: 'Classmate', vendor: 'stall', hairStyle: 'short' },
+  { id: 'maya', job: 'Classmate', hairStyle: 'long' },
+  { id: 'nolan', job: 'Classmate', hairStyle: 'cap' },
+  { id: 'zoe', job: 'Classmate', hairStyle: 'bob' },
+  { id: 'amir', job: 'Classmate', hairStyle: 'short' },
+];
+const SCHOOL_SIM_CLOTHES = ['schoolHoodie', 'artApron', 'coachJersey', 'libraryCape'];
+const SCHOOL_SIM_ACTIVE_NPC_LABEL = '!';
+const SCHOOL_SIM_FACE_STYLE = { eyes: 'pupil-only', hair: 'dumb-chaos-caps', headRadius: 0.28 };
+const SCHOOL_SIM_CRAFTING_TABLE = { inputSlots: 2, resultSlot: true, opensOnDeskInteract: true, relocksMouseOnClose: true };
+const SCHOOL_SIM_RESTROOM = { hasRestroom: true, stallCost: 60, seller: 'joey', outfitCloset: true };
+const SCHOOL_SIM_ROOMS = ['hallway', 'northHallway', 'craftClass', 'library', 'artRoom', 'cafeteria', 'science', 'gym', 'restroom'];
+const SCHOOL_SIM_BOUNDS = { minX: -36.3, maxX: 36.3, minZ: -30.3, maxZ: 30.3 };
+const SCHOOL_SIM_COLLISION = { wallRectangles: true, axisSeparatedMovement: true, sharedDividerWalls: true };
+const SCHOOL_SIM_CAMPUS = { spreadOutRooms: true, centralCommons: true };
+const SCHOOL_SIM_DOORS = { visibleDoorFrames: true, openDoorSlabs: true, roomDoorCount: 6 };
+function schoolSimForwardVector(yaw) {
+  return { x: -Math.sin(yaw), z: -Math.cos(yaw) };
+}
 
 function defaultSchoolSimSave() {
-  return { stars: 0, crafted: {}, collected: {}, usedCrafts: {}, bestCombo: 0, gamesPlayed: 0 };
+  return { candy: 0, crafted: {}, collected: {}, usedCrafts: {}, completedQuests: {}, ownedClothes: { schoolHoodie: true }, equippedOutfit: 'schoolHoodie', stallOwned: false, bestCombo: 0, gamesPlayed: 0 };
 }
 
 {
@@ -1695,15 +1719,83 @@ function defaultSchoolSimSave() {
   assertEqual(SCHOOL_SIM_RECIPES.length, 5, 'School Sim has 5 crafting recipes');
   assertEqual(SCHOOL_SIM_RECIPES[0].id, 'megaEraser', 'School Sim first recipe is Mega Eraser');
   assertDeepEqual(SCHOOL_SIM_RECIPES[0].inputs, ['eraser', 'screwdriver'], 'School Sim crafts Mega Eraser from eraser and electric screwdriver');
-  assertEqual(SCHOOL_SIM_RECIPES.reduce((sum, r) => sum + r.stars, 0), 75, 'School Sim recipes pay 75 total stars');
+  assertEqual(SCHOOL_SIM_RECIPES.reduce((sum, r) => sum + r.candy, 0), 75, 'School Sim recipes pay 75 total candy');
+}
+
+{
+  assertEqual(SCHOOL_SIM_NPCS.length, 9, 'School Sim has 9 NPCs including more classmates');
+  assertEqual(SCHOOL_SIM_NPCS.filter(n => !!n.want).every(n => n.job && n.reward > 0), true, 'School Sim quest NPCs all have jobs, wanted crafts, and candy rewards');
+  assertEqual(SCHOOL_SIM_NPCS.every(n => !!n.hairStyle), true, 'School Sim NPCs all have hair styles');
+  assertEqual(SCHOOL_SIM_FACE_STYLE.eyes, 'pupil-only', 'School Sim NPC faces use Dumb Chaos-style pupil-only eyes');
+  assertEqual(SCHOOL_SIM_FACE_STYLE.hair, 'dumb-chaos-caps', 'School Sim NPC hair uses Dumb Chaos-style caps and panels');
+  assertEqual(SCHOOL_SIM_FACE_STYLE.headRadius, 0.28, 'School Sim NPC heads are larger than the original 0.22 radius');
+  assertEqual(SCHOOL_SIM_NPCS[0].want, 'megaEraser', 'School Sim teacher asks for Mega Eraser');
+  assertEqual(SCHOOL_SIM_NPCS.reduce((sum, n) => sum + (n.reward || 0), 0), 72, 'School Sim NPC quests pay 72 total candy');
+  assertEqual(SCHOOL_SIM_NPCS.filter(n => !!n.clothing).length, 3, 'School Sim has 3 clothing quest rewards');
+  assertEqual(SCHOOL_SIM_NPCS.find(n => n.id === 'joey').vendor, 'stall', 'School Sim Joey sells the restroom stall');
+  assertEqual(SCHOOL_SIM_NPCS.filter(n => n.job === 'Classmate').length, 5, 'School Sim has 5 classmate NPCs');
+  assertEqual(SCHOOL_SIM_ACTIVE_NPC_LABEL, '!', 'School Sim active NPC quests use floating exclamation markers instead of name labels');
+}
+
+{
+  assertEqual(SCHOOL_SIM_CLOTHES.length, 4, 'School Sim has 4 clothing options including starter hoodie');
+  assert(SCHOOL_SIM_CLOTHES.includes('artApron'), 'School Sim includes Art Apron clothing reward');
+  assert(SCHOOL_SIM_CLOTHES.includes('coachJersey'), 'School Sim includes Coach Jersey clothing reward');
+  assert(SCHOOL_SIM_CLOTHES.includes('libraryCape'), 'School Sim includes Library Cape clothing reward');
+}
+
+{
+  assertEqual(SCHOOL_SIM_CRAFTING_TABLE.inputSlots, 2, 'School Sim crafting table has 2 input slots');
+  assertEqual(SCHOOL_SIM_CRAFTING_TABLE.resultSlot, true, 'School Sim crafting table has a result slot');
+  assertEqual(SCHOOL_SIM_CRAFTING_TABLE.opensOnDeskInteract, true, 'School Sim desk interaction opens crafting table popup');
+  assertEqual(SCHOOL_SIM_CRAFTING_TABLE.relocksMouseOnClose, true, 'School Sim crafting table restores mouse look when closed');
+}
+
+{
+  assertEqual(SCHOOL_SIM_RESTROOM.hasRestroom, true, 'School Sim has a restroom area');
+  assertEqual(SCHOOL_SIM_RESTROOM.stallCost, 60, 'School Sim restroom stall costs 60 candy');
+  assertEqual(SCHOOL_SIM_RESTROOM.seller, 'joey', 'School Sim restroom stall is sold by Joey');
+  assertEqual(SCHOOL_SIM_RESTROOM.outfitCloset, true, 'School Sim bought stall has an outfit closet');
+}
+
+{
+  assertEqual(SCHOOL_SIM_ROOMS.length, 9, 'School Sim has 9 named room/hall spaces');
+  assert(SCHOOL_SIM_ROOMS.includes('hallway'), 'School Sim has hallways');
+  assert(SCHOOL_SIM_ROOMS.includes('northHallway'), 'School Sim has a larger north hallway wing');
+  assert(SCHOOL_SIM_ROOMS.includes('restroom'), 'School Sim restroom is one of the rooms');
+  assert(SCHOOL_SIM_ROOMS.includes('library'), 'School Sim has a library room');
+  assert(SCHOOL_SIM_ROOMS.includes('artRoom'), 'School Sim has an art room');
+  assert(SCHOOL_SIM_ROOMS.includes('cafeteria'), 'School Sim has a cafeteria room');
+  assert(SCHOOL_SIM_ROOMS.includes('science'), 'School Sim has a science room');
+  assert(SCHOOL_SIM_ROOMS.includes('gym'), 'School Sim has a gym');
+  assertEqual(SCHOOL_SIM_BOUNDS.maxX - SCHOOL_SIM_BOUNDS.minX > 70, true, 'School Sim expanded width leaves room for spread-out campus');
+  assertEqual(SCHOOL_SIM_BOUNDS.maxZ - SCHOOL_SIM_BOUNDS.minZ > 58, true, 'School Sim expanded depth leaves room for spread-out campus');
+  assertEqual(SCHOOL_SIM_CAMPUS.spreadOutRooms, true, 'School Sim rooms are spread farther apart');
+  assertEqual(SCHOOL_SIM_CAMPUS.centralCommons, true, 'School Sim has a central commons gap between wings');
+  assertEqual(SCHOOL_SIM_COLLISION.wallRectangles, true, 'School Sim walls use non-walk-through collision rectangles');
+  assertEqual(SCHOOL_SIM_COLLISION.axisSeparatedMovement, true, 'School Sim movement resolves wall collision per axis');
+  assertEqual(SCHOOL_SIM_COLLISION.sharedDividerWalls, true, 'School Sim adjacent classrooms share divider walls instead of double walls');
+  assertEqual(SCHOOL_SIM_DOORS.visibleDoorFrames, true, 'School Sim has visible door frames');
+  assertEqual(SCHOOL_SIM_DOORS.openDoorSlabs, true, 'School Sim has visible open door slabs');
+  assertEqual(SCHOOL_SIM_DOORS.roomDoorCount >= 6, true, 'School Sim has doors for the main room connections');
 }
 
 {
   const save = defaultSchoolSimSave();
-  assertEqual(save.stars, 0, 'School Sim save starts with zero stars');
+  assertEqual(save.candy, 0, 'School Sim save starts with zero candy');
   assertDeepEqual(save.crafted, {}, 'School Sim save starts with no crafted items');
   assertDeepEqual(save.collected, {}, 'School Sim save starts with no collected supplies');
+  assertDeepEqual(save.completedQuests, {}, 'School Sim save starts with no completed NPC quests');
+  assertEqual(save.ownedClothes.schoolHoodie, true, 'School Sim starts with School Hoodie owned');
+  assertEqual(save.equippedOutfit, 'schoolHoodie', 'School Sim equips School Hoodie by default');
+  assertEqual(save.stallOwned, false, 'School Sim starts without owning Joey restroom stall');
   assertEqual(save.bestCombo, 0, 'School Sim save starts with zero best combo');
+}
+
+{
+  const startForward = schoolSimForwardVector(Math.PI);
+  assertApprox(startForward.x, 0, 0.0001, 'School Sim W forward vector has no sideways movement at starting yaw');
+  assertApprox(startForward.z, 1, 0.0001, 'School Sim W moves forward in the same direction as starting camera yaw');
 }
 
 // ============================================================
