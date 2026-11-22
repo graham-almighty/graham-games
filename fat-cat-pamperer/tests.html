@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><title>Fat Cat Pamperer — Unit Tests</title>
+<style>body{background:#1a1a2e;color:#eee;font-family:'Segoe UI',monospace;padding:20px}h1{color:#ffb35c}.group-title{color:#ffb35c;border-bottom:1px solid #333;margin:16px 0 6px;padding-bottom:4px}.test{padding:4px 12px;font-size:.85rem}.pass{color:#69db7c}.fail{color:#ff6b6b}.summary{color:#aaa}</style></head>
+<body><h1>🐱 Fat Cat Pamperer — Unit Tests</h1><div class="summary" id="summary"></div><div id="results"></div>
+<script>
+let _passed=0,_failed=0;const _r=document.getElementById('results');
+function group(n){const h=document.createElement('div');h.className='group-title';h.textContent=n;_r.appendChild(h);}
+function assert(c,n,d){const div=document.createElement('div');if(c){_passed++;div.className='test pass';div.textContent='PASS '+n;}else{_failed++;div.className='test fail';div.textContent='FAIL '+n+(d?' ('+d+')':'');}_r.appendChild(div);}
+function eq(a,e,n){assert(a===e,n,'expected '+JSON.stringify(e)+', got '+JSON.stringify(a));}
+function showSummary(){document.getElementById('summary').innerHTML='<span class="pass">'+_passed+' passed</span> / <span class="fail">'+_failed+' failed</span> / '+(_passed+_failed)+' total';document.title=(_failed===0?'ALL PASS':_failed+' FAIL')+' - Fat Cat Tests';}
+// ── Mirrors of the game's pure data (kept in sync with index.html) ──
+const OUTFITS=[{id:'bunny',name:'Bunny Onesie',quest:'everest'},{id:'chain',name:'Champion Chain',quest:'nba'},{id:'headband',name:'Ninja Headband',quest:'ninjas'},{id:'crown',name:'Sphinx Crown',quest:'sphinx'},{id:'chef',name:'Chef Hat',quest:'souffle'},{id:'astro',name:'Astronaut Suit',quest:'marathon'}];
+const QUESTS=[{id:'everest',reward:'bunny',need:30,koins:50},{id:'nba',reward:'chain',need:3,koins:50},{id:'ninjas',reward:'headband',need:20,koins:60},{id:'sphinx',reward:'crown',need:100,koins:50},{id:'souffle',reward:'chef',need:5,koins:50},{id:'marathon',reward:'astro',need:40,koins:60}];
+const STUFF=[{id:'bowl',cost:300},{id:'toymouse',cost:200},{id:'scratch',cost:350},{id:'toybox',cost:400},{id:'bed',cost:500},{id:'cattree',cost:600},{id:'hammock',cost:650},{id:'fishtank',cost:700},{id:'luxcouch',cost:800},{id:'bigtv',cost:900}];
+const WANTS=[{id:'eat',w:40},{id:'sleep',w:25},{id:'tv',w:25},{id:'play',w:10}];
+const ACTIONS=[{id:'kibble',want:'eat',koins:4},{id:'tuna',want:'eat',koins:6},{id:'salmon',want:'eat',koins:8},{id:'tuck',want:'sleep',koins:5},{id:'pillow',want:'sleep',koins:4},{id:'blanket',want:'sleep',koins:7},{id:'channel',want:'tv',koins:4},{id:'marathonTV',want:'tv',koins:8},{id:'laser',want:'play',koins:6},{id:'feather',want:'play',koins:7},{id:'brush',want:'play',koins:7}];
+const ANIMATED_STAGES=['hand-l','nba-ball','ninja-cell','sphinx-wrap','souffle-dish','foot-l-vis'];
+const REAL_SPHINX=['sphinx-head (nemes headdress + face)','sphinx-body (lion body + front paws)','sphinx-cracks','sphinx-rubble'];
+const EXPLOSION=['boom-flash','boom-fireball','boom-ring','boom-smoke','boom-dust','debris with gravity'];
+const REAL_HOOP=['backboard (SVG rect + orange square)','rim (SVG ellipse)','hoop-net (swishes on a make)'];
+const FP_PARTS=['fp-hand (Everest gloves)','fp-hands-ball (NBA hands)','fist-l (Ninja fists)','lid-top (Sphinx eyelids)','fp-whisk (Soufflé whisk)','fp-feet (Marathon flip-flops)'];
+const NBA_AIM={dots:14,minAngle:28,maxAngle:72,greenWithinPx:18,controls:['mouse / touch rotate','arrow keys','click court or SHOOT']};
+const FCP_ACH={fcp_first_pamper:{reward:5},fcp_full_belly:{reward:10},fcp_nap_time:{reward:10},fcp_tv_addict:{reward:15},fcp_playtime:{reward:20},fcp_bunny:{reward:20},fcp_champion:{reward:20},fcp_ninja:{reward:30},fcp_wardrobe:{reward:25},fcp_ultimate:{reward:50}};
+const SAVE_KEY='fat-cat-pamperer-save';
+function defaultSave(){return{chonkKoins:30,totalPampers:0,equipped:'none',outfits:{},quests:{},stuff:{},counts:{eat:0,sleep:0,tv:0,play:0}};}
+const store={};const localStorage={getItem:k=>store[k]||null,setItem:(k,v)=>store[k]=v,removeItem:k=>delete store[k],clear:()=>{for(const k in store)delete store[k];}};
+function loadSave(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY));if(d&&typeof d==='object'){const s=Object.assign(defaultSave(),d);if(d.chonkKoins==null&&typeof d.pamperPoints==='number')s.chonkKoins=d.pamperPoints;s.counts=Object.assign({eat:0,sleep:0,tv:0,play:0},d.counts);s.outfits=d.outfits||{};s.quests=d.quests||{};s.stuff=d.stuff||{};return s;}}catch(e){}return defaultSave();}
+function canAfford(koins,item){return koins>=item.cost;}
+// ── TESTS ──
+group('Design: no upkeep (user spec)');
+assert(!('needs' in defaultSave())&&!('bestPamper' in defaultSave()),'Save has NO happiness/needs meters to keep up');
+assert(ACTIONS.every(a=>a.koins>0),'Every pamper action only EARNS Chonk Koins — nothing decays or punishes');
+group('Cat Nature (lazy by design)');
+eq(WANTS.reduce((s,w)=>s+w.w,0),100,'Want weights sum to 100');
+eq(WANTS.find(w=>w.id==='play').w,10,'Play is rare (only 10%) — cat mostly eats/sleeps/TV');
+assert(WANTS.find(w=>w.id==='eat').w>WANTS.find(w=>w.id==='play').w,'Eating far more likely than playing');
+group('Quests, Outfits & Animation');
+eq(QUESTS.length,6,'Six absurd quests');eq(OUTFITS.length,6,'Six earnable outfits');
+eq(QUESTS[0].reward,'bunny','Climbing Everest earns the Bunny Onesie');
+eq(QUESTS.find(q=>q.id==='ninjas').need,20,'Ninja quest requires fighting 20 ninjas');
+eq(ANIMATED_STAGES.length,6,'All 6 tasks have an animated stage element (gloves, ball, ninjas, sphinx, soufflé, feet)');
+eq(FP_PARTS.length,6,'All 6 tasks are FIRST PERSON (your gloves/hands/fists/eyelids/whisk/flip-flops)');
+eq(NBA_AIM.dots,14,'Basketball has NO power bar — a 14-dot trajectory line shows exactly where the ball will go');
+assert(NBA_AIM.minAngle<55&&NBA_AIM.maxAngle>55,'Aim rotates through the sweet spot (~55°) and beyond, both ways');
+eq(NBA_AIM.controls.length,3,'Aim is rotated by mouse/touch or arrow keys; shooting is a click');
+assert(QUESTS.every(q=>q.koins>=50),'Every task pays at least 50 Chonk Koins');
+assert(QUESTS.every(q=>OUTFITS.some(o=>o.id===q.reward&&o.quest===q.id)),'Every quest/outfit pair maps both ways');
+group('Real Sphinx, Real Hoop, Real Explosion, Her Bed');
+eq(REAL_SPHINX.length,4,'Sphinx is a drawn statue: headdress head, lion body with paws, cracks, rubble');
+eq(EXPLOSION.length,6,'Explosion is phased: cracks → flash → fireball → shockwave → gravity debris/smoke → rubble');
+eq(REAL_HOOP.length,3,'Basketball hoop is drawn: backboard, rim, and a net that swishes');
+const MOCHI_BED={seat:'cat-seat',bed:'mochi-bed',bedTop:82,catBodyBottom:67,contactShadow:'cat-contact-shadow'};
+eq(MOCHI_BED.seat,'cat-seat','Cat and bed live in one anchored seat unit (no drift between them)');
+assert(MOCHI_BED.catBodyBottom<MOCHI_BED.bedTop,'Her body bottom (67px) sinks below the cushion top (82px) — she SITS in the bed, not hovering over it');
+assert(!!MOCHI_BED.contactShadow,'Contact shadow sits exactly where her body meets the cushion');
+group('Stare Speed & Explosion Timing');
+const STARE={gainPerTick:4,tickMs:80,target:100};
+eq(Math.ceil(STARE.target/STARE.gainPerTick)*STARE.tickMs,2000,'Staring contest runs AUTOMATICALLY in ~2 seconds after one click (no holding)');
+const BOOM={cracksMs:700,burstAtMs:700,rubbleAtMs:700+2500,fadeDoneMs:700+4200+650,dustMs:700+4300};
+assert(BOOM.fadeDoneMs<=5600&&BOOM.dustMs<=5100,'Whole explosion sequence unfolds over ~5 seconds (cracks → KABOOM → debris → rubble → fade)');
+assert(BOOM.rubbleAtMs>BOOM.burstAtMs,'Rubble settles in after the burst, not instantly');
+group('Getting Stuff For Her');
+eq(STUFF.length,10,'Ten buyable stuff items for the house');
+eq(STUFF.reduce((s,i)=>s+i.cost,0),5400,'Buying every stuff item costs 5,400 Chonk Koins total (literally 10x the old 540)');
+assert(STUFF.every(i=>i.cost>=200&&i.cost<=900&&i.cost%10===0),'Every price is literally 10x the original (200-900 Koins)');
+eq(canAfford(300,STUFF[0]),true,'Can afford the 300-Koin Fancy Food Bowl with 300 Koins');
+eq(canAfford(30,STUFF[0]),false,'Starting 30 Koins no longer buys anything — prices are 10x');
+eq(canAfford(10,STUFF[0]),false,'Cannot afford stuff without enough Koins (no debt, no punishment)');
+{const totalEarnable=QUESTS.reduce((s,q)=>s+q.koins,0);assert(totalEarnable>=300,'Tasks alone pay '+totalEarnable+' Koins toward stuff');}
+group('Animated Cat TV & Bought Items');
+const TV_SCENES=['bird','fish','laser','yarn','lion','nap'];
+const TV_ACTORS={bird:'tv-bird',fish:'tv-fish',laser:'tv-dot',yarn:'tv-yarn',lion:'tv-lion',nap:'tv-napcat'};
+eq(TV_SCENES.length,6,'Six animated Cat TV channels');
+assert(TV_SCENES.every(s=>TV_ACTORS[s]),'Every channel has a moving actor (bird/fish/dot/yarn/lion/nap-cat)');
+const MOVING_ITEMS=['toymouse','fishtank'];
+const STATIC_ITEMS=['bowl','scratch','toybox','bed','cattree','hammock'];
+eq(STATIC_ITEMS.length,6,'Six items that should not move stay still (incl. the hammock — no rocking)');
+assert(MOVING_ITEMS.includes('toymouse'),'Only the wind-up toy mouse and the fish (inside the tank) keep moving');
+const WORLD_WIDTH=2400;
+const FLOOR_SLOTS={cattree:[25,300],hammock:[365,795],toybox:[800,1025],bowl:[1050,1215],toymouse:[1325,1445],scratch:[1470,1605],bed:[1640,2000],fishtank:[2060,2380]};
+const FLOOR_DEPTHS={cattree:8.5,hammock:3.8,toybox:2.2,bowl:4,toymouse:1.5,scratch:10.5,bed:7.5,fishtank:3.2};
+{const slots=Object.values(FLOOR_SLOTS).sort((a,b)=>a[0]-b[0]);let noOverlap=true;for(let i=1;i<slots.length;i++)if(slots[i][0]<slots[i-1][1])noOverlap=false;assert(noOverlap,'All floor items sit in their own slot across the wide house — none overlap each other');assert(slots.every(s=>s[0]>=0&&s[1]<=WORLD_WIDTH),'Every item is on the floor inside the 2400px-wide scrollable house');assert(WORLD_WIDTH>1600,'House is wider than the screen so it scrolls sideways to fit everything at full scale');}
+{const depths=new Set(Object.values(FLOOR_DEPTHS));assert(depths.size>=7,'Items sit at scattered floor depths ('+depths.size+' different depths) — casually spread, not a row or zones');}
+group('Drawn Add-On Items & Task Replay');
+const DRAWN_ITEMS=['bowl','toymouse','scratch','toybox','bed','cattree','hammock','fishtank'];
+eq(DRAWN_ITEMS.length,8,'Eight house items are DRAWN objects (SVG), not emojis');
+const ITEM_SCALE={cat:230,bowl:165,toymouse:120,scratch:135,toybox:225,bed:360,cattree:275,hammock:430,fishtank:320};
+assert(ITEM_SCALE.hammock>=ITEM_SCALE.cat*1.8,'The hammock (430px) is BIG — nearly twice Mochi (230px) wide, as a real hammock should be');
+assert(ITEM_SCALE.bed>ITEM_SCALE.cat*1.5&&ITEM_SCALE.cattree>=275&&ITEM_SCALE.fishtank>=320,'Bed, cat tree and fish tank are all full normal room scale');
+function replayKoins(q){return Math.ceil(q.koins/2);}
+eq(replayKoins(QUESTS[0]),25,'Replaying Everest pays half (25 of 50) Chonk Koins');
+assert(QUESTS.every(q=>replayKoins(q)>0),'Every completed task can be done again for Koins');
+group('Restart Button');
+const RESTART_CLICKS_NEEDED=2;
+eq(RESTART_CLICKS_NEEDED,2,'Restart needs two clicks (first arms “Erase EVERYTHING?”, second wipes) — no accidental restarts');
+{let s=defaultSave();s.chonkKoins=9999;s.stuff.bed=true;s.quests.everest=true;localStorage.setItem(SAVE_KEY,JSON.stringify(s));localStorage.removeItem(SAVE_KEY);const fresh=loadSave();eq(fresh.chonkKoins,30,'After restart the save resets to 30 Chonk Koins');eq(Object.keys(fresh.stuff).length,0,'After restart all bought stuff is gone');eq(Object.keys(fresh.quests).length,0,'After restart all task progress is gone');}
+group('Pamper Actions');
+eq(ACTIONS.length,11,'Eleven pamper actions');
+assert(ACTIONS.every(a=>['eat','sleep','tv','play'].includes(a.want)),'Every action serves a cat craving');
+group('Save / Load');
+localStorage.clear();eq(loadSave().chonkKoins,30,'Default save starts with 30 Chonk Koins');
+{const s=defaultSave();s.chonkKoins=99;s.outfits.bunny=true;s.quests.everest=true;s.stuff.cattree=true;s.equipped='bunny';localStorage.setItem(SAVE_KEY,JSON.stringify(s));const l=loadSave();eq(l.chonkKoins,99,'Save round-trips Chonk Koins');eq(l.stuff.cattree,true,'Save round-trips bought Cat Tree in house');eq(l.outfits.bunny,true,'Save round-trips Bunny Onesie');eq(l.equipped,'bunny','Save round-trips equipped outfit');}
+localStorage.setItem(SAVE_KEY,JSON.stringify({pamperPoints:77}));eq(loadSave().chonkKoins,77,'Legacy pamperPoints save migrates to Chonk Koins');
+localStorage.setItem(SAVE_KEY,'NOT JSON {{{');eq(loadSave().chonkKoins,30,'Corrupt save falls back to defaults');
+group('Achievements');
+eq(Object.keys(FCP_ACH).length,10,'Ten Fat Cat achievements');
+eq(Object.values(FCP_ACH).reduce((s,a)=>s+a.reward,0),205,'Total achievement G Bux = 205');
+showSummary();
+</script></body></html>

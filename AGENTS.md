@@ -46,6 +46,7 @@
   super-soccer/index.html      — 2D soccer simulation (Canvas, early access)
   dumb-chaos/index.html        — 3D first-person goofy arena shooter (Three.js r128)
   school-sim/index.html        — 3D classroom crafting simulator (Three.js r128)
+  fat-cat-pamperer/index.html  — 2D pamper sim for a lazy fat cat (DOM/SVG, bizarre quest minigames)
   flying-ace/index.html        — Iframe wrapper for https://flying-ace-board-game.web.app
   combat/index.html            — Iframe wrapper for https://combat-retro-game.web.app
   gg-supabase.js               — Shared Supabase cloud save script (auth, sync, toasts)
@@ -106,7 +107,7 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 - News panel with updates
 - Bugs panel includes a "For Graham Only" tab gated by code `8488`; it stores Graham planning notes/reminders in localStorage and syncs via the public `graham_notes` Supabase table when available.
 
-### Achievement Summary (167 total, 3680G earnable)
+### Achievement Summary (177 total, 3885G earnable)
 | Game | Count | Total G |
 |------|-------|---------|
 | Hurgvibbit | 10 | 225G |
@@ -124,10 +125,11 @@ All games are standalone single-file HTML. External games (Flying Ace, Combat) u
 | Super Soccer | 10 | 200G |
 | Dumb Chaos | 10 | 210G |
 | School Sim | 10 | 200G |
+| Fat Cat Pamperer | 10 | 205G |
 
 See each game's `AGENTS.md` for full achievement tables.
 
-### G Bux Shop (29 items, 1925G total)
+### G Bux Shop (31 items, 2050G total)
 | ID | Name | Cost | Game | Effect |
 |----|------|------|------|--------|
 | hurv_neon_theme | Neon Theme | 50G | Hurgvibbit | Neon color scheme |
@@ -159,6 +161,8 @@ See each game's `AGENTS.md` for full achievement tables.
 | dc_confetti_blast | Confetti Blast | 75G | Dumb Chaos | Larger splash radius |
 | dc_chaos_socks | Chaos Socks | 50G | Dumb Chaos | 15% move speed bonus |
 | dc_bucket_armor | Bucket Armor | 75G | Dumb Chaos | Start each match with 125 HP |
+| fcp_golden_bowl | Golden Bowl | 50G | Fat Cat Pamperer | Feeding 30% stronger |
+| fcp_luxury_couch | Luxury Couch | 75G | Fat Cat Pamperer | Slower need decay, +25% pamper gains |
 
 ---
 

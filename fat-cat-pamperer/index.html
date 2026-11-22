@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fat Cat Pamperer — Graham Games</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='19' r='11' fill='%23ff9f43'/></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--gold:#c9a84c;--pink:#ff6b9d;--orange:#ff9f43}
+html,body{height:100%}
+body{background:#17101f;color:#f5ead6;font-family:'Segoe UI',system-ui,sans-serif;overflow:hidden}
+.exit-bar{position:fixed;top:0;left:0;right:0;height:42px;background:#120d1cd9;border-bottom:1px solid #c9a84c44;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:200;backdrop-filter:blur(4px)}
+.exit-bar .logo{font-family:Georgia,serif;font-weight:bold;color:var(--gold)}
+.exit-bar .title{font-size:.85rem;letter-spacing:1px}
+.exit-btn{margin-left:auto;background:#c9a84c22;border:1px solid #c9a84c88;color:#f0d48a;padding:5px 14px;border-radius:6px;cursor:pointer;font-size:.8rem}
+/* ── FULLSCREEN HOUSE ── */
+#house{position:fixed;inset:42px 0 0 0;background:linear-gradient(180deg,#4a2c4f 0%,#3a2240 58%,#2a1a30 100%);overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;cursor:grab;scrollbar-width:thin;scrollbar-color:#c9a84c #241631}
+#house.dragging{cursor:grabbing;scroll-behavior:auto}
+#house::-webkit-scrollbar{height:10px}#house::-webkit-scrollbar-thumb{background:#c9a84c88;border-radius:99px}#house::-webkit-scrollbar-track{background:#241631}
+#house-world{position:relative;width:2400px;min-width:2400px;height:100%}
+.scroll-btn{position:fixed;top:50%;transform:translateY(-50%);z-index:160;width:44px;height:64px;border-radius:12px;background:#1e1626dd;border:1px solid #ffb35c88;color:#ffb35c;font-size:1.5rem;cursor:pointer}
+.scroll-btn:hover{background:#3b2a4a}.scroll-btn.left{left:10px}.scroll-btn.right{right:10px}
+#house-world:before{content:'';position:absolute;inset:0;opacity:.14;background:radial-gradient(circle at 20% 30%,#ffd43b 2px,transparent 3px) 0 0/46px 46px,radial-gradient(circle at 70% 70%,#ff6b9d 2px,transparent 3px) 12px 18px/52px 52px}
+.floor{position:absolute;left:0;right:0;bottom:0;height:19%;background:linear-gradient(180deg,#6b4a38,#3e2a22);border-top:4px solid #8d6e63}
+.rug{position:absolute;left:50%;transform:translateX(-50%);bottom:5%;width:620px;height:9%;background:radial-gradient(ellipse,#c94f6d88,#9c355066);border-radius:50%}
+.window{position:absolute;top:9%;left:110px;width:170px;height:150px;background:linear-gradient(180deg,#8fd3ff,#d8f4ff);border:8px solid #6d4c41;border-radius:8px;overflow:hidden}
+.window .sun{position:absolute;top:14px;right:16px;font-size:1.8rem;animation:sunSpin 14s linear infinite}
+@keyframes sunSpin{to{transform:rotate(360deg)}}
+.window .hill{position:absolute;bottom:0;left:0;right:0;height:44px;background:#69db7c;border-radius:50% 50% 0 0}
+.picture{position:absolute;top:10%;left:520px;font-size:2rem;background:#00000033;padding:8px 12px;border:3px solid #c9a84c66;border-radius:6px}
+.tv{position:absolute;top:8%;left:1900px;width:250px;background:#111;border:4px solid #333;border-radius:10px;padding:7px;box-shadow:0 0 30px #69b7ff33;transition:width .4s}
+.tv.big{width:340px}
+.tv .screen{background:#0b2a3f;border-radius:5px;height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:6px}
+.tv .show{font-size:2.2rem;animation:tvBob 2s ease-in-out infinite}
+@keyframes tvBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.tv .ch{font-size:.7rem;color:#aee2ff;margin-top:3px;line-height:1.3}
+.couch{position:absolute;left:50%;transform:translateX(-50%);bottom:15%;width:min(360px,72vw);height:110px;background:linear-gradient(180deg,#c94f6d,#9c3550);border-radius:24px 24px 14px 14px;box-shadow:inset 0 -16px 0 #7e2a40}
+.couch.luxury{background:linear-gradient(180deg,#9775fa,#7048c9);box-shadow:inset 0 -16px 0 #4c2a8a,0 0 34px #9775fa55}
+.couch:before,.couch:after{content:'';position:absolute;top:-10px;width:66px;height:78px;background:inherit;border-radius:18px;filter:brightness(1.12)}
+.couch:before{left:-10px}.couch:after{right:-10px}
+#cat-seat{position:absolute;left:50%;transform:translateX(-50%);bottom:15%;width:min(360px,82vw);height:340px;z-index:4}
+#mochi-bed{position:absolute;left:50%;transform:translateX(-50%);bottom:24px;width:min(320px,74vw);height:58px;z-index:3;background:radial-gradient(ellipse at 50% 30%,#ffd6e7,#f783ac 55%,#d6336c);border-radius:50%;box-shadow:inset 0 -12px 18px #a4133c55,0 12px 18px #00000055;text-align:center}
+#mochi-bed .bed-inner{position:absolute;left:10%;right:10%;top:16%;height:52%;background:radial-gradient(ellipse,#fff0f6,#ffc2d9);border-radius:50%;box-shadow:inset 0 5px 10px #d6336c44}
+#mochi-bed .bed-shadow{position:absolute;left:20%;right:20%;top:30%;height:34%;background:#7a103066;border-radius:50%;filter:blur(3px)}
+#mochi-bed .nameplate{position:absolute;left:50%;transform:translateX(-50%);bottom:-7px;background:#5c1030;color:#ffd6e7;font-size:.58rem;letter-spacing:2px;padding:2px 12px;border-radius:999px;border:1px solid #ffb3c9;white-space:nowrap}
+#cat-wrap{position:absolute;left:50%;transform:translateX(-50%);bottom:56px;width:250px;text-align:center;z-index:4}
+#cat-wrap .cat-contact-shadow{position:absolute;left:50%;transform:translateX(-50%);bottom:6px;width:190px;height:22px;background:#5c103055;border-radius:50%;filter:blur(4px);z-index:-1}
+#cat-name-line{position:absolute;left:50%;transform:translateX(-50%);bottom:-21px;width:100%}
+#outfit-label{position:absolute;left:50%;transform:translateX(-50%);bottom:-42px;background:#16101fcc;color:#ffe3b3;font-size:.68rem;padding:2px 10px;border-radius:999px;border:1px solid #ffffff2a;white-space:nowrap;z-index:5}
+.cat-svg{width:min(230px,52vw);filter:drop-shadow(0 2px 3px #00000044);display:block;margin:0 auto;animation:breathe 3.2s ease-in-out infinite;transform-origin:50% 85%}
+@keyframes breathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.015,1.045)}}
+#cat-wrap.eating .cat-svg{animation:chomp .45s ease-in-out infinite}
+@keyframes chomp{0%,100%{transform:scale(1,1)}50%{transform:scale(1.03,.96) translateY(3px)}}
+#cat-wrap.playing .cat-svg{animation:playBounce .6s ease-in-out infinite}
+@keyframes playBounce{0%,100%{transform:translateY(0) rotate(-1deg)}50%{transform:translateY(-9px) rotate(1.5deg)}}
+.zzz{position:absolute;right:8px;top:-6px;font-size:1.25rem;color:#b197fc;opacity:0}
+#cat-wrap.sleeping .zzz{opacity:1;animation:zfloat 2.2s ease-in-out infinite}
+@keyframes zfloat{0%{transform:translateY(8px);opacity:0}35%{opacity:1}100%{transform:translateY(-20px);opacity:0}}
+.bubble{background:#fff;color:#33262b;border-radius:14px;padding:9px 13px;font-size:.88rem;max-width:340px;margin:0 auto 6px;position:relative;box-shadow:0 4px 14px #00000044}
+.bubble:after{content:'';position:absolute;left:50%;bottom:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.hearts{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:6}
+.heart{position:absolute;font-size:1.3rem;animation:floatUp 1.4s ease-out forwards}
+@keyframes floatUp{from{transform:translateY(10px);opacity:0}20%{opacity:1}to{transform:translateY(-100px);opacity:0}}
+.stuff-item{position:absolute;font-size:3.6rem;line-height:1;z-index:3;animation:stuffPop .5s ease;filter:drop-shadow(0 10px 8px #00000066);padding:6px}
+.stuff-item:before{content:'';position:absolute;left:8%;right:8%;bottom:-4px;height:14px;background:#00000055;border-radius:50%;z-index:-1}
+@keyframes stuffPop{from{transform:scale(0)}to{transform:scale(1)}}
+/* ── HUD + MENU ── */
+.hud{position:fixed;top:50px;right:12px;display:flex;flex-direction:column;gap:6px;z-index:150;align-items:flex-end}
+.chip{background:#1e1626dd;border:1px solid #ffffff2a;border-radius:999px;padding:6px 13px;font-size:.83rem}
+.chip b{color:#ffd43b}
+#menu{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:150;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:96vw}
+#menu button{background:#1e1626ee;border:1px solid #ffb35c66;color:#f5ead6;border-radius:999px;padding:11px 18px;font-size:.9rem;cursor:pointer;backdrop-filter:blur(4px)}
+#menu button:hover{border-color:#ffb35c;background:#3b2a4a}
+#menu button.active{background:linear-gradient(180deg,#ffb35c,#f08c1e);color:#2b1600;font-weight:800}
+/* ── DRAWER PANEL ── */
+#drawer{position:fixed;top:42px;right:0;bottom:0;width:min(430px,94vw);background:#1b1226f5;border-left:1px solid #ffb35c44;z-index:180;transform:translateX(105%);transition:transform .3s;padding:18px;overflow-y:auto}
+#drawer.open{transform:none}
+#drawer h2{color:#ffb35c;font-size:1rem;margin-bottom:4px}
+#drawer .sub{color:#bfaec9;font-size:.78rem;margin-bottom:12px;line-height:1.45}
+#drawer-close{float:right;background:#00000044;border:1px solid #ffffff33;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+button.act{background:linear-gradient(180deg,#3b2a4a,#2a1e38);color:#f5ead6;border:1px solid #ffffff2a;border-radius:10px;padding:10px 8px;cursor:pointer;font-size:.85rem;text-align:left}
+button.act:hover{border-color:#ffb35c}
+button.act:disabled{opacity:.45;cursor:not-allowed}
+button.act small{display:block;color:#bfaec9;font-size:.7rem;margin-top:2px}
+.quest{display:flex;gap:10px;align-items:center;background:#00000033;border:1px solid #ffffff1c;border-radius:10px;padding:10px;margin-bottom:8px}
+.quest .qi{font-size:1.7rem}.quest .qt{flex:1}.quest .qt b{font-size:.87rem}.quest .qt small{display:block;color:#bfaec9;font-size:.72rem;line-height:1.35}
+.quest button,.primary{background:linear-gradient(180deg,#ffb35c,#f08c1e);color:#2b1600;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;font-size:.82rem;white-space:nowrap}
+.quest button:disabled{background:#555;color:#bbb;cursor:not-allowed}
+.quest.done{border-color:#69db7c66}.quest.locked{opacity:.55}
+.ward{display:flex;flex-wrap:wrap;gap:8px}
+.ward .item{background:#00000033;border:1px solid #ffffff22;border-radius:10px;padding:8px;text-align:center;width:calc(33% - 6px);font-size:.7rem}
+.ward .item .wi{font-size:1.55rem}
+.ward button{margin-top:5px;padding:4px 6px;font-size:.7rem;width:100%;background:linear-gradient(180deg,#ffb35c,#f08c1e);border:0;border-radius:7px;font-weight:700;cursor:pointer}
+.ward button:disabled{background:#555;color:#bbb}
+.stuff{display:flex;gap:10px;align-items:center;background:#00000033;border:1px solid #ffffff1c;border-radius:10px;padding:9px;margin-bottom:8px}
+.stuff .si{font-size:1.8rem}.stuff .st{flex:1}.stuff .st small{display:block;color:#bfaec9;font-size:.72rem}
+.stuff button{background:linear-gradient(180deg,#69db7c,#37b24d);border:0;border-radius:8px;padding:8px 11px;font-weight:700;cursor:pointer;white-space:nowrap}
+.stuff button:disabled{background:#555;color:#bbb}
+.log{font-size:.79rem;color:#d8cbe8;line-height:1.5}
+.log div{border-bottom:1px dashed #ffffff14;padding:4px 0}
+/* ── QUEST MODAL + ANIMATED STAGES ── */
+.modal{position:fixed;inset:0;background:#07030c;display:none;z-index:300}
+.modal.visible{display:block}
+.modal-box{background:#20142c;width:100%;height:100dvh;padding:14px 18px;text-align:center;overflow:auto;display:flex;flex-direction:column}
+.modal-box h3{color:#ffb35c;font-size:1.35rem}
+.modal-box p{color:#d8cbe8;font-size:.88rem;line-height:1.45;max-width:720px;margin:4px auto}
+.stage{position:relative;flex:1;min-height:300px;border-radius:12px;overflow:hidden;margin:10px 0;background:#0b2a3f}
+/* ── First-person view pieces ── */
+.fp-view{position:absolute;inset:0;animation:fpSway 3.6s ease-in-out infinite}
+@keyframes fpSway{0%,100%{transform:rotate(-.4deg) translateY(0)}50%{transform:rotate(.4deg) translateY(-4px)}}
+.fp-hand{position:absolute;bottom:-6px;font-size:4.2rem;z-index:8;transition:transform .18s;filter:drop-shadow(0 6px 8px #00000066)}
+.fp-hand.left{left:12%}.fp-hand.right{right:12%}
+.fp-hand.reach{transform:translateY(-46px) scale(1.12) rotate(-8deg)}
+.fp-feet{position:absolute;bottom:-4px;font-size:3.6rem;z-index:8;transition:transform .16s;filter:drop-shadow(0 8px 7px #00000066)}
+.aim-dot{position:absolute;width:9px;height:9px;border-radius:50%;background:#ffffffcc;transform:translate(-50%,-50%);z-index:6;pointer-events:none;box-shadow:0 0 6px #ffffff88}
+.aim-dot.good{background:#69db7c;box-shadow:0 0 9px #69db7c}
+.aim-angle{position:absolute;left:12px;bottom:52px;font-size:.78rem;color:#ffe3b3;background:#00000055;padding:3px 10px;border-radius:999px;z-index:7}
+.fp-hands-ball{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:3.4rem;z-index:8}
+.fp-lid{position:absolute;left:0;right:0;height:5%;background:#07030c;z-index:7;transition:height .25s}
+.fp-lid.top{top:0;border-radius:0 0 50% 50%}.fp-lid.bottom{bottom:0;border-radius:50% 50% 0 0}
+.fp-whisk{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:3.2rem;z-index:8;transition:transform .2s}
+.fp-punch{transition:transform .12s !important}
+.scroll-track{position:absolute;left:0;right:0;bottom:0;height:46%;background:repeating-linear-gradient(180deg,#868e96 0 34px,#7a828c 34px 40px,#fff8 40px 42px,#868e96 42px 76px);animation:trackScroll .7s linear infinite}
+@keyframes trackScroll{to{background-position:0 76px}}
+.meter{height:16px;background:#00000066;border-radius:999px;overflow:hidden;margin:10px 0;border:1px solid #ffffff2a}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,#ff6b9d,#ffd43b,#69db7c);transition:width .15s}
+.big-btn{background:linear-gradient(180deg,#ff6b9d,#e64980);color:#fff;border:0;border-radius:12px;padding:13px 20px;font-size:1rem;font-weight:800;cursor:pointer;margin:6px 3px}
+.big-btn:active{transform:scale(.96)}
+.big-btn.alt{background:linear-gradient(180deg,#4dabf7,#1971c2)}
+.big-btn:disabled{opacity:.5}
+/* ── Animated Cat TV scenes ── */
+.tv .screen{position:relative}
+.tv-scene{position:relative;width:100%;height:74px;overflow:hidden;border-radius:4px;background:linear-gradient(180deg,#79b8d8,#bfe8ff)}
+.tv.big .tv-scene{height:88px}
+.tv-scene.fish{background:linear-gradient(180deg,#1166aa,#33bbdd)}
+.tv-scene.laser{background:#1a1a2e}
+.tv-scene.yarn{background:linear-gradient(180deg,#ffe3ee,#ffd6a5)}
+.tv-scene.lion{background:linear-gradient(180deg,#ffdf8e,#c9e29a)}
+.tv-scene.nap{background:linear-gradient(180deg,#232348,#3a2c5f)}
+.tv-bird{position:absolute;top:16px;font-size:1.45rem;animation:flyAcross 5.5s linear infinite}
+.tv-bird.b2{top:36px;font-size:1.05rem;animation-duration:7s;animation-delay:1.6s}
+@keyframes flyAcross{0%{left:-18%;transform:translateY(0) rotate(4deg)}25%{transform:translateY(-9px) rotate(-5deg)}50%{transform:translateY(3px) rotate(4deg)}75%{transform:translateY(-7px) rotate(-4deg)}100%{left:106%;transform:translateY(0) rotate(3deg)}}
+.tv-cloud{position:absolute;top:7px;font-size:1rem;opacity:.9;animation:cloudDrift 11s linear infinite}
+@keyframes cloudDrift{from{left:-16%}to{left:104%}}
+.tv-branch{position:absolute;bottom:2px;left:8px;font-size:1.25rem}
+.tv-fish{position:absolute;font-size:1.35rem;animation:swimFish 6s ease-in-out infinite}
+.tv-fish.f2{font-size:.95rem;top:44px;animation-duration:8s;animation-delay:1.2s}
+@keyframes swimFish{0%,100%{left:6%;transform:scaleX(1)}48%{left:66%;transform:scaleX(1)}52%{left:66%;transform:scaleX(-1)}96%{left:6%;transform:scaleX(-1)}}
+.tv-bubble{position:absolute;bottom:2px;font-size:.65rem;opacity:0;animation:bubbleRise 2.8s ease-in infinite}
+@keyframes bubbleRise{0%{transform:translateY(0);opacity:0}20%{opacity:.95}100%{transform:translateY(-58px);opacity:0}}
+.tv-dot{position:absolute;font-size:1.15rem;animation:laserZig 2.1s ease-in-out infinite}
+@keyframes laserZig{0%{left:8%;top:52px}22%{left:34%;top:10px}45%{left:58%;top:48px}68%{left:76%;top:14px}100%{left:10%;top:38px}}
+.tv-paw{position:absolute;bottom:2px;font-size:1.05rem;animation:pawSwipe 2.1s ease-in-out infinite}
+@keyframes pawSwipe{0%,100%{left:10%;transform:rotate(-10deg)}50%{left:64%;transform:rotate(14deg)}}
+.tv-yarn{position:absolute;bottom:8px;font-size:1.7rem;animation:yarnRoll 4.5s ease-in-out infinite}
+@keyframes yarnRoll{0%,100%{left:6%;transform:rotate(0deg)}50%{left:68%;transform:rotate(340deg)}}
+.tv-lion{position:absolute;bottom:6px;font-size:2rem;animation:lionPace 7s ease-in-out infinite}
+@keyframes lionPace{0%,100%{left:6%;transform:scaleX(1)}47%{left:64%;transform:scaleX(1)}53%{left:64%;transform:scaleX(-1)}97%{left:6%;transform:scaleX(-1)}}
+.tv-napcat{position:absolute;bottom:8px;left:38%;font-size:2rem;animation:breathe 4s ease-in-out infinite}
+.tv-zzz{position:absolute;left:57%;bottom:38px;color:#cfc4ff;font-size:.8rem;animation:zfloat 2.4s ease-in-out infinite}
+/* ── Animated bought items ── */
+.stuff-item{cursor:pointer}
+.stuff-item .fx{position:absolute;pointer-events:none}
+.stuff-bowl{animation:stuffPop .5s ease}
+@keyframes bowlWiggle{0%,100%{transform:rotate(-2deg) translateY(0)}50%{transform:rotate(2.5deg) translateY(-3px)}}
+.stuff-bowl .fx{right:-9px;top:-9px;font-size:.85rem;animation:sparkleTwinkle 1.3s ease-in-out infinite}
+@keyframes sparkleTwinkle{0%,100%{opacity:.15;transform:scale(.7) rotate(0deg)}50%{opacity:1;transform:scale(1.2) rotate(35deg)}}
+.stuff-toymouse{animation:mouseScurry 3.4s ease-in-out infinite}
+@keyframes mouseScurry{0%,100%{transform:translateX(-16px) rotate(-5deg)}30%{transform:translateX(20px) rotate(5deg)}55%{transform:translateX(20px) rotate(-160deg)}80%{transform:translateX(-14px) rotate(-185deg)}}
+.stuff-scratch{animation:stuffPop .5s ease}
+@keyframes scratchShake{0%,72%,100%{transform:rotate(0)}76%{transform:rotate(-4deg)}82%{transform:rotate(4deg)}88%{transform:rotate(-3deg)}94%{transform:rotate(2deg)}}
+.stuff-toybox{animation:stuffPop .5s ease}
+@keyframes toyBounce{0%,100%{transform:translateY(0)}12%{transform:translateY(-9px) rotate(-2deg)}24%{transform:translateY(0)}}
+.stuff-bed{animation:stuffPop .5s ease}
+@keyframes bedGlow{0%,100%{filter:drop-shadow(0 4px 5px #00000055) brightness(1)}50%{filter:drop-shadow(0 4px 12px #ff9f4388) brightness(1.22)}}
+.stuff-bed .fx{right:-7px;top:-13px;font-size:.8rem;color:#cfc4ff;animation:zfloat 2.6s ease-in-out infinite}
+.stuff-cattree{animation:stuffPop .5s ease}
+@keyframes treeSway{0%,100%{transform:rotate(-1.6deg)}50%{transform:rotate(1.8deg)}}
+.stuff-cattree .fx{right:-11px;top:-8px;font-size:.85rem;animation:butterflyFlutter 2.4s ease-in-out infinite}
+@keyframes butterflyFlutter{0%,100%{transform:translate(0,0) rotate(-8deg)}50%{transform:translate(-9px,-8px) rotate(12deg)}}
+.stuff-hammock{animation:stuffPop .5s ease}
+@keyframes hammockRock{0%,100%{transform:rotate(-3.5deg)}50%{transform:rotate(3.5deg)}}
+.stuff-fishtank{animation:stuffPop .5s ease}
+@keyframes tankBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.stuff-fishtank .tank-fish{left:1px;top:-5px;font-size:.75rem;animation:tankFishSwim 2.6s ease-in-out infinite}
+@keyframes tankFishSwim{0%,100%{transform:translateX(-5px) scaleX(1)}48%{transform:translateX(13px) scaleX(1)}52%{transform:translateX(13px) scaleX(-1)}96%{transform:translateX(-5px) scaleX(-1)}}
+.stuff-fishtank .tank-bubble{right:0;top:-13px;font-size:.55rem;animation:bubbleRise 2.2s ease-in infinite}
+.couch.luxury{animation:couchShine 3.4s ease-in-out infinite}
+@keyframes couchShine{0%,100%{box-shadow:inset 0 -16px 0 #4c2a8a,0 0 18px #9775fa44}50%{box-shadow:inset 0 -16px 0 #4c2a8a,0 0 38px #c5a3ff88}}
+.tv.big .screen{animation:tvGlow 2.8s ease-in-out infinite}
+@keyframes tvGlow{0%,100%{box-shadow:0 0 10px #69b7ff33}50%{box-shadow:0 0 26px #69b7ff77}}
+/* Drawn (SVG) add-on items, sized to the room — cat is ~230px wide for scale */
+.stuff-item svg{display:block;width:100%;height:auto}
+.stuff-toymouse svg{transform:rotate(-8deg)}
+.stuff-toybox svg{transform:rotate(2deg)}
+.stuff-bowl svg{transform:rotate(-2deg)}
+.stuff-bowl{width:165px}.stuff-toymouse{width:120px}.stuff-scratch{width:135px}.stuff-toybox{width:225px}
+.stuff-bed{width:360px}.stuff-cattree{width:275px}.stuff-hammock{width:430px}.stuff-fishtank{width:320px}
+.stuff-fishtank svg .tank-fish-a{animation:tankFishSvg 3.2s ease-in-out infinite}
+.stuff-fishtank svg .tank-fish-b{animation:tankFishSvg 4.4s ease-in-out infinite reverse}
+@keyframes tankFishSvg{0%,100%{transform:translateX(0)}50%{transform:translateX(46px)}}
+.stuff-fishtank svg .tank-bub{animation:bubbleRiseSvg 2.6s ease-in infinite;opacity:0}
+@keyframes bubbleRiseSvg{0%{transform:translateY(0);opacity:0}25%{opacity:.9}100%{transform:translateY(-34px);opacity:0}}
+.stuff-cattree svg .tree-toy{transform-box:fill-box;transform-origin:50% 0;animation:treeToySwing 2.8s ease-in-out infinite}
+@keyframes treeToySwing{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}
+.stuff-toymouse svg .mouse-tail{transform-box:fill-box;transform-origin:0 50%;animation:tailWiggle 1.6s ease-in-out infinite}
+@keyframes tailWiggle{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(7deg)}}
+.stuff-item.bonk{animation:stuffBonk .45s ease !important}
+@keyframes stuffBonk{0%{transform:scale(1)}35%{transform:scale(1.28) rotate(-6deg)}70%{transform:scale(.92) rotate(4deg)}100%{transform:scale(1)}}
+/* Everest stage */
+.st-everest{background:linear-gradient(180deg,#74c0fc,#e7f5ff)}
+.st-everest .mountain{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:0;height:0;border-left:34vw solid transparent;border-right:34vw solid transparent;border-bottom:58vh solid #868e96;transition:transform .3s}
+.st-everest .cap{position:absolute;bottom:calc(58vh - 9vh);left:50%;transform:translateX(-50%);width:0;height:0;border-left:9vw solid transparent;border-right:9vw solid transparent;border-bottom:9vh solid #fff}
+.st-everest .flag{position:absolute;bottom:57vh;left:calc(50% - 8px);font-size:2rem;animation:flagWave .7s ease-in-out infinite;transition:transform .3s;transform-origin:bottom left}
+@keyframes flagWave{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(8deg)}}
+.snow{position:absolute;color:#fff;animation:snowFall linear infinite;top:-20px}
+@keyframes snowFall{to{transform:translateY(260px) translateX(24px)}}
+/* NBA stage */
+.st-nba{background:linear-gradient(180deg,#f08c1e,#c2255c33),linear-gradient(180deg,#3b2a1a,#241708)}
+.st-nba .hoop{position:absolute;top:16px;right:12px;z-index:5;filter:drop-shadow(0 6px 8px #00000055)}
+.st-nba .player{position:absolute;bottom:18px;left:44px;font-size:3rem;animation:playerBounce .55s ease-in-out infinite}
+@keyframes playerBounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.st-nba .ball{position:absolute;font-size:2rem;z-index:9;transition:left .55s cubic-bezier(.2,.7,.4,1),bottom .55s cubic-bezier(.2,.7,.4,1),transform .55s}
+.st-nba .court{position:absolute;bottom:0;left:0;right:0;height:34px;background:#8d5a2b;border-top:3px solid #fff3}
+/* Sphinx stage */
+.st-sphinx{background:linear-gradient(180deg,#ffd43b,#f08c1e)}
+.sphinx-wrap{height:74%;display:flex;justify-content:center;align-items:flex-end;animation:sphinxSway 3.4s ease-in-out infinite;transition:transform .3s}
+.sphinx-wrap svg{height:100%;max-width:92%;filter:drop-shadow(0 10px 14px #00000044)}
+#sphinx-head{transition:transform 1.4s cubic-bezier(.3,.7,.4,1),opacity 1.4s;transform-box:fill-box;transform-origin:50% 20%}
+#sphinx-cracks{opacity:0;transition:opacity .25s}
+.boom-flash{position:absolute;inset:0;background:#fffbe8;opacity:0;z-index:20;pointer-events:none}
+.boom-fireball{position:absolute;left:50%;top:42%;width:130px;height:130px;margin:-65px 0 0 -65px;border-radius:50%;background:radial-gradient(circle,#fff8d6 0%,#ffd43b 30%,#ff922b 55%,#e8590c 72%,rgba(232,89,12,0) 76%);filter:blur(2px);opacity:0;z-index:18;pointer-events:none}
+.boom-ring{position:absolute;left:50%;top:42%;width:96px;height:96px;margin:-48px 0 0 -48px;border:7px solid #ffe8b0;border-radius:50%;opacity:0;z-index:17;pointer-events:none}
+.boom-smoke{position:absolute;width:76px;height:76px;border-radius:50%;background:radial-gradient(circle,#dee2e6,#868e96 58%,rgba(134,142,150,0) 72%);filter:blur(7px);opacity:0;z-index:16;pointer-events:none}
+.boom-dust{position:absolute;left:0;right:0;bottom:0;height:70px;background:radial-gradient(ellipse at 50% 100%,#adb5bd99,transparent 70%);opacity:0;z-index:15;pointer-events:none}
+#sphinx-rubble{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);font-size:1.9rem;z-index:10;display:none;text-shadow:0 4px 8px #00000055}
+#clipart-boom{position:absolute;left:50%;top:6%;width:min(430px,86%);z-index:19;display:none;pointer-events:none;filter:drop-shadow(0 10px 14px #00000055)}
+#clipart-boom.pop{display:block;animation:clipartPop .6s cubic-bezier(.2,1.7,.4,1) forwards,clipartShake .5s .55s ease}
+@keyframes clipartPop{0%{transform:translateX(-50%) scale(.05) rotate(-16deg);opacity:0}55%{transform:translateX(-50%) scale(1.18) rotate(5deg);opacity:1}75%{transform:translateX(-50%) scale(.94) rotate(-3deg)}100%{transform:translateX(-50%) scale(1) rotate(-2deg);opacity:1}}
+@keyframes clipartShake{0%,100%{margin-left:0}20%{margin-left:-7px}45%{margin-left:6px}70%{margin-left:-4px}}
+#hoop-net{transform-box:fill-box;transform-origin:50% 0%}
+#hoop-net.swish{animation:netSwish .55s ease}
+@keyframes netSwish{0%{transform:scaleY(1) skewX(0)}30%{transform:scaleY(1.22) skewX(7deg)}60%{transform:scaleY(.94) skewX(-5deg)}100%{transform:scaleY(1) skewX(0)}}
+@keyframes sphinxSway{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1deg)}}
+.st-sphinx .feather{position:absolute;font-size:2rem;animation:featherFloat 1.6s ease-in-out infinite}
+@keyframes featherFloat{0%,100%{transform:translate(0,0) rotate(-14deg)}50%{transform:translate(26px,20px) rotate(16deg)}}
+.st-sphinx.exploding{animation:boomShake .65s ease}
+@keyframes boomShake{0%,100%{transform:translate(0,0)}15%{transform:translate(-9px,5px) rotate(-1deg)}35%{transform:translate(9px,-6px) rotate(1deg)}55%{transform:translate(-7px,-4px)}75%{transform:translate(6px,5px)}}
+.debris{position:absolute;left:50%;top:42%;font-size:1.5rem;z-index:6;pointer-events:none;transition:transform .85s cubic-bezier(.1,.7,.3,1),opacity .85s}
+/* Souffle stage */
+.st-souffle{background:linear-gradient(180deg,#495057,#212529)}
+.st-souffle .dish{font-size:4.5rem;margin-top:56px;transition:transform .4s;transform-origin:bottom}
+.st-souffle .steam{position:absolute;font-size:1.4rem;animation:steamUp 1.8s ease-out infinite;opacity:0}
+@keyframes steamUp{0%{transform:translateY(10px);opacity:0}35%{opacity:.9}100%{transform:translateY(-56px);opacity:0}}
+/* Marathon stage */
+.st-marathon{background:linear-gradient(180deg,#8fd3ff,#e7f5ff)}
+.st-marathon .track{position:absolute;bottom:0;left:0;right:0;height:58px;background:#868e96;border-top:4px dashed #fff}
+.st-marathon .runner{position:absolute;bottom:44px;font-size:3rem;transition:left .18s;animation:runBob .28s ease-in-out infinite}
+@keyframes runBob{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-8px) rotate(3deg)}}
+.st-marathon .flop{position:absolute;bottom:38px;font-size:1rem;transition:left .18s}
+/* Ninjas stage */
+.ninja-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:340px;margin:0 auto}
+.ninja-cell{height:13vh;min-height:72px;font-size:3rem;background:#00000044;border:1px solid #ffffff22;border-radius:12px;font-size:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;user-select:none}
+.ninja-cell.pop{animation:ninjaPop .25s ease}
+@keyframes ninjaPop{from{transform:scale(.4) translateY(16px)}to{transform:scale(1) translateY(0)}}
+.ninja-cell.hit{animation:ninjaHit .4s ease;background:#69db7c44}
+@keyframes ninjaHit{0%{transform:rotate(0)}40%{transform:rotate(24deg) scale(1.2)}100%{transform:rotate(90deg) translateY(10px);opacity:.5}}
+#gg-toast{position:fixed;left:16px;bottom:76px;background:#16101f;border:1px solid var(--gold);border-radius:12px;padding:12px 16px;z-index:500;transform:translateY(180%);transition:transform .35s;max-width:320px}
+#gg-toast.visible{transform:none}
+#gg-toast .t{color:var(--gold);font-size:.7rem;letter-spacing:1px}#gg-toast .n{font-weight:700;margin:2px 0}#gg-toast .r{color:#ffd43b;font-size:.82rem}
+@media(max-width:600px){.window{display:none}.picture{display:none}.tv .screen{height:92px}.hud{top:48px}.chip{font-size:.75rem;padding:5px 10px}#menu button{padding:9px 12px;font-size:.8rem}}
+</style>
+</head>
+<body>
+<div class="exit-bar"><span class="logo">GG</span><span class="title">FAT CAT PAMPERER</span><span style="color:#bfaec9;font-size:.75rem">No chores. Just spoil her.</span><button class="exit-btn" onclick="location.href='../index.html'">EXIT TO LAUNCHER</button></div>
+
+<!-- FULLSCREEN HOUSE -->
+<div id="house">
+ <div id="house-world">
+  <div class="window"><div class="sun">☀️</div><div class="hill"></div></div>
+  <div class="picture">🖼️<div style="font-size:.55rem;color:#ffe3b3;text-align:center">MOCHI, AGE 4<br>(a masterpiece)</div></div>
+  <div class="tv" id="tv-box"><div class="screen"><div class="tv-scene" id="tv-scene"></div><div class="ch" id="tv-channel"></div></div></div>
+  <div class="floor"></div><div class="rug"></div>
+  <div id="stuff-layer"></div>
+  <div class="couch" id="couch"></div>
+  <div id="cat-seat">
+  <div id="mochi-bed"><div class="bed-inner"></div><div class="bed-shadow"></div><div class="nameplate">— MOCHI —</div></div>
+  <div id="cat-wrap">
+    <div class="bubble" id="cat-bubble">Feed me. Then let me sleep. Then feed me again.</div>
+    <div class="zzz">💤 z Z</div>
+    <svg class="cat-svg" viewBox="0 0 220 190" aria-label="Mochi the fat cat">
+      <g id="outfit-bunny-ears" style="display:none"><ellipse cx="76" cy="8" rx="9" ry="22" fill="#ffd6e7" stroke="#f783ac" transform="rotate(-14 76 8)"/><ellipse cx="144" cy="8" rx="9" ry="22" fill="#ffd6e7" stroke="#f783ac" transform="rotate(14 144 8)"/></g>
+      <ellipse cx="110" cy="126" rx="82" ry="54" fill="#ff9f43"/><ellipse cx="110" cy="146" rx="48" ry="32" fill="#ffe3b3"/>
+      <g id="outfit-bunny-body" style="display:none"><ellipse cx="110" cy="126" rx="80" ry="54" fill="#ffd6e7" opacity=".92"/><ellipse cx="110" cy="142" rx="42" ry="30" fill="#fff0f6"/></g>
+      <circle cx="110" cy="62" r="42" fill="#ffb35c"/>
+      <path d="M74 38 L68 8 L94 24 Z" fill="#ff9f43"/><path d="M146 38 L152 8 L126 24 Z" fill="#ff9f43"/>
+      <path d="M76 34 L73 18 L88 26 Z" fill="#ffcf99"/><path d="M144 34 L147 18 L132 26 Z" fill="#ffcf99"/>
+      <g id="eyes-open"><circle cx="94" cy="60" r="5" fill="#22160c"/><circle cx="126" cy="60" r="5" fill="#22160c"/><circle cx="95.5" cy="58.5" r="1.6" fill="#fff"/></g>
+      <g id="eyes-closed" style="display:none"><path d="M86 60 q8 6 16 0 M118 60 q8 6 16 0" stroke="#22160c" stroke-width="3" fill="none" stroke-linecap="round"/></g>
+      <path d="M104 72 h12 l-6 7 z" fill="#e64980"/><path d="M110 79 q0 7 -10 6 M110 79 q0 7 10 6" stroke="#8d4a12" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+      <path d="M58 66 h28 M62 76 l22 -3 M162 66 h-28 M158 76 l-22 -3" stroke="#d97b1f" stroke-width="2" stroke-linecap="round"/>
+      <ellipse cx="64" cy="170" rx="19" ry="9" fill="#ffb35c"/><ellipse cx="156" cy="170" rx="19" ry="9" fill="#ffb35c"/>
+      <g id="outfit-chain" style="display:none"><path d="M84 92 q26 18 52 0" stroke="#ffd43b" stroke-width="6" fill="none"/><circle cx="110" cy="106" r="7" fill="#ffd43b" stroke="#c9a227"/></g>
+      <g id="outfit-headband" style="display:none"><rect x="68" y="42" width="84" height="12" rx="6" fill="#343a40"/><circle cx="110" cy="48" r="6" fill="#e9ecef"/></g>
+      <g id="outfit-crown" style="display:none"><path d="M84 28 L92 8 L104 22 L110 4 L116 22 L128 8 L136 28 Z" fill="#ffd43b" stroke="#c9a227"/></g>
+      <g id="outfit-chef" style="display:none"><ellipse cx="110" cy="24" rx="30" ry="14" fill="#fff"/><rect x="88" y="24" width="44" height="12" fill="#f1f3f5"/></g>
+      <g id="outfit-astro" style="display:none"><circle cx="110" cy="60" r="50" fill="#a5d8ff" opacity=".35" stroke="#e7f5ff" stroke-width="3"/></g>
+    </svg>
+    <div class="cat-contact-shadow"></div>
+    <div id="cat-prop" style="font-size:1.5rem;position:absolute;bottom:-4px;left:63%;z-index:2">🥣</div>
+    <div id="cat-name-line" style="font-weight:800;color:#ffd8a8;text-shadow:0 2px 6px #000;font-size:.82rem">MOCHI <span style="font-weight:400;font-size:.68rem;color:#e6ccff" id="cat-state-label">• professional napper •</span></div>
+    <div id="outfit-label">Outfit: Bare Chonk</div>
+  </div>
+  </div>
+  <div class="hearts" id="hearts"></div>
+ </div>
+</div>
+<button class="scroll-btn left" id="scroll-left" aria-label="Scroll house left">‹</button>
+<button class="scroll-btn right" id="scroll-right" aria-label="Scroll house right">›</button>
+
+<div class="hud">
+  <span class="chip">🪙 Chonk Koins: <b id="hud-koins">0</b></span>
+  <span class="chip">🎁 Stuff: <b id="hud-stuff">0/10</b></span>
+  <span class="chip">🏆 Tasks: <b id="hud-quests">0/6</b></span>
+  <span class="chip">🎽 Outfits: <b id="hud-outfits">0/6</b></span>
+  <span class="chip">↔ Drag / scroll sideways to explore the whole house</span>
+</div>
+
+<nav id="menu">
+  <button data-menu="pamper">👐 Pamper</button>
+  <button data-menu="tasks">🏔️ Bizarre Tasks</button>
+  <button data-menu="stuff">🎁 Get Stuff</button>
+  <button data-menu="wardrobe">🎽 Wardrobe</button>
+  <button data-menu="log">📜 Log</button>
+  <button id="restart-btn" style="border-color:#ff6b6b88;color:#ffb3b3">↺ Restart</button>
+</nav>
+
+<aside id="drawer">
+  <button id="drawer-close">✕ Close</button>
+  <h2 id="drawer-title">Pamper</h2>
+  <p class="sub" id="drawer-sub"></p>
+  <div id="drawer-body"></div>
+</aside>
+
+<div class="modal" id="quest-modal"><div class="modal-box">
+<h3 id="qm-title">Task</h3><p id="qm-desc"></p>
+<div class="stage" id="qm-stage"></div>
+<div class="meter"><i id="qm-bar" style="width:0%"></i></div>
+<div id="qm-body"></div><div id="qm-msg" style="min-height:24px;font-weight:700;margin:6px 0"></div>
+<button class="big-btn alt" id="qm-action">START</button>
+<button class="big-btn" id="qm-close" style="background:#495057">Give Up (Mochi understands)</button>
+</div></div>
+<div id="gg-toast"><div class="t">🏆 ACHIEVEMENT</div><div class="n" id="gg-toast-name"></div><div class="r" id="gg-toast-reward"></div></div>
+
+<script>
+// ═══ G BUX (standard Graham Games pattern) ═══
+const GG_KEY='graham-games-data';
+function ggLoad(){try{const d=JSON.parse(localStorage.getItem(GG_KEY));return (d&&typeof d==='object')?{gBux:d.gBux||0,achievements:d.achievements||{},shopPurchases:d.shopPurchases||{}}:{gBux:0,achievements:{},shopPurchases:{}};}catch(e){return{gBux:0,achievements:{},shopPurchases:{}};}}
+function ggSave(d){localStorage.setItem(GG_KEY,JSON.stringify(d));}
+function ggUnlockAchievement(id,name,reward){const d=ggLoad();if(d.achievements[id])return false;d.achievements[id]=true;d.gBux+=reward;ggSave(d);showAchievementToast(name,reward);return true;}
+let ggTQ=[],ggTS=false;
+function showAchievementToast(n,r){ggTQ.push({n,r});if(!ggTS)nextToast();}
+function nextToast(){if(!ggTQ.length){ggTS=false;return;}ggTS=true;const{n,r}=ggTQ.shift();document.getElementById('gg-toast-name').textContent=n;document.getElementById('gg-toast-reward').textContent='+'+r+' G Bux';const t=document.getElementById('gg-toast');t.classList.add('visible');setTimeout(()=>{t.classList.remove('visible');setTimeout(nextToast,400);},3000);}
+// ═══ DATA ═══
+const FCP_ACH={
+ fcp_first_pamper:{name:'First Pamper',reward:5}, fcp_full_belly:{name:'Full Belly Service',reward:10},
+ fcp_nap_time:{name:'Professional Tucker-Inner',reward:10}, fcp_tv_addict:{name:'Cat TV Dealer',reward:15},
+ fcp_playtime:{name:'She Played?!',reward:20}, fcp_bunny:{name:'Bunny Onesie Earned',reward:20},
+ fcp_champion:{name:'NBA Champion (For a Cat)',reward:20}, fcp_ninja:{name:'Ninja Fighter',reward:30},
+ fcp_wardrobe:{name:'Cat Couture',reward:25}, fcp_ultimate:{name:'Ultimate Pamperer',reward:50},
+};
+function tryAch(id){const a=FCP_ACH[id];if(a)ggUnlockAchievement(id,a.name,a.reward);}
+const OUTFITS=[
+ {id:'bunny',name:'Bunny Onesie',icon:'🐰',quest:'everest'},{id:'chain',name:'Champion Chain',icon:'🏀',quest:'nba'},
+ {id:'headband',name:'Ninja Headband',icon:'🥷',quest:'ninjas'},{id:'crown',name:'Sphinx Crown',icon:'👑',quest:'sphinx'},
+ {id:'chef',name:'Chef Hat',icon:'👨‍🍳',quest:'souffle'},{id:'astro',name:'Astronaut Suit',icon:'🚀',quest:'marathon'},
+];
+const QUESTS=[
+ {id:'everest',icon:'🏔️',title:'Climb Mount Everest',diff:'ABSURD',koins:50,desc:'Scale 8,848m in your socks so Mochi can wear a bunny onesie. Mochi will watch from the couch.',reward:'bunny',need:30,label:'Mash CLIMB! Your climber scrambles up the mountain. Wind gusts push you back.'},
+ {id:'nba',icon:'🏀',title:'Win the NBA Finals',diff:'ABSURD',koins:50,desc:'Beat professional basketball players in a shootout. Prize: a gold chain for a cat who cannot dunk.',reward:'chain',need:3,label:'Rotate your aim and follow the dotted line — shoot when the dots run through the hoop! Make 3 of 5.'},
+ {id:'ninjas',icon:'🥷',title:'Fight Off 20 Trained Ninjas',diff:'RIDICULOUS',koins:60,desc:'Twenty highly trained ninjas want the comfy couch spot. Defend it!',reward:'headband',need:20,label:'Whack each ninja as she pops up — 20 of them!'},
+ {id:'sphinx',icon:'🗿',title:'Out-Stare a Stone Sphinx',diff:'IMPOSSIBLE-ISH',koins:50,desc:'The Sphinx has not blinked in 4,500 years. Press START once — your stare locks on automatically and plays through to the explosion.',reward:'crown',need:100,label:'Press START once. No holding — the stare (and the explosion) runs automatically.'},
+ {id:'souffle',icon:'🍮',title:'Bake a 5-Star Soufflé',diff:'TERRIFYING',koins:50,desc:'A food-critic cat is judging. Memorise the ingredient order and watch your soufflé rise.',reward:'chef',need:5,label:'Watch the sequence, then click it back in order.'},
+ {id:'marathon',icon:'🩴',title:'Marathon in Flip-Flops',diff:'BLISTERING',koins:60,desc:'26.2 miles. In flip-flops. Alternate feet and watch yourself flop down the track.',reward:'astro',need:40,label:'Alternate LEFT / RIGHT foot (or A / D keys) 40 times.'},
+];
+const STUFF=[
+ {id:'bowl',icon:'🥣',name:'Fancy Food Bowl',cost:300,desc:'A bowl worthy of the chonk. Appears by the couch.',left:'1050px',bottom:'4%'},
+ {id:'toymouse',icon:'🐭',name:'Toy Mouse',cost:200,desc:'She will ignore it professionally. On the rug.',left:'1325px',bottom:'1.5%'},
+ {id:'scratch',icon:'🪵',name:'Scratching Post',cost:350,desc:'She scratches the couch instead. Classic.',left:'1470px',bottom:'10.5%'},
+ {id:'toybox',icon:'🧸',name:'Toy Box',cost:400,desc:'Full of toys she sits on, not in.',left:'800px',bottom:'2.2%'},
+ {id:'bed',icon:'🛏️',name:'Cozy Cat Bed',cost:500,desc:'She sleeps on your laundry. But it looks great.',left:'1640px',bottom:'7.5%'},
+ {id:'cattree',icon:'🌴',name:'Cat Tree',cost:600,desc:'Five levels. She uses the bottom one. Sometimes.',left:'25px',bottom:'8.5%'},
+ {id:'hammock',icon:'🏖️',name:'Sun Hammock',cost:650,desc:'A hammock under the window for premium loafing.',left:'365px',bottom:'3.8%'},
+ {id:'fishtank',icon:'🐠',name:'Fish Tank',cost:700,desc:'Living Cat TV, right in the room.',left:'2060px',bottom:'3.2%'},
+ {id:'luxcouch',icon:'🛋️',name:'Luxury Couch',cost:800,desc:'Replaces the old couch with a royal purple throne.',x:'',y:''},
+ {id:'bigtv',icon:'📺',name:'Cat TV Deluxe',cost:900,desc:'A much bigger TV. The birds have never looked closer.',x:'',y:''},
+];
+const CHANNELS=[
+ {scene:'bird',name:'Bird Watch',line:'“They never catch it. Riveting.”'},{scene:'fish',name:'Fish Tank TV',line:'“Sushi documentaries. Bold.”'},
+ {scene:'laser',name:'Laser Dot News',line:'“The dot remains at large.”'},{scene:'yarn',name:'Yarn Ball Drama',line:'“Season 9: The Unravelling.”'},
+ {scene:'lion',name:'Big Cat Planet',line:'“Mochi could do that. Chooses not to.”'},{scene:'nap',name:'Nap Cam (Live)',line:'“It is just Mochi sleeping. She loves it.”'},
+];
+function tvSceneHTML(scene){
+ if(scene==='fish')return '<span class="tv-fish" style="top:16px">🐠</span><span class="tv-fish f2">🐡</span><span class="tv-bubble" style="left:22%">🫧</span><span class="tv-bubble" style="left:58%;animation-delay:1.1s">🫧</span><span class="tv-bubble" style="left:78%;animation-delay:2s">🫧</span><span style="position:absolute;bottom:2px;left:6px">🪸</span><span style="position:absolute;bottom:2px;right:8px">🌿</span>';
+ if(scene==='laser')return '<span class="tv-dot">🔴</span><span class="tv-paw">🐾</span><span style="position:absolute;top:6px;right:8px;font-size:.6rem;color:#ff6b9d">● LIVE: THE DOT</span>';
+ if(scene==='yarn')return '<span class="tv-yarn">🧶</span><span style="position:absolute;bottom:4px;right:10px;font-size:1.3rem">🐈</span>';
+ if(scene==='lion')return '<span class="tv-lion">🦁</span><span style="position:absolute;top:8px;left:10px;font-size:.9rem">🌳</span><span style="position:absolute;bottom:4px;right:12px;font-size:.9rem">🌿</span>';
+ if(scene==='nap')return '<span class="tv-napcat">🐱</span><span class="tv-zzz">💤 z Z</span><span style="position:absolute;top:6px;right:9px">🌙</span>';
+ return '<span class="tv-cloud">☁️</span><span class="tv-bird">🐦</span><span class="tv-bird b2">🐤</span><span class="tv-branch">🌿</span>';
+}
+function renderTV(){
+ const c=CHANNELS[channelIdx],scene=document.getElementById('tv-scene');
+ scene.className='tv-scene '+c.scene;scene.innerHTML=tvSceneHTML(c.scene);
+ document.getElementById('tv-channel').innerHTML='CAT TV: '+c.name+'<br>“'+c.line+'”';
+}
+const STUFF_FX={bowl:'<span class="fx">✨</span>',bed:'<span class="fx">💤</span>',cattree:'<span class="fx">🦋</span>',fishtank:'<span class="fx tank-fish">🐠</span><span class="fx tank-bubble">🫧</span>'};
+const STUFF_REACTIONS={bowl:'😻 Mochi approves of the fancy bowl. She eats from the floor beside it.',toymouse:'🐭 The toy mouse scurries! Mochi watches it like television.',scratch:'🪵 She scratches the couch next to the post. The post understands.',toybox:'🧸 The toy box bounces. Mochi sits on the lid, victorious.',bed:'🛏️ The bed glows cosily. Mochi sleeps on your socks instead.',cattree:'🌴 The cat tree sways. A butterfly visits. Mochi ignores both, regally.',hammock:'🏖️ The hammock rocks gently, empty. She prefers the warm laundry.',fishtank:'🐠 The tank fish swims laps. Mochi has named her Dinner. (She is safe.)'};
+const WANTS=[
+ {id:'eat',w:40,icon:'🍗',text:'Feed me. The bowl has been empty for MINUTES.'},
+ {id:'sleep',w:25,icon:'😴',text:'Tuck me in. I have had a long day of nothing.'},
+ {id:'tv',w:25,icon:'📺',text:'Cat TV. Now. The birds are on.'},
+ {id:'play',w:10,icon:'🔴',text:'…Fine. ONE minute of playing. Do not tell anyone.'},
+];
+const ACTIONS=[
+ {id:'kibble',icon:'🥣',name:'Kibble Bowl',want:'eat',koins:4,cd:2,line:'Crunch. Crunch. A solid, honest meal.'},
+ {id:'tuna',icon:'🐟',name:'Gourmet Tuna',want:'eat',koins:6,cd:4,line:'Mochi inhales it without chewing. Five stars.'},
+ {id:'salmon',icon:'🍣',name:'Salmon Platter',want:'eat',koins:8,cd:6,line:'She eats like royalty. Because you made her royalty.'},
+ {id:'tuck',icon:'🛏️',name:'Tuck In',want:'sleep',koins:5,cd:3,line:'Blanket tucked. Ears kissed. Professional work.'},
+ {id:'pillow',icon:'☁️',name:'Fluff Pillow',want:'sleep',koins:4,cd:2,line:'Maximum fluff achieved. She sinks 4 inches.'},
+ {id:'blanket',icon:'🔥',name:'Warm Blanket',want:'sleep',koins:7,cd:5,line:'She melts into a warm cat puddle.'},
+ {id:'channel',icon:'📺',name:'Change Channel',want:'tv',koins:4,cd:1,line:'New channel! Her eyes do the slow, happy blink.'},
+ {id:'marathonTV',icon:'🍿',name:'Cat TV Marathon',want:'tv',koins:8,cd:6,line:'Six episodes. She did not move once. Perfect.'},
+ {id:'laser',icon:'🔴',name:'Laser Pointer',want:'play',koins:6,cd:3,line:'THE DOT. She moves! Actually moves!'},
+ {id:'feather',icon:'🪶',name:'Feather Wand',want:'play',koins:7,cd:4,line:'One majestic paw swipe. Then a rest.'},
+ {id:'brush',icon:'🪮',name:'Brush & Belly Rub',want:'play',koins:7,cd:5,line:'Purring at industrial volume. Careful: belly is a trap.'},
+];
+// ═══ SAVE ═══
+const SAVE_KEY='fat-cat-pamperer-save';
+function defaultSave(){return{chonkKoins:30,totalPampers:0,equipped:'none',outfits:{},quests:{},stuff:{},counts:{eat:0,sleep:0,tv:0,play:0}};}
+function loadSave(){try{const d=JSON.parse(localStorage.getItem(SAVE_KEY));if(d&&typeof d==='object'){const s=Object.assign(defaultSave(),d);if(d.chonkKoins==null&&typeof d.pamperPoints==='number')s.chonkKoins=d.pamperPoints;s.counts=Object.assign({eat:0,sleep:0,tv:0,play:0},d.counts);s.outfits=d.outfits||{};s.quests=d.quests||{};s.stuff=d.stuff||{};return s;}}catch(e){}return defaultSave();}
+function saveGame(){localStorage.setItem(SAVE_KEY,JSON.stringify(S));}
+let S=loadSave();
+let want='eat',wantTimer=15,channelIdx=0,cooldowns={},questBusy=false,audioCtx=null,logLines=[];
+function clamp(v){return Math.max(0,Math.min(100,Math.round(v)));}
+function pickWant(){const t=WANTS.reduce((s,x)=>s+x.w,0);let r=Math.random()*t;for(const x of WANTS){r-=x.w;if(r<=0)return x.id;}return'eat';}
+function shopHas(id){return!!ggLoad().shopPurchases[id];}
+function beep(f,d,type){try{audioCtx=audioCtx||new(window.AudioContext||window.webkitAudioContext)();const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type=type||'sine';o.frequency.value=f;g.gain.setValueAtTime(.1,audioCtx.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+(d||.15));o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+(d||.15));}catch(e){}}
+function purr(){beep(82,.35,'sawtooth');setTimeout(()=>beep(76,.3,'sawtooth'),120);}
+function hearts(n){const box=document.getElementById('hearts');for(let i=0;i<n;i++){const h=document.createElement('div');h.className='heart';h.textContent=['❤️','💖','🪙','😻'][i%4];h.style.left=(40+Math.random()*20)+'%';h.style.bottom='34%';box.appendChild(h);setTimeout(()=>h.remove(),1450);}}
+function log(msg){logLines.unshift(msg);if(logLines.length>30)logLines.pop();const el=document.getElementById('drawer-body');if(currentMenu==='log')renderLog();}
+function setWant(force){want=force||pickWant();wantTimer=15;const w=WANTS.find(x=>x.id===want);document.getElementById('cat-bubble').textContent=w.icon+' '+w.text;renderCatState();}
+function renderCatState(){
+ const wrap=document.getElementById('cat-wrap');
+ wrap.className='';
+ const stateClass=want==='sleep'?'sleeping':want==='eat'?'eating':want==='play'?'playing':'';
+ if(stateClass)wrap.classList.add(stateClass);
+ document.getElementById('eyes-open').style.display=want==='sleep'?'none':'';
+ document.getElementById('eyes-closed').style.display=want==='sleep'?'':'none';
+ document.getElementById('cat-state-label').textContent=want==='eat'?'• demanding snacks •':want==='sleep'?'• professional napper •':want==='tv'?'• Cat TV critic •':'• RARE play mode! •';
+ document.getElementById('cat-prop').textContent=want==='eat'?'🍗':want==='sleep'?'🛏️':want==='tv'?'🍿':'🔴';
+ const eq=S.equipped,show=(id,on)=>{const e=document.getElementById(id);if(e)e.style.display=on?'':'none';};
+ show('outfit-bunny-ears',eq==='bunny');show('outfit-bunny-body',eq==='bunny');show('outfit-chain',eq==='chain');
+ show('outfit-headband',eq==='headband');show('outfit-crown',eq==='crown');show('outfit-chef',eq==='chef');show('outfit-astro',eq==='astro');
+ const o=OUTFITS.find(x=>x.id===eq);
+ document.getElementById('outfit-label').textContent='Outfit: '+(o?o.icon+' '+o.name:'Bare Chonk');
+ document.getElementById('couch').className='couch'+(S.stuff.luxcouch||shopHas('fcp_luxury_couch')?' luxury':'');
+ document.getElementById('tv-box').className='tv'+(S.stuff.bigtv?' big':'');
+}
+function stuffSVG(id){
+ if(id==='bowl')return '<svg viewBox="0 0 160 96"><ellipse cx="80" cy="86" rx="58" ry="8" fill="#00000033"/><path d="M16 40 h128 c0 28 -28 44 -64 44 S16 68 16 40 Z" fill="#7fb3d9" stroke="#4a7ba6" stroke-width="4"/><ellipse cx="80" cy="40" rx="62" ry="10" fill="#a8cdea" stroke="#4a7ba6" stroke-width="3"/><ellipse cx="80" cy="37" rx="42" ry="7" fill="#8a5a2b"/><circle cx="62" cy="35" r="5" fill="#a9743a"/><circle cx="82" cy="38" r="5" fill="#a9743a"/><circle cx="98" cy="34" r="5" fill="#a9743a"/><path d="M36 52 q44 20 88 0" stroke="#ffffff55" stroke-width="5" fill="none"/></svg>';
+ if(id==='toymouse')return '<svg viewBox="0 0 160 96"><ellipse cx="74" cy="84" rx="52" ry="7" fill="#00000030"/><path class="mouse-tail" d="M18 66 q-22 4 -26 -12" stroke="#c98aa6" stroke-width="6" fill="none" stroke-linecap="round"/><ellipse cx="72" cy="58" rx="46" ry="27" fill="#a8b0bc" stroke="#7d8794" stroke-width="3"/><path d="M108 44 q26 -8 30 12 q-12 12 -28 6 Z" fill="#a8b0bc" stroke="#7d8794" stroke-width="3"/><circle cx="102" cy="30" r="11" fill="#c3ccd6" stroke="#7d8794" stroke-width="3"/><circle cx="102" cy="30" r="5" fill="#f2b8c6"/><circle cx="132" cy="50" r="4" fill="#222"/><circle cx="140" cy="58" r="4" fill="#e87a90"/><path d="M52 82 q4 -8 10 0 M92 82 q4 -8 10 0" stroke="#7d8794" stroke-width="4" fill="none"/></svg>';
+ if(id==='scratch')return '<svg viewBox="0 0 120 220"><ellipse cx="60" cy="208" rx="48" ry="9" fill="#00000030"/><rect x="14" y="188" width="92" height="18" rx="7" fill="#8a5a2b" stroke="#5f3c1a" stroke-width="3"/><rect x="42" y="46" width="36" height="146" rx="8" fill="#c9a86a" stroke="#96702f" stroke-width="3"/><path d="M42 66 h36 M42 88 h36 M42 110 h36 M42 132 h36 M42 154 h36 M42 176 h36" stroke="#96702f" stroke-width="4"/><ellipse cx="60" cy="40" rx="42" ry="15" fill="#a8b0bc" stroke="#7d8794" stroke-width="3"/><ellipse cx="60" cy="36" rx="30" ry="9" fill="#c3ccd6"/></svg>';
+ if(id==='toybox')return '<svg viewBox="0 0 200 130"><ellipse cx="100" cy="120" rx="82" ry="8" fill="#00000030"/><circle cx="66" cy="34" r="17" fill="#ff6b6b"/><circle cx="104" cy="24" r="13" fill="#ffd43b"/><path d="M132 14 l6 12 l13 2 l-9 9 l2 13 l-12 -6 l-12 6 l2 -13 l-9 -9 l13 -2 Z" fill="#69db7c"/><path d="M22 52 L178 52 L164 118 L36 118 Z" fill="#b07a45" stroke="#7c4f24" stroke-width="4"/><path d="M22 52 h156 M36 86 h128" stroke="#7c4f24" stroke-width="3"/><rect x="82" y="66" width="36" height="18" rx="4" fill="#8a5a2b"/></svg>';
+ if(id==='bed')return '<svg viewBox="0 0 260 130"><ellipse cx="130" cy="118" rx="112" ry="9" fill="#00000030"/><path d="M14 78 q0 -44 58 -52 l116 0 q58 8 58 52 q0 34 -50 42 l-132 0 q-50 -8 -50 -42 Z" fill="#e87a9c" stroke="#c24e78" stroke-width="4"/><ellipse cx="130" cy="72" rx="88" ry="34" fill="#ffd6e7"/><ellipse cx="130" cy="70" rx="66" ry="24" fill="#fff0f6"/><rect x="30" y="30" width="52" height="24" rx="11" fill="#ffe3ee" stroke="#e0a0b8" stroke-width="3"/><path d="M52 96 q78 18 156 0" stroke="#c24e7855" stroke-width="5" fill="none"/></svg>';
+ if(id==='cattree')return '<svg viewBox="0 0 200 300"><ellipse cx="100" cy="290" rx="76" ry="8" fill="#00000030"/><rect x="24" y="268" width="152" height="18" rx="7" fill="#8a5a2b" stroke="#5f3c1a" stroke-width="3"/><rect x="86" y="70" width="28" height="204" fill="#c9a86a" stroke="#96702f" stroke-width="3"/><path d="M86 104 h28 M86 150 h28 M86 196 h28 M86 240 h28" stroke="#96702f" stroke-width="4"/><ellipse cx="100" cy="62" rx="66" ry="17" fill="#a8b0bc" stroke="#7d8794" stroke-width="3"/><ellipse cx="52" cy="140" rx="42" ry="13" fill="#b9c2cd" stroke="#7d8794" stroke-width="3"/><ellipse cx="150" cy="196" rx="42" ry="13" fill="#b9c2cd" stroke="#7d8794" stroke-width="3"/><g class="tree-toy"><path d="M150 76 v22" stroke="#666" stroke-width="2.5"/><circle cx="150" cy="106" r="9" fill="#ff6b9d"/></g><path d="M40 268 q10 -26 26 -34 l0 34 Z" fill="#7d8794" opacity=".5"/></svg>';
+ if(id==='hammock')return '<svg viewBox="0 0 250 140"><ellipse cx="125" cy="130" rx="104" ry="8" fill="#00000030"/><path d="M28 128 L52 40 M222 128 L198 40" stroke="#7c4f24" stroke-width="9" stroke-linecap="round"/><path d="M52 40 L198 40" stroke="#7c4f24" stroke-width="6"/><path d="M52 44 q73 62 146 0 q-14 40 -44 48 l-58 0 q-30 -8 -44 -48 Z" fill="#ffb35c" stroke="#e07f1f" stroke-width="4"/><path d="M70 58 q55 34 110 0" stroke="#e07f1f" stroke-width="3" fill="none" opacity=".6"/><rect x="102" y="52" width="46" height="20" rx="9" fill="#fff0f6" stroke="#e0a0b8" stroke-width="3"/></svg>';
+ return '<svg viewBox="0 0 240 190"><ellipse cx="120" cy="180" rx="96" ry="8" fill="#00000030"/><path d="M62 108 l-10 62 M178 108 l10 62 M46 170 h148" stroke="#5f3c1a" stroke-width="8" stroke-linecap="round"/><rect x="28" y="22" width="184" height="92" rx="8" fill="#8fd8f2" fill-opacity=".55" stroke="#4a7ba6" stroke-width="5"/><path d="M28 44 q30 -10 60 0 t60 0 t64 0 l0 70 l-184 0 Z" fill="#3aa7d6" opacity=".45"/><g class="tank-fish-a"><path d="M52 76 q14 -11 28 0 q-14 11 -28 0 Z" fill="#ff922b"/><path d="M52 76 l-10 -8 l0 16 Z" fill="#e8590c"/><circle cx="72" cy="73" r="2.4" fill="#222"/></g><g class="tank-fish-b"><path d="M150 56 q12 -9 24 0 q-12 9 -24 0 Z" fill="#ffd43b"/><path d="M174 56 l10 -7 l0 14 Z" fill="#e8a90c"/><circle cx="158" cy="53" r="2" fill="#222"/></g><circle class="tank-bub" cx="96" cy="96" r="4" fill="#e7f5ff"/><circle class="tank-bub" cx="132" cy="100" r="3" fill="#e7f5ff" style="animation-delay:1.2s"/><path d="M196 114 q4 -22 -4 -34 M192 92 q-12 -4 -14 -16 M196 96 q10 -8 8 -18" stroke="#2f9e44" stroke-width="4" fill="none"/><ellipse cx="70" cy="108" rx="16" ry="6" fill="#e599f7"/></svg>';
+}
+function renderStuff(){
+ document.getElementById('stuff-layer').innerHTML=STUFF.filter(s=>S.stuff[s.id]&&s.left).map(s=>'<div class="stuff-item stuff-'+s.id+'" data-stuff="'+s.id+'" title="'+s.name+'" aria-label="'+s.name+'" style="left:'+s.left+';bottom:'+s.bottom+'">'+stuffSVG(s.id)+'</div>').join('');
+ document.querySelectorAll('[data-stuff]').forEach(el=>el.onclick=()=>{el.classList.remove('bonk');void el.offsetWidth;el.classList.add('bonk');const s=STUFF.find(x=>x.id===el.dataset.stuff);document.getElementById('cat-bubble').textContent=STUFF_REACTIONS[s.id]||('🎁 Mochi inspects the '+s.name+'.');log('🎁 '+(STUFF_REACTIONS[s.id]||s.name));hearts(2);beep(660,.09);setTimeout(()=>el.classList.remove('bonk'),500);});
+}
+function renderHUD(){
+ document.getElementById('hud-koins').textContent=S.chonkKoins;
+ document.getElementById('hud-stuff').textContent=Object.keys(S.stuff).length+'/10';
+ document.getElementById('hud-quests').textContent=Object.keys(S.quests).length+'/6';
+ document.getElementById('hud-outfits').textContent=Object.keys(S.outfits).length+'/6';
+}
+// ═══ MENU / DRAWER ═══
+let currentMenu=null;
+const MENU_INFO={
+ pamper:['👐 Pamper Mochi','No meters, no stress — Mochi cannot be unhappy for long. Just spoil her. Matching her current craving pays double Chonk Koins.'],
+ tasks:['🏔️ Bizarrely Hard Tasks','Absurd heroics, performed entirely by you, animated for your suffering. Each earns an outfit + Chonk Koins.'],
+ stuff:['🎁 Get Stuff For Her','Spend Chonk Koins on furniture, toys and luxuries. Everything you buy appears in the house. Mochi earned none of it.'],
+ wardrobe:['🎽 Wardrobe','Outfits earned from Bizarre Tasks. Click Wear and Mochi models it without standing up.'],
+ log:['📜 Pamper Log','The official record of your servitude.'],
+};
+function openMenu(name){
+ currentMenu=name;
+ document.querySelectorAll('#menu button').forEach(b=>b.classList.toggle('active',b.dataset.menu===name));
+ document.getElementById('drawer').classList.add('open');
+ document.getElementById('drawer-title').textContent=MENU_INFO[name][0];
+ document.getElementById('drawer-sub').textContent=MENU_INFO[name][1];
+ if(name==='pamper')renderActions();else if(name==='tasks')renderQuests();
+ else if(name==='stuff')renderStuffShop();else if(name==='wardrobe')renderWardrobe();else renderLog();
+}
+function closeMenu(){currentMenu=null;document.getElementById('drawer').classList.remove('open');document.querySelectorAll('#menu button').forEach(b=>b.classList.remove('active'));}
+document.querySelectorAll('#menu button').forEach(b=>b.onclick=()=>currentMenu===b.dataset.menu?closeMenu():openMenu(b.dataset.menu));
+document.getElementById('drawer-close').onclick=closeMenu;
+function renderActions(){
+ document.getElementById('drawer-body').innerHTML='<div style="font-size:.82rem;margin-bottom:8px">Current craving: <b>'+(WANTS.find(w=>w.id===want)||{}).icon+' '+(want==='eat'?'FOOD':want==='sleep'?'SLEEP':want==='tv'?'CAT TV':'PLAY (rare!)')+'</b> — matching pays double!</div><div class="btn-grid">'+ACTIONS.map(a=>{const cd=cooldowns[a.id]||0;return '<button class="act" data-act="'+a.id+'" '+(cd>0?'disabled':'')+'>'+a.icon+' '+a.name+(cd>0?' ('+cd+'s)':'')+'<small>🪙 +'+a.koins+(want===a.want?' ×2 ✨ Mochi wants this!':' • for '+a.want)+'</small></button>';}).join('')+'</div>';
+ document.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>doAction(b.dataset.act));
+}
+function doAction(id){
+ const a=ACTIONS.find(x=>x.id===id);if(!a||(cooldowns[id]||0)>0)return;
+ cooldowns[id]=a.cd;const match=want===a.want;
+ let gain=a.koins*(match?2:1);if(shopHas('fcp_golden_bowl')&&a.want==='eat')gain+=2;
+ S.chonkKoins+=gain;S.totalPampers++;S.counts[a.want]=(S.counts[a.want]||0)+1;
+ if(a.id==='channel'||a.id==='marathonTV'){channelIdx=(channelIdx+1)%CHANNELS.length;renderTV();}
+ if(a.id==='brush'&&want==='sleep'&&Math.random()<.35){log('🙀 BELLY TRAP! Mochi grabbed your hand, then fell asleep on it. Still paid, obviously.');document.getElementById('cat-bubble').textContent='🙀 The belly was a trap. It is always a trap.';beep(180,.25,'square');}
+ else{document.getElementById('cat-bubble').textContent=(match?'😻 ':'😼 ')+a.line;log((match?'✨ PERFECT PAMPER! ':'')+a.icon+' '+a.line+' +'+gain+'🪙');}
+ if(match){hearts(4);purr();tryAch('fcp_first_pamper');}else beep(520,.08);
+ if(S.counts.eat>=10)tryAch('fcp_full_belly');if(S.counts.sleep>=5)tryAch('fcp_nap_time');
+ if(S.counts.tv>=10)tryAch('fcp_tv_addict');if(a.want==='play'&&match&&S.counts.play>=3)tryAch('fcp_playtime');
+ saveGame();renderHUD();renderCatState();if(currentMenu==='pamper')renderActions();
+ if(match)setWant();
+}
+function renderQuests(){
+ document.getElementById('drawer-body').innerHTML=QUESTS.map((q,i)=>{const done=!!S.quests[q.id],locked=i>0&&!S.quests[QUESTS[i-1].id];const o=OUTFITS.find(x=>x.id===q.reward);return '<div class="quest '+(done?'done':'')+(locked?' locked':'')+'"><div class="qi">'+q.icon+'</div><div class="qt"><b>'+q.title+'</b> <span style="color:#ff6b6b;font-size:.66rem">'+q.diff+'</span><small>'+q.desc+'<br>Reward: '+o.icon+' '+o.name+' + '+q.koins+'🪙 • animated!</small></div>'+(done?'<span style="text-align:center"><b style="color:#69db7c">DONE ✔</b><br><button data-quest="'+q.id+'">↻ DO AGAIN<br><span style="font-weight:400;font-size:.68rem">+'+Math.ceil(q.koins/2)+'🪙 replay</span></button></span>':locked?'<span style="font-size:.73rem">🔒 Previous first</span>':'<button data-quest="'+q.id+'">START</button>')+'</div>';}).join('');
+ document.querySelectorAll('[data-quest]').forEach(b=>b.onclick=()=>openQuest(b.dataset.quest));
+}
+function renderStuffShop(){
+ document.getElementById('drawer-body').innerHTML='<div style="font-size:.85rem;margin-bottom:8px">🪙 Balance: <b style="color:#ffd43b">'+S.chonkKoins+'</b></div>'+STUFF.map(s=>{const owned=!!S.stuff[s.id];return '<div class="stuff"><div class="si">'+s.icon+'</div><div class="st"><b>'+s.name+'</b><small>'+s.desc+'</small></div>'+(owned?'<b style="color:#69db7c">IN HOUSE ✔</b>':'<button data-buy="'+s.id+'" '+(S.chonkKoins<s.cost?'disabled':'')+'>'+s.cost+'🪙</button>')+'</div>';}).join('');
+ document.querySelectorAll('[data-buy]').forEach(b=>b.onclick=()=>{const s=STUFF.find(x=>x.id===b.dataset.buy);if(!s||S.chonkKoins<s.cost||S.stuff[s.id])return;S.chonkKoins-=s.cost;S.stuff[s.id]=true;saveGame();renderHUD();renderStuff();renderCatState();renderStuffShop();log('🎁 Bought '+s.icon+' '+s.name+' for Mochi. She glanced at it. High praise.');hearts(3);beep(760,.12);});
+}
+function renderWardrobe(){
+ const items=[{id:'none',name:'Bare Chonk',icon:'🐱'}].concat(OUTFITS);
+ document.getElementById('drawer-body').innerHTML='<div class="ward">'+items.map(o=>{const owned=o.id==='none'||!!S.outfits[o.id],eq=S.equipped===o.id;return '<div class="item"><div class="wi">'+o.icon+'</div>'+o.name+'<button data-wear="'+o.id+'" '+(owned&&!eq?'':'disabled')+'>'+(eq?'WEARING':owned?'Wear':'🔒 Locked')+'</button></div>';}).join('')+'</div>';
+ document.querySelectorAll('[data-wear]').forEach(b=>b.onclick=()=>{S.equipped=b.dataset.wear;saveGame();renderCatState();renderWardrobe();log('👗 Mochi now wears the '+b.dataset.wear+'. She did not stand up for this.');});
+}
+function renderLog(){document.getElementById('drawer-body').innerHTML='<div class="log">'+(logLines.length?logLines.map(l=>'<div>'+l+'</div>').join(''):'<div>No pampering yet. Mochi is waiting. Patiently. Loudly.</div>')+'</div>';}
+// gentle craving rotation only — no decay, no penalties, ever
+setInterval(()=>{if(questBusy)return;Object.keys(cooldowns).forEach(k=>{if(cooldowns[k]>0)cooldowns[k]--;});wantTimer--;if(wantTimer<=0)setWant();if(currentMenu==='pamper')renderActions();},1000);
+// ═══ ANIMATED QUEST MINIGAMES ═══
+let qState=null,qTimer=null;
+function setBar(p){document.getElementById('qm-bar').style.width=Math.max(0,Math.min(100,p))+'%';}
+function stageHTML(q){
+ if(q.id==='everest'){let snow='';for(let i=0;i<16;i++)snow+='<span class="snow" style="left:'+(i*6+3)+'%;animation-duration:'+(2+i%4)+'s;animation-delay:'+(i*.3)+'s">❄</span>';return '<div class="stage st-everest" id="qm-stage"><div class="fp-view" id="everest-view">'+snow+'<div class="mountain" id="everest-mtn"></div><div class="cap"></div><div class="flag" id="everest-flag">🚩</div><div style="position:absolute;top:10px;left:12px;font-size:.85rem;color:#1864ab" id="altitude">Altitude: 0m — your hands, your climb</div><div style="position:absolute;top:10px;right:12px;font-size:.75rem;color:#1864ab">👁️ FIRST PERSON</div></div><div class="fp-hand left" id="hand-l">🧤</div><div class="fp-hand right" id="hand-r">🧤</div></div>';}
+ if(q.id==='nba')return '<div class="stage st-nba" id="qm-stage"><div class="fp-view"><div class="court"></div><div class="hoop" id="hoop"><svg width="170" height="185" viewBox="0 0 170 185"><rect x="112" y="26" width="58" height="11" fill="#495057"/><rect x="24" y="8" width="100" height="78" rx="4" fill="#f8f9fa" stroke="#343a40" stroke-width="4"/><rect x="57" y="32" width="42" height="32" fill="none" stroke="#e8590c" stroke-width="3.5"/><ellipse cx="78" cy="94" rx="28" ry="7.5" fill="none" stroke="#e8590c" stroke-width="5.5"/><g id="hoop-net" stroke="#f1f3f5" stroke-width="2.4"><path d="M54 99 L66 132 M68 101 L74 134 M84 101 L82 134 M98 99 L90 132 M61 115 L90 115 M66 126 L86 126"/></g><ellipse cx="78" cy="134" rx="13" ry="3.5" fill="none" stroke="#e9ecef" stroke-width="2"/></svg></div><div style="position:absolute;top:10px;left:12px;font-size:.82rem;color:#fff">Made: <b id="nba-made">0</b> • Taken: <b id="nba-taken">0</b> / 5 &nbsp;•&nbsp; 👁️ FIRST PERSON</div><div class="ball" id="nba-ball" style="left:50%;bottom:104px;transform:translateX(-50%)">🏀</div><div class="fp-hands-ball">👐</div><div class="aim-angle" id="aim-angle">🎯 Aim: 55°</div><div style="position:absolute;bottom:26px;left:0;right:0;font-size:.7rem;color:#ffe3b3">Move your mouse / finger (or ← → keys) to rotate your aim — the dotted line shows exactly where the ball will go. Green dots = swish! Click the court or SHOOT to fire.</div></div></div>';
+ if(q.id==='ninjas')return '<div class="stage" id="qm-stage" style="background:linear-gradient(180deg,#343a40,#14181d);padding:14px"><div class="fp-view"><div style="color:#ffd43b;font-size:.85rem;margin-bottom:8px">🥷 They are coming AT YOU! Defeated: <b id="ninja-count">0</b> / 20 &nbsp;•&nbsp; 👁️ FIRST PERSON</div><div class="ninja-grid">'+Array.from({length:9},(_,i)=>'<div class="ninja-cell" data-cell="'+i+'">·</div>').join('')+'</div><div style="font-size:1.6rem;margin-top:8px">🛋️🐱 <span style="font-size:.7rem;color:#bfaec9">Mochi watches from behind you, unbothered</span></div></div><div class="fp-hand left" id="fist-l" style="font-size:3.6rem">👊</div><div class="fp-hand right" id="fist-r" style="font-size:3.6rem">👊</div></div>';
+ if(q.id==='sphinx')return '<div class="stage st-sphinx" id="qm-stage"><div class="fp-view"><div class="sphinx-wrap" id="sphinx-wrap"><svg viewBox="0 0 420 320" role="img" aria-label="The Great Sphinx"><rect x="58" y="288" width="304" height="18" rx="4" fill="#a67c52"/><g id="sphinx-body"><path d="M128 288 L164 148 L256 148 L292 288 Z" fill="#dcbc8a" stroke="#a67c52" stroke-width="3"/><rect x="148" y="208" width="40" height="80" rx="12" fill="#d9b380" stroke="#a67c52" stroke-width="3"/><rect x="232" y="208" width="40" height="80" rx="12" fill="#d9b380" stroke="#a67c52" stroke-width="3"/><path d="M152 262 h32 M152 272 h32 M236 262 h32 M236 272 h32" stroke="#a67c52" stroke-width="2.5"/></g><g id="sphinx-head"><path d="M210 20 C146 22 122 74 126 148 L170 158 C160 104 176 64 210 56 C244 64 260 104 250 158 L294 148 C298 74 274 22 210 20 Z" fill="#c9a86a" stroke="#8d6a35" stroke-width="3"/><path d="M142 66 q30 -18 62 -8 M278 66 q-30 -18 -62 -8 M138 102 q34 -16 66 -6 M282 102 q-34 -16 -66 -6 M140 132 q32 -12 62 -4 M280 132 q-32 -12 -62 -4" stroke="#4361a8" stroke-width="7" fill="none" opacity=".75"/><ellipse cx="210" cy="94" rx="43" ry="52" fill="#e8ca9c" stroke="#a67c52" stroke-width="3"/><ellipse cx="164" cy="94" rx="9" ry="16" fill="#dcbc8a" stroke="#a67c52" stroke-width="2.5"/><ellipse cx="256" cy="94" rx="9" ry="16" fill="#dcbc8a" stroke="#a67c52" stroke-width="2.5"/><circle cx="210" cy="40" r="7" fill="#ffd43b" stroke="#8d6a35" stroke-width="2.5"/><path d="M182 88 q11 -8 22 0 M216 88 q11 -8 22 0" stroke="#5b4028" stroke-width="4" fill="none" stroke-linecap="round"/><ellipse cx="193" cy="98" rx="8" ry="4.5" fill="#2f2113"/><ellipse cx="227" cy="98" rx="8" ry="4.5" fill="#2f2113"/><path d="M210 100 l-6 20 q6 5 12 0 Z" fill="#dcbc8a" stroke="#a67c52" stroke-width="2"/><path d="M194 132 q16 9 32 0" stroke="#5b4028" stroke-width="3.5" fill="none" stroke-linecap="round"/><rect x="199" y="140" width="22" height="36" rx="5" fill="#c9a86a" stroke="#4361a8" stroke-width="4"/></g><g id="sphinx-cracks" stroke="#4a3018" stroke-width="2.5" fill="none"><path d="M196 52 l10 22 l-8 18 l14 20"/><path d="M238 70 l-12 20 l10 16"/><path d="M170 190 l22 14 l-10 22 l18 16"/><path d="M252 180 l-16 24 l14 20"/></g></svg></div><div class="feather" style="right:12%;top:18%">🪶</div><div class="feather" style="left:10%;top:48%;animation-delay:.7s">🪶</div><div id="clipart-boom" role="img" aria-label="KABOOM explosion"><svg viewBox="0 0 300 240"><polygon points="150,5 178,62 225,22 218,78 282,62 238,102 298,118 240,140 286,182 224,176 232,232 184,190 150,238 116,190 68,232 76,176 14,182 60,140 2,118 62,102 18,62 82,78 75,22 122,62" fill="#e63946" stroke="#7f1d1d" stroke-width="4" stroke-linejoin="round"/><polygon points="150,5 178,62 225,22 218,78 282,62 238,102 298,118 240,140 286,182 224,176 232,232 184,190 150,238 116,190 68,232 76,176 14,182 60,140 2,118 62,102 18,62 82,78 75,22 122,62" fill="#ff922b" transform="translate(150 120) scale(.78) translate(-150 -120)"/><polygon points="150,5 178,62 225,22 218,78 282,62 238,102 298,118 240,140 286,182 224,176 232,232 184,190 150,238 116,190 68,232 76,176 14,182 60,140 2,118 62,102 18,62 82,78 75,22 122,62" fill="#ffd43b" transform="translate(150 120) scale(.55) translate(-150 -120)"/><ellipse cx="150" cy="120" rx="52" ry="34" fill="#fff7ae"/><text x="150" y="133" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-size="33" font-weight="900" fill="#d90429" stroke="#ffffff" stroke-width="1.2" transform="rotate(-6 150 120)">KABOOM!</text></svg></div><div id="sphinx-rubble">🪨🪨 🗿💥 🪨</div><div style="position:absolute;bottom:12px;left:0;right:0;font-size:.8rem;color:#5c3a00">Your eyes: <span id="stare-eyes">👀</span> — a REAL Sphinx, lion body and all. Your stare is locked on…</div></div><div class="fp-lid top" id="lid-top"></div><div class="fp-lid bottom" id="lid-bottom"></div></div>';
+ if(q.id==='souffle')return '<div class="stage st-souffle" id="qm-stage"><div class="fp-view"><span class="steam" style="left:44%">💨</span><span class="steam" style="left:54%;animation-delay:.8s">💨</span><div style="position:absolute;top:12px;right:14px;font-size:2rem">🐱<div style="font-size:.6rem;color:#ced4da">THE CRITIC</div></div><div class="dish" id="souffle-dish" style="font-size:6rem;margin-top:9%">🍮</div><div style="color:#ced4da;font-size:.78rem">Your whisk, your bowl — watch it rise! 👁️ FIRST PERSON</div></div><div class="fp-whisk" id="fp-whisk">🥄👐</div></div>';
+ return '<div class="stage st-marathon" id="qm-stage"><div class="fp-view"><div style="position:absolute;top:12px;left:12px;font-size:.82rem;color:#1864ab" id="marathon-dist">0.0 / 26.2 miles — looking down at YOUR feet</div><div style="position:absolute;top:10px;right:14px;font-size:2rem" id="finish-flag">🏁</div><div class="scroll-track"></div><div style="position:absolute;bottom:48%;left:0;right:0;font-size:.72rem;color:#1864ab">👁️ FIRST PERSON • the road rushes under you</div></div><div class="fp-feet" id="foot-l-vis" style="left:32%">🩴</div><div class="fp-feet" id="foot-r-vis" style="right:32%">🩴</div></div>';
+}
+function questBody(q){
+ if(q.id==='souffle')return '<div style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap">'+['🥚 Egg','🧈 Butter','🍋 Lemon','🍓 Berry','🧀 Cheese'].map((s,i)=>'<button class="big-btn alt" data-ing="'+i+'" style="font-size:.82rem;padding:10px 11px">'+s+'</button>').join('')+'</div><div id="souffle-show" style="font-size:1.7rem;min-height:36px"></div>';
+ return '';
+}
+function openQuest(id){
+ const q=QUESTS.find(x=>x.id===id);if(!q)return;const replay=!!S.quests[id];
+ questBusy=true;qState={q,progress:0,active:false,replay:replay,extra:{}};
+ document.getElementById('qm-title').textContent=q.icon+' '+q.title;
+ document.getElementById('qm-desc').textContent='👁️ FIRST PERSON • FULLSCREEN — '+q.desc+' Reward: '+OUTFITS.find(o=>o.id===q.reward).name+' + '+q.koins+' Chonk Koins. Difficulty: '+q.diff+(replay?' • ↻ REPLAY: outfit already earned, pays +'+Math.ceil(q.koins/2)+' Koins.':'.');
+ document.getElementById('qm-stage').outerHTML=stageHTML(q);
+ document.getElementById('qm-body').innerHTML=questBody(q);
+ document.getElementById('qm-msg').textContent=q.label;setBar(0);
+ const act=document.getElementById('qm-action');act.textContent='START';act.disabled=false;act.style.display='';
+ document.getElementById('quest-modal').classList.add('visible');wireQuest(q);
+}
+function closeQuest(){clearInterval(qTimer);if(qState&&qState.boomTimers)qState.boomTimers.forEach(clearTimeout);if(qState&&qState.extra){if(qState.extra.ballTimer)clearInterval(qState.extra.ballTimer);if(qState.extra.aimKeys)document.removeEventListener('keydown',qState.extra.aimKeys);}qTimer=null;questBusy=false;qState=null;document.getElementById('quest-modal').classList.remove('visible');renderHUD();if(currentMenu==='tasks')renderQuests();if(currentMenu==='wardrobe')renderWardrobe();}
+function boomEl(cls,stage){const s=document.createElement('div');s.className=cls;stage.appendChild(s);return s;}
+function explodeSphinx(onDone){
+ const stage=document.getElementById('qm-stage'),wrap=document.getElementById('sphinx-wrap');if(!stage||!wrap){onDone&&onDone();return;}
+ const cracks=document.getElementById('sphinx-cracks'),head=document.getElementById('sphinx-head'),bodyG=document.getElementById('sphinx-body');
+ const msg=document.getElementById('qm-msg');
+ const timers=[];const at=(ms,fn)=>timers.push(setTimeout(fn,ms));qState.boomTimers=timers;
+ // STEP 1 (0-1s): cracks spread, statue trembles
+ if(cracks)cracks.style.opacity='1';stage.classList.add('exploding');beep(55,.9,'sawtooth');
+ msg.textContent='💢 STEP 1: The Sphinx is CRACKING… stone cannot contain this stare…';
+ // STEP 2 (1s): clipart KABOOM + flash, fireball, shockwave
+ at(1000,()=>{
+  const boom=document.getElementById('clipart-boom');if(boom){boom.classList.remove('pop');void boom.offsetWidth;boom.classList.add('pop');}
+  const flash=boomEl('boom-flash',stage),fire=boomEl('boom-fireball',stage),ring=boomEl('boom-ring',stage),dust=boomEl('boom-dust',stage);
+  if(flash.animate)flash.animate([{opacity:0},{opacity:.95,offset:.12},{opacity:0}],{duration:600,easing:'ease-out'});
+  if(fire.animate)fire.animate([{opacity:0,transform:'scale(.2)'},{opacity:1,transform:'scale(1.5)',offset:.3},{opacity:0,transform:'scale(2.9)'}],{duration:1200,easing:'ease-out'});
+  if(ring.animate)ring.animate([{opacity:.9,transform:'scale(.25)'},{opacity:0,transform:'scale(3.4)'}],{duration:900,easing:'ease-out'});
+  if(dust.animate)dust.animate([{opacity:0},{opacity:1,offset:.35},{opacity:.5}],{duration:4000,easing:'ease-out',fill:'forwards'});
+  if(head){head.style.transform='translate(74px,150px) rotate(52deg)';head.style.opacity='.9';}
+  if(bodyG){bodyG.style.transition='opacity 1.2s';bodyG.style.opacity='.35';}
+  beep(68,.55,'sawtooth');setTimeout(()=>beep(42,.7,'square'),110);setTimeout(()=>beep(30,.8,'sine'),260);
+  const eyes=document.getElementById('stare-eyes');if(eyes)eyes.textContent='🤩';
+  msg.textContent='💥 STEP 2: KABOOM!!! The whole Sphinx blows apart!';
+ });
+ // STEP 3 (1-3.5s): stone debris launches, arcs, and crashes down under gravity
+ at(1150,()=>{
+  const bits=['🪨','🪨','🔥','🪨','✨','🪨','💥','🪨','🔥','🪨'];
+  bits.forEach((b,i)=>{const s=document.createElement('span');s.className='debris';s.textContent=b;s.style.left=(44+Math.random()*12)+'%';s.style.top='38%';stage.appendChild(s);
+   const dx=(Math.random()*300-150),up=-(70+Math.random()*130),down=190+Math.random()*90,rot=Math.random()*300-150;
+   if(s.animate){s.animate([{transform:'translate(0,0) rotate(0deg)',opacity:1},{transform:'translate('+(dx*.7)+'px,'+up+'px) rotate('+(rot*.6)+'deg)',opacity:1,offset:.42},{transform:'translate('+dx+'px,'+down+'px) rotate('+rot+'deg)',opacity:.95}],{duration:2300+Math.random()*500,easing:'cubic-bezier(.2,.7,.4,1)',fill:'forwards'});}
+   else{s.style.transform='translate('+dx+'px,'+down+'px)';}
+   setTimeout(()=>s.remove(),6000);});
+  for(let i=0;i<5;i++){const sm=boomEl('boom-smoke',stage);sm.style.left=(38+i*6)+'%';sm.style.top='30%';
+   if(sm.animate){sm.animate([{opacity:0,transform:'translateY(10px) scale(.6)'},{opacity:.75,transform:'translateY(-30px) scale(1.15)',offset:.4},{opacity:0,transform:'translateY(-95px) scale(1.7)'}],{duration:3400+i*220,easing:'ease-out',fill:'forwards'});}
+   setTimeout(()=>sm.remove(),6000);}
+  msg.textContent='🪨 STEP 3: Stone debris rains down… the head topples off…';
+ });
+ // STEP 4 (3.5-5s): dust settles over the rubble, KABOOM fades — sequence complete
+ at(3500,()=>{const r=document.getElementById('sphinx-rubble');if(r)r.style.display='block';msg.textContent='💨 STEP 4: Dust settles over the rubble…';});
+ at(4400,()=>{const b=document.getElementById('clipart-boom');if(b&&b.animate)b.animate([{opacity:1},{opacity:0}],{duration:600,easing:'ease-in',fill:'forwards'});});
+ at(5000,()=>{msg.textContent='🏆 The sequence is complete — one (1) exploded Sphinx.';onDone&&onDone();});
+}
+function finishWinQuest(){
+ const q=qState.q,o=OUTFITS.find(x=>x.id===q.reward);
+ const replayWin=!!qState.replay;const earned=replayWin?Math.ceil(q.koins/2):q.koins;
+ S.quests[q.id]=true;S.outfits[q.reward]=true;S.chonkKoins+=earned;saveGame();
+ document.getElementById('qm-msg').innerHTML=(q.id==='sphinx'?'💥 THE SPHINX EXPLODED! 4,500 years of not blinking, gone. ':'')+(replayWin?'↻ TASK DONE AGAIN! +'+earned+'🪙 (replay reward). The '+o.name+' is already hers — she is wearing her victory lap.':'🏆 TASK COMPLETE! +'+earned+'🪙 and unlocked: '+o.icon+' '+o.name+'! Mochi: “I knew you could do it. Now feed me.”');
+ const act=document.getElementById('qm-action');act.style.display='';act.textContent='COLLECT & CLOSE';act.disabled=false;act.onclick=closeQuest;
+ const close=document.getElementById('qm-close');close.disabled=false;close.textContent='Give Up (Mochi understands)';
+ log('🏆 Completed "'+q.title+'"! Unlocked '+o.name+' (+'+earned+'🪙). Mochi contributed moral support (sleeping).');hearts(6);purr();
+ if(q.id==='everest')tryAch('fcp_bunny');if(q.id==='nba')tryAch('fcp_champion');if(q.id==='ninjas')tryAch('fcp_ninja');
+ if(Object.keys(S.outfits).length>=3)tryAch('fcp_wardrobe');if(Object.keys(S.quests).length>=6)tryAch('fcp_ultimate');renderHUD();
+}
+function winQuest(){
+ const q=qState.q;clearInterval(qTimer);
+ if(q.id==='sphinx'){
+  // The FULL 5-second explosion plays first — no rewards, no collect button until it finishes
+  const act=document.getElementById('qm-action');act.style.display='none';
+  const close=document.getElementById('qm-close');close.disabled=true;close.textContent='💥 EXPLODING…';
+  document.getElementById('qm-msg').textContent='👁️ YOU WIN THE STARE! Hold on — watch this…';
+  explodeSphinx(()=>{if(qState)finishWinQuest();});
+  return;
+ }
+ finishWinQuest();
+}
+function failQuest(msg){document.getElementById('qm-msg').textContent='💥 '+msg+' Try again — Mochi believes in you (from the couch).';const act=document.getElementById('qm-action');act.textContent='TRY AGAIN';act.disabled=false;if(qState)qState.active=false;clearInterval(qTimer);}
+function wireQuest(q){
+ const act=document.getElementById('qm-action');
+ document.getElementById('qm-close').onclick=closeQuest;
+ if(q.id==='everest'){act.textContent='🧗 CLIMB!';let handSide=0;act.onclick=()=>{if(!qState.active){qState.active=true;qTimer=setInterval(()=>{qState.progress=Math.max(0,qState.progress-2);moveHands();if(Math.random()<.3)document.getElementById('qm-msg').textContent='💨 WIND GUST! Your gloves slip on the ice! Keep climbing!';},700);}qState.progress++;handSide=1-handSide;beep(300+qState.progress*12,.06);moveHands(handSide);if(qState.progress>=q.need)winQuest();};
+  function moveHands(side){const p=qState.progress/q.need;const hl=document.getElementById('hand-l'),hr=document.getElementById('hand-r');if(hl&&hr){hl.classList.toggle('reach',side===0);hr.classList.toggle('reach',side===1);}const m=document.getElementById('everest-mtn');if(m)m.style.transform='translateX(-50%) translateY('+(p*36)+'px)';const f=document.getElementById('everest-flag');if(f)f.style.transform='scale('+(0.75+p*1.1)+')';const v=document.getElementById('everest-view');if(v)v.style.transform='scale('+(1+p*0.25)+')';const a=document.getElementById('altitude');if(a)a.textContent='Altitude: '+Math.round(p*8848)+'m / 8,848m — your hands, your climb';document.getElementById('qm-msg').textContent='Hand over hand… '+Math.round(p*8848)+'m — the summit flag is getting bigger! Mochi watches on Cat TV. 🐱📺';setBar(p*100);}}
+ else if(q.id==='nba'){let angle=55,taken=0,made=0,flying=false;act.textContent='🏀 SHOOT';
+  const stage=document.getElementById('qm-stage'),ball=document.getElementById('nba-ball');
+  const dots=[];for(let i=0;i<14;i++){const s=document.createElement('span');s.className='aim-dot';stage.appendChild(s);dots.push(s);}
+  function geom(){const w=stage.clientWidth||860,h=stage.clientHeight||430;return{w,h,ox:w/2,oy:h-118,rimX:w-106,rimY:112};}
+  function traj(a){const rad=a*Math.PI/180,v=700,g=850,{ox,oy}=geom();const pts=[];for(let i=0;i<=40;i++){const tt=i*0.045;pts.push({x:ox+Math.cos(rad)*v*tt,y:oy-Math.sin(rad)*v*tt+0.5*g*tt*tt});}return pts;}
+  function minRimDist(a){const{rimX,rimY}=geom();let m=1e9;traj(a).forEach(pt=>{const d=Math.hypot(pt.x-rimX,pt.y-rimY);if(d<m)m=d;});return m;}
+  function drawAim(){const{oy}=geom();const pts=traj(angle),good=minRimDist(angle)<=18;dots.forEach((s,i)=>{const pt=pts[Math.min(pts.length-1,2+i*3)];s.style.left=pt.x+'px';s.style.top=pt.y+'px';s.style.display=pt.y>oy+46?'none':'';s.classList.toggle('good',good);});const lbl=document.getElementById('aim-angle');if(lbl)lbl.textContent='🎯 Aim: '+Math.round(angle)+'°'+(good?' — GREEN! That\'s a swish!':'');const net=document.getElementById('hoop-net');if(net)net.style.filter=good?'drop-shadow(0 0 6px #69db7c)':'';}
+  drawAim();
+  stage.onmousemove=e=>{if(flying)return;const r=stage.getBoundingClientRect(),w=r.width||stage.clientWidth||860;angle=Math.max(28,Math.min(72,28+((e.clientX-r.left)/w)*44));drawAim();};
+  stage.ontouchmove=e=>{if(flying||!e.touches[0])return;const r=stage.getBoundingClientRect(),w=r.width||stage.clientWidth||860;angle=Math.max(28,Math.min(72,28+((e.touches[0].clientX-r.left)/w)*44));drawAim();};
+  qState.extra.aimKeys=e=>{if(flying)return;if(e.key==='ArrowLeft'){angle=Math.max(28,angle-2);drawAim();}if(e.key==='ArrowRight'){angle=Math.min(72,angle+2);drawAim();}};
+  document.addEventListener('keydown',qState.extra.aimKeys);
+  function shoot(){if(flying||taken>=5)return;flying=true;qState.active=true;taken++;const good=minRimDist(angle)<=18;const{rimX,rimY,oy}=geom();const pts=traj(angle);let i=0;
+   dots.forEach(s=>s.style.display='none');
+   qState.extra.ballTimer=setInterval(()=>{const pt=pts[Math.min(pts.length-1,i)];ball.style.left=pt.x+'px';ball.style.top='auto';ball.style.bottom=(geom().h-pt.y-16)+'px';ball.style.transform='translateX(-50%)';i++;
+    if(i>=pts.length||pt.y>oy+52){clearInterval(qState.extra.ballTimer);
+     if(good){made++;beep(880,.15);const net=document.getElementById('hoop-net');if(net){net.classList.remove('swish');void net.getBoundingClientRect();net.classList.add('swish');}
+      ball.style.left=rimX+'px';ball.style.bottom=(geom().h-rimY-84)+'px';
+      document.getElementById('qm-msg').textContent='🏀 SWISH! Right down the dotted line! The crowd chants MO-CHI!';}
+     else{beep(160,.2,'square');document.getElementById('qm-msg').textContent='🧱 The dotted line told the truth — that one missed. Rotate your aim and go again!';}
+     const m=document.getElementById('nba-made'),tk=document.getElementById('nba-taken');if(m)m.textContent=made;if(tk)tk.textContent=taken;setBar(taken/5*100);
+     setTimeout(()=>{ball.style.left='50%';ball.style.bottom='104px';flying=false;if(made>=3)winQuest();else if(taken>=5)failQuest('Lost the Finals — only '+made+' made shots. Rotate, follow the dots, retry!');else{drawAim();}},650);}},30);}
+  act.onclick=shoot;stage.onclick=e=>{if(e.target===stage||e.target.classList.contains('fp-view'))shoot();};
+  document.getElementById('qm-msg').textContent='Rotate your aim — follow the dotted line into the hoop!';}
+ else if(q.id==='ninjas'){act.textContent='🥷 BEGIN FIGHT';let hits=0;act.onclick=()=>{if(qState.active)return;qState.active=true;act.disabled=true;const cells=document.querySelectorAll('[data-cell]');const spawn=()=>{cells.forEach(c=>{if(c.textContent==='🥷'){c.textContent='·';c.classList.remove('pop');}});const c=cells[Math.floor(Math.random()*9)];c.textContent='🥷';c.classList.remove('pop');void c.offsetWidth;c.classList.add('pop');};spawn();qTimer=setInterval(spawn,750);
+   let fistSide=0;cells.forEach(c=>c.onclick=()=>{if(!qState.active||c.textContent!=='🥷')return;hits++;fistSide=1-fistSide;const fist=document.getElementById(fistSide?'fist-r':'fist-l');if(fist){fist.classList.add('fp-punch');fist.style.transform='translateY(-52px) scale(1.35) rotate('+(fistSide?10:-10)+'deg)';setTimeout(()=>{fist.style.transform='';},150);}c.textContent='💥';c.classList.remove('pop');c.classList.add('hit');beep(700+hits*20,.07,'square');const n=document.getElementById('ninja-count');if(n)n.textContent=hits;document.getElementById('qm-msg').textContent='Your fist connects! Ninja spin-felled! '+hits+' / 20';setBar(hits/20*100);if(hits>=20)winQuest();});document.getElementById('qm-msg').textContent='Ninjas defeated: 0 / 20 — punch them back with your own fists!';};}
+ else if(q.id==='sphinx'){act.textContent='👁️ START STARING';act.onclick=()=>{if(qState.active)return;qState.active=true;act.disabled=true;act.textContent='👁️ STARING…';document.getElementById('stare-eyes').textContent='😳';const lt=document.getElementById('lid-top'),lb=document.getElementById('lid-bottom');if(lt)lt.style.height='5%';if(lb)lb.style.height='5%';document.getElementById('qm-msg').textContent='👁️ Your stare locks on automatically… no holding needed. The feathers cannot save her now.';qTimer=setInterval(()=>{qState.progress+=4;const f=document.getElementById('sphinx-wrap');if(f)f.style.transform='scale('+(1+qState.progress/300)+')';if(Math.random()<.07)document.getElementById('qm-msg').textContent='🪶 A feather drifts at your nose… your locked-on stare does not care.';else document.getElementById('qm-msg').textContent='Stare power: '+Math.floor(qState.progress)+'% — stone sweat is forming on the Sphinx.';setBar(qState.progress);if(qState.progress>=100)winQuest();},80);};}
+ else if(q.id==='souffle'){act.textContent='👀 WATCH SEQUENCE';let seq=[],idx=0,accept=false;const names=['🥚','🧈','🍋','🍓','🧀'];
+   act.onclick=()=>{if(accept)return;seq=Array.from({length:5},()=>Math.floor(Math.random()*5));idx=0;accept=false;act.disabled=true;document.getElementById('qm-msg').textContent='Memorise the ingredients… watch the row build up — every step is its own icon, even repeats!';let i=0;const shown=[];qTimer=setInterval(()=>{const sh=document.getElementById('souffle-show');if(i<seq.length){shown.push(names[seq[i]]);if(sh)sh.innerHTML=shown.map((e,j)=>'<span style="display:inline-block;margin:0 2px;padding:3px 7px;border-radius:50%;'+(j===shown.length-1?'background:#ffd43b88;transform:scale(1.3)':'background:#ffffff14')+'">'+e+'</span>').join('');beep(500+seq[i]*90,.12);i++;document.getElementById('qm-msg').textContent='Memorise… ingredient '+i+' of 5 (repeats count twice — watch for pairs!)';}else{clearInterval(qTimer);if(sh)sh.textContent='❓ Your turn!';accept=true;qState.active=true;document.getElementById('qm-msg').textContent='Repeat the sequence! (0/5) — the soufflé rises with each correct step!';}},780);};
+   const entered=[];document.querySelectorAll('[data-ing]').forEach(b=>b.onclick=()=>{if(!accept)return;const v=+b.dataset.ing;entered.push(names[v]);const sh2=document.getElementById('souffle-show');if(sh2)sh2.textContent='You added: '+entered.join(' ');if(v===seq[idx]){idx++;beep(660,.1);const whisk=document.getElementById('fp-whisk');if(whisk){whisk.style.transform='translateX(-50%) rotate('+(idx%2?24:-24)+'deg) translateY(-10px)';setTimeout(()=>{whisk.style.transform='translateX(-50%)';},220);}const dish=document.getElementById('souffle-dish');if(dish)dish.style.transform='scale('+(1+idx*.22)+') translateY('+(-idx*4)+'px)';document.getElementById('qm-msg').textContent='It rises! Correct! ('+idx+'/5)';setBar(idx/5*100);if(idx>=5)winQuest();}else{accept=false;const dish=document.getElementById('souffle-dish');if(dish)dish.style.transform='scale(.6)';failQuest('Wrong ingredient! The soufflé collapsed in horror.');}});}
+ else if(q.id==='marathon'){act.textContent='👟 START RUN';let step=0,last='';const foot=f=>{if(!qState.active)return;if(f===last){document.getElementById('qm-msg').textContent='🩴 Same foot twice — you hopped and a flip-flop flew off! Alternate!';beep(150,.15,'square');return;}last=f;step++;beep(f==='L'?440:520,.06);const p=step/40;const fl=document.getElementById('foot-l-vis'),fr=document.getElementById('foot-r-vis'),d=document.getElementById('marathon-dist'),fin=document.getElementById('finish-flag');if(fl)fl.style.transform=f==='L'?'translateY(-22px) scale(1.18) rotate(-6deg)':'';if(fr)fr.style.transform=f==='R'?'translateY(-22px) scale(1.18) rotate(6deg)':'';if(fin)fin.style.transform='scale('+(1+p*1.6)+')';if(d)d.textContent=(Math.round(p*26.2*10)/10)+' / 26.2 miles — looking down at YOUR feet';document.getElementById('qm-msg').textContent='Flop… flop… flop… your flip-flops pound the road! '+step+' / 40 steps';setBar(p*100);if(step>=40)winQuest();};
+   document.getElementById('qm-body').innerHTML='<button class="big-btn" id="foot-l">👈 LEFT FOOT</button><button class="big-btn alt" id="foot-r">RIGHT FOOT 👉</button>';
+   act.onclick=()=>{qState.active=true;act.disabled=true;document.getElementById('qm-msg').textContent='Alternate feet! A/D keys work too. The road rushes under YOUR flip-flops!';document.getElementById('foot-l').onclick=()=>foot('L');document.getElementById('foot-r').onclick=()=>foot('R');qState.extra.foot=foot;};}
+}
+document.addEventListener('keydown',e=>{
+ if(!qState||!qState.active)return;
+ if(qState.q.id==='marathon'){if(e.key==='a'||e.key==='A')qState.extra.foot&&qState.extra.foot('L');if(e.key==='d'||e.key==='D')qState.extra.foot&&qState.extra.foot('R');}
+ if(e.key===' '&&qState.q.id==='everest'){e.preventDefault();document.getElementById('qm-action').click();}
+});
+// ═══ RESTART (two-click safety: first click arms, second click erases) ═══
+let restartArmed=false,restartArmTimer=null;
+function disarmRestart(){restartArmed=false;clearTimeout(restartArmTimer);const b=document.getElementById('restart-btn');b.textContent='↺ Restart';b.style.background='';}
+function restartGame(){
+ localStorage.removeItem(SAVE_KEY);S=defaultSave();
+ cooldowns={};channelIdx=0;logLines=[];
+ if(document.getElementById('quest-modal').classList.contains('visible'))closeQuest();
+ closeMenu();setWant('eat');renderTV();renderStuff();renderCatState();renderHUD();
+ document.getElementById('cat-bubble').textContent='🆕 A brand new Mochi era begins. She remembers nothing. Feed her.';
+ log('↺ RESTARTED! All Chonk Koins, stuff, outfits and task progress wiped. (Launcher G Bux achievements are kept.) Mochi is unbothered.');
+ saveGame();
+}
+document.getElementById('restart-btn').onclick=()=>{
+ if(!restartArmed){restartArmed=true;const b=document.getElementById('restart-btn');b.textContent='⚠️ Erase EVERYTHING? Click again!';b.style.background='#7a1f2b';restartArmTimer=setTimeout(disarmRestart,4000);return;}
+ disarmRestart();restartGame();
+};
+// ═══ SIDEWAYS HOUSE SCROLLING ═══
+const houseEl=document.getElementById('house');
+function centerHouse(){houseEl.scrollLeft=Math.max(0,(2400-houseEl.clientWidth)/2);}
+document.getElementById('scroll-left').onclick=()=>houseEl.scrollBy({left:-420,behavior:'smooth'});
+document.getElementById('scroll-right').onclick=()=>houseEl.scrollBy({left:420,behavior:'smooth'});
+houseEl.addEventListener('wheel',e=>{if(Math.abs(e.deltaY)>Math.abs(e.deltaX)){houseEl.scrollLeft+=e.deltaY;e.preventDefault();}},{passive:false});
+let dragX=null,dragScroll=0,dragMoved=false;
+houseEl.addEventListener('pointerdown',e=>{dragX=e.clientX;dragScroll=houseEl.scrollLeft;dragMoved=false;houseEl.classList.add('dragging');});
+window.addEventListener('pointermove',e=>{if(dragX===null)return;const dx=e.clientX-dragX;if(Math.abs(dx)>6)dragMoved=true;houseEl.scrollLeft=dragScroll-dx;});
+window.addEventListener('pointerup',()=>{dragX=null;houseEl.classList.remove('dragging');setTimeout(()=>dragMoved=false,50);});
+houseEl.addEventListener('click',e=>{if(dragMoved){e.stopPropagation();e.preventDefault();}},true);
+window.addEventListener('resize',()=>{if(houseEl.scrollLeft===0)centerHouse();});
+// ═══ INIT ═══
+setWant();renderHUD();renderStuff();renderCatState();renderTV();centerHouse();
+log('🐱 Welcome! The house is Mochi\u2019s now. Open a menu below and start spoiling her.');
+if(shopHas('fcp_golden_bowl'))log('✨ Golden Bowl (G Bux Shop): feeding pays +2 extra Koins!');
+if(shopHas('fcp_luxury_couch'))log('✨ Luxury Couch (G Bux Shop): Mochi\u2019s couch is already royal.');
+</script>
+</body>
+</html>
+
+

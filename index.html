@@ -1040,6 +1040,22 @@
     border-radius: 8px;
   }
 
+  .game-card.fat-cat-pamperer {
+    border-left-color: #ff9f43;
+  }
+  .game-card.fat-cat-pamperer:hover {
+    border-color: #ff9f43;
+    box-shadow: 0 0 30px #ff9f4318, -5px 0 20px #ff6b9d12;
+  }
+  .game-card.fat-cat-pamperer::before {
+    background: linear-gradient(90deg, #ff9f430a 0%, transparent 50%);
+  }
+  .game-card.fat-cat-pamperer .game-icon {
+    background: linear-gradient(135deg, #2a1808, #241428);
+    border: 1px solid #ff9f4355;
+    border-radius: 8px;
+  }
+
   /* Coming soon cards */
   .game-card.coming-soon {
     opacity: 0.4;
@@ -2330,6 +2346,25 @@ for (let i = 0; i < 30; i++) {
       <div class="game-arrow">&#9654;</div>
     </a>
 
+    <!-- FAT CAT PAMPERER -->
+    <a href="fat-cat-pamperer/index.html" class="game-card fat-cat-pamperer" data-title="FAT CAT PAMPERER" data-launch="18" data-popular="18" data-recommended="18">
+      <div class="game-icon">
+        <svg width="50" height="50" viewBox="0 0 50 50">
+          <rect x="5" y="5" width="40" height="40" rx="6" fill="#241428" stroke="#ff9f43" stroke-width="2"/>
+          <ellipse cx="25" cy="31" rx="13" ry="9" fill="#ff9f43"/>
+          <circle cx="25" cy="21" r="8" fill="#ffb35c"/>
+          <path d="M19 16 L17 9 L24 13 Z M31 16 L33 9 L26 13 Z" fill="#ff9f43"/>
+          <ellipse cx="17" cy="7" rx="2.5" ry="5" fill="#ffd6e7"/><ellipse cx="33" cy="7" rx="2.5" ry="5" fill="#ffd6e7"/>
+          <circle cx="22" cy="20" r="1.3" fill="#22160c"/><circle cx="28" cy="20" r="1.3" fill="#22160c"/>
+        </svg>
+      </div>
+      <div class="game-info">
+        <div class="game-title">FAT CAT PAMPERER</div>
+        <div class="game-desc">Pamper a lazy fat cat. Climb Everest for a bunny onesie.</div>
+      </div>
+      <div class="game-arrow">&#9654;</div>
+    </a>
+
     <!-- GOOFBALL LAND (hidden while in development) -->
 
   </div>
@@ -2630,6 +2665,18 @@ const ALL_ACHIEVEMENTS = [
     { id: 'sch_combo_two',    name: 'Desk Combo',       desc: 'Craft two items in one run',            reward: 20 },
     { id: 'sch_clean_board',  name: 'Board Cleaner',    desc: 'Use Mega Eraser on the board',          reward: 30 },
   ]},
+  { group: 'FAT CAT PAMPERER', items: [
+    { id: 'fcp_first_pamper', name: 'First Pamper',              desc: 'Match Mochi\u2019s craving once',       reward: 5 },
+    { id: 'fcp_full_belly',   name: 'Full Belly Service',        desc: 'Feed Mochi 10 times',                 reward: 10 },
+    { id: 'fcp_nap_time',     name: 'Professional Tucker-Inner', desc: 'Tuck Mochi in 5 times',               reward: 10 },
+    { id: 'fcp_tv_addict',    name: 'Cat TV Dealer',             desc: 'Pamper with Cat TV 10 times',         reward: 15 },
+    { id: 'fcp_playtime',     name: 'She Played?!',               desc: 'Match a rare play craving 3 times',   reward: 20 },
+    { id: 'fcp_bunny',        name: 'Bunny Onesie Earned',       desc: 'Climb Mount Everest',                 reward: 20 },
+    { id: 'fcp_champion',     name: 'NBA Champion (For a Cat)',  desc: 'Win the NBA Finals',                  reward: 20 },
+    { id: 'fcp_ninja',        name: 'Ninja Fighter',             desc: 'Fight off 20 trained ninjas',         reward: 30 },
+    { id: 'fcp_wardrobe',     name: 'Cat Couture',               desc: 'Own 3 outfits',                       reward: 25 },
+    { id: 'fcp_ultimate',     name: 'Ultimate Pamperer',         desc: 'Complete all 6 bizarre tasks',        reward: 50 },
+  ]},
 ];
 
 const SHOP_ITEMS = [
@@ -2662,6 +2709,8 @@ const SHOP_ITEMS = [
   { id: 'dc_confetti_blast', name: 'Confetti Blast', desc: 'Larger splash radius in Dumb Chaos',            cost: 75, icon: '&#127881;', game: 'Dumb Chaos' },
   { id: 'dc_chaos_socks',   name: 'Chaos Socks',     desc: '15% move speed bonus in Dumb Chaos',            cost: 50, icon: '&#129510;', game: 'Dumb Chaos' },
   { id: 'dc_bucket_armor',  name: 'Bucket Armor',    desc: 'Start each Dumb Chaos match with 125 HP',       cost: 75, icon: '&#129527;', game: 'Dumb Chaos' },
+  { id: 'fcp_golden_bowl',  name: 'Golden Bowl',     desc: 'Feeding is 30% stronger in Fat Cat Pamperer',     cost: 50, icon: '&#129367;', game: 'Fat Cat Pamperer' },
+  { id: 'fcp_luxury_couch', name: 'Luxury Couch',    desc: 'Needs drain slower, pampering counts more',       cost: 75, icon: '&#128715;', game: 'Fat Cat Pamperer' },
 ];
 
 // ═══ LAUNCHER CUSTOMIZATIONS ═══
@@ -2844,15 +2893,17 @@ const NEWS_TAG_COLORS = {
   'super-soccer':     { bg: '#3da34922', border: '#3da349', color: '#3da349' },
   'dumb-chaos':        { bg: '#f7d84a22', border: '#f7d84a', color: '#f7d84a' },
   'school-sim':       { bg: '#54c6a022', border: '#54c6a0', color: '#54c6a0' },
+  'fat-cat-pamperer': { bg: '#ff9f4322', border: '#ff9f43', color: '#ff9f43' },
 };
 const NEWS_TAG_LABELS = {
   'all': 'All Games', 'brawl-monsters': 'Brawl Monsters', 'devious-driving': 'Devious Driving',
   'tower-defense': 'Tower Defense', 'mini-life': 'Mini Life', 'hurgvibbit': 'Hurgvibbit',
   'ancient-warfare': 'Ancient Warfare', 'rogue-depths': 'Rogue Depths', 'battle-bros': 'Battle Bros',
   'mega-io': 'Mega IO', 'sibling-brawl': 'Sibling Brawl', 'dress-to-depress': 'Dress to Depress', 'school-nurse': 'School Nurse',
-  'super-soccer': 'Super Soccer', 'dumb-chaos': 'Dumb Chaos', 'school-sim': 'School Sim',
+  'super-soccer': 'Super Soccer', 'dumb-chaos': 'Dumb Chaos', 'school-sim': 'School Sim', 'fat-cat-pamperer': 'Fat Cat Pamperer',
 };
 const NEWS_ENTRIES = [
+  { date: '2026-05-07', title: 'Fat Cat Pamperer Launches!', desc: 'New pamper sim! Serve Mochi, a lazy chubby cat who only eats, sleeps and watches Cat TV. Complete bizarrely hard tasks — climb Everest, win the NBA, fight 20 ninjas — to earn her a bunny onesie and more outfits.', game: 'fat-cat-pamperer' },
   { date: '2026-05-07', title: 'School Sim Launches!', desc: 'New 3D classroom crafting sim. Collect supplies, use a desk as the crafting table, and combine things like Eraser + Electric Screwdriver into Mega Eraser.', game: 'school-sim' },
   { date: '2026-05-07', title: 'Dumb Chaos Quality Update', desc: '3D... well, dumb chaos. New ranked battles, rapid-fire Cat Blaster, goofy weapons, upbeat music, better hats, fixed doors, and extra arena silliness.', game: 'dumb-chaos' },
   { date: '2026-05-06', title: 'Dumb Chaos Launches!', desc: 'New 3D first-person goofy arena shooter! Fire pineapple launchers, bonk Chaos Bots, splat rival-player avatars, earn Chaos Coins, and buy even dumber weapons and upgrades.', game: 'dumb-chaos' },
@@ -3371,7 +3422,9 @@ const GAME_TAGS = {
   'dress-to-depress/index.html': ['simulation', 'creative', '3d', 'fashion'],
   'school-nurse/index.html':     ['simulation', 'detective', '2d', 'story'],
   'super-soccer/index.html':     ['sports', 'action', '2d', 'simulation'],
-  'dumb-chaos/index.html':       ['action', 'shooter', '3d', 'multiplayer', 'arcade']
+  'dumb-chaos/index.html':       ['action', 'shooter', '3d', 'multiplayer', 'arcade'],
+  'school-sim/index.html':       ['simulation', '3d', 'creative'],
+  'fat-cat-pamperer/index.html': ['simulation', '2d', 'arcade', 'creative']
 };
 
 function getRecommendedScores() {
